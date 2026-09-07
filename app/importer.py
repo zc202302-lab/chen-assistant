@@ -102,7 +102,6 @@ def import_xlsm(path: str | Path, replace: bool = True):
                 continue
             group_code = c.get('B3','').strip()
             tax_id = c.get('C3','').strip()
-            # 客情：保留难以结构化的自然语言记录
             relation_summary_parts = []
             contact_rows = []
             for row in range(12,16):
@@ -125,7 +124,6 @@ def import_xlsm(path: str | Path, replace: bool = True):
             ))
             customer_id = cur.lastrowid
             stats['customers'] += 1
-            # 关联主体：Excel 中第二组 A6:C7 等
             for label_row, data_row in [(6,7),(8,9)]:
                 extra_name = c.get(f'A{data_row}','').strip()
                 if extra_name and extra_name != name:
@@ -135,21 +133,18 @@ def import_xlsm(path: str | Path, replace: bool = True):
             for kind,nm,rel in contact_rows:
                 conn.execute('INSERT INTO contacts(customer_id,kind,name,relationship) VALUES(?,?,?,?)',(customer_id,kind,nm,rel))
                 stats['contacts'] += 1
-            # 待办 26:30
             for row in range(26,31):
                 title = c.get(f'A{row}','').strip()
                 if not title: continue
                 conn.execute('INSERT INTO tasks(customer_id,title,remind_date,note,created_at) VALUES(?,?,?,?,?)',
                              (customer_id,title,excel_date(c.get(f'B{row}','')),c.get(f'C{row}','').strip(),now))
                 stats['tasks'] += 1
-            # 拜访 33:37
             for row in range(33,38):
                 date = c.get(f'A{row}','').strip(); result = c.get(f'B{row}','').strip(); plan = c.get(f'C{row}','').strip()
                 if not any([date,result,plan]): continue
                 conn.execute('INSERT INTO visits(customer_id,visit_date,result,plan,created_at) VALUES(?,?,?,?,?)',
                              (customer_id,excel_date(date),result,plan,now))
                 stats['visits'] += 1
-            # 业务：E 列不空即业务行，排除表头
             service_rows = []
             for ref,val in c.items():
                 m = re.fullmatch(r'E(\d+)',ref)
@@ -174,7 +169,7 @@ def import_xlsm(path: str | Path, replace: bool = True):
                     'last_payment_date': '',
                 }
                 promo_pairs = []
-                for col in range(15,52,2):  # O/P ... AY/AZ
+                for col in range(15,52,2):
                     pcol, dcol = col_name(col), col_name(col+1)
                     pname = c.get(f'{pcol}{row}','').strip()
                     pdate = c.get(f'{dcol}{row}','').strip()
@@ -190,6 +185,10 @@ def import_xlsm(path: str | Path, replace: bool = True):
                     service['payment_cycle'],service['payment_method'],service['invoice_type'],service['package_type'],service['last_payment_date'],row
                 ))
                 sid = scur.lastrowid; stats['services'] += 1
+                conn.execute('''INSERT OR IGNORE INTO service_payment_rules(service_id,effective_period,mode,fixed_amount,created_at)
+                                VALUES(?,?,?,?,?)''',(sid,'1900-01','fixed' if service['fixed_fee'] else 'variable',service['monthly_fee'],now))
+                conn.execute('''INSERT OR REPLACE INTO payment_entries(service_id,period,amount,reference_amount,source,confirmed,created_at,updated_at)
+                                VALUES(?,?,?,?,?,?,?,?)''',(sid,current_period,service['monthly_fee'],service['monthly_fee'],'imported',1 if service['fixed_fee'] else 0,now,now))
                 for pname,pdate in promo_pairs:
                     conn.execute('INSERT INTO promotions(service_id,name,expiry_date) VALUES(?,?,?)',(sid,pname,pdate))
                     stats['promotions'] += 1
