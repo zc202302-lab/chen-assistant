@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+APP_DIR="/opt/chen-assistant"
+SERVICE="chen-assistant"
+HEALTH_URL="http://172.19.0.1:8010/health"
+BACKUP_DIR="$APP_DIR/backups"
+
+cd "$APP_DIR"
+
+echo "===== 晨的助手一键更新 ====="
+
+if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+  echo "✗ 检测到服务器上的受 Git 管理文件有本地修改，已停止更新。"
+  echo "请先处理 git status 显示的修改，避免覆盖。"
+  exit 1
+fi
+
+mkdir -p "$BACKUP_DIR"
+TS="$(date +%Y%m%d-%H%M%S)"
+BACKUP_FILE="$BACKUP_DIR/app.db.$TS"
+
+if [[ -f data/app.db ]]; then
+  .venv/bin/python - "$BACKUP_FILE" <<'PY'
+import sqlite3, sys
+from pathlib import Path
+src = Path('data/app.db')
+dst = Path(sys.argv[1])
+dst.parent.mkdir(parents=True, exist_ok=True)
+with sqlite3.connect(src) as s, sqlite3.connect(dst) as d:
+    s.backup(d)
+print(f"✓ 数据库已备份：{dst}")
+PY
+else
+  echo "! 未发现 data/app.db，本次跳过数据库备份"
+fi
+
+OLD_COMMIT="$(git rev-parse --short HEAD)"
+echo "当前代码：$OLD_COMMIT"
+
+git fetch origin main
+git merge --ff-only origin/main
+
+.venv/bin/pip install -q -r requirements.txt
+.venv/bin/python -c 'from app.db import init_db; init_db(); print("✓ 数据库结构检查/迁移完成")'
+
+systemctl restart "$SERVICE"
+sleep 3
+
+if curl -fsS "$HEALTH_URL"; then
+  echo
+  echo "✓ 服务健康检查通过"
+  echo "更新后代码：$(git rev-parse --short HEAD)"
+  echo "===== 更新完成 ====="
+else
+  echo
+  echo "✗ 健康检查失败。数据库备份：$BACKUP_FILE"
+  echo "请执行：journalctl -u $SERVICE -n 80 --no-pager"
+  exit 1
+fi
