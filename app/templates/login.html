@@ -1,0 +1,5 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/static/app.css"><title>登录 · 晨的助手</title></head>
+<body class="login-body"><main class="login-card"><div class="login-logo">晨</div><h1>晨的助手</h1><p class="muted">个人工作与生活工具</p>
+{% if not configured %}<div class="alert danger">尚未完成初始化。请先在服务器项目目录运行 <code>python setup_env.py</code>。</div>{% endif %}
+{% if error %}<div class="alert danger">{{ error }}</div>{% endif %}
+<form method="post" action="/login" class="stack"><label>用户名<input name="username" autocomplete="username" required></label><label>密码<input type="password" name="password" autocomplete="current-password" required></label><button class="primary" type="submit">登录</button></form></main></body></html>

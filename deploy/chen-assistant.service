@@ -1,0 +1,16 @@
+[Unit]
+Description=Chen Assistant PWA
+After=network.target
+
+[Service]
+Type=simple
+User=chenassistant
+Group=chenassistant
+WorkingDirectory=/opt/chen-assistant
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/chen-assistant/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8010 --workers 1
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

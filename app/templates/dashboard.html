@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% block title %}首页 · 晨的助手{% endblock %}{% block content %}
+<section class="hero"><p class="eyebrow">今天</p><h1>{{ today.strftime('%Y年%m月%d日') }}</h1><p>先处理需要你动作的客户，再查资料。</p></section>
+<section class="quick-grid">
+  <a class="stat-card" href="#tasks"><strong>{{ tasks|length }}</strong><span>到期待办</span></a>
+  <a class="stat-card" href="#payment"><strong>{{ wait_notice|length }}</strong><span>待通知</span></a>
+  <a class="stat-card" href="#payment"><strong>{{ wait_payment|length }}</strong><span>已通知未缴费</span></a>
+  <a class="stat-card" href="#promos"><strong>{{ promotions|length }}</strong><span>60天内成员优惠</span></a>
+</section>
+<section class="card" id="tasks"><div class="section-head"><h2>待办</h2></div>
+{% if tasks %}<div class="list">{% for t in tasks %}<div class="list-row"><div><b>{{ t.title }}</b><small>{{ t.customer_name or '个人待办' }}{% if t.remind_date %} · {{ t.remind_date }}{% endif %}</small>{% if t.note %}<small>{{ t.note }}</small>{% endif %}</div><form method="post" action="/tasks/{{ t.id }}/toggle"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small">完成</button></form></div>{% endfor %}</div>{% else %}<p class="empty">目前没有到期待办。</p>{% endif %}</section>
+<section class="card" id="payment"><div class="section-head"><h2>缴费工作队列</h2></div>
+<div class="subsection"><h3>待通知 <span class="count">{{ wait_notice|length }}</span></h3>{% for c in wait_notice %}<a class="list-row link" href="/customers/{{ c.id }}#payment"><span>{{ c.name }}</span><span>›</span></a>{% else %}<p class="empty">无</p>{% endfor %}</div>
+<div class="subsection"><h3>已通知未缴费 <span class="count">{{ wait_payment|length }}</span></h3>{% for c in wait_payment %}<a class="list-row link" href="/customers/{{ c.id }}#payment"><span>{{ c.name }}</span><span>›</span></a>{% else %}<p class="empty">无</p>{% endfor %}</div></section>
+<section class="card" id="promos"><div class="section-head"><h2>成员优惠到期</h2></div>{% if promotions %}<div class="list">{% for p in promotions %}<a class="list-row link" href="/customers/{{ p.customer_id }}#services"><div><b>{{ p.customer_name }}</b><small>{{ p.service_type }}{% if p.number %} · {{ p.number }}{% endif %}</small><small>{{ p.name }} · {{ p.expiry_date or '未填日期' }}</small></div><span>›</span></a>{% endfor %}</div>{% else %}<p class="empty">60天内没有已录入到期日的优惠。</p>{% endif %}</section>
+<section class="card"><div class="section-head"><h2>最近客户</h2><a href="/customers">全部</a></div><div class="chip-list">{% for c in recent %}<a class="chip" href="/customers/{{ c.id }}">{{ c.name }}</a>{% endfor %}</div></section>
+<form method="post" action="/logout" class="logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="text-button">退出登录</button></form>
+{% endblock %}

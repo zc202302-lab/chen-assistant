@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="晨的助手">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/icon-180.png">
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/app.css">
+  <title>{% block title %}晨的助手{% endblock %}</title>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">晨的助手 <span>v0.1</span></a>
+  <a class="search-link" href="/search" aria-label="搜索">⌕</a>
+</header>
+<main class="page">{% block content %}{% endblock %}</main>
+<nav class="bottom-nav" aria-label="主导航">
+  <a href="/" class="nav-item">⌂<span>首页</span></a>
+  <a href="/customers" class="nav-item">◎<span>客户</span></a>
+  <a href="/products" class="nav-item">▦<span>产品</span></a>
+  <a href="/accounts" class="nav-item">⌘<span>账户</span></a>
+</nav>
+<script src="/static/app.js" defer></script>
+</body>
+</html>
