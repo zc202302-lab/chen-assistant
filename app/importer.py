@@ -74,8 +74,10 @@ class XlsmReader:
             v = c.find(f'{{{NS}}}v')
             val = '' if v is None else (v.text or '')
             if t == 's' and val:
-                try: val = self.ss[int(val)]
-                except Exception: pass
+                try:
+                    val = self.ss[int(val)]
+                except Exception:
+                    pass
             elif t == 'inlineStr':
                 el = c.find(f'{{{NS}}}is')
                 val = '' if el is None else ''.join(x.text or '' for x in el.iter(f'{{{NS}}}t'))
@@ -135,15 +137,17 @@ def import_xlsm(path: str | Path, replace: bool = True):
                 stats['contacts'] += 1
             for row in range(26,31):
                 title = c.get(f'A{row}','').strip()
-                if not title: continue
+                if not title:
+                    continue
                 conn.execute('INSERT INTO tasks(customer_id,title,remind_date,note,created_at) VALUES(?,?,?,?,?)',
                              (customer_id,title,excel_date(c.get(f'B{row}','')),c.get(f'C{row}','').strip(),now))
                 stats['tasks'] += 1
             for row in range(33,38):
-                date = c.get(f'A{row}','').strip(); result = c.get(f'B{row}','').strip(); plan = c.get(f'C{row}','').strip()
-                if not any([date,result,plan]): continue
+                d = c.get(f'A{row}','').strip(); result = c.get(f'B{row}','').strip(); plan = c.get(f'C{row}','').strip()
+                if not any([d,result,plan]):
+                    continue
                 conn.execute('INSERT INTO visits(customer_id,visit_date,result,plan,created_at) VALUES(?,?,?,?,?)',
-                             (customer_id,excel_date(date),result,plan,now))
+                             (customer_id,excel_date(d),result,plan,now))
                 stats['visits'] += 1
             service_rows = []
             for ref,val in c.items():
@@ -154,7 +158,8 @@ def import_xlsm(path: str | Path, replace: bool = True):
                         service_rows.append(row)
             for row in sorted(set(service_rows)):
                 stype = c.get(f'E{row}','').strip()
-                if not stype: continue
+                if not stype:
+                    continue
                 service = {
                     'service_type': stype,
                     'holder_name': c.get(f'F{row}','').strip(),
@@ -173,7 +178,8 @@ def import_xlsm(path: str | Path, replace: bool = True):
                     pcol, dcol = col_name(col), col_name(col+1)
                     pname = c.get(f'{pcol}{row}','').strip()
                     pdate = c.get(f'{dcol}{row}','').strip()
-                    if not pname and not pdate: continue
+                    if not pname and not pdate:
+                        continue
                     if pname == '上次缴费':
                         service['last_payment_date'] = excel_date(pdate)
                     else:
@@ -184,12 +190,16 @@ def import_xlsm(path: str | Path, replace: bool = True):
                     customer_id,service['service_type'],service['holder_name'],service['number'],service['account'],service['monthly_fee'],service['fixed_fee'],
                     service['payment_cycle'],service['payment_method'],service['invoice_type'],service['package_type'],service['last_payment_date'],row
                 ))
-                sid = scur.lastrowid; stats['services'] += 1
-                conn.execute('''INSERT OR IGNORE INTO service_payment_rules(service_id,effective_period,mode,fixed_amount,created_at)
-                                VALUES(?,?,?,?,?)''',(sid,'1900-01','fixed' if service['fixed_fee'] else 'variable',service['monthly_fee'],now))
-                conn.execute('''INSERT OR REPLACE INTO payment_entries(service_id,period,amount,reference_amount,source,confirmed,created_at,updated_at)
-                                VALUES(?,?,?,?,?,?,?,?)''',(sid,current_period,service['monthly_fee'],service['monthly_fee'],'imported',1 if service['fixed_fee'] else 0,now,now))
+                sid = scur.lastrowid
+                stats['services'] += 1
+                mode = 'fixed' if service['fixed_fee'] else 'variable'
+                conn.execute('''INSERT INTO service_payment_rules(service_id,effective_period,mode,fixed_amount,created_at)
+                                VALUES(?,?,?,?,?)''', (sid,'1900-01',mode,service['monthly_fee'] if mode=='fixed' else 0,now))
+                conn.execute('''INSERT INTO payment_entries(service_id,period,amount,reference_amount,source,confirmed,created_at,updated_at)
+                                VALUES(?,?,?,?,?,?,?,?)''',
+                             (sid,current_period,service['monthly_fee'],service['monthly_fee'],'imported',1 if mode=='fixed' else 0,now,now))
                 for pname,pdate in promo_pairs:
                     conn.execute('INSERT INTO promotions(service_id,name,expiry_date) VALUES(?,?,?)',(sid,pname,pdate))
                     stats['promotions'] += 1
+        conn.execute("INSERT OR REPLACE INTO app_meta(key,value) VALUES('payment_history_bootstrap_v1',?)", (current_period,))
     return stats
