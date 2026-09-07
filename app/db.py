@@ -43,6 +43,14 @@ CREATE TABLE IF NOT EXISTS contacts (
     phone TEXT DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS invoice_groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    note TEXT DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
@@ -57,8 +65,34 @@ CREATE TABLE IF NOT EXISTS services (
     invoice_type TEXT DEFAULT '',
     package_type TEXT DEFAULT '',
     last_payment_date TEXT DEFAULT '',
+    invoice_group_id INTEGER DEFAULT NULL,
+    active_from_period TEXT DEFAULT '',
+    inactive_from_period TEXT DEFAULT '',
     source_row INTEGER DEFAULT 0,
     notes TEXT DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS service_payment_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    effective_period TEXT NOT NULL,
+    mode TEXT NOT NULL CHECK(mode IN ('fixed','variable')),
+    fixed_amount REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    UNIQUE(service_id, effective_period)
+);
+
+CREATE TABLE IF NOT EXISTS payment_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    period TEXT NOT NULL,
+    amount REAL NOT NULL DEFAULT 0,
+    reference_amount REAL DEFAULT NULL,
+    source TEXT NOT NULL DEFAULT 'manual',
+    confirmed INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(service_id, period)
 );
 
 CREATE TABLE IF NOT EXISTS promotions (
@@ -108,10 +142,19 @@ CREATE TABLE IF NOT EXISTS sessions (
     expires_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS app_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
 CREATE INDEX IF NOT EXISTS idx_services_customer ON services(customer_id);
 CREATE INDEX IF NOT EXISTS idx_services_type ON services(service_type);
 CREATE INDEX IF NOT EXISTS idx_services_number ON services(number);
+CREATE INDEX IF NOT EXISTS idx_services_invoice_group ON services(invoice_group_id);
+CREATE INDEX IF NOT EXISTS idx_payment_entries_period ON payment_entries(period, service_id);
+CREATE INDEX IF NOT EXISTS idx_payment_rules_service_period ON service_payment_rules(service_id, effective_period);
+CREATE INDEX IF NOT EXISTS idx_invoice_groups_customer ON invoice_groups(customer_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(done, remind_date);
 CREATE INDEX IF NOT EXISTS idx_promotions_expiry ON promotions(expiry_date);
 '''
@@ -139,9 +182,55 @@ def db():
         conn.close()
 
 
+def _has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    return any(row['name'] == column for row in conn.execute(f'PRAGMA table_info({table})').fetchall())
+
+
+def _migrate(conn: sqlite3.Connection):
+    # v0.1 -> v0.1.1
+    if not _has_column(conn, 'services', 'invoice_group_id'):
+        conn.execute('ALTER TABLE services ADD COLUMN invoice_group_id INTEGER DEFAULT NULL')
+
+    # v0.2：业务支持按月份启用/停用；删除业务不再破坏历史。
+    if not _has_column(conn, 'services', 'active_from_period'):
+        conn.execute("ALTER TABLE services ADD COLUMN active_from_period TEXT DEFAULT ''")
+    if not _has_column(conn, 'services', 'inactive_from_period'):
+        conn.execute("ALTER TABLE services ADD COLUMN inactive_from_period TEXT DEFAULT ''")
+
+    # v0.2：金额与“本月是否已核对”分离；reference_amount 仅用于后台识别金额异动，页面仍只显示一个金额。
+    if not _has_column(conn, 'payment_entries', 'confirmed'):
+        conn.execute('ALTER TABLE payment_entries ADD COLUMN confirmed INTEGER NOT NULL DEFAULT 0')
+        conn.execute("UPDATE payment_entries SET confirmed=1 WHERE source IN ('manual','fixed')")
+    if not _has_column(conn, 'payment_entries', 'reference_amount'):
+        conn.execute('ALTER TABLE payment_entries ADD COLUMN reference_amount REAL DEFAULT NULL')
+        conn.execute('UPDATE payment_entries SET reference_amount=amount WHERE reference_amount IS NULL')
+
+    # 第一次接入 v0.1.1 数据时，把已有 Excel 金额放入当前月，作为“继承参考值”。
+    marker = conn.execute("SELECT value FROM app_meta WHERE key='payment_history_bootstrap_v1'").fetchone()
+    if not marker:
+        period = datetime.now().strftime('%Y-%m')
+        now = now_iso()
+        conn.execute('''INSERT OR IGNORE INTO payment_entries(service_id,period,amount,reference_amount,source,confirmed,created_at,updated_at)
+                        SELECT id, ?, monthly_fee, monthly_fee, 'imported', CASE WHEN fixed_fee=1 THEN 1 ELSE 0 END, ?, ?
+                        FROM services''', (period, now, now))
+        conn.execute("INSERT OR REPLACE INTO app_meta(key,value) VALUES('payment_history_bootstrap_v1',?)", (period,))
+
+    # 为既有业务建立初始缴费规则。无法回溯 Excel 历史规则，因此从“最早”起按当前状态作为基线，
+    # 后续每次固定/变动切换都会增加新的生效月份，不覆盖旧记录。
+    now = now_iso()
+    conn.execute('''INSERT OR IGNORE INTO service_payment_rules(service_id,effective_period,mode,fixed_amount,created_at)
+                    SELECT id,'1900-01',CASE WHEN fixed_fee=1 THEN 'fixed' ELSE 'variable' END,
+                           COALESCE(monthly_fee,0),?
+                    FROM services''', (now,))
+
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_services_invoice_group ON services(invoice_group_id)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_payment_rules_service_period ON service_payment_rules(service_id,effective_period)')
+
+
 def init_db():
     with db() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
 
 
 def now_iso():
