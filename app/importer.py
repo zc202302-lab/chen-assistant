@@ -190,10 +190,6 @@ def import_xlsm(path: str | Path, replace: bool = True):
                     service['payment_cycle'],service['payment_method'],service['invoice_type'],service['package_type'],service['last_payment_date'],row
                 ))
                 sid = scur.lastrowid; stats['services'] += 1
-                # Excel I列是当前/最近一次实际缴费金额；导入时保存到当月缴费记录，后续月份非定额业务重新查询。
-                if service['monthly_fee']:
-                    conn.execute('''INSERT OR REPLACE INTO payment_entries(service_id,period,amount,source,created_at,updated_at)
-                                    VALUES(?,?,?,?,?,?)''',(sid,current_period,service['monthly_fee'],'imported',now,now))
                 for pname,pdate in promo_pairs:
                     conn.execute('INSERT INTO promotions(service_id,name,expiry_date) VALUES(?,?,?)',(sid,pname,pdate))
                     stats['promotions'] += 1
