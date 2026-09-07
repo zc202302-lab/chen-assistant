@@ -1,4 +1,4 @@
-const CACHE='chen-assistant-v01-static';
+const CACHE='chen-assistant-v02-static';
 const ASSETS=['/static/app.css','/static/app.js','/static/icon-180.png','/static/icon-512.png','/manifest.webmanifest'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));
