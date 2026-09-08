@@ -7,6 +7,7 @@ sys.path.insert(0, str(ROOT))
 from app.main import app  # noqa: E402
 from app.v0212_routes import _natural_due, _service_due  # noqa: E402
 from app.v0212_payment_routes import next_period_after_actual_payment  # noqa: E402
+from app.v0212_business_display_routes import SYSTEM_PAYMENT_STATE_KEY  # noqa: E402
 
 
 class Row(dict):
@@ -39,6 +40,7 @@ def test_current_route_ownership():
     assert first_route('/customers/{customer_id}/payment.txt', 'GET').endpoint.__module__ == 'app.v0212_routes'
     assert first_route('/services/{service_id}/defer-v0212', 'POST').endpoint.__module__ == 'app.v0212_routes'
     assert first_route('/services/{service_id}/delete-v0212', 'POST').endpoint.__module__ == 'app.v0212_routes'
+    assert first_route('/services/{service_id}/runtime-v0212', 'POST').endpoint.__module__ == 'app.v0212_business_display_routes'
 
 
 def test_strict_payment_schedule():
@@ -55,7 +57,6 @@ def test_strict_payment_schedule():
     assert _service_due(due_now, {'status': 'active', 'deferred_until_period': '2026-10'}, '2026-09') is False
     assert _service_due(due_now, {'status': 'active', 'deferred_until_period': '2026-10'}, '2026-10') is True
 
-    # The cycle restarts from the month payment is actually completed.
     assert next_period_after_actual_payment('2026-09', 2) == '2026-11'
     assert next_period_after_actual_payment('2026-10', 2) == '2026-12'
     assert next_period_after_actual_payment('2026-10', 12) == '2027-10'
@@ -63,12 +64,18 @@ def test_strict_payment_schedule():
 
 def test_ui_contracts():
     js = (ROOT / 'app/static/v0212.js').read_text(encoding='utf-8')
+    hotfix = (ROOT / 'app/static/business-editor-hotfix.js').read_text(encoding='utf-8')
     business = (ROOT / 'app/static/business-sync.js').read_text(encoding='utf-8')
     routes = (ROOT / 'app/v0212_routes.py').read_text(encoding='utf-8')
+    ordered_routes = (ROOT / 'app/v0212_business_display_routes.py').read_text(encoding='utf-8')
 
-    assert 'defer-v0212' in js and '删除此条数据' in js
+    assert 'defer-v0212' in js and '删除此条数据' in hotfix
     assert 'payment_amount' in js and 'scrubAmountFromAttributeDialog' in js
-    assert 'business_visible_json' in js and '业务模块显示' in js
+    assert '业务显示序号' in hotfix and '留空不显示' in hotfix
+    assert 'business-display-order-input-v0212' in hotfix
+    assert 'location.reload()' not in hotfix.split("const save = async button =>", 1)[1].split("dialog.addEventListener('click'", 1)[0]
+    assert SYSTEM_PAYMENT_STATE_KEY == '__payment_state__'
+    assert 'preview.append' in ordered_routes and "'label': '缴费状态'" in ordered_routes
     assert '.slice(0, 5)' not in business
     assert 'index >= 5' not in business
     assert "if not _service_due(service, runtime[service['id']], period):" in routes
