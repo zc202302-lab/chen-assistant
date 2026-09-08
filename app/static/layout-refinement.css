@@ -150,6 +150,113 @@
   font-size:13px;
 }
 
+/* ---------- v0.2.11：缴费属性与全局拖动交互 ---------- */
+.payment-columns-settings-v0211{padding:4px 8px!important}
+.v0211-payment-list{--payment-cols:180px 180px 250px 290px 190px}
+.v0211-payment-header,.v0211-payment-row{
+  grid-template-columns:28px var(--payment-cols) 86px!important;
+  width:max-content!important;
+  min-width:100%!important;
+}
+.v0211-payment-header{padding-right:10px!important}
+.payment-column-head-v0211{min-width:0;padding:0 7px}
+.payment-column-head-v0211>span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.payment-action-head-v0211{text-align:center;white-space:nowrap}
+.payment-attribute-cell-v0211{
+  appearance:none;
+  height:36px;
+  min-width:0;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  padding:3px 8px;
+  color:#111827;
+  text-align:left;
+  cursor:pointer;
+}
+.payment-attribute-cell-v0211:hover{background:#f3f5f8}
+.payment-attribute-cell-v0211 strong{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:14px;
+}
+.payment-attribute-cell-v0211.identifier-copy strong{font:700 15px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace}
+.payment-amount-cell-v0211{width:100%;justify-content:flex-start!important;padding:0 5px}
+.v0211-payment-row .payment-amount-cell-v0211 .quick-amount{
+  width:min(118px,calc(100% - 28px))!important;
+  min-width:72px!important;
+  max-width:118px!important;
+}
+.payment-row-actions-v0211{display:flex;align-items:center;justify-content:flex-end;gap:3px;min-width:0}
+.payment-edit-v0211{height:27px!important;padding:3px 6px!important;font-size:10px!important}
+.payment-row-actions-v0211 .quiet-rule{flex:0 0 24px}
+
+.payment-columns-dialog-v0211{width:min(620px,94vw)}
+.payment-columns-help-v0211{margin:0;color:#667085;font-size:12px;line-height:1.55}
+.payment-column-editor-list-v0211{display:grid;gap:7px;max-height:52vh;overflow:auto;padding:2px}
+.payment-column-editor-row-v0211{
+  display:grid;
+  grid-template-columns:28px minmax(0,1fr) 54px;
+  align-items:center;
+  gap:8px;
+  padding:7px 8px;
+  border:1px solid #e4e7ec;
+  border-radius:10px;
+  background:#fff;
+}
+.payment-column-select-v0211{width:100%;min-width:0;border:1px solid #d7dde6;border-radius:8px;padding:7px 9px;background:#fff}
+.payment-column-delete-v0211:disabled{opacity:.35;cursor:not-allowed}
+
+/* 业务列表新增排序手柄，并与动态表头保持精确对齐。 */
+.business-table-header-drag-v0211{flex:0 0 24px;width:24px}
+.business-row-line-v029 .business-drag-handle{flex:0 0 24px;width:24px}
+
+/* 插入式拖动：原行被“拿起”，插入位带明显落点，周边行用 FLIP 动画让位。 */
+body.is-pointer-sorting{cursor:grabbing!important;user-select:none!important}
+body.is-pointer-sorting *{cursor:grabbing!important}
+.sort-insertion-placeholder-v0211{
+  position:relative;
+  box-sizing:border-box;
+  min-height:34px;
+  margin:3px 0;
+  border:2px dashed #3b82f6;
+  border-radius:10px;
+  background:linear-gradient(90deg,rgba(59,130,246,.08),rgba(59,130,246,.02));
+  box-shadow:inset 0 0 0 1px rgba(59,130,246,.08),0 4px 14px rgba(59,130,246,.08);
+  pointer-events:none;
+  animation:sortSlotPulseV0211 .75s ease-in-out infinite alternate;
+}
+.sort-insertion-placeholder-v0211::after{
+  content:'插入到这里';
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  padding:2px 7px;
+  border-radius:999px;
+  background:#eaf2ff;
+  color:#2563eb;
+  font-size:10px;
+  font-weight:800;
+}
+.sort-drag-ghost-v0211{
+  box-sizing:border-box!important;
+  opacity:.94!important;
+  transform:scale(1.01) rotate(.15deg);
+  border-color:#a9c5f7!important;
+  background:#fff!important;
+  box-shadow:0 18px 44px rgba(15,23,42,.22),0 0 0 2px rgba(59,130,246,.14)!important;
+  filter:saturate(.96);
+  overflow:hidden;
+}
+.sort-drop-pulse-v0211{animation:sortDropV0211 .34s ease-out}
+.sort-saving-v0211{opacity:.84;transition:opacity .12s}
+@keyframes sortSlotPulseV0211{from{border-color:#7aa7f8;background-color:rgba(59,130,246,.025)}to{border-color:#2563eb;background-color:rgba(59,130,246,.075)}}
+@keyframes sortDropV0211{0%{box-shadow:0 0 0 3px rgba(59,130,246,.18);background:#f0f6ff}100%{box-shadow:none;background:inherit}}
+
 @media(max-width:1100px){
   .business-table-header-fields-v030,
   .business-row-line-v029 .business-attribute-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
@@ -159,4 +266,5 @@
 
 @media(max-width:760px){
   .home-promo-columns-v030{grid-template-columns:1fr}
+  .sort-insertion-placeholder-v0211::after{display:none}
 }
