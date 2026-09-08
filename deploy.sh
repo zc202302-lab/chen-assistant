@@ -66,10 +66,16 @@ for path in ('/','/customers/{customer_id}','/health'):
 customer_route=next(r for r in app.router.routes if getattr(r,'path','')=='/customers/{customer_id}')
 assert getattr(customer_route.endpoint,'__module__','')=='app.v0212_routes','客户页未由 v0.2.12 工作区接管'
 
-for path in ('/customers/{customer_id}/payment-run','/customers/{customer_id}/payment.txt','/services/{service_id}/defer-v0212','/services/{service_id}/delete-v0212'):
+owned={
+    '/customers/{customer_id}/payment-run':'app.v0212_payment_routes',
+    '/customers/{customer_id}/payment.txt':'app.v0212_routes',
+    '/services/{service_id}/defer-v0212':'app.v0212_routes',
+    '/services/{service_id}/delete-v0212':'app.v0212_routes',
+}
+for path,module in owned.items():
     matches=[r for r in app.router.routes if getattr(r,'path','')==path]
     assert matches,f'缺少 v0.2.12 核心路由：{path}'
-    assert getattr(matches[0].endpoint,'__module__','')=='app.v0212_routes',f'{path} 未由 v0.2.12 优先接管'
+    assert getattr(matches[0].endpoint,'__module__','')==module,f'{path} 未由当前 v0.2.12 路由优先接管'
 
 base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
 for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js','/static/business-sync.js','/static/v0211.js','/static/v0212.js','/static/app.css','/static/v028.css','/static/layout-refinement.css','/static/v0212.css'):
