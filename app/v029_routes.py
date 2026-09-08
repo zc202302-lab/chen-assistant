@@ -88,9 +88,10 @@ def customer_workspace_v029(request: Request, customer_id: int, tab: str = 'paym
 
         business_rows, _ = _business_payload(conn, customer_id, template, services, promo_rows)
         for item in business_rows:
+            # 业务列表只负责快速扫视。严格采用编辑器中的属性顺序，只展示前5项；
+            # 完整属性仍全部保留在“编辑业务”中。
             attrs = item.get('attributes') or []
-            nonempty = [a for a in attrs if str(a.get('raw') or '').strip() and a.get('key') != 'notes']
-            item['preview_attributes'] = nonempty if nonempty else [a for a in attrs if a.get('key') != 'notes']
+            item['preview_attributes'] = attrs[:5]
 
         service_types = []
         seen_types = set()
