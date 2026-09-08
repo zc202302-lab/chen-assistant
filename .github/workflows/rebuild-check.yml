@@ -36,44 +36,28 @@ jobs:
           from jinja2 import Environment, FileSystemLoader
           from app import config
           from app.main import app
-
           assert app.version == '0.2.8'
           for path in ('/', '/customers/{customer_id}', '/health'):
               matches = [r for r in app.router.routes if getattr(r, 'path', '') == path]
               assert len(matches) == 1, (path, len(matches))
           customer_route = next(r for r in app.router.routes if getattr(r, 'path', '') == '/customers/{customer_id}')
           assert customer_route.endpoint.__module__ == 'app.v028_routes'
-
           env = Environment(loader=FileSystemLoader(str(config.ROOT / 'app' / 'templates')))
-          runtime_templates = (
-              'base.html', 'dashboard_v027.html', 'customer_workspace_v028.html',
-              'account_detail.html', 'account_form.html', 'accounts.html',
-              'customer_form.html', 'login.html', 'search.html',
-          )
+          runtime_templates = ('base.html','dashboard_v027.html','customer_workspace_v028.html','account_detail.html','account_form.html','accounts.html','customer_form.html','login.html','search.html')
           for name in runtime_templates:
-              try:
-                  env.get_template(name)
+              try: env.get_template(name)
               except Exception:
-                  if name in ('login.html', 'search.html'):
-                      continue
+                  if name in ('login.html','search.html'): continue
                   raise
-
           base = (config.ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
           assert base.count('/static/v028.js') == 1
           assert base.count('/static/v028.css') == 1
           assert base.count('/static/app.css') == 1
-          for old in (
-              '/static/current.js', '/static/v025.js', '/static/v025_minor.js', '/static/v026.js', '/static/v027.js',
-              '/static/v02.css', '/static/v021.css', '/static/v022.css', '/static/v023.css', '/static/v024.css',
-              '/static/v025.css', '/static/v026.css', '/static/v027.css',
-          ):
+          for old in ('/static/current.js','/static/v025.js','/static/v025_minor.js','/static/v026.js','/static/v027.js','/static/v02.css','/static/v021.css','/static/v022.css','/static/v023.css','/static/v024.css','/static/v025.css','/static/v026.css','/static/v027.css'):
               assert old not in base, old
-
-          # 当前实际运行页面中的日期全部必须手工输入 YYYY/MM/DD，禁止浏览器日期选择器。
           for name in runtime_templates:
               p = config.ROOT / 'app' / 'templates' / name
-              if not p.exists():
-                  continue
+              if not p.exists(): continue
               text = p.read_text(encoding='utf-8')
               assert 'type="date"' not in text and "type='date'" not in text, name
           print('static validation passed: current controller/assets + no runtime date picker')
@@ -83,4 +67,4 @@ jobs:
       - name: Real browser UI acceptance
         run: python tests/ui_browser_smoke.py
       - name: Advanced business and promotion acceptance
-        run: python tests/ui_advanced_acceptance.py
+        run: python tests/ui_advanced_acceptance_v2.py
