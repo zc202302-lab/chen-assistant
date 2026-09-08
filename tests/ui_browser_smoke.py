@@ -127,7 +127,7 @@ def main() -> None:
             assert page.locator(".v028-workspace").count()==1
             hrefs=page.locator('link[rel="stylesheet"]').evaluate_all("els=>els.map(x=>x.getAttribute('href'))")
             css_names=[x.split("?",1)[0].rsplit("/",1)[-1] for x in hrefs]
-            assert css_names==["app.css","v028.css"],css_names
+            assert css_names==["app.css","v028.css","layout-refinement.css"],css_names
             forbidden={"v02.css","v021.css","v022.css","v023.css","v024.css","v025.css","v026.css","v027.css"}
             assert not forbidden.intersection(css_names),css_names
 
@@ -220,8 +220,12 @@ def main() -> None:
             assert_copy_toast(page)
 
             page.goto("http://127.0.0.1:8123/?home=promos",wait_until="networkidle")
-            assert page.locator('[data-home-panel="promos"]').is_visible(); home_rows=page.locator('.home-promo-customer')
-            assert home_rows.count()==1,f"homepage promos not customer-grouped: {home_rows.count()}"; assert "UI测试客户A" in home_rows.first.inner_text()
+            assert page.locator('[data-home-panel="promos"]').is_visible()
+            home_cols=page.locator('.home-promo-column-v030'); assert home_cols.count()==2
+            left,right=home_cols.nth(0).bounding_box(),home_cols.nth(1).bounding_box()
+            assert left and right and right["x"]>left["x"]+left["width"]*.65,"homepage promotions not two columns"
+            assert page.locator('.home-promo-column-v030.state-expired').get_by_text('UI测试客户A',exact=True).count()==1
+            assert page.locator('.home-promo-column-v030.state-soon').get_by_text('UI测试客户A',exact=True).count()==1
             browser.close()
 
         assert not page_errors,"browser page errors: "+" | ".join(page_errors)
