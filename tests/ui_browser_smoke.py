@@ -11,6 +11,7 @@ from pathlib import Path
 # It exists because syntax/template checks cannot detect a UI controller that
 # fails to load or fails to bind click/drag handlers.
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 DATA = ROOT / "data"
 DB = DATA / "app.db"
 
@@ -83,7 +84,7 @@ def wait_http(url: str, timeout: float = 15.0) -> None:
             with urllib.request.urlopen(url, timeout=1.0) as r:
                 if r.status == 200:
                     return
-        except Exception as exc:  # pragma: no cover - diagnostic only
+        except Exception as exc:
             last = exc
         time.sleep(0.2)
     raise RuntimeError(f"server did not start: {last}")
@@ -103,7 +104,7 @@ def main() -> None:
     try:
         wait_http("http://127.0.0.1:8123/health")
 
-        from playwright.sync_api import sync_playwright  # noqa: E402
+        from playwright.sync_api import sync_playwright
 
         page_errors: list[str] = []
         request_failures: list[str] = []
