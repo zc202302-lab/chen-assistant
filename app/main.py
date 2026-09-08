@@ -57,12 +57,10 @@ for route in _ordered:
     _final.append(route)
 app.router.routes[:] = _final
 
-app.title = '晨的助手 v0.2.9'
-app.version = '0.2.9'
+app.title = '晨的助手 v0.2.10'
+app.version = '0.2.10'
 
 
-# Interactive assets change frequently during development. Never let a browser
-# keep an old controller or stylesheet while the HTML has already updated.
 @app.middleware('http')
 async def current_asset_cache_policy(request, call_next):
     response = await call_next(request)
@@ -72,9 +70,6 @@ async def current_asset_cache_policy(request, call_next):
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
 
-    # Payment column widths are per-customer dynamic CSS variables stored on one
-    # element's style attribute. Keep external sources strict while allowing only
-    # style attributes for those runtime values.
     if 'Content-Security-Policy' in response.headers:
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
