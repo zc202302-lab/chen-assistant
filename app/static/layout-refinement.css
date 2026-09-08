@@ -1,13 +1,43 @@
-/* v0.2.9 layout refinement — business preview density + home promotion columns */
+/* v0.2.10 layout refinement — business table headers + home promotion columns */
 
-/* 业务列表：只显示模板前5项，全部信息留在编辑器；编辑按钮始终与属性同行。 */
+/* 业务页：属性名称只在顶部显示一次，下面每行只保留值；编辑按钮同行。 */
+.business-table-header-v030{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+  padding:8px 8px 7px;
+  border-bottom:1px solid #e5eaf0;
+  color:#667085;
+  font-size:12px;
+  font-weight:700;
+  background:#fafbfc;
+}
+.business-table-header-fields-v030{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:18px;
+  flex:1 1 auto;
+  min-width:0;
+}
+.business-table-header-cell-v030{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.business-table-header-action-v030{
+  flex:0 0 58px;
+  text-align:center;
+}
+
 .business-row-line-v029{
   display:flex;
   align-items:center;
   flex-wrap:nowrap;
   gap:12px;
   min-width:0;
-  min-height:38px;
+  min-height:42px;
 }
 .business-row-line-v029 .business-attribute-grid{
   display:grid;
@@ -20,27 +50,48 @@
   padding:0;
 }
 .business-row-line-v029 .business-attribute{
-  display:flex;
-  align-items:baseline;
-  gap:6px;
+  display:block;
   min-width:0;
   max-width:none;
   overflow:hidden;
+  margin:0;
+  padding:5px 7px;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  color:inherit;
+  text-align:left;
 }
-.business-row-line-v029 .business-attribute small{
-  flex:0 0 auto;
-  white-space:nowrap;
-}
+.business-row-line-v029 .business-attribute small{display:none}
 .business-row-line-v029 .business-attribute strong{
+  display:block;
   min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
+  font-size:14px;
 }
-.business-row-line-v029 .business-attribute:nth-child(n+6){display:none}
+.business-row-line-v029 .business-attribute:nth-child(n+6),
+.business-preview-hidden-v030{display:none!important}
+.business-row-line-v029 .business-value-copy-v030{cursor:pointer}
+.business-row-line-v029 .business-value-copy-v030:hover{background:#f4f6f8}
+.business-row-line-v029 .business-value-copy-v030:focus-visible{outline:2px solid #98a2b3;outline-offset:1px}
 .business-row-line-v029 .business-edit-v029{
-  flex:0 0 auto;
+  flex:0 0 58px;
   margin-left:auto;
+}
+
+/* 优惠名称双击编辑时保持原有紧凑行高。 */
+.promo-name-inline-edit-v030{
+  width:100%;
+  min-width:0;
+  height:38px;
+  padding:7px 10px;
+  border:1px solid #98a2b3;
+  border-radius:8px;
+  background:#fff;
+  font:inherit;
+  font-weight:700;
 }
 
 /* 首页优惠：与客户优惠工作区一致，按“已经到期 / 即将到期”两列浏览。 */
@@ -100,7 +151,9 @@
 }
 
 @media(max-width:1100px){
+  .business-table-header-fields-v030,
   .business-row-line-v029 .business-attribute-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+  .business-table-header-cell-v030:nth-child(5),
   .business-row-line-v029 .business-attribute:nth-child(5){display:none}
 }
 
