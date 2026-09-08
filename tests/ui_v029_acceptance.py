@@ -101,10 +101,18 @@ def main():
             box = row.bounding_box(); assert box and box['height'] <= 58, box
             line = row.locator('.business-row-line-v029'); assert line.count() == 1
             grid = row.locator('[data-business-attrs]')
-            styles = grid.evaluate("el => ({display:getComputedStyle(el).display, overflow:getComputedStyle(el).overflowX, wrap:getComputedStyle(el).flexWrap})")
-            assert styles['display'] == 'flex' and styles['wrap'] == 'nowrap', styles
-            first_labels = [x.strip() for x in row.locator('.business-attribute small').all_inner_texts()[:4]]
-            assert first_labels[:3] == ['类型', '姓名/属性', '号码'], first_labels
+            styles = grid.evaluate("el => ({display:getComputedStyle(el).display, overflow:getComputedStyle(el).overflowX})")
+            assert styles['display'] == 'grid' and styles['overflow'] == 'hidden', styles
+            attrs = row.locator('.business-attribute')
+            assert attrs.count() == 5, f'expected five preview attributes, got {attrs.count()}'
+            assert row.locator('.business-derived').count() == 0, 'derived status badges still occupy business row'
+            first_labels = [x.strip() for x in row.locator('.business-attribute small').all_inner_texts()]
+            assert first_labels == ['类型', '姓名/属性', '号码', '账号', '缴费周期（月）'], first_labels
+            edit = row.locator('.business-edit-v029'); assert edit.count() == 1
+            line_box, edit_box = line.bounding_box(), edit.bounding_box()
+            assert line_box and edit_box
+            assert line_box['y'] - 1 <= edit_box['y'] <= line_box['y'] + line_box['height'], (line_box, edit_box)
+            assert edit_box['y'] + edit_box['height'] <= line_box['y'] + line_box['height'] + 1, (line_box, edit_box)
 
             panel.locator('[data-open-service-editor]').first.click()
             dialog = page.locator('#businessAttributeDialog'); dialog.wait_for(state='visible')
