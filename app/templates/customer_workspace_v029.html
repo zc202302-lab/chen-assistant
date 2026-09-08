@@ -88,7 +88,6 @@
               <div class="business-attribute-grid" data-business-attrs>
                 {% for a in item.preview_attributes %}<div class="business-attribute" title="{{ a.label }}：{{ a.value }}"><small>{{ a.label }}</small><strong>{{ a.value }}</strong></div>{% endfor %}
               </div>
-              <span class="business-derived"><b class="{% if item.due %}due-now{% endif %}">{{ '本月应缴' if item.due else '本月不缴' }}</b><span>{{ '固定' if item.rule.mode=='fixed' else '变动' }}</span><span class="promo-{{ item.promo_filter }}" data-business-promo>{{ item.promo_label }}{% if item.promo_nearest %} · {{ item.promo_nearest }}{% endif %}</span></span>
               <button type="button" class="secondary small business-edit-v029" data-open-service-editor data-service-id="{{ s.id }}">编辑</button>
             </div>
           </article>
