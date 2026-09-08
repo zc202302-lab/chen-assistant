@@ -106,7 +106,7 @@ def main():
             first_labels = [x.strip() for x in row.locator('.business-attribute small').all_inner_texts()[:4]]
             assert first_labels[:3] == ['类型', '姓名/属性', '号码'], first_labels
 
-            page.locator('[data-open-service-editor]').first.click()
+            panel.locator('[data-open-service-editor]').first.click()
             dialog = page.locator('#businessAttributeDialog'); dialog.wait_for(state='visible')
             assert dialog.locator('.global-attribute-row-v028').count() >= 10, 'complete business attributes missing'
             promo_section = dialog.locator('[data-service-promotions-editor]'); assert promo_section.count() == 1
