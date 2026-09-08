@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}首页 · 晨的助手{% endblock %}
+{% block content %}
+<div class="home-v024" data-home-tabs data-active-home-tab="{{ active_home_tab }}">
+  <section class="home-v024-head"><div><p class="eyebrow">今天</p><h1>{{ today.strftime('%Y年%m月%d日') }}</h1></div><p>点击标签，只在下方显示对应内容。</p></section>
+
+  <nav class="home-v024-tabs" aria-label="首页功能">
+    <button type="button" data-home-tab="tasks" class="{% if active_home_tab=='tasks' %}active{% endif %}">待办 <b>{{ tasks|length }}</b></button>
+    <button type="button" data-home-tab="payment" class="{% if active_home_tab=='payment' %}active{% endif %}">缴费 <b>{{ wait_notice|length + wait_payment|length }}</b></button>
+    <button type="button" data-home-tab="promos" class="{% if active_home_tab=='promos' %}active{% endif %}">优惠 <b>{{ promo_customers|length }}</b></button>
+    <button type="button" data-home-tab="recent" class="{% if active_home_tab=='recent' %}active{% endif %}">最近客户</button>
+  </nav>
+
+  <div class="home-v024-panels">
+    <section class="home-v024-panel" data-home-panel="tasks" {% if active_home_tab!='tasks' %}hidden{% endif %}><div class="card home-v024-card"><div class="section-head"><h2>待办</h2><span>{{ tasks|length }} 项</span></div>{% if tasks %}<div class="list">{% for t in tasks %}<div class="list-row"><div><b>{{ t.title }}</b><small>{{ t.customer_name or '个人待办' }}{% if t.remind_date %} · {{ t.remind_date|replace('-','/') }}{% endif %}</small>{% if t.note %}<small>{{ t.note }}</small>{% endif %}</div><form method="post" action="/tasks/{{ t.id }}/toggle"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small">完成</button></form></div>{% endfor %}</div>{% else %}<p class="empty">目前没有到期待办。</p>{% endif %}</div></section>
+
+    <section class="home-v024-panel" data-home-panel="payment" {% if active_home_tab!='payment' %}hidden{% endif %}><div class="card home-v024-card"><div class="section-head"><h2>缴费</h2><span>{{ wait_notice|length + wait_payment|length }} 个客户待处理</span></div><div class="home-v024-payment-columns"><div class="home-v024-subsection"><h3>待通知 <span class="count">{{ wait_notice|length }}</span></h3>{% for c in wait_notice %}<a class="list-row link" href="/customers/{{ c.id }}"><span>{{ c.name }}</span><span>›</span></a>{% else %}<p class="empty">无</p>{% endfor %}</div><div class="home-v024-subsection"><h3>已通知未缴费 <span class="count">{{ wait_payment|length }}</span></h3>{% for c in wait_payment %}<a class="list-row link" href="/customers/{{ c.id }}"><span>{{ c.name }}</span><span>›</span></a>{% else %}<p class="empty">无</p>{% endfor %}</div></div></div></section>
+
+    <section class="home-v024-panel" data-home-panel="promos" {% if active_home_tab!='promos' %}hidden{% endif %}>
+      <div class="card home-v024-card"><div class="section-head"><h2>优惠续约</h2><span>{{ promo_customers|length }} 个客户需要关注</span></div>
+        {% if promo_customers %}<div class="list home-promo-customer-list">{% for p in promo_customers %}<a class="list-row link home-promo-customer" href="/customers/{{ p.customer_id }}?tab=promotions"><div><b>{{ p.customer_name }}</b><small>{% if p.expired %}<span class="promo-expired">已经到期 {{ p.expired }}</span>{% endif %}{% if p.soon %}{% if p.expired %} · {% endif %}<span class="promo-soon">即将到期 {{ p.soon }}</span>{% endif %}</small></div><strong>{{ p.total }} 项</strong></a>{% endfor %}</div>{% else %}<p class="empty">目前没有需要处理的优惠。</p>{% endif %}
+      </div>
+    </section>
+
+    <section class="home-v024-panel" data-home-panel="recent" {% if active_home_tab!='recent' %}hidden{% endif %}><div class="card home-v024-card"><div class="section-head"><h2>最近客户</h2><a href="/customers">全部客户</a></div><div class="home-v024-recent-grid">{% for c in recent %}<a class="home-v024-customer" href="/customers/{{ c.id }}"><b>{{ c.name }}</b>{% if c.group_code %}<small>{{ c.group_code }}</small>{% endif %}</a>{% else %}<p class="empty">暂无客户。</p>{% endfor %}</div></div></section>
+  </div>
+  <form method="post" action="/logout" class="logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="text-button">退出登录</button></form>
+</div>
+{% endblock %}
