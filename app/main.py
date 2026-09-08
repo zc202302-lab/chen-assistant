@@ -2,6 +2,7 @@ from .legacy_main import app
 from .v02_routes import router as v02_router
 from .v021_routes import router as v021_router
 from .v022_routes import router as v022_router
+from .v023_routes import router as v023_router
 
 _legacy_routes = list(app.router.routes)
 
@@ -17,8 +18,12 @@ _before = len(app.router.routes)
 app.include_router(v022_router)
 _v022_routes = app.router.routes[_before:]
 
-# Newest routes first so /customers/{id} and /health use v0.2.2.
-app.router.routes[:] = _v022_routes + _v021_routes + _v02_routes + _legacy_routes
+_before = len(app.router.routes)
+app.include_router(v023_router)
+_v023_routes = app.router.routes[_before:]
 
-app.title = '晨的助手 v0.2.2'
-app.version = '0.2.2'
+# Newest routes first so customer workspace, payment actions and /health use v0.2.3.
+app.router.routes[:] = _v023_routes + _v022_routes + _v021_routes + _v02_routes + _legacy_routes
+
+app.title = '晨的助手 v0.2.3'
+app.version = '0.2.3'
