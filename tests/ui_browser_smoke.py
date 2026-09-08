@@ -125,7 +125,6 @@ def main() -> None:
             forbidden={"v02.css","v021.css","v022.css","v023.css","v024.css","v025.css","v026.css","v027.css"}
             assert not forbidden.intersection(css_names),css_names
 
-            # 前期核心复制功能必须持续可用：客户名称、集团编码、税号。
             hero_copies=page.locator('.v023-profile-card .copy-btn')
             expected=['UI测试客户A','C0001','TEST-TAX-1']
             assert hero_copies.count()>=3
@@ -133,17 +132,16 @@ def main() -> None:
                 hero_copies.nth(i).click(); page.wait_for_timeout(50)
                 assert clipboard(page)==value, (i, clipboard(page), value)
 
-            # 缴费号码/账号单击复制；复制时不能夺走正在编辑金额的焦点。
             first_payment=page.locator('[data-payment-row]').first
             amount=first_payment.locator('.quick-amount')
-            amount.click(); assert page.evaluate('document.activeElement===arguments[0]', amount.element_handle())
+            amount.click(); assert amount.evaluate('el => document.activeElement === el')
             ids=first_payment.locator('.identifier-copy')
             assert ids.count()==2
             for i in range(2):
                 value=ids.nth(i).get_attribute('data-copy')
                 ids.nth(i).click(); page.wait_for_timeout(50)
                 assert clipboard(page)==value
-                assert page.evaluate('document.activeElement===arguments[0]', amount.element_handle()), 'copy stole amount focus'
+                assert amount.evaluate('el => document.activeElement === el'), 'copy stole amount focus'
 
             for tab in ("services","promotions","contacts","tasks","visits","payment"):
                 page.locator(f'[data-customer-tab="{tab}"]').click(); page.wait_for_timeout(60)
