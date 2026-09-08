@@ -32,6 +32,44 @@
     return ok;
   };
 
+  window.ChenToast = toast;
+  window.ChenCopyText = copyText;
+
+  // 统一手动输入体验：第一次单击全选，第二次单击恢复浏览器原生光标，
+  // 便于直接覆盖，也便于随后只修改其中一部分。失去焦点后重新从“第一次”开始。
+  const selectionState = new WeakMap();
+  const manualEditor = (el) => {
+    if (!el || el.disabled || el.readOnly) return false;
+    if (el.tagName === 'TEXTAREA') return true;
+    if (el.tagName !== 'INPUT') return false;
+    const type = (el.getAttribute('type') || 'text').toLowerCase();
+    return !['hidden','checkbox','radio','button','submit','reset','file','range','color'].includes(type);
+  };
+  const selectAllEditor = (el) => {
+    if (!manualEditor(el)) return;
+    try { el.focus({preventScroll:true}); } catch (_) { el.focus?.(); }
+    requestAnimationFrame(() => {
+      try { el.select(); }
+      catch (_) { try { el.setSelectionRange(0, String(el.value || '').length); } catch (_) {} }
+      selectionState.set(el, true);
+    });
+  };
+  window.ChenSelectAllInput = selectAllEditor;
+
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest?.('input,textarea');
+    if (!manualEditor(el)) return;
+    if (selectionState.get(el) === true) {
+      // 第二次点击时不改动浏览器刚刚放置的光标/选择范围。
+      selectionState.set(el, false);
+      return;
+    }
+    selectAllEditor(el);
+  });
+  document.addEventListener('focusout', (e) => {
+    if (manualEditor(e.target)) selectionState.delete(e.target);
+  });
+
   // Strict CSP blocks the server-rendered inline CSS variables at parse time.
   // Re-apply only these four numeric variables through the CSSOM before the
   // customer workspace controller runs, preserving per-customer saved widths.
@@ -69,11 +107,11 @@
     if (disabled) e.preventDefault();
   });
 
-  // Current customer-workspace controllers own the actual copy action for
-  // identifiers/promotions because they also preserve the amount-editor focus.
-  // Show feedback in capture phase without changing focus or propagation.
+  // 当前工作区控制器负责号码/账号/优惠等实际复制；这里仅显示反馈。
+  // 优惠名称需要区分单击复制与双击编辑，因此由工作区自己显示反馈。
   document.addEventListener('click', (e) => {
-    if (e.target.closest('.identifier-copy,[data-copy-silent]')) {
+    const target = e.target.closest('.identifier-copy,[data-copy-silent]');
+    if (target && !target.matches('[data-promo-name-edit]')) {
       setTimeout(() => toast('已复制'), 0);
     }
   }, true);
