@@ -25,6 +25,10 @@
     const sourceAttrs = [...source.querySelectorAll('.business-attribute')].slice(0, 5);
     const labels = sourceAttrs.map(attr => attr.querySelector('small')?.textContent?.trim() || '属性');
     header.innerHTML = '';
+
+    const dragGutter = document.createElement('span');
+    dragGutter.className = 'business-table-header-drag-v0211';
+
     const fields = document.createElement('div');
     fields.className = 'business-table-header-fields-v030';
     labels.forEach((label, index) => {
@@ -42,7 +46,7 @@
     const action = document.createElement('span');
     action.className = 'business-table-header-action-v030';
     action.textContent = '操作';
-    header.append(fields, action);
+    header.append(dragGutter, fields, action);
 
     rows.forEach(row => {
       const attrs = [...row.querySelectorAll('.business-attribute')];

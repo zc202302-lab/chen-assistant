@@ -130,11 +130,18 @@
     row.querySelector('.editor-promo-name-v029')?.focus();
   });
 
-  list.addEventListener('click', async e => {
-    const row = e.target.closest('.editor-promo-row-v029');
-    if (!row || !currentServiceId) return;
+  // 捕获阶段统一处理业务编辑器中的优惠操作。这样即使其他工作区脚本在冒泡阶段
+  // 处理点击，也不会吞掉“保存/结束”动作，保证业务模块 -> 优惠模块的反向同步可靠。
+  document.addEventListener('click', async e => {
+    const saveButton = e.target.closest?.('[data-editor-promo-save]');
+    const closeButton = e.target.closest?.('[data-editor-promo-close]');
+    if (!saveButton && !closeButton) return;
+    const row = e.target.closest?.('.editor-promo-row-v029');
+    if (!row || !list.contains(row) || !currentServiceId) return;
+    e.preventDefault();
+    e.stopPropagation();
 
-    if (e.target.closest('[data-editor-promo-save]')) {
+    if (saveButton) {
       const name = row.querySelector('.editor-promo-name-v029');
       const expiry = row.querySelector('.editor-promo-expiry-v029');
       const notes = row.querySelector('.editor-promo-notes-v029');
@@ -169,7 +176,7 @@
       return;
     }
 
-    if (e.target.closest('[data-editor-promo-close]')) {
+    if (closeButton) {
       const id = row.dataset.promoId;
       if (!id) {
         row.remove();
@@ -196,7 +203,7 @@
         row.classList.remove('is-saving');
       }
     }
-  });
+  }, true);
 
   // 优惠工作区：单击立即复制，双击进入就地编辑。双击时前两次点击可能已经完成复制，
   // 但不会阻止进入编辑，也保持了单击复制的即时响应。
