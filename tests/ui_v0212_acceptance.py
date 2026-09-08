@@ -208,7 +208,7 @@ def main():
             assert editor.locator('[data-delete-service-v0212]').count() == 1
             page.once('dialog', lambda d: d.accept())
             editor.locator('[data-delete-service-v0212]').click()
-            page.wait_for_load_state('networkidle')
+            page.locator(f'[data-business-row][data-service-id="{annual}"]').wait_for(state='detached', timeout=5000)
             assert page.locator(f'[data-business-row][data-service-id="{annual}"]').count() == 0
 
             browser.close()
