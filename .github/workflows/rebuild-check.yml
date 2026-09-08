@@ -2,7 +2,7 @@ name: v0.2.8 validation
 
 on:
   push:
-    branches: [main, v0.2.8-ui-hotfix]
+    branches: [main, v0.2.8-ui-hotfix, v0.2.8-promo-render-hotfix]
   workflow_dispatch:
 
 jobs:
@@ -54,5 +54,7 @@ jobs:
               assert old not in base
           print('static validation passed')
           PY
+      - name: Promotion render regression
+        run: python tests/promotion_render_regression.py
       - name: Real browser UI smoke test
         run: python tests/ui_browser_smoke.py
