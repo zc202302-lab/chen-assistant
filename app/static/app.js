@@ -34,8 +34,7 @@
     const generic = e.target.closest('.copy-btn');
     if (generic) {
       e.preventDefault();
-      const ok = await copyText(generic.dataset.copy || '');
-      toast(ok ? '已复制' : '复制失败');
+      await copyText(generic.dataset.copy || '');
     }
     const disabled = e.target.closest('a[aria-disabled="true"]');
     if (disabled) e.preventDefault();
@@ -67,10 +66,7 @@
       if (!r.ok) return toast('读取失败');
       const data = await r.json();
       document.getElementById('passwordValue').textContent = data.password || '未保存密码';
-      if (data.password) {
-        const ok = await copyText(data.password);
-        toast(ok ? '密码已显示并复制' : '密码已显示');
-      }
+      if (data.password) await copyText(data.password);
     });
   }
 
