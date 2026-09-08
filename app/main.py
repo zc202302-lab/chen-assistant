@@ -57,3 +57,16 @@ app.router.routes[:] = _final
 
 app.title = '晨的助手 v0.2.8'
 app.version = '0.2.8'
+
+
+# Interactive assets change frequently during development. Never let a browser
+# keep an old controller or stylesheet while the HTML has already updated.
+@app.middleware('http')
+async def current_asset_cache_policy(request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith('/static/') and path.endswith(('.js', '.css')):
+        response.headers['Cache-Control'] = 'no-store, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
