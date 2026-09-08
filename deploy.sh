@@ -40,9 +40,11 @@ git merge --ff-only origin/main
 echo "===== 更新前代码检查 ====="
 .venv/bin/python -m compileall -q app
 if command -v node >/dev/null 2>&1; then
+  node --check app/static/app.js
   node --check app/static/v028.js
   node --check app/static/ui-drag.js
   node --check app/static/service-promotions.js
+  node --check app/static/business-sync.js
 fi
 .venv/bin/python - <<'PY'
 from jinja2 import Environment, FileSystemLoader
@@ -59,19 +61,19 @@ for name in runtime_templates:
     text=p.read_text(encoding='utf-8')
     assert 'type="date"' not in text and "type='date'" not in text, f'{name} 仍包含日期选择器'
 
-assert app.version=='0.2.9',f'预期 v0.2.9，实际 v{app.version}'
+assert app.version=='0.2.10',f'预期 v0.2.10，实际 v{app.version}'
 for path in ('/','/customers/{customer_id}','/health'):
     matches=[r for r in app.router.routes if getattr(r,'path','')==path]
     assert len(matches)==1,f'{path} 路由数量异常：{len(matches)}'
 customer_route=next(r for r in app.router.routes if getattr(r,'path','')=='/customers/{customer_id}')
-assert getattr(customer_route.endpoint,'__module__','')=='app.v029_routes','客户页未由 v0.2.9 接管'
+assert getattr(customer_route.endpoint,'__module__','')=='app.v029_routes','客户页未由当前主工作区接管'
 
 base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
-for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js','/static/app.css','/static/v028.css','/static/layout-refinement.css'):
+for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js','/static/business-sync.js','/static/app.css','/static/v028.css','/static/layout-refinement.css'):
     assert base.count(current)==1,f'{current} 必须且只能加载一次'
 for old in ('/static/current.js','/static/v025.js','/static/v025_minor.js','/static/v026.js','/static/v027.js','/static/v02.css','/static/v021.css','/static/v022.css','/static/v023.css','/static/v024.css','/static/v025.css','/static/v026.css','/static/v027.css'):
     assert old not in base,f'检测到历史前端资源仍在运行：{old}'
-for asset in ('app.js','v028.js','ui-drag.js','service-promotions.js','app.css','v028.css','layout-refinement.css'):
+for asset in ('app.js','v028.js','ui-drag.js','service-promotions.js','business-sync.js','app.css','v028.css','layout-refinement.css'):
     assert (config.ROOT/'app'/'static'/asset).is_file(),f'缺少 {asset}'
 print(f"✓ Python / 路由 / 模板 / 当前前端资源检查通过：v{app.version}")
 PY
@@ -85,13 +87,13 @@ echo "$HEALTH_JSON"
 import json,sys
 p=json.loads(sys.argv[1])
 if p.get('ok') is not True: raise SystemExit('健康检查返回 ok=false')
-if p.get('version')!='0.2.9': raise SystemExit(f"版本不匹配：{p.get('version')}")
+if p.get('version')!='0.2.10': raise SystemExit(f"版本不匹配：{p.get('version')}")
 print(f"✓ 服务版本：{p.get('version')}")
 PY
 
 echo "===== 已运行静态文件一致性检查 ====="
 REV="$(git rev-parse --short HEAD)"
-for ASSET in app.js v028.js ui-drag.js service-promotions.js app.css v028.css layout-refinement.css; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js app.css v028.css layout-refinement.css; do
   LOCAL_FILE="app/static/$ASSET"; TMP_FILE="$(mktemp)"
   curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP_FILE"
   LOCAL_SHA="$(sha256sum "$LOCAL_FILE"|awk '{print $1}')"; SERVED_SHA="$(sha256sum "$TMP_FILE"|awk '{print $1}')"; rm -f "$TMP_FILE"
@@ -101,7 +103,7 @@ for ASSET in app.js v028.js ui-drag.js service-promotions.js app.css v028.css la
   echo "✓ $ASSET：正式服务与Git工作区一致"
 done
 
-for ASSET in v028.js ui-drag.js service-promotions.js; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js; do
   CACHE_HEADER="$(curl -fsSI "$APP_HTTP/static/$ASSET?deploy=$REV" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^Cache-Control:/{sub(/^[^:]*:[ ]*/,""); print; exit}')"
   case "$CACHE_HEADER" in
     *no-store*) echo "✓ $ASSET 禁止浏览器缓存旧控制代码" ;;
