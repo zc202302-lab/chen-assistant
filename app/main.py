@@ -11,6 +11,7 @@ from .v026_home import router as v026_home_router
 from .v027_routes import router as v027_router
 from .v027_home import router as v027_home_router
 from .v028_routes import router as v028_router
+from .v029_routes import router as v029_router
 
 _legacy_routes = list(app.router.routes)
 
@@ -33,10 +34,11 @@ _v026_home_routes = _include(v026_home_router)
 _v027_routes = _include(v027_router)
 _v027_home_routes = _include(v027_home_router)
 _v028_routes = _include(v028_router)
+_v029_routes = _include(v029_router)
 
 # 最新核心展示路由唯一；旧路由只保留当前仍在使用的 POST/action 能力。
 _ordered = (
-    _v028_routes +
+    _v029_routes + _v028_routes +
     _v027_home_routes + _v027_routes +
     _v026_home_routes + _v026_routes +
     _v025_home_routes + _v025_routes +
@@ -55,8 +57,8 @@ for route in _ordered:
     _final.append(route)
 app.router.routes[:] = _final
 
-app.title = '晨的助手 v0.2.8'
-app.version = '0.2.8'
+app.title = '晨的助手 v0.2.9'
+app.version = '0.2.9'
 
 
 # Interactive assets change frequently during development. Never let a browser
@@ -70,10 +72,9 @@ async def current_asset_cache_policy(request, call_next):
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
 
-    # v0.2.8 payment column widths are per-customer dynamic CSS variables stored
-    # on one element's style attribute. Keep stylesheet/script sources strict,
-    # but permit style attributes specifically; inline <style> blocks remain
-    # disallowed because style-src-elem stays self-only.
+    # Payment column widths are per-customer dynamic CSS variables stored on one
+    # element's style attribute. Keep external sources strict while allowing only
+    # style attributes for those runtime values.
     if 'Content-Security-Policy' in response.headers:
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
