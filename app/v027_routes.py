@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date
+from types import SimpleNamespace
 import json
 
 from fastapi import APIRouter, Request, Form, HTTPException
@@ -10,46 +11,21 @@ from fastapi.templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
-from .payment_v02 import (
-    current_period,
-    service_active_in_period,
-    service_is_due,
-    effective_payment_rule,
-    payment_snapshot,
-)
-from .v025_routes import customer_or_404, service_or_404, promotion_or_404, _payment_run
-from .v026_routes import (
-    check_csrf,
-    parse_date_text,
-    date_text,
-    month_text,
-    promotion_bucket,
-    display_pair,
-    display_value,
-    ATTR_OPTIONS_026,
-)
+from .payment_v02 import current_period, service_active_in_period, service_is_due, effective_payment_rule, payment_snapshot
+from .v025_routes import customer_or_404, promotion_or_404, _payment_run
+from .v026_routes import check_csrf, parse_date_text, date_text, month_text, promotion_bucket, display_pair, display_value, ATTR_OPTIONS_026
 
 router = APIRouter()
 templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
 APP_VERSION = '0.2.7'
 
 DEFAULT_COL_WIDTHS = {'attr': 190, 'number': 260, 'account': 300, 'amount': 170}
-COL_LIMITS = {
-    'attr': (110, 520),
-    'number': (150, 760),
-    'account': (160, 820),
-    'amount': (120, 320),
-}
+COL_LIMITS = {'attr': (110, 520), 'number': (150, 760), 'account': (160, 820), 'amount': (120, 320)}
 
 
 def ctx(request: Request, **extra):
     session = getattr(request.state, 'session', None)
-    base = {
-        'request': request,
-        'csrf': session['csrf_token'] if session else '',
-        'today': date.today(),
-        'app_version': APP_VERSION,
-    }
+    base = {'request': request, 'csrf': session['csrf_token'] if session else '', 'today': date.today(), 'app_version': APP_VERSION}
     base.update(extra)
     return base
 
@@ -102,7 +78,6 @@ def customer_workspace_v027(request: Request, customer_id: int, tab: str = 'paym
     period = current_period()
     tabs = {'payment', 'services', 'promotions', 'contacts', 'tasks', 'visits'}
     active_tab = tab if tab in tabs else 'payment'
-
     with db() as conn:
         customer = customer_or_404(conn, customer_id)
         display1, display2 = display_pair(customer)
@@ -135,22 +110,15 @@ def customer_workspace_v027(request: Request, customer_id: int, tab: str = 'paym
                ORDER BY p.expiry_date,p.id''',
             (customer_id,),
         ).fetchall()
-
         active_promos_by_service = defaultdict(list)
         attention_rows = []
         for p in promo_rows:
             bucket = promotion_bucket(p['expiry_date'], p['status'])
-            info = {
-                'row': p,
-                'bucket': bucket,
-                'expiry_display': date_text(p['expiry_date']),
-                'start_display': date_text(p['start_date']),
-            }
+            info = {'row': p, 'bucket': bucket, 'expiry_display': date_text(p['expiry_date']), 'start_display': date_text(p['start_date'])}
             active_promos_by_service[p['service_id']].append(info)
             if bucket in {'expired', 'soon'}:
                 attention_rows.append(info)
 
-        # 优惠工作台按“号码”聚合。只有需要行动的两档出现；后续到期自动隐藏。
         promo_groups_map = {}
         for info in attention_rows:
             p = info['row']
@@ -174,9 +142,9 @@ def customer_workspace_v027(request: Request, customer_id: int, tab: str = 'paym
             order = _promo_order(conn, customer_id, group['key'])
             rank = {pid: i for i, pid in enumerate(order)}
             group['items'].sort(key=lambda x: (rank.get(x['row']['id'], 10**9), x['row']['expiry_date'] or '9999-12-31', x['row']['id']))
-            promo_groups.append(group)
-        promo_groups.sort(key=lambda g: (0 if g['expired_count'] else 1, g['number'] or g['account'], g['service_id']))
-        promo_attention = sum(len(g['items']) for g in promo_groups)
+            promo_groups.append(SimpleNamespace(**group))
+        promo_groups.sort(key=lambda g: (0 if g.expired_count else 1, g.number or g.account, g.service_id))
+        promo_attention = sum(len(g.items) for g in promo_groups)
 
         business_rows = []
         service_types = []
@@ -202,16 +170,9 @@ def customer_workspace_v027(request: Request, customer_id: int, tab: str = 'paym
                 promo_filter, promo_label = 'none', '无优惠'
             nearest = min(promos, key=lambda p: p['row']['expiry_date'] or '9999-12-31') if promos else None
             business_rows.append({
-                'row': s,
-                'rule': rule,
-                'due': service_is_due(s),
-                'months': int(s['payment_interval_months'] or 0),
-                'last_payment_display': date_text(s['last_payment_date']),
-                'next_payment_display': month_text(s['next_payment_period']),
-                'promo_count': len(promos),
-                'promo_filter': promo_filter,
-                'promo_label': promo_label,
-                'promo_nearest': nearest,
+                'row': s, 'rule': rule, 'due': service_is_due(s), 'months': int(s['payment_interval_months'] or 0),
+                'last_payment_display': date_text(s['last_payment_date']), 'next_payment_display': month_text(s['next_payment_period']),
+                'promo_count': len(promos), 'promo_filter': promo_filter, 'promo_label': promo_label, 'promo_nearest': nearest,
             })
 
         contacts = conn.execute('SELECT * FROM contacts WHERE customer_id=? ORDER BY id', (customer_id,)).fetchall()
@@ -221,41 +182,16 @@ def customer_workspace_v027(request: Request, customer_id: int, tab: str = 'paym
 
     return templates.TemplateResponse(
         'customer_workspace_v027.html',
-        ctx(
-            request,
-            customer=customer,
-            active_tab=active_tab,
-            payment_period=period,
-            payment_items=enriched_payment,
-            payment_stats=payment_stats,
-            payment_run=payment_run,
-            col_widths=col_widths,
-            invoice_groups=invoice_groups,
-            business_rows=business_rows,
-            service_types=service_types,
-            promo_groups=promo_groups,
-            promo_attention=promo_attention,
-            contacts=contacts,
-            tasks=tasks,
-            open_tasks=open_tasks,
-            visits=visits,
-            attr_options=ATTR_OPTIONS_026,
-            customer_display_attr_1=display1,
-            customer_display_attr_2=display2,
-        ),
+        ctx(request, customer=customer, active_tab=active_tab, payment_period=period, payment_items=enriched_payment,
+            payment_stats=payment_stats, payment_run=payment_run, col_widths=col_widths, invoice_groups=invoice_groups,
+            business_rows=business_rows, service_types=service_types, promo_groups=promo_groups, promo_attention=promo_attention,
+            contacts=contacts, tasks=tasks, open_tasks=open_tasks, visits=visits, attr_options=ATTR_OPTIONS_026,
+            customer_display_attr_1=display1, customer_display_attr_2=display2),
     )
 
 
 @router.post('/customers/{customer_id}/payment-column-widths')
-def payment_column_widths_v027(
-    request: Request,
-    customer_id: int,
-    csrf: str = Form(...),
-    attr: int = Form(...),
-    number: int = Form(...),
-    account: int = Form(...),
-    amount: int = Form(...),
-):
+def payment_column_widths_v027(request: Request, customer_id: int, csrf: str = Form(...), attr: int = Form(...), number: int = Form(...), account: int = Form(...), amount: int = Form(...)):
     check_csrf(request, csrf)
     values = {'attr': attr, 'number': number, 'account': account, 'amount': amount}
     for key, value in values.items():
@@ -269,15 +205,7 @@ def payment_column_widths_v027(
 
 
 @router.post('/customers/{customer_id}/promotions-v027')
-def add_promotion_by_number_v027(
-    request: Request,
-    customer_id: int,
-    csrf: str = Form(...),
-    number: str = Form(...),
-    name: str = Form(...),
-    expiry_date: str = Form(...),
-    notes: str = Form(''),
-):
+def add_promotion_by_number_v027(request: Request, customer_id: int, csrf: str = Form(...), number: str = Form(...), name: str = Form(...), expiry_date: str = Form(...), notes: str = Form('')):
     check_csrf(request, csrf)
     number = number.strip()
     if not number:
@@ -295,39 +223,25 @@ def add_promotion_by_number_v027(
             raise HTTPException(400, '没有找到这个客户下对应的在用号码，请先在“业务”中添加或核对号码')
         conn.execute(
             '''INSERT INTO promotions(service_id,name,start_date,expiry_date,remind_days,status,renewed_at,notes,created_at)
-               VALUES(?,?,?, ?,60,'active','',?,?)''',
+               VALUES(?,?,?,?,60,'active','',?,?)''',
             (service['id'], name.strip(), '', expiry_iso, notes.strip(), now_iso()),
         )
     return RedirectResponse(f'/customers/{customer_id}?tab=promotions', 303)
 
 
 @router.post('/promotions/{promotion_id}/expiry-v027')
-def update_promotion_expiry_v027(
-    request: Request,
-    promotion_id: int,
-    csrf: str = Form(...),
-    expiry_date: str = Form(...),
-):
+def update_promotion_expiry_v027(request: Request, promotion_id: int, csrf: str = Form(...), expiry_date: str = Form(...)):
     check_csrf(request, csrf)
     expiry_iso = parse_date_text(expiry_date, required=True, field='优惠到期日期')
     with db() as conn:
         old = promotion_or_404(conn, promotion_id)
-        conn.execute(
-            "UPDATE promotions SET expiry_date=?,status='active',renewed_at=? WHERE id=?",
-            (expiry_iso, now_iso(), promotion_id),
-        )
+        conn.execute("UPDATE promotions SET expiry_date=?,status='active',renewed_at=? WHERE id=?", (expiry_iso, now_iso(), promotion_id))
         cid = old['customer_id']
     return RedirectResponse(f'/customers/{cid}?tab=promotions', 303)
 
 
 @router.post('/customers/{customer_id}/promotions/reorder-v027')
-def reorder_promotions_v027(
-    request: Request,
-    customer_id: int,
-    csrf: str = Form(...),
-    group_key: str = Form(...),
-    promotion_ids: str = Form(...),
-):
+def reorder_promotions_v027(request: Request, customer_id: int, csrf: str = Form(...), group_key: str = Form(...), promotion_ids: str = Form(...)):
     check_csrf(request, csrf)
     try:
         ids = [int(x) for x in promotion_ids.split(',') if x.strip()]
@@ -339,8 +253,8 @@ def reorder_promotions_v027(
         customer_or_404(conn, customer_id)
         placeholders = ','.join('?' for _ in ids)
         rows = conn.execute(
-            f'''SELECT p.id,p.service_id,s.number,s.customer_id FROM promotions p
-                JOIN services s ON s.id=p.service_id WHERE p.id IN ({placeholders})''', ids
+            f'''SELECT p.id,p.service_id,s.number,s.customer_id FROM promotions p JOIN services s ON s.id=p.service_id
+                WHERE p.id IN ({placeholders})''', ids
         ).fetchall()
         if len(rows) != len(ids) or any(r['customer_id'] != customer_id for r in rows):
             raise HTTPException(400, '优惠排序数据不属于当前客户')
