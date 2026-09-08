@@ -1,16 +1,26 @@
 from app.main import app
 
 
-def test_promotion_rename_route_is_owned_by_current_runtime():
+CURRENT_MODULE = 'app.v0211_promotion_routes'
+
+
+def current_route(path: str, method: str):
     matches = [
         route for route in app.router.routes
-        if getattr(route, 'path', '') == '/promotions/{promotion_id}/name-v030'
-        and 'POST' in getattr(route, 'methods', set())
+        if getattr(route, 'path', '') == path
+        and method in getattr(route, 'methods', set())
     ]
-    assert matches, 'promotion rename POST route is missing'
-    assert matches[0].endpoint.__module__ == 'app.v0211_promotion_routes'
+    assert matches, f'{method} {path} route is missing'
+    assert matches[0].endpoint.__module__ == CURRENT_MODULE
+
+
+def test_promotion_routes_are_owned_by_current_runtime():
+    current_route('/promotions/{promotion_id}/name-v030', 'POST')
+    current_route('/services/{service_id}/promotions-editor-v029', 'GET')
+    current_route('/services/{service_id}/promotions-editor-v029', 'POST')
+    current_route('/promotions/{promotion_id}/close-editor-v029', 'POST')
 
 
 if __name__ == '__main__':
-    test_promotion_rename_route_is_owned_by_current_runtime()
-    print('promotion rename route regression passed')
+    test_promotion_routes_are_owned_by_current_runtime()
+    print('bidirectional promotion route regression passed')
