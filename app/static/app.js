@@ -86,6 +86,30 @@
     header.style.zIndex = '2';
   });
 
+  // 列宽保存再加一层保险：v028 工作区负责实时拖动，这里在 pointerup 捕获后
+  // 用最终 CSS 变量再次持久化，避免快速刷新/指针捕获边界导致只改了视觉宽度却没保存。
+  document.addEventListener('pointerup', (e) => {
+    const handle = e.target.closest?.('[data-resize-col]');
+    if (!handle) return;
+    const list = handle.closest?.('[data-column-width-url]');
+    const workbench = handle.closest?.('[data-payment-workbench]');
+    if (!list || !workbench) return;
+    setTimeout(async () => {
+      const vars = {attr:'--col-attr', number:'--col-number', account:'--col-account', amount:'--col-amount'};
+      const style = getComputedStyle(list);
+      const fd = new FormData();
+      fd.append('csrf', workbench.dataset.csrf || '');
+      for (const [key, cssVar] of Object.entries(vars)) {
+        fd.append(key, String(parseInt(style.getPropertyValue(cssVar), 10) || 0));
+      }
+      try {
+        await fetch(list.dataset.columnWidthUrl, {
+          method:'POST', body:fd, credentials:'same-origin', keepalive:true
+        });
+      } catch (_) {}
+    }, 0);
+  }, true);
+
   document.addEventListener('submit', (e) => {
     const f = e.target;
     if (f.dataset.confirm && !confirm(f.dataset.confirm)) e.preventDefault();
