@@ -40,12 +40,9 @@ git merge --ff-only origin/main
 echo "===== 更新前代码检查 ====="
 .venv/bin/python -m compileall -q app
 if command -v node >/dev/null 2>&1; then
-  node --check app/static/app.js
-  node --check app/static/v028.js
-  node --check app/static/ui-drag.js
-  node --check app/static/service-promotions.js
-  node --check app/static/business-sync.js
-  node --check app/static/v0211.js
+  for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js v0212.js; do
+    node --check "app/static/$ASSET"
+  done
 fi
 .venv/bin/python - <<'PY'
 from jinja2 import Environment, FileSystemLoader
@@ -62,24 +59,30 @@ for name in runtime_templates:
     text=p.read_text(encoding='utf-8')
     assert 'type="date"' not in text and "type='date'" not in text, f'{name} 仍包含日期选择器'
 
-assert app.version=='0.2.11',f'预期 v0.2.11，实际 v{app.version}'
+assert app.version=='0.2.12',f'预期 v0.2.12，实际 v{app.version}'
 for path in ('/','/customers/{customer_id}','/health'):
     matches=[r for r in app.router.routes if getattr(r,'path','')==path]
     assert len(matches)==1,f'{path} 路由数量异常：{len(matches)}'
 customer_route=next(r for r in app.router.routes if getattr(r,'path','')=='/customers/{customer_id}')
-assert getattr(customer_route.endpoint,'__module__','')=='app.v0211_routes','客户页未由 v0.2.11 工作区接管'
+assert getattr(customer_route.endpoint,'__module__','')=='app.v0212_routes','客户页未由 v0.2.12 工作区接管'
+
+for path in ('/customers/{customer_id}/payment-run','/customers/{customer_id}/payment.txt','/services/{service_id}/defer-v0212','/services/{service_id}/delete-v0212'):
+    matches=[r for r in app.router.routes if getattr(r,'path','')==path]
+    assert matches,f'缺少 v0.2.12 核心路由：{path}'
+    assert getattr(matches[0].endpoint,'__module__','')=='app.v0212_routes',f'{path} 未由 v0.2.12 优先接管'
 
 base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
-for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js','/static/business-sync.js','/static/v0211.js','/static/app.css','/static/v028.css','/static/layout-refinement.css'):
+for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js','/static/business-sync.js','/static/v0211.js','/static/v0212.js','/static/app.css','/static/v028.css','/static/layout-refinement.css','/static/v0212.css'):
     assert base.count(current)==1,f'{current} 必须且只能加载一次'
 for old in ('/static/current.js','/static/v025.js','/static/v025_minor.js','/static/v026.js','/static/v027.js','/static/v02.css','/static/v021.css','/static/v022.css','/static/v023.css','/static/v024.css','/static/v025.css','/static/v026.css','/static/v027.css'):
     assert old not in base,f'检测到历史前端资源仍在运行：{old}'
-for asset in ('app.js','v028.js','ui-drag.js','service-promotions.js','business-sync.js','v0211.js','app.css','v028.css','layout-refinement.css'):
+for asset in ('app.js','v028.js','ui-drag.js','service-promotions.js','business-sync.js','v0211.js','v0212.js','app.css','v028.css','layout-refinement.css','v0212.css'):
     assert (config.ROOT/'app'/'static'/asset).is_file(),f'缺少 {asset}'
 print(f"✓ Python / 路由 / 模板 / 当前前端资源检查通过：v{app.version}")
 PY
 
 .venv/bin/python -c 'from app.db import init_db; init_db(); print("✓ 数据库结构检查/迁移完成")'
+.venv/bin/python tests/ui_v0212_contract.py
 systemctl restart "$SERVICE"
 sleep 3
 HEALTH_JSON="$(curl -fsS "$HEALTH_URL")"
@@ -88,13 +91,13 @@ echo "$HEALTH_JSON"
 import json,sys
 p=json.loads(sys.argv[1])
 if p.get('ok') is not True: raise SystemExit('健康检查返回 ok=false')
-if p.get('version')!='0.2.11': raise SystemExit(f"版本不匹配：{p.get('version')}")
+if p.get('version')!='0.2.12': raise SystemExit(f"版本不匹配：{p.get('version')}")
 print(f"✓ 服务版本：{p.get('version')}")
 PY
 
 echo "===== 已运行静态文件一致性检查 ====="
 REV="$(git rev-parse --short HEAD)"
-for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js app.css v028.css layout-refinement.css; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js v0212.js app.css v028.css layout-refinement.css v0212.css; do
   LOCAL_FILE="app/static/$ASSET"; TMP_FILE="$(mktemp)"
   curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP_FILE"
   LOCAL_SHA="$(sha256sum "$LOCAL_FILE"|awk '{print $1}')"; SERVED_SHA="$(sha256sum "$TMP_FILE"|awk '{print $1}')"; rm -f "$TMP_FILE"
@@ -104,7 +107,7 @@ for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0
   echo "✓ $ASSET：正式服务与Git工作区一致"
 done
 
-for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js v0212.js; do
   CACHE_HEADER="$(curl -fsSI "$APP_HTTP/static/$ASSET?deploy=$REV" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^Cache-Control:/{sub(/^[^:]*:[ ]*/,""); print; exit}')"
   case "$CACHE_HEADER" in
     *no-store*) echo "✓ $ASSET 禁止浏览器缓存旧控制代码" ;;
