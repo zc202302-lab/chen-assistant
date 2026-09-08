@@ -2,7 +2,7 @@ name: v0.2.8 validation
 
 on:
   push:
-    branches: [main, v0.2.8-css-consolidation]
+    branches: [main, v0.2.8-css-consolidation, v0.2.8-production-layout-hotfix]
   workflow_dispatch:
 
 jobs:
@@ -29,6 +29,7 @@ jobs:
         run: python -m playwright install --with-deps chromium
       - name: Check JavaScript syntax
         run: |
+          node --check app/static/app.js
           node --check app/static/v028.js
           node --check app/static/ui-drag.js
       - name: Check Python, routes, templates and assets
@@ -59,6 +60,8 @@ jobs:
               assert old not in base,old
           print('static validation passed: final runtime assets + no runtime date picker')
           PY
+      - name: Production experience regression
+        run: python tests/production_experience_regression.py
       - name: Promotion render regression
         run: python tests/promotion_render_regression.py
       - name: Real browser UI acceptance
