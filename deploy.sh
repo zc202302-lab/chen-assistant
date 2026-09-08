@@ -42,19 +42,36 @@ git fetch origin main
 git merge --ff-only origin/main
 
 .venv/bin/pip install -q -r requirements.txt
+
+echo "===== 更新前代码检查 ====="
+.venv/bin/python -m compileall -q app
+.venv/bin/python - <<'PY'
+from jinja2 import Environment, FileSystemLoader
+from app import config
+from app.main import app
+
+env = Environment(loader=FileSystemLoader(str(config.ROOT / 'app' / 'templates')))
+for name in ('base.html', 'dashboard_v024.html', 'customer_workspace_v025.html'):
+    env.get_template(name)
+print(f"✓ Python / 路由 / 模板检查通过：v{app.version}")
+PY
+
 .venv/bin/python -c 'from app.db import init_db; init_db(); print("✓ 数据库结构检查/迁移完成")'
 
 systemctl restart "$SERVICE"
 sleep 3
 
-if curl -fsS "$HEALTH_URL"; then
-  echo
-  echo "✓ 服务健康检查通过"
-  echo "更新后代码：$(git rev-parse --short HEAD)"
-  echo "===== 更新完成 ====="
-else
-  echo
-  echo "✗ 健康检查失败。数据库备份：$BACKUP_FILE"
-  echo "请执行：journalctl -u $SERVICE -n 80 --no-pager"
-  exit 1
-fi
+HEALTH_JSON="$(curl -fsS "$HEALTH_URL")"
+echo "$HEALTH_JSON"
+
+.venv/bin/python - "$HEALTH_JSON" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+if payload.get('ok') is not True:
+    raise SystemExit('健康检查返回 ok=false')
+print(f"✓ 服务版本：{payload.get('version', 'unknown')}")
+PY
+
+echo "✓ 服务健康检查通过"
+echo "更新后代码：$(git rev-parse --short HEAD)"
+echo "===== 更新完成 ====="
