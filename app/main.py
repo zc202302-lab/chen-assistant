@@ -8,6 +8,8 @@ from .v025_routes import router as v025_router
 from .v025_home import router as v025_home_router
 from .v026_routes import router as v026_router
 from .v026_home import router as v026_home_router
+from .v027_routes import router as v027_router
+from .v027_home import router as v027_home_router
 
 _legacy_routes = list(app.router.routes)
 
@@ -47,9 +49,17 @@ _before = len(app.router.routes)
 app.include_router(v026_home_router)
 _v026_home_routes = app.router.routes[_before:]
 
-# Newest routes first. v0.2.6 owns homepage, customer workspace, review toggles,
-# month-only payment cycles, manual date input and promotion classification.
-app.router.routes[:] = _v026_home_routes + _v026_routes + _v025_home_routes + _v025_routes + _v024_routes + _v023_routes + _v022_routes + _v021_routes + _v02_routes + _legacy_routes
+_before = len(app.router.routes)
+app.include_router(v027_router)
+_v027_routes = app.router.routes[_before:]
 
-app.title = '晨的助手 v0.2.6'
-app.version = '0.2.6'
+_before = len(app.router.routes)
+app.include_router(v027_home_router)
+_v027_home_routes = app.router.routes[_before:]
+
+# Newest routes first. v0.2.7 owns homepage promotion aggregation, customer workspace,
+# customer-specific payment column widths and number-first promotion workflows.
+app.router.routes[:] = _v027_home_routes + _v027_routes + _v026_home_routes + _v026_routes + _v025_home_routes + _v025_routes + _v024_routes + _v023_routes + _v022_routes + _v021_routes + _v02_routes + _legacy_routes
+
+app.title = '晨的助手 v0.2.7'
+app.version = '0.2.7'
