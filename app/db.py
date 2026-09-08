@@ -69,6 +69,9 @@ CREATE TABLE IF NOT EXISTS services (
     active_from_period TEXT DEFAULT '',
     inactive_from_period TEXT DEFAULT '',
     source_row INTEGER DEFAULT 0,
+    sort_order INTEGER DEFAULT 0,
+    display_attr_1 TEXT DEFAULT 'service_type',
+    display_attr_2 TEXT DEFAULT 'holder_name',
     notes TEXT DEFAULT ''
 );
 
@@ -185,17 +188,14 @@ def _has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
 
 
 def _migrate(conn: sqlite3.Connection):
-    # v0.1 -> v0.1.1。注意：依赖新增列的索引必须在 ALTER TABLE 之后创建。
     if not _has_column(conn, 'services', 'invoice_group_id'):
         conn.execute('ALTER TABLE services ADD COLUMN invoice_group_id INTEGER DEFAULT NULL')
 
-    # v0.2：业务按月份启用/停用，停止使用不删除历史。
     if not _has_column(conn, 'services', 'active_from_period'):
         conn.execute("ALTER TABLE services ADD COLUMN active_from_period TEXT DEFAULT ''")
     if not _has_column(conn, 'services', 'inactive_from_period'):
         conn.execute("ALTER TABLE services ADD COLUMN inactive_from_period TEXT DEFAULT ''")
 
-    # v0.1.1 的 payment_entries 没有这两列，补齐后保留已有数据。
     if not _has_column(conn, 'payment_entries', 'confirmed'):
         conn.execute('ALTER TABLE payment_entries ADD COLUMN confirmed INTEGER NOT NULL DEFAULT 0')
         conn.execute("UPDATE payment_entries SET confirmed=1 WHERE source IN ('manual','fixed')")
@@ -203,7 +203,21 @@ def _migrate(conn: sqlite3.Connection):
         conn.execute('ALTER TABLE payment_entries ADD COLUMN reference_amount REAL DEFAULT NULL')
         conn.execute('UPDATE payment_entries SET reference_amount=amount WHERE reference_amount IS NULL')
 
-    # 从 v0.1 直接升级时，把原 monthly_fee 作为当前月参考值；变动金额仍需本月重新核对。
+    # v0.2.3: persistent manual row ordering and two selectable default attributes.
+    added_sort = False
+    if not _has_column(conn, 'services', 'sort_order'):
+        conn.execute('ALTER TABLE services ADD COLUMN sort_order INTEGER DEFAULT 0')
+        added_sort = True
+    if not _has_column(conn, 'services', 'display_attr_1'):
+        conn.execute("ALTER TABLE services ADD COLUMN display_attr_1 TEXT DEFAULT 'service_type'")
+    if not _has_column(conn, 'services', 'display_attr_2'):
+        conn.execute("ALTER TABLE services ADD COLUMN display_attr_2 TEXT DEFAULT 'holder_name'")
+    if added_sort:
+        conn.execute('''UPDATE services
+                        SET sort_order = CASE WHEN COALESCE(source_row,0)>0 THEN source_row*10 ELSE id*10 END''')
+    conn.execute("UPDATE services SET display_attr_1='service_type' WHERE COALESCE(display_attr_1,'')='' ")
+    conn.execute("UPDATE services SET display_attr_2='holder_name' WHERE COALESCE(display_attr_2,'')='' ")
+
     marker = conn.execute("SELECT value FROM app_meta WHERE key='payment_history_bootstrap_v1'").fetchone()
     if not marker:
         period = datetime.now().strftime('%Y-%m')
@@ -217,7 +231,6 @@ def _migrate(conn: sqlite3.Connection):
         )
         conn.execute("INSERT OR REPLACE INTO app_meta(key,value) VALUES('payment_history_bootstrap_v1',?)", (period,))
 
-    # 为已有业务建立基线规则。之后每次固定/变动切换都新增当前月份规则，不改历史。
     now = now_iso()
     conn.execute(
         '''INSERT OR IGNORE INTO service_payment_rules(service_id,effective_period,mode,fixed_amount,created_at)
@@ -228,6 +241,7 @@ def _migrate(conn: sqlite3.Connection):
     )
 
     conn.execute('CREATE INDEX IF NOT EXISTS idx_services_invoice_group ON services(invoice_group_id)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_services_customer_sort ON services(customer_id,sort_order,id)')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_payment_rules_service_period ON service_payment_rules(service_id,effective_period)')
 
 
