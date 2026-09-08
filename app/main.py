@@ -13,53 +13,45 @@ from .v027_home import router as v027_home_router
 
 _legacy_routes = list(app.router.routes)
 
-_before = len(app.router.routes)
-app.include_router(v02_router)
-_v02_routes = app.router.routes[_before:]
 
-_before = len(app.router.routes)
-app.include_router(v021_router)
-_v021_routes = app.router.routes[_before:]
+def _include(router):
+    before = len(app.router.routes)
+    app.include_router(router)
+    return app.router.routes[before:]
 
-_before = len(app.router.routes)
-app.include_router(v022_router)
-_v022_routes = app.router.routes[_before:]
 
-_before = len(app.router.routes)
-app.include_router(v023_router)
-_v023_routes = app.router.routes[_before:]
+_v02_routes = _include(v02_router)
+_v021_routes = _include(v021_router)
+_v022_routes = _include(v022_router)
+_v023_routes = _include(v023_router)
+_v024_routes = _include(v024_router)
+_v025_routes = _include(v025_router)
+_v025_home_routes = _include(v025_home_router)
+_v026_routes = _include(v026_router)
+_v026_home_routes = _include(v026_home_router)
+_v027_routes = _include(v027_router)
+_v027_home_routes = _include(v027_home_router)
 
-_before = len(app.router.routes)
-app.include_router(v024_router)
-_v024_routes = app.router.routes[_before:]
-
-_before = len(app.router.routes)
-app.include_router(v025_router)
-_v025_routes = app.router.routes[_before:]
-
-_before = len(app.router.routes)
-app.include_router(v025_home_router)
-_v025_home_routes = app.router.routes[_before:]
-
-_before = len(app.router.routes)
-app.include_router(v026_router)
-_v026_routes = app.router.routes[_before:]
-
-_before = len(app.router.routes)
-app.include_router(v026_home_router)
-_v026_home_routes = app.router.routes[_before:]
-
-_before = len(app.router.routes)
-app.include_router(v027_router)
-_v027_routes = app.router.routes[_before:]
-
-_before = len(app.router.routes)
-app.include_router(v027_home_router)
-_v027_home_routes = app.router.routes[_before:]
-
-# Newest routes first. v0.2.7 owns homepage promotion aggregation, customer workspace,
-# customer-specific payment column widths and number-first promotion workflows.
-app.router.routes[:] = _v027_home_routes + _v027_routes + _v026_home_routes + _v026_routes + _v025_home_routes + _v025_routes + _v024_routes + _v023_routes + _v022_routes + _v021_routes + _v02_routes + _legacy_routes
+# v0.2.7 rebuilt: latest display routes are unique. Older routers remain only for
+# historical POST/action endpoints that the current workspace still calls.
+_ordered = (
+    _v027_home_routes + _v027_routes +
+    _v026_home_routes + _v026_routes +
+    _v025_home_routes + _v025_routes +
+    _v024_routes + _v023_routes + _v022_routes + _v021_routes + _v02_routes +
+    _legacy_routes
+)
+_unique_paths = {'/', '/customers/{customer_id}', '/health'}
+_seen = set()
+_final = []
+for route in _ordered:
+    path = getattr(route, 'path', None)
+    if path in _unique_paths:
+        if path in _seen:
+            continue
+        _seen.add(path)
+    _final.append(route)
+app.router.routes[:] = _final
 
 app.title = '晨的助手 v0.2.7'
 app.version = '0.2.7'
