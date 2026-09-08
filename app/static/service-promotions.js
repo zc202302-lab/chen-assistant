@@ -127,8 +127,7 @@
     list.querySelector('.editor-promo-empty-v029')?.remove();
     const row = renderRow({id:'', name:'', expiry_date:'', notes:''});
     list.appendChild(row);
-    const input = row.querySelector('.editor-promo-name-v029');
-    input?.focus();
+    row.querySelector('.editor-promo-name-v029')?.focus();
   });
 
   list.addEventListener('click', async e => {
@@ -199,15 +198,10 @@
     }
   });
 
-  // 优惠工作区：单击优惠名称复制；双击进入就地编辑。
-  const decoratePromoNames = scope => {
-    (scope || root).querySelectorAll('.promo-name-copy-v028').forEach(btn => {
-      btn.dataset.promoNameEdit = '1';
-    });
-  };
-  decoratePromoNames(root);
+  // 优惠工作区：单击立即复制，双击进入就地编辑。双击时前两次点击可能已经完成复制，
+  // 但不会阻止进入编辑，也保持了单击复制的即时响应。
+  root.querySelectorAll('.promo-name-copy-v028').forEach(btn => { btn.dataset.promoNameEdit = '1'; });
 
-  const clickTimers = new WeakMap();
   const makePromoButton = (name) => {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -223,6 +217,7 @@
   const updatePromotionNameEverywhere = (id, name) => {
     root.querySelectorAll(`[data-promo-item][data-promo-id="${CSS.escape(String(id))}"] .promo-name-copy-v028`).forEach(btn => {
       btn.dataset.copySilent = name;
+      btn.dataset.promoNameEdit = '1';
       const strong = btn.querySelector('strong');
       if (strong) strong.textContent = name || '未命名优惠';
     });
@@ -296,14 +291,8 @@
     if (!btn) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    const old = clickTimers.get(btn);
-    if (old) clearTimeout(old);
-    const timer = setTimeout(async () => {
-      clickTimers.delete(btn);
-      const ok = await copyText(btn.dataset.copySilent || btn.textContent.trim());
-      toast(ok ? '已复制' : '复制失败');
-    }, 280);
-    clickTimers.set(btn, timer);
+    const ok = await copyText(btn.dataset.copySilent || btn.textContent.trim());
+    toast(ok ? '已复制' : '复制失败');
   }, true);
 
   document.addEventListener('dblclick', e => {
@@ -311,9 +300,6 @@
     if (!btn) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    const timer = clickTimers.get(btn);
-    if (timer) clearTimeout(timer);
-    clickTimers.delete(btn);
     beginInlineRename(btn);
   }, true);
 })();
