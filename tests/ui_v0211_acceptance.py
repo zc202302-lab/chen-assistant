@@ -140,10 +140,9 @@ def main():
             assert dialog.locator('[data-payment-column-row]').count() == 6
             last_select = dialog.locator('[data-payment-column-row]').last.locator('select')
             last_select.select_option('payment_method')
-            amount_row = dialog.locator('[data-payment-column-row]').filter(has=dialog.locator('select option:checked'))
             assert dialog.locator('[data-payment-column-row] select').evaluate_all("sels => sels.map(s => s.value).includes('payment_amount')")
-            dialog.locator('button[type="submit"]').click()
-            page.wait_for_load_state('networkidle')
+            with page.expect_navigation(wait_until='networkidle'):
+                dialog.locator('button[type="submit"]').click()
             labels = [x.strip() for x in page.locator('[data-payment-column-head] > span').all_inner_texts()]
             assert labels[-1] == '付款方式', labels
             assert '缴费金额' in labels and len(labels) == 6, labels
