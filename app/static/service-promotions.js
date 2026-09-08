@@ -11,6 +11,7 @@
   let requestSeq = 0;
 
   const toast = (msg) => {
+    if (window.ChenToast) return window.ChenToast(msg);
     let el = document.querySelector('.app-toast');
     if (!el) {
       el = document.createElement('div');
@@ -20,6 +21,12 @@
     el.textContent = msg;
     requestAnimationFrame(() => el.classList.add('show'));
     setTimeout(() => el.classList.remove('show'), 900);
+  };
+
+  const copyText = async value => {
+    if (window.ChenCopyText) return window.ChenCopyText(value);
+    if (!value) return false;
+    try { await navigator.clipboard.writeText(value); return true; } catch (_) { return false; }
   };
 
   const formatDateDigits = value => {
@@ -120,7 +127,8 @@
     list.querySelector('.editor-promo-empty-v029')?.remove();
     const row = renderRow({id:'', name:'', expiry_date:'', notes:''});
     list.appendChild(row);
-    row.querySelector('.editor-promo-name-v029')?.focus();
+    const input = row.querySelector('.editor-promo-name-v029');
+    input?.focus();
   });
 
   list.addEventListener('click', async e => {
@@ -150,6 +158,9 @@
         notes.value = data.notes || '';
         const close = row.querySelector('[data-editor-promo-close]');
         if (close) close.textContent = '结束';
+        root.dispatchEvent(new CustomEvent('chen:promotion-name-updated', {detail:{
+          id:String(data.id), service_id:String(data.service_id || currentServiceId), name:data.name || ''
+        }}));
         toast('已保存');
       } catch (_) {
         toast('优惠保存失败');
@@ -173,6 +184,11 @@
         const data = await r.json().catch(() => ({}));
         if (!r.ok || !data.ok) return toast(data.detail || data.error || '优惠结束失败');
         row.remove();
+        root.querySelectorAll(`[data-promo-item][data-promo-id="${CSS.escape(String(id))}"]`).forEach(item => {
+          const group = item.closest('[data-promo-group]');
+          item.remove();
+          if (group && !group.querySelector('[data-promo-item]')) group.remove();
+        });
         if (!list.querySelector('.editor-promo-row-v029')) render([]);
         toast('已结束');
       } catch (_) {
@@ -182,4 +198,122 @@
       }
     }
   });
+
+  // 优惠工作区：单击优惠名称复制；双击进入就地编辑。
+  const decoratePromoNames = scope => {
+    (scope || root).querySelectorAll('.promo-name-copy-v028').forEach(btn => {
+      btn.dataset.promoNameEdit = '1';
+    });
+  };
+  decoratePromoNames(root);
+
+  const clickTimers = new WeakMap();
+  const makePromoButton = (name) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'promo-name-copy-v028';
+    btn.dataset.copySilent = name;
+    btn.dataset.promoNameEdit = '1';
+    const strong = document.createElement('strong');
+    strong.textContent = name || '未命名优惠';
+    btn.appendChild(strong);
+    return btn;
+  };
+
+  const updatePromotionNameEverywhere = (id, name) => {
+    root.querySelectorAll(`[data-promo-item][data-promo-id="${CSS.escape(String(id))}"] .promo-name-copy-v028`).forEach(btn => {
+      btn.dataset.copySilent = name;
+      const strong = btn.querySelector('strong');
+      if (strong) strong.textContent = name || '未命名优惠';
+    });
+    const editorRow = list.querySelector(`.editor-promo-row-v029[data-promo-id="${CSS.escape(String(id))}"]`);
+    const editorName = editorRow?.querySelector('.editor-promo-name-v029');
+    if (editorName) editorName.value = name || '';
+  };
+
+  root.addEventListener('chen:promotion-name-updated', e => {
+    const d = e.detail || {};
+    if (d.id) updatePromotionNameEverywhere(d.id, d.name || '');
+  });
+
+  const beginInlineRename = button => {
+    const item = button.closest('[data-promo-item]');
+    const id = item?.dataset.promoId;
+    if (!id) return;
+    const original = button.dataset.copySilent || button.textContent.trim();
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'promo-name-inline-edit-v030';
+    input.value = original;
+    input.autocomplete = 'off';
+    input.dataset.promoId = id;
+    input.dataset.original = original;
+    button.replaceWith(input);
+    window.ChenSelectAllInput ? window.ChenSelectAllInput(input) : (input.focus(), input.select());
+
+    let finished = false;
+    const restore = name => {
+      if (finished) return;
+      finished = true;
+      input.replaceWith(makePromoButton(name));
+    };
+    const save = async () => {
+      if (finished || input.dataset.saving === '1') return;
+      const name = input.value.trim();
+      if (!name) return restore(original);
+      if (name === original) return restore(original);
+      input.dataset.saving = '1';
+      const fd = new FormData(); fd.append('csrf', csrf); fd.append('name', name);
+      try {
+        const r = await fetch(`/promotions/${id}/name-v030`, {method:'POST', body:fd, credentials:'same-origin'});
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data.ok) {
+          toast(data.detail || data.error || '优惠名称保存失败');
+          delete input.dataset.saving;
+          return window.ChenSelectAllInput?.(input);
+        }
+        const saved = data.name || name;
+        restore(saved);
+        root.dispatchEvent(new CustomEvent('chen:promotion-name-updated', {detail:{
+          id:String(data.id || id), service_id:String(data.service_id || ''), name:saved
+        }}));
+        toast('已保存');
+      } catch (_) {
+        delete input.dataset.saving;
+        toast('优惠名称保存失败');
+        window.ChenSelectAllInput?.(input);
+      }
+    };
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); save(); }
+      else if (e.key === 'Escape') { e.preventDefault(); restore(original); }
+    });
+    input.addEventListener('blur', () => save());
+  };
+
+  document.addEventListener('click', async e => {
+    const btn = e.target.closest?.('.v029-workspace .promo-name-copy-v028');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const old = clickTimers.get(btn);
+    if (old) clearTimeout(old);
+    const timer = setTimeout(async () => {
+      clickTimers.delete(btn);
+      const ok = await copyText(btn.dataset.copySilent || btn.textContent.trim());
+      toast(ok ? '已复制' : '复制失败');
+    }, 280);
+    clickTimers.set(btn, timer);
+  }, true);
+
+  document.addEventListener('dblclick', e => {
+    const btn = e.target.closest?.('.v029-workspace .promo-name-copy-v028');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const timer = clickTimers.get(btn);
+    if (timer) clearTimeout(timer);
+    clickTimers.delete(btn);
+    beginInlineRename(btn);
+  }, true);
 })();
