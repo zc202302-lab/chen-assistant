@@ -51,8 +51,9 @@ from app import config
 from app.main import app
 
 env = Environment(loader=FileSystemLoader(str(config.ROOT / 'app' / 'templates')))
-for name in ('base.html', 'dashboard_v024.html', 'customer_workspace_v025.html'):
+for name in ('base.html', 'dashboard_v026.html', 'customer_workspace_v026.html'):
     env.get_template(name)
+assert app.version == '0.2.6', f'预期 v0.2.6，实际 v{app.version}'
 print(f"✓ Python / 路由 / 模板检查通过：v{app.version}")
 PY
 
@@ -69,7 +70,9 @@ import json, sys
 payload = json.loads(sys.argv[1])
 if payload.get('ok') is not True:
     raise SystemExit('健康检查返回 ok=false')
-print(f"✓ 服务版本：{payload.get('version', 'unknown')}")
+if payload.get('version') != '0.2.6':
+    raise SystemExit(f"版本不匹配：{payload.get('version')}")
+print(f"✓ 服务版本：{payload.get('version')}")
 PY
 
 echo "✓ 服务健康检查通过"
