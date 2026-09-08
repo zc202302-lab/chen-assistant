@@ -108,7 +108,7 @@
             <article class="promo-number-group-v028" data-promo-group data-group-key="{{ group.key|e }}">
               <button type="button" class="promo-number-copy-v028" data-copy-silent="{{ group.number or group.account }}" title="单击复制"><strong>{{ group.number or group.account }}</strong><small>{{ group.service_type }}{% if group.holder_name %} · {{ group.holder_name }}{% endif %}</small></button>
               <div class="promo-item-list-v028" data-promo-sortable data-reorder-url="/customers/{{ customer.id }}/promotions/reorder-v028">
-                {% for item in group.items %}{% set p=item.row %}
+                {% for item in group['items'] %}{% set p=item.row %}
                 <div class="promo-item-v028" data-promo-item data-promo-id="{{ p.id }}">
                   <button type="button" class="promo-drag-handle" draggable="true" title="拖动调整顺序">⠿</button>
                   <button type="button" class="promo-name-copy-v028" data-copy-silent="{{ p.name }}" title="单击复制"><strong>{{ p.name or '未命名优惠' }}</strong></button>
