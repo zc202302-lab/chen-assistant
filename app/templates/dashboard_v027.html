@@ -17,8 +17,22 @@
     <section class="home-v024-panel" data-home-panel="payment" {% if active_home_tab!='payment' %}hidden{% endif %}><div class="card home-v024-card"><div class="section-head"><h2>缴费</h2><span>{{ wait_notice|length + wait_payment|length }} 个客户待处理</span></div><div class="home-v024-payment-columns"><div class="home-v024-subsection"><h3>待通知 <span class="count">{{ wait_notice|length }}</span></h3>{% for c in wait_notice %}<a class="list-row link" href="/customers/{{ c.id }}"><span>{{ c.name }}</span><span>›</span></a>{% else %}<p class="empty">无</p>{% endfor %}</div><div class="home-v024-subsection"><h3>已通知未缴费 <span class="count">{{ wait_payment|length }}</span></h3>{% for c in wait_payment %}<a class="list-row link" href="/customers/{{ c.id }}"><span>{{ c.name }}</span><span>›</span></a>{% else %}<p class="empty">无</p>{% endfor %}</div></div></div></section>
 
     <section class="home-v024-panel" data-home-panel="promos" {% if active_home_tab!='promos' %}hidden{% endif %}>
-      <div class="card home-v024-card"><div class="section-head"><h2>优惠续约</h2><span>{{ promo_customers|length }} 个客户需要关注</span></div>
-        {% if promo_customers %}<div class="list home-promo-customer-list">{% for p in promo_customers %}<a class="list-row link home-promo-customer" href="/customers/{{ p.customer_id }}?tab=promotions"><div><b>{{ p.customer_name }}</b><small>{% if p.expired %}<span class="promo-expired">已经到期 {{ p.expired }}</span>{% endif %}{% if p.soon %}{% if p.expired %} · {% endif %}<span class="promo-soon">即将到期 {{ p.soon }}</span>{% endif %}</small></div><strong>{{ p.total }} 项</strong></a>{% endfor %}</div>{% else %}<p class="empty">目前没有需要处理的优惠。</p>{% endif %}
+      <div class="card home-v024-card">
+        <div class="section-head"><h2>优惠续约</h2><span>{{ promo_customers|length }} 个客户需要关注</span></div>
+        <div class="home-promo-columns-v030">
+          {% for bucket,title in [('expired','已经到期'),('soon','即将到期')] %}
+          <section class="home-promo-column-v030 state-{{ bucket }}">
+            <div class="home-promo-column-head-v030"><h3>{{ title }}</h3><span>{{ promo_home_totals[bucket] }} 项</span></div>
+            <div class="home-promo-column-list-v030">
+              {% for p in promo_home_columns[bucket] %}
+              <a class="home-promo-customer-v030" href="/customers/{{ p.customer_id }}?tab=promotions">
+                <b>{{ p.customer_name }}</b><strong>{{ p.count }} 项</strong>
+              </a>
+              {% else %}<p class="empty">暂无{{ title }}的优惠。</p>{% endfor %}
+            </div>
+          </section>
+          {% endfor %}
+        </div>
       </div>
     </section>
 
