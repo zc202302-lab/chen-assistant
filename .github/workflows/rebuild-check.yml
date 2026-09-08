@@ -2,12 +2,19 @@ name: v0.2.8 validation
 
 on:
   push:
-    branches: [v0.2.8-dev]
+    branches: [main, v0.2.8-ui-hotfix]
   workflow_dispatch:
 
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      APP_USERNAME: ui-test
+      APP_PASSWORD_SALT: dGVzdHNhbHQ=
+      APP_PASSWORD_HASH: not-used-by-this-test
+      APP_SESSION_SECRET: ui-test-session-secret
+      APP_ENCRYPTION_KEY: not-used-by-this-test
+      APP_SECURE_COOKIE: '0'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -17,14 +24,15 @@ jobs:
         with:
           node-version: '22'
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt playwright
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
       - name: Check JavaScript syntax
         run: node --check app/static/v028.js
       - name: Check Python, routes and templates
         run: |
           python -m compileall -q app
           python - <<'PY'
-          from pathlib import Path
           from jinja2 import Environment, FileSystemLoader
           from app import config
           from app.main import app
@@ -44,5 +52,7 @@ jobs:
           assert base.count('/static/v028.js') == 1
           for old in ('/static/current.js', '/static/v025.js', '/static/v025_minor.js', '/static/v026.js', '/static/v027.js'):
               assert old not in base
-          print('v0.2.8 validation passed')
+          print('static validation passed')
           PY
+      - name: Real browser UI smoke test
+        run: python tests/ui_browser_smoke.py
