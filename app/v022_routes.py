@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import date
 
 from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from . import config
@@ -44,6 +44,31 @@ def customer_or_404(conn, customer_id: int):
 @router.get('/health')
 def health_v022():
     return {'ok': True, 'version': APP_VERSION}
+
+
+@router.get('/customers/{customer_id}/payment')
+def old_payment_url_v022(customer_id: int):
+    return RedirectResponse(f'/customers/{customer_id}', 302)
+
+
+@router.get('/customers/{customer_id}/services')
+def old_services_url_v022(customer_id: int):
+    return RedirectResponse(f'/customers/{customer_id}?tab=services', 302)
+
+
+@router.get('/customers/{customer_id}/contacts')
+def old_contacts_url_v022(customer_id: int):
+    return RedirectResponse(f'/customers/{customer_id}?tab=contacts', 302)
+
+
+@router.get('/customers/{customer_id}/tasks')
+def old_tasks_url_v022(customer_id: int):
+    return RedirectResponse(f'/customers/{customer_id}?tab=tasks', 302)
+
+
+@router.get('/customers/{customer_id}/visits')
+def old_visits_url_v022(customer_id: int):
+    return RedirectResponse(f'/customers/{customer_id}?tab=visits', 302)
 
 
 @router.get('/customers/{customer_id}', response_class=HTMLResponse)
