@@ -14,6 +14,7 @@ from .v028_routes import router as v028_router
 from .v029_routes import router as v029_router
 from .v0211_routes import router as v0211_router
 from .v0211_promotion_routes import router as v0211_promotion_router
+from .v0212_routes import router as v0212_router
 
 _legacy_routes = list(app.router.routes)
 
@@ -39,10 +40,11 @@ _v028_routes = _include(v028_router)
 _v029_routes = _include(v029_router)
 _v0211_routes = _include(v0211_router)
 _v0211_promotion_routes = _include(v0211_promotion_router)
+_v0212_routes = _include(v0212_router)
 
 # 最新核心展示路由唯一；旧路由只保留当前仍在使用的 POST/action 能力。
 _ordered = (
-    _v0211_promotion_routes + _v0211_routes + _v029_routes + _v028_routes +
+    _v0212_routes + _v0211_promotion_routes + _v0211_routes + _v029_routes + _v028_routes +
     _v027_home_routes + _v027_routes +
     _v026_home_routes + _v026_routes +
     _v025_home_routes + _v025_routes +
@@ -61,8 +63,8 @@ for route in _ordered:
     _final.append(route)
 app.router.routes[:] = _final
 
-app.title = '晨的助手 v0.2.11'
-app.version = '0.2.11'
+app.title = '晨的助手 v0.2.12'
+app.version = '0.2.12'
 
 
 @app.middleware('http')
