@@ -33,6 +33,7 @@ jobs:
         run: |
           python -m compileall -q app
           python - <<'PY'
+          from pathlib import Path
           from jinja2 import Environment, FileSystemLoader
           from app import config
           from app.main import app
@@ -58,9 +59,16 @@ jobs:
               '/static/v025.css', '/static/v026.css', '/static/v027.css',
           ):
               assert old not in base, old
-          print('static validation passed: one feature JS + one feature CSS')
+
+          # 用户要求所有日期均手工输入 YYYY/MM/DD，不允许浏览器日期选择器。
+          for template in (config.ROOT / 'app' / 'templates').glob('*.html'):
+              text = template.read_text(encoding='utf-8')
+              assert 'type="date"' not in text and "type='date'" not in text, template.name
+          print('static validation passed: one feature JS + one feature CSS + no date picker')
           PY
       - name: Promotion render regression
         run: python tests/promotion_render_regression.py
       - name: Real browser UI acceptance
         run: python tests/ui_browser_smoke.py
+      - name: Advanced business and promotion acceptance
+        run: python tests/ui_advanced_acceptance.py
