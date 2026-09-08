@@ -10,9 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-DATA = ROOT / "data"
-DB = DATA / "app.db"
-
+DB = ROOT / "data" / "app.db"
 for suffix in ("", "-wal", "-shm"):
     p = Path(str(DB) + suffix)
     if p.exists():
@@ -40,52 +38,35 @@ def add_customer(conn, name: str, suffix: int) -> tuple[int, list[int]]:
     now = now_iso()
     period = current_period()
     cur = conn.execute(
-        """INSERT INTO customers
-           (name,group_code,tax_id,payment_enabled,created_at,updated_at)
-           VALUES(?,?,?,?,?,?)""",
+        "INSERT INTO customers (name,group_code,tax_id,payment_enabled,created_at,updated_at) VALUES(?,?,?,?,?,?)",
         (name, f"C000{suffix}", f"TEST-TAX-{suffix}", 1, now, now),
     )
-    customer_id = int(cur.lastrowid)
-    service_ids: list[int] = []
-    for idx, amount in enumerate((100, 200), start=1):
+    cid = int(cur.lastrowid)
+    service_ids = []
+    for idx, amount in enumerate((100, 200), 1):
         cur = conn.execute(
             """INSERT INTO services
                (customer_id,service_type,holder_name,number,account,monthly_fee,fixed_fee,
                 payment_cycle,payment_interval_months,active_from_period,sort_order,source_row)
                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (
-                customer_id,
-                "成员",
-                f"测试{idx}",
-                f"1380000{suffix:02d}{idx:03d}",
-                f"5338000{suffix:02d}{idx:03d}",
-                amount,
-                0,
-                "1个月",
-                1,
-                period,
-                idx * 10,
-                idx,
-            ),
+            (cid, "成员", f"测试{idx}", f"1380000{suffix:02d}{idx:03d}",
+             f"5338000{suffix:02d}{idx:03d}", amount, 0, "1个月", 1, period, idx * 10, idx),
         )
-        service_id = int(cur.lastrowid)
-        service_ids.append(service_id)
+        sid = int(cur.lastrowid)
+        service_ids.append(sid)
         conn.execute(
-            """INSERT INTO service_payment_rules
-               (service_id,effective_period,mode,fixed_amount,created_at)
-               VALUES(?,?,?,?,?)""",
-            (service_id, "1900-01", "variable", 0, now),
+            "INSERT INTO service_payment_rules (service_id,effective_period,mode,fixed_amount,created_at) VALUES(?,?,?,?,?)",
+            (sid, "1900-01", "variable", 0, now),
         )
-    return customer_id, service_ids
+    return cid, service_ids
 
 
 def seed() -> tuple[int, int, str]:
     init_db()
     now = now_iso()
     with db() as conn:
-        c1, s1 = add_customer(conn, "UI测试客户A", 1)
+        c1, services = add_customer(conn, "UI测试客户A", 1)
         c2, _ = add_customer(conn, "UI测试客户B", 2)
-        # 同一号码同时覆盖“已经到期 / 即将到期”，另加一条后续优惠用于确认不进入行动区。
         for name, expiry in (
             ("已到期优惠", date.today().isoformat()),
             ("即将到期优惠", month_add(date.today(), 2).isoformat()),
@@ -95,7 +76,7 @@ def seed() -> tuple[int, int, str]:
                 """INSERT INTO promotions
                    (service_id,name,start_date,expiry_date,remind_days,status,notes,created_at)
                    VALUES(?,?,?,?,?,?,?,?)""",
-                (s1[0], name, "", expiry, 60, "active", "", now),
+                (services[0], name, "", expiry, 60, "active", "", now),
             )
     token, _, _ = create_session()
     return c1, c2, token
@@ -118,31 +99,25 @@ def wait_http(url: str, timeout: float = 15.0) -> None:
 def read_width(page, key: str) -> int:
     value = page.eval_on_selector(
         "#paymentSortable",
-        """(el, key) => {
-          const raw = getComputedStyle(el).getPropertyValue(`--col-${key}`).trim();
-          const n = Number.parseInt(raw, 10);
+        """(el,key) => {
+          const n = parseInt(getComputedStyle(el).getPropertyValue(`--col-${key}`).trim(),10);
           return Number.isFinite(n) ? n : -1;
         }""",
         key,
     )
-    assert value > 0, f"invalid {key} column width: {value}"
+    assert value > 0, f"invalid {key} width: {value}"
     return int(value)
 
 
-def assert_near(a: float, b: float, tolerance: float, message: str) -> None:
-    assert abs(a - b) <= tolerance, f"{message}: {a} vs {b}"
+def near(a: float, b: float, tol: float, msg: str) -> None:
+    assert abs(a - b) <= tol, f"{msg}: {a} vs {b}"
 
 
 def main() -> None:
-    customer_id, other_customer_id, token = seed()
-    env = os.environ.copy()
+    cid, cid2, token = seed()
     server = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8123"],
-        cwd=ROOT,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
+        cwd=ROOT, env=os.environ.copy(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
     )
     try:
         wait_http("http://127.0.0.1:8123/health")
@@ -154,143 +129,124 @@ def main() -> None:
             browser = p.chromium.launch()
             context = browser.new_context(viewport={"width": 1440, "height": 1000})
             context.grant_permissions(["clipboard-read", "clipboard-write"], origin="http://127.0.0.1:8123")
-            context.add_cookies([{
-                "name": "session_token",
-                "value": token,
-                "url": "http://127.0.0.1:8123",
-            }])
+            context.add_cookies([{"name": "session_token", "value": token, "url": "http://127.0.0.1:8123"}])
             page = context.new_page()
             page.on("pageerror", lambda exc: page_errors.append(str(exc)))
             page.on("requestfailed", lambda req: request_failures.append(f"{req.method} {req.url}: {req.failure}"))
 
-            page.goto(f"http://127.0.0.1:8123/customers/{customer_id}", wait_until="networkidle")
+            page.goto(f"http://127.0.0.1:8123/customers/{cid}", wait_until="networkidle")
             assert page.locator(".v028-workspace").count() == 1
 
-            # 运行时只允许基础CSS + 当前CSS；不准再叠历史版本。
+            # 只加载 app.css + 当前 v028.css，不再叠任何历史功能 CSS。
             hrefs = page.locator('link[rel="stylesheet"]').evaluate_all("els => els.map(x => x.getAttribute('href'))")
-            assert len(hrefs) == 2, hrefs
-            assert any("/static/app.css" in x for x in hrefs)
-            assert any("/static/v028.css" in x for x in hrefs)
-            assert not any(any(f"/static/v0{n}" in x for n in (2, 21, 22, 23, 24, 25, 26, 27)) for x in hrefs), hrefs
+            css_names = [x.split("?", 1)[0].rsplit("/", 1)[-1] for x in hrefs]
+            assert css_names == ["app.css", "v028.css"], css_names
+            forbidden = {"v02.css", "v021.css", "v022.css", "v023.css", "v024.css", "v025.css", "v026.css", "v027.css"}
+            assert not forbidden.intersection(css_names), css_names
 
-            # 客户功能键必须是真实的页内切换。
+            # 客户功能键逐一真实点击，始终只显示一个下方面板。
             for tab in ("services", "promotions", "contacts", "tasks", "visits", "payment"):
                 page.locator(f'[data-customer-tab="{tab}"]').click()
                 page.wait_for_timeout(60)
                 assert page.locator(f'[data-customer-panel="{tab}"]').is_visible(), f"tab failed: {tab}"
-                visible = page.locator('[data-customer-panel]:visible').count()
-                assert visible == 1, f"more than one customer panel visible after {tab}: {visible}"
+                assert page.locator('[data-customer-panel]:visible').count() == 1, f"multiple panels after {tab}"
 
-            # 缴费四列必须各自存在拖动柄并可独立调宽。
+            # 缴费四列独立可拖宽；刷新保持；不同客户隔离。
             assert page.locator('[data-resize-col]').count() == 4
             before = read_width(page, "number")
             attr_before = read_width(page, "attr")
             handle = page.locator('[data-resize-col="number"]').first
             box = handle.bounding_box()
-            assert box and box["width"] >= 16, "number resize handle is not practically draggable"
-            x = box["x"] + box["width"] / 2
-            y = box["y"] + box["height"] / 2
-            page.mouse.move(x, y)
-            page.mouse.down()
-            page.mouse.move(x + 90, y, steps=8)
-            page.mouse.up()
-            page.wait_for_timeout(500)
+            assert box and box["width"] >= 16, "number resize handle too small"
+            x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+            page.mouse.move(x, y); page.mouse.down(); page.mouse.move(x + 90, y, steps=8); page.mouse.up()
+            page.wait_for_timeout(600)
             after = read_width(page, "number")
             assert after >= before + 55, (before, after)
-            assert_near(read_width(page, "attr"), attr_before, 3, "resizing number changed attr width")
-
+            near(read_width(page, "attr"), attr_before, 3, "resizing number changed attr")
             page.reload(wait_until="networkidle")
-            persisted = read_width(page, "number")
-            assert_near(persisted, after, 3, "column width did not persist")
-            page.goto(f"http://127.0.0.1:8123/customers/{other_customer_id}", wait_until="networkidle")
-            other_width = read_width(page, "number")
-            assert_near(other_width, before, 3, "column width leaked to another customer")
+            near(read_width(page, "number"), after, 3, "number width did not persist")
+            page.goto(f"http://127.0.0.1:8123/customers/{cid2}", wait_until="networkidle")
+            near(read_width(page, "number"), before, 3, "width leaked to another customer")
 
-            # 业务编辑：dialog 不改变滚动位置；周期是纯文本手输；模板新增全局生效。
-            page.goto(f"http://127.0.0.1:8123/customers/{customer_id}?tab=services", wait_until="networkidle")
-            page.evaluate("window.scrollTo(0, Math.min(650, document.body.scrollHeight - innerHeight))")
+            # 业务编辑：dialog 不推动页面；周期只能手输；新增属性全局同步。
+            page.goto(f"http://127.0.0.1:8123/customers/{cid}?tab=services", wait_until="networkidle")
+            page.evaluate("window.scrollTo(0, Math.max(0, Math.min(500, document.body.scrollHeight-innerHeight)))")
             page.wait_for_timeout(80)
             y_before = page.evaluate("window.scrollY")
             page.locator('[data-open-service-editor]').first.click()
             page.locator('#businessAttributeDialog').wait_for(state="visible")
-            y_open = page.evaluate("window.scrollY")
-            assert_near(y_open, y_before, 2, "opening business editor moved page")
+            near(page.evaluate("window.scrollY"), y_before, 2, "opening editor moved page")
 
             cycle_row = page.locator('.global-attribute-row-v028[data-key="payment_interval_months"]')
             assert cycle_row.count() == 1
-            cycle_input = cycle_row.locator('.attr-value')
-            assert cycle_input.get_attribute('type') == 'text', "payment interval is not manual text input"
-            old_cycle = cycle_input.input_value()
-            cycle_input.focus()
-            page.mouse.wheel(0, -600)
-            page.wait_for_timeout(50)
-            assert cycle_input.input_value() == old_cycle, "mouse wheel changed payment interval"
+            cycle = cycle_row.locator('.attr-value')
+            assert cycle.get_attribute("type") == "text"
+            assert cycle.get_attribute("inputmode") == "numeric"
+            old_cycle = cycle.input_value()
+            cycle.focus(); page.mouse.wheel(0, -600); page.wait_for_timeout(40)
+            assert cycle.input_value() == old_cycle, "wheel changed payment interval"
 
             page.locator('[data-add-global-attribute]').click()
-            new_row = page.locator('.global-attribute-row-v028').last
-            new_row.locator('.attr-label').fill('全局测试属性')
-            new_row.locator('.attr-value').fill('A值')
+            row = page.locator('.global-attribute-row-v028').last
+            row.locator('.attr-label').fill("全局测试属性")
+            row.locator('.attr-value').fill("A值")
             page.locator('[data-business-attribute-form] button[type="submit"]').click()
             page.locator('#businessAttributeDialog').wait_for(state="hidden")
-            y_saved = page.evaluate("window.scrollY")
-            assert_near(y_saved, y_before, 3, "saving business editor moved page")
-            assert page.locator('.business-attribute', has_text='全局测试属性').count() >= 1
-            assert page.locator('.business-attribute', has_text='A值').count() >= 1
+            near(page.evaluate("window.scrollY"), y_before, 3, "saving editor moved page")
+            assert page.locator('.business-attribute').filter(has_text="全局测试属性").count() >= 1
+            assert page.locator('.business-attribute').filter(has_text="A值").count() >= 1
 
-            # 另一个客户打开编辑器也必须同步出现新增属性。
-            page.goto(f"http://127.0.0.1:8123/customers/{other_customer_id}?tab=services", wait_until="networkidle")
+            page.goto(f"http://127.0.0.1:8123/customers/{cid2}?tab=services", wait_until="networkidle")
             page.locator('[data-open-service-editor]').first.click()
             page.locator('#businessAttributeDialog').wait_for(state="visible")
-            global_row = page.locator('.global-attribute-row-v028').filter(has=page.locator('.attr-label[value="全局测试属性"]'))
-            if global_row.count() == 0:
-                # Chromium对动态input的[value]选择器不反映property，用evaluate筛。
-                count = page.locator('.global-attribute-row-v028').evaluate_all("rows => rows.filter(r => r.querySelector('.attr-label')?.value === '全局测试属性').length")
-                assert count == 1, "global attribute did not propagate to another customer"
+            propagated = page.locator('.global-attribute-row-v028').evaluate_all(
+                "rows => rows.filter(r => r.querySelector('.attr-label')?.value === '全局测试属性').length"
+            )
+            assert propagated == 1, "global attribute did not propagate"
             page.locator('[data-business-editor-close]').first.click()
             page.locator('#businessAttributeDialog').wait_for(state="hidden")
 
-            # 优惠：两列、无后续到期、号码复制+优惠名复制、日期框紧凑。
-            page.goto(f"http://127.0.0.1:8123/customers/{customer_id}?tab=promotions", wait_until="networkidle")
-            columns = page.locator('.promo-column-v028')
-            assert columns.count() == 2
-            left = columns.nth(0).bounding_box(); right = columns.nth(1).bounding_box()
-            assert left and right and right['x'] > left['x'] + left['width'] * 0.65, "promotion columns are not side by side"
-            assert_near(left['y'], right['y'], 3, "promotion columns are not aligned")
-            assert page.get_by_text('已经到期', exact=True).count() == 1
-            assert page.get_by_text('即将到期', exact=True).count() == 1
-            assert page.get_by_text('后续优惠不显示', exact=True).count() == 0
+            # 优惠：桌面端必须两列；只看已到期/即将到期；日期框紧凑；复制静默。
+            page.goto(f"http://127.0.0.1:8123/customers/{cid}?tab=promotions", wait_until="networkidle")
+            cols = page.locator('.promo-column-v028')
+            assert cols.count() == 2
+            left, right = cols.nth(0).bounding_box(), cols.nth(1).bounding_box()
+            assert left and right and right["x"] > left["x"] + left["width"] * 0.65, "promotions not two columns"
+            near(left["y"], right["y"], 3, "promotion columns not aligned")
+            assert page.get_by_text("已经到期", exact=True).count() == 1
+            assert page.get_by_text("即将到期", exact=True).count() == 1
+            assert page.get_by_text("后续优惠不显示", exact=True).count() == 0
 
             name_box = page.locator('.promo-name-copy-v028').first.bounding_box()
             expiry_box = page.locator('.promo-expiry-input-v028').first.bounding_box()
             assert name_box and expiry_box
-            assert expiry_box['width'] <= 150, f"promotion expiry input too wide: {expiry_box['width']}"
-            assert_near(name_box['height'], expiry_box['height'], 4, "promotion name and expiry controls differ too much in height")
+            assert expiry_box["width"] <= 150, expiry_box
+            near(name_box["height"], expiry_box["height"], 4, "promo name/expiry height mismatch")
 
             number_btn = page.locator('.promo-number-copy-v028').first
-            expected_number = number_btn.get_attribute('data-copy-silent')
+            number = number_btn.get_attribute('data-copy-silent')
             number_btn.click(); page.wait_for_timeout(80)
-            copied = page.evaluate("navigator.clipboard.readText()")
-            assert copied == expected_number, (copied, expected_number)
-            assert page.locator('.app-toast').count() == 0, "silent number copy displayed a toast"
+            assert page.evaluate("navigator.clipboard.readText()") == number
+            assert page.locator('.app-toast').count() == 0, "number copy showed toast"
             name_btn = page.locator('.promo-name-copy-v028').first
-            expected_name = name_btn.get_attribute('data-copy-silent')
+            promo_name = name_btn.get_attribute('data-copy-silent')
             name_btn.click(); page.wait_for_timeout(80)
-            copied = page.evaluate("navigator.clipboard.readText()")
-            assert copied == expected_name, (copied, expected_name)
-            assert page.locator('.app-toast').count() == 0, "silent promo-name copy displayed a toast"
+            assert page.evaluate("navigator.clipboard.readText()") == promo_name
+            assert page.locator('.app-toast').count() == 0, "promo copy showed toast"
 
-            # 首页优惠必须按客户汇总，而不是按每条优惠展开。
+            # 首页优惠按客户汇总。
             page.goto("http://127.0.0.1:8123/?home=promos", wait_until="networkidle")
             assert page.locator('[data-home-panel="promos"]').is_visible()
-            rows = page.locator('.home-promo-customer')
-            assert rows.count() == 1, f"home promotions not grouped by customer: {rows.count()}"
-            assert 'UI测试客户A' in rows.first.inner_text()
+            home_rows = page.locator('.home-promo-customer')
+            assert home_rows.count() == 1, f"homepage promos not customer-grouped: {home_rows.count()}"
+            assert "UI测试客户A" in home_rows.first.inner_text()
 
             browser.close()
 
         assert not page_errors, "browser page errors: " + " | ".join(page_errors)
         assert not request_failures, "browser request failures: " + " | ".join(request_failures)
-        print("UI acceptance passed: single CSS, tabs, 4-column resize, business global attributes, manual cycle, promotion workflow")
+        print("UI acceptance passed")
     finally:
         server.terminate()
         try:
