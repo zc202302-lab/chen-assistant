@@ -87,9 +87,15 @@ def service_order(page, selector):
 
 
 def drag_handle_to_before(page, handle, target):
+    """Perform a real pointer drag and wait until the reorder POST is persisted.
+
+    The dragged row is removed from normal layout as soon as pointerdown starts, so the
+    target row can move. Re-read its bounding box after drag startup instead of using a
+    stale pre-drag coordinate; this keeps the browser acceptance deterministic while
+    still exercising the real pointer sorter and backend persistence.
+    """
     hb = handle.bounding_box()
-    tb = target.bounding_box()
-    assert hb and tb, (hb, tb)
+    assert hb, hb
     x = hb['x'] + hb['width'] / 2
     y = hb['y'] + hb['height'] / 2
     page.mouse.move(x, y)
@@ -97,10 +103,25 @@ def drag_handle_to_before(page, handle, target):
     page.wait_for_timeout(80)
     assert page.locator('.sort-drag-ghost-v0211').count() == 1, 'drag ghost missing'
     assert page.locator('.sort-insertion-placeholder-v0211').count() == 1, 'insertion slot missing'
-    page.mouse.move(tb['x'] + min(30, tb['width'] / 3), tb['y'] + 4, steps=8)
-    page.wait_for_timeout(90)
-    page.mouse.up()
-    page.wait_for_timeout(450)
+
+    tb = target.bounding_box()
+    assert tb, tb
+    target_x = tb['x'] + min(70, max(12, tb['width'] / 4))
+    target_y = tb['y'] + min(7, max(3, tb['height'] * .18))
+    page.mouse.move(target_x, target_y, steps=12)
+    page.wait_for_timeout(100)
+
+    with page.expect_response(
+        lambda response: '/services/reorder-v0211' in response.url and response.request.method == 'POST',
+        timeout=5000,
+    ) as response_info:
+        page.mouse.up()
+    response = response_info.value
+    assert response.ok, (response.status, response.url)
+    payload = response.json()
+    assert payload.get('ok') is True, payload
+    page.wait_for_timeout(120)
+
     assert page.locator('.sort-drag-ghost-v0211').count() == 0
     assert page.locator('.sort-insertion-placeholder-v0211').count() == 0
 
