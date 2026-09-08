@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import re
 import sys
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +30,12 @@ from app.payment_v02 import current_period  # noqa: E402
 from app.security import create_session  # noqa: E402
 
 
+def month_date(period: str, months: int) -> date:
+    y, m = (int(x) for x in period.split('-'))
+    idx = y * 12 + (m - 1) + months
+    return date(idx // 12, idx % 12 + 1, 1)
+
+
 def seed():
     init_db()
     now = now_iso()
@@ -53,8 +59,8 @@ def seed():
             (sid, '1900-01', 'variable', 0, now),
         )
         for name, expiry in (
-            ('已到期优惠', date.today()),
-            ('即将到期优惠', date.today() + timedelta(days=30)),
+            ('已到期优惠', month_date(period, 0)),
+            ('即将到期优惠', month_date(period, 2)),
         ):
             conn.execute(
                 '''INSERT INTO promotions(service_id,name,start_date,expiry_date,remind_days,status,notes,created_at)
