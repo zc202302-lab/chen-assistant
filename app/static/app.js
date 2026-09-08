@@ -25,6 +25,17 @@
     return ok;
   };
 
+  // Strict CSP blocks the server-rendered inline CSS variables at parse time.
+  // Re-apply only these four numeric variables through the CSSOM before the
+  // customer workspace controller runs, preserving per-customer saved widths.
+  document.querySelectorAll('.v028-payment-list').forEach(list => {
+    const raw = list.getAttribute('style') || '';
+    for (const key of ['attr', 'number', 'account', 'amount']) {
+      const match = raw.match(new RegExp(`--col-${key}\\s*:\\s*(\\d+)px`, 'i'));
+      if (match) list.style.setProperty(`--col-${key}`, `${Number(match[1])}px`);
+    }
+  });
+
   document.addEventListener('submit', (e) => {
     const f = e.target;
     if (f.dataset.confirm && !confirm(f.dataset.confirm)) e.preventDefault();
