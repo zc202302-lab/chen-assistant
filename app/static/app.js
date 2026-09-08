@@ -1,11 +1,18 @@
 (() => {
+  let toastEl = null;
+  let toastTimer = null;
   const toast = (msg) => {
-    const el = document.createElement('div');
-    el.className = 'app-toast';
-    el.textContent = msg;
-    document.body.appendChild(el);
-    setTimeout(() => el.classList.add('show'), 10);
-    setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 180); }, 1100);
+    if (!toastEl || !document.body.contains(toastEl)) {
+      toastEl = document.createElement('div');
+      toastEl.className = 'app-toast';
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    if (toastTimer) clearTimeout(toastTimer);
+    requestAnimationFrame(() => toastEl?.classList.add('show'));
+    toastTimer = setTimeout(() => {
+      toastEl?.classList.remove('show');
+    }, 900);
   };
 
   const copyText = async (value) => {
@@ -36,20 +43,40 @@
     }
   });
 
+  // The payment header belongs in normal flow. Making it sticky inside the
+  // horizontal scrolling container pushes it down over payment rows in real
+  // customer pages. Keep only the customer summary/tabs sticky.
+  document.querySelectorAll('.v028-payment-header').forEach(header => {
+    header.style.position = 'relative';
+    header.style.top = 'auto';
+    header.style.zIndex = '2';
+  });
+
   document.addEventListener('submit', (e) => {
     const f = e.target;
     if (f.dataset.confirm && !confirm(f.dataset.confirm)) e.preventDefault();
   });
 
+  // Global copy buttons (customer name, group code, tax id, account pages).
   document.addEventListener('click', async (e) => {
     const generic = e.target.closest('.copy-btn');
     if (generic) {
       e.preventDefault();
-      await copyText(generic.dataset.copy || '');
+      const ok = await copyText(generic.dataset.copy || '');
+      toast(ok ? '已复制' : '复制失败');
     }
     const disabled = e.target.closest('a[aria-disabled="true"]');
     if (disabled) e.preventDefault();
   });
+
+  // Current customer-workspace controllers own the actual copy action for
+  // identifiers/promotions because they also preserve the amount-editor focus.
+  // Show feedback in capture phase without changing focus or propagation.
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.identifier-copy,[data-copy-silent]')) {
+      setTimeout(() => toast('已复制'), 0);
+    }
+  }, true);
 
   const filter = document.getElementById('serviceFilter');
   if (filter) {
@@ -77,7 +104,10 @@
       if (!r.ok) return toast('读取失败');
       const data = await r.json();
       document.getElementById('passwordValue').textContent = data.password || '未保存密码';
-      if (data.password) await copyText(data.password);
+      if (data.password) {
+        const ok = await copyText(data.password);
+        toast(ok ? '密码已复制' : '复制失败');
+      }
     });
   }
 
