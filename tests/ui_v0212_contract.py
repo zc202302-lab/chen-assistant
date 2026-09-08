@@ -6,6 +6,7 @@ sys.path.insert(0, str(ROOT))
 
 from app.main import app  # noqa: E402
 from app.v0212_routes import _natural_due, _service_due  # noqa: E402
+from app.v0212_payment_routes import next_period_after_actual_payment  # noqa: E402
 
 
 class Row(dict):
@@ -34,7 +35,7 @@ def first_route(path, method=None):
 def test_current_route_ownership():
     assert app.version == '0.2.12'
     assert first_route('/customers/{customer_id}').endpoint.__module__ == 'app.v0212_routes'
-    assert first_route('/customers/{customer_id}/payment-run', 'POST').endpoint.__module__ == 'app.v0212_routes'
+    assert first_route('/customers/{customer_id}/payment-run', 'POST').endpoint.__module__ == 'app.v0212_payment_routes'
     assert first_route('/customers/{customer_id}/payment.txt', 'GET').endpoint.__module__ == 'app.v0212_routes'
     assert first_route('/services/{service_id}/defer-v0212', 'POST').endpoint.__module__ == 'app.v0212_routes'
     assert first_route('/services/{service_id}/delete-v0212', 'POST').endpoint.__module__ == 'app.v0212_routes'
@@ -53,6 +54,11 @@ def test_strict_payment_schedule():
     assert _service_due(due_now, {'status': 'inactive', 'deferred_until_period': ''}, '2026-09') is False
     assert _service_due(due_now, {'status': 'active', 'deferred_until_period': '2026-10'}, '2026-09') is False
     assert _service_due(due_now, {'status': 'active', 'deferred_until_period': '2026-10'}, '2026-10') is True
+
+    # The cycle restarts from the month payment is actually completed.
+    assert next_period_after_actual_payment('2026-09', 2) == '2026-11'
+    assert next_period_after_actual_payment('2026-10', 2) == '2026-12'
+    assert next_period_after_actual_payment('2026-10', 12) == '2027-10'
 
 
 def test_ui_contracts():
