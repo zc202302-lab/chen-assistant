@@ -2,7 +2,7 @@ name: v0.2.9 validation
 
 on:
   push:
-    branches: [main, v0.2.9-dev]
+    branches: [main, v0.2.9-dev, v0.2.10-dev]
   workflow_dispatch:
 
 jobs:
@@ -55,7 +55,7 @@ jobs:
               text=p.read_text(encoding='utf-8')
               assert 'type="date"' not in text and "type='date'" not in text,name
           base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
-          for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js','/static/app.css','/static/v028.css'):
+          for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js','/static/app.css','/static/v028.css','/static/layout-refinement.css'):
               assert base.count(current)==1,current
           for old in ('/static/current.js','/static/v025.js','/static/v025_minor.js','/static/v026.js','/static/v027.js','/static/v02.css','/static/v021.css','/static/v022.css','/static/v023.css','/static/v024.css','/static/v025.css','/static/v026.css','/static/v027.css'):
               assert old not in base,old
@@ -71,3 +71,5 @@ jobs:
         run: python tests/ui_advanced_acceptance_v2.py
       - name: v0.2.9 density and complete editor acceptance
         run: python tests/ui_v029_acceptance.py
+      - name: Layout refinement regression
+        run: python tests/layout_refinement_regression.py
