@@ -69,4 +69,16 @@ async def current_asset_cache_policy(request, call_next):
         response.headers['Cache-Control'] = 'no-store, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
+
+    # v0.2.8 payment column widths are per-customer dynamic CSS variables stored
+    # on one element's style attribute. Keep stylesheet/script sources strict,
+    # but permit style attributes specifically; inline <style> blocks remain
+    # disallowed because style-src-elem stays self-only.
+    if 'Content-Security-Policy' in response.headers:
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; "
+            "script-src 'self'; img-src 'self' data:; connect-src 'self'; "
+            "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        )
     return response
