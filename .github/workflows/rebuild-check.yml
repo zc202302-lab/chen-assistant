@@ -2,7 +2,7 @@ name: v0.2.8 validation
 
 on:
   push:
-    branches: [main, v0.2.8-ui-hotfix, v0.2.8-promo-render-hotfix]
+    branches: [main, v0.2.8-ui-hotfix, v0.2.8-promo-render-hotfix, v0.2.8-css-consolidation]
   workflow_dispatch:
 
 jobs:
@@ -29,7 +29,7 @@ jobs:
         run: python -m playwright install --with-deps chromium
       - name: Check JavaScript syntax
         run: node --check app/static/v028.js
-      - name: Check Python, routes and templates
+      - name: Check Python, routes, templates and assets
         run: |
           python -m compileall -q app
           python - <<'PY'
@@ -50,11 +50,17 @@ jobs:
 
           base = (config.ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
           assert base.count('/static/v028.js') == 1
-          for old in ('/static/current.js', '/static/v025.js', '/static/v025_minor.js', '/static/v026.js', '/static/v027.js'):
-              assert old not in base
-          print('static validation passed')
+          assert base.count('/static/v028.css') == 1
+          assert base.count('/static/app.css') == 1
+          for old in (
+              '/static/current.js', '/static/v025.js', '/static/v025_minor.js', '/static/v026.js', '/static/v027.js',
+              '/static/v02.css', '/static/v021.css', '/static/v022.css', '/static/v023.css', '/static/v024.css',
+              '/static/v025.css', '/static/v026.css', '/static/v027.css',
+          ):
+              assert old not in base, old
+          print('static validation passed: one feature JS + one feature CSS')
           PY
       - name: Promotion render regression
         run: python tests/promotion_render_regression.py
-      - name: Real browser UI smoke test
+      - name: Real browser UI acceptance
         run: python tests/ui_browser_smoke.py
