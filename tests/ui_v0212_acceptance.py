@@ -182,7 +182,7 @@ def main():
             defer_input = monthly_row.locator('.payment-defer-input-v0212')
             defer_input.fill('1')
             defer_input.press('Enter')
-            page.wait_for_load_state('networkidle')
+            page.locator(f'[data-payment-row][data-service-id="{monthly}"]').wait_for(state='detached', timeout=5000)
             assert page.locator(f'[data-payment-row][data-service-id="{monthly}"]').count() == 0
 
             page.locator('[data-customer-tab="services"]').click()
