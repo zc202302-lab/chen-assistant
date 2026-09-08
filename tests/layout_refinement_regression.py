@@ -95,7 +95,10 @@ def main():
 
     css = (ROOT / 'app' / 'static' / 'layout-refinement.css').read_text(encoding='utf-8')
     assert 'grid-template-columns:minmax(0,1fr) minmax(0,1fr)' in css
-    assert '.business-attribute:nth-child(n+6){display:none}' in css
+    assert '.business-row-line-v029 .business-attribute:nth-child(n+6)' in css
+    assert 'business-preview-hidden-v030{display:none!important}' in css
+    assert '.business-attribute small{display:none}' in css
+    assert '.business-table-header-v030' in css
     print('layout refinement regression passed')
 
 
