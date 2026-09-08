@@ -34,8 +34,8 @@ def seed():
             sid=int(cur.lastrowid)
             conn.execute('INSERT INTO service_payment_rules (service_id,effective_period,mode,fixed_amount,created_at) VALUES(?,?,?,?,?)',(sid,'1900-01','variable',0,now))
             ids.append((cid,sid))
-        for idx,name in enumerate(('优惠甲','优惠乙'),1):
-            conn.execute('''INSERT INTO promotions (service_id,name,start_date,expiry_date,remind_days,status,notes,created_at,sort_order) VALUES(?,?,?,?,?,?,?,?,?)''',(ids[0][1],name,'',date.today().isoformat(),60,'active','',now,idx*10))
+        for name in ('优惠甲','优惠乙'):
+            conn.execute('''INSERT INTO promotions (service_id,name,start_date,expiry_date,remind_days,status,notes,created_at) VALUES(?,?,?,?,?,?,?,?)''',(ids[0][1],name,'',date.today().isoformat(),60,'active','',now))
     token,_,_=create_session(); return ids[0][0],ids[1][0],token
 
 
@@ -61,7 +61,6 @@ def main():
             context.add_cookies([{'name':'session_token','value':token,'url':'http://127.0.0.1:8124'}])
             page=context.new_page()
 
-            # 新增一个全局属性。
             page.goto(f'http://127.0.0.1:8124/customers/{c1}?tab=services',wait_until='networkidle')
             page.locator('[data-customer-panel="services"] [data-open-service-editor]').first.click()
             dlg=page.locator('#businessAttributeDialog'); dlg.wait_for(state='visible')
@@ -70,7 +69,6 @@ def main():
             new.locator('.attr-label').fill('排序删除测试属性'); new.locator('.attr-value').fill('客户1值')
             page.locator('[data-business-attribute-form] button[type="submit"]').click(); dlg.wait_for(state='hidden')
 
-            # 再打开，将该属性拖到第一位并保存。
             page.locator('[data-customer-panel="services"] [data-open-service-editor]').first.click(); dlg.wait_for(state='visible')
             custom_key=page.locator('.global-attribute-row-v028').evaluate_all("rows=>rows.find(r=>r.querySelector('.attr-label')?.value==='排序删除测试属性')?.dataset.key||''")
             assert custom_key
@@ -82,12 +80,10 @@ def main():
             page.locator('[data-business-attribute-form] button[type="submit"]').click(); dlg.wait_for(state='hidden')
             assert page.locator('.business-attribute small').first.inner_text().strip()=='排序删除测试属性'
 
-            # 另一个客户必须同步同一模板顺序。
             page.goto(f'http://127.0.0.1:8124/customers/{c2}?tab=services',wait_until='networkidle')
             page.locator('[data-customer-panel="services"] [data-open-service-editor]').first.click(); dlg.wait_for(state='visible')
             assert page.locator('.global-attribute-row-v028').first.locator('.attr-label').input_value()=='排序删除测试属性'
 
-            # 删除属性，保存后全局消失。
             page.locator('.global-attribute-row-v028').first.locator('.global-attribute-delete').click()
             page.locator('[data-business-attribute-form] button[type="submit"]').click(); dlg.wait_for(state='hidden')
             page.goto(f'http://127.0.0.1:8124/customers/{c1}?tab=services',wait_until='networkidle')
@@ -97,7 +93,6 @@ def main():
             assert '排序删除测试属性' not in labels
             page.locator('[data-business-editor-close]').first.click(); dlg.wait_for(state='hidden')
 
-            # 同一号码下两个优惠可拖动排序并刷新保持。
             page.goto(f'http://127.0.0.1:8124/customers/{c1}?tab=promotions',wait_until='networkidle')
             expired=page.locator('.promo-column-v028.state-expired')
             group=expired.locator('.promo-number-group-v028').first
@@ -111,7 +106,6 @@ def main():
             persisted=[x.strip() for x in group.locator('.promo-name-copy-v028 strong').all_inner_texts()]
             assert persisted[0]=='优惠乙',persisted
 
-            # 添加优惠必须手输号码，并自动合并到原号码组，不新增第二个号码组。
             details=page.locator('[data-customer-panel="promotions"] details').first
             details.locator('summary').click()
             form=details.locator('form[action*="promotions-v027"]')
@@ -120,7 +114,6 @@ def main():
             form.locator('input[name="expiry_date"]').fill(date.today().strftime('%Y/%m/%d'))
             with page.expect_navigation(wait_until='networkidle'):
                 form.locator('button[type="submit"],button.primary').click()
-            # 如果后端重定向未带tab，主动切回优惠，但号码组必须仍只有一个。
             if not page.locator('[data-customer-panel="promotions"]').is_visible():
                 page.locator('[data-customer-tab="promotions"]').click(); page.wait_for_timeout(80)
             expired=page.locator('.promo-column-v028.state-expired')
