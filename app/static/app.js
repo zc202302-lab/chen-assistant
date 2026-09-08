@@ -35,8 +35,8 @@
   window.ChenToast = toast;
   window.ChenCopyText = copyText;
 
-  // 统一手动输入体验：第一次单击全选，第二次单击恢复浏览器原生光标，
-  // 便于直接覆盖，也便于随后只修改其中一部分。失去焦点后重新从“第一次”开始。
+  // 所有手动输入框统一：第一次单击全选；第二次单击保留浏览器原生光标，
+  // 方便只修改局部内容。失焦后再次点击重新按“第一次”处理。
   const selectionState = new WeakMap();
   const manualEditor = (el) => {
     if (!el || el.disabled || el.readOnly) return false;
@@ -56,23 +56,22 @@
   };
   window.ChenSelectAllInput = selectAllEditor;
 
+  // 使用捕获阶段，是为了在“第二次点击”时阻止旧工作区控制器再次强制全选；
+  // 不 preventDefault，因此浏览器仍会把光标放到用户真正点击的位置。
   document.addEventListener('click', (e) => {
     const el = e.target.closest?.('input,textarea');
     if (!manualEditor(el)) return;
     if (selectionState.get(el) === true) {
-      // 第二次点击时不改动浏览器刚刚放置的光标/选择范围。
       selectionState.set(el, false);
+      e.stopPropagation();
       return;
     }
     selectAllEditor(el);
-  });
+  }, true);
   document.addEventListener('focusout', (e) => {
     if (manualEditor(e.target)) selectionState.delete(e.target);
   });
 
-  // Strict CSP blocks the server-rendered inline CSS variables at parse time.
-  // Re-apply only these four numeric variables through the CSSOM before the
-  // customer workspace controller runs, preserving per-customer saved widths.
   document.querySelectorAll('.v028-payment-list').forEach(list => {
     const raw = list.getAttribute('style') || '';
     for (const key of ['attr', 'number', 'account', 'amount']) {
@@ -81,9 +80,6 @@
     }
   });
 
-  // The payment header belongs in normal flow. Making it sticky inside the
-  // horizontal scrolling container pushes it down over payment rows in real
-  // customer pages. Keep only the customer summary/tabs sticky.
   document.querySelectorAll('.v028-payment-header').forEach(header => {
     header.style.position = 'relative';
     header.style.top = 'auto';
@@ -95,7 +91,6 @@
     if (f.dataset.confirm && !confirm(f.dataset.confirm)) e.preventDefault();
   });
 
-  // Global copy buttons (customer name, group code, tax id, account pages).
   document.addEventListener('click', async (e) => {
     const generic = e.target.closest('.copy-btn');
     if (generic) {
@@ -107,8 +102,6 @@
     if (disabled) e.preventDefault();
   });
 
-  // 当前工作区控制器负责号码/账号/优惠等实际复制；这里仅显示反馈。
-  // 优惠名称需要区分单击复制与双击编辑，因此由工作区自己显示反馈。
   document.addEventListener('click', (e) => {
     const target = e.target.closest('.identifier-copy,[data-copy-silent]');
     if (target && !target.matches('[data-promo-name-edit]')) {
