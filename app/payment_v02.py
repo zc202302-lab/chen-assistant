@@ -20,6 +20,15 @@ def add_months(d: date, months: int) -> date:
     return date(y, m, day)
 
 
+def add_periods(period: str, months: int) -> str:
+    try:
+        y, m = [int(x) for x in period[:7].split('-')]
+    except Exception:
+        return ''
+    idx = y * 12 + (m - 1) + months
+    return f'{idx // 12:04d}-{idx % 12 + 1:02d}'
+
+
 def cycle_months(text: str) -> int | None:
     s = (text or '').strip()
     if not s:
@@ -34,19 +43,43 @@ def cycle_months(text: str) -> int | None:
         return 12
     if s.endswith('个月'):
         try:
-            return int(s[:-2])
+            n = int(s[:-2])
+            return n if n > 0 else None
         except Exception:
             return None
     return None
 
 
+def service_interval_months(row) -> int | None:
+    if 'payment_interval_months' in row.keys():
+        try:
+            explicit = int(row['payment_interval_months'] or 0)
+        except Exception:
+            explicit = 0
+        if explicit > 0:
+            return explicit
+    return cycle_months(row['payment_cycle'])
+
+
 def service_is_due(row, today: date | None = None) -> bool:
+    """Whether this service belongs in the current payment workbench.
+
+    Monthly services are always due. For longer cycles, v0.2.5 prefers the explicit
+    next_payment_period. A missed due month remains due (current >= next), so an overdue
+    service can never silently disappear just because the calendar moved forward.
+    """
     today = today or date.today()
-    months = cycle_months(row['payment_cycle'])
+    months = service_interval_months(row)
     if months is None:
         return False
     if months == 1:
         return True
+
+    if 'next_payment_period' in row.keys():
+        next_period = (row['next_payment_period'] or '').strip()
+        if next_period:
+            return today.strftime('%Y-%m') >= next_period
+
     last = (row['last_payment_date'] or '').strip()
     if not last:
         return True
@@ -55,6 +88,18 @@ def service_is_due(row, today: date | None = None) -> bool:
     except Exception:
         return True
     return add_months(last_d, months) <= today
+
+
+def next_due_after_payment(row, paid_period: str) -> str:
+    months = service_interval_months(row)
+    if not months or months == 1:
+        return ''
+    current_next = (row['next_payment_period'] or '').strip() if 'next_payment_period' in row.keys() else ''
+    base = current_next or paid_period
+    nxt = base
+    while nxt and nxt <= paid_period:
+        nxt = add_periods(nxt, months)
+    return nxt or add_periods(paid_period, months)
 
 
 def service_active_in_period(row, period: str) -> bool:
@@ -164,9 +209,11 @@ def payment_snapshot(conn: sqlite3.Connection, customer_id: int, period: str | N
     items = []
     required = pending = changed = zero = 0
     total = 0.0
+    due_count = 0
     for s in rows:
         if not service_active_in_period(s, period) or not service_is_due(s):
             continue
+        due_count += 1
         pe, rule = ensure_payment_entry(conn, s, period)
         amount = float(pe['amount'] or 0)
         reference = pe['reference_amount']
@@ -193,6 +240,7 @@ def payment_snapshot(conn: sqlite3.Connection, customer_id: int, period: str | N
             'invoice_group_name': s['invoice_group_name'] or '',
         })
     return items, {
+        'due_count': due_count,
         'required': required,
         'pending': pending,
         'changed': changed,
