@@ -212,6 +212,13 @@
     });
   };
 
+  const resetSaveButton = () => {
+    const button = form.querySelector('button[type="submit"]');
+    if (!button) return;
+    button.disabled = false;
+    delete button.dataset.savingV0212;
+  };
+
   const save = async button => {
     const sid = serviceId();
     if (!sid) return toast('未识别到当前业务，请关闭编辑窗口后重新打开');
@@ -258,14 +265,16 @@
       const runtimeData = await postForm(`/services/${sid}/runtime-v0212`, runtimeFd);
 
       updateBusinessRows(runtimeData.rows || {});
+      resetSaveButton();
       dialog.close();
       toast('业务已保存');
     } catch (err) {
-      button.disabled = false;
-      delete button.dataset.savingV0212;
+      resetSaveButton();
       toast(err.message || '业务保存失败');
     }
   };
+
+  dialog.addEventListener('close', resetSaveButton);
 
   dialog.addEventListener('click', e => {
     const saveButton = e.target.closest('[data-business-attribute-form] button[type="submit"]');
