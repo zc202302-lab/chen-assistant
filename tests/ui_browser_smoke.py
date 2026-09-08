@@ -168,7 +168,10 @@ def main() -> None:
             left,right=cols.nth(0).bounding_box(),cols.nth(1).bounding_box()
             assert left and right and right["x"]>left["x"]+left["width"]*.65,"promotions not two columns"
             near(left["y"],right["y"],3,"promotion columns not aligned")
-            assert page.get_by_text("已经到期",exact=True).count()==1; assert page.get_by_text("即将到期",exact=True).count()==1
+            heads=page.locator('.promo-column-head h3')
+            assert heads.count()==2
+            assert heads.nth(0).inner_text().strip()=="已经到期"
+            assert heads.nth(1).inner_text().strip()=="即将到期"
             assert page.get_by_text("后续优惠不显示",exact=True).count()==0
             name_box=page.locator('.promo-name-copy-v028').first.bounding_box(); expiry_box=page.locator('.promo-expiry-input-v028').first.bounding_box()
             assert name_box and expiry_box; assert expiry_box["width"]<=150,expiry_box
