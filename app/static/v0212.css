@@ -13,6 +13,7 @@
   .business-row-line-v029 .business-attribute:nth-child(5){display:block!important}
 }
 
+.v0211-payment-header,.v0211-payment-row{grid-template-columns:28px var(--payment-cols) 150px!important}
 .payment-head-draggable-v0212{cursor:grab;user-select:none;position:relative}
 .payment-head-draggable-v0212:active,.payment-head-draggable-v0212.is-dragging-v0212{cursor:grabbing;opacity:.58}
 .payment-head-draggable-v0212.drag-before-v0212::before,
@@ -28,7 +29,7 @@
 .payment-head-draggable-v0212.drag-before-v0212::before{left:-4px}
 .payment-head-draggable-v0212.drag-after-v0212::after{right:-4px}
 
-.payment-row-actions-v0211{min-width:126px}
+.payment-row-actions-v0211{min-width:140px}
 .payment-defer-wrap-v0212{display:flex;align-items:center;gap:3px;min-width:0}
 .payment-defer-v0212{height:27px!important;padding:3px 5px!important;font-size:10px!important}
 .payment-defer-input-v0212{
