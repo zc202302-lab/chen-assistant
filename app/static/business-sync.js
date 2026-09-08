@@ -22,8 +22,10 @@
     }
     header.hidden = false;
 
-    const sourceAttrs = [...source.querySelectorAll('.business-attribute')].slice(0, 5);
+    const sourceAttrs = [...source.querySelectorAll('.business-attribute')];
     const labels = sourceAttrs.map(attr => attr.querySelector('small')?.textContent?.trim() || '属性');
+    const count = Math.max(1, labels.length);
+    header.style.setProperty('--business-visible-count', String(count));
     header.innerHTML = '';
 
     const dragGutter = document.createElement('span');
@@ -31,6 +33,7 @@
 
     const fields = document.createElement('div');
     fields.className = 'business-table-header-fields-v030';
+    fields.style.setProperty('--business-visible-count', String(count));
     labels.forEach((label, index) => {
       const cell = document.createElement('span');
       cell.className = 'business-table-header-cell-v030';
@@ -38,23 +41,20 @@
       cell.textContent = label;
       fields.appendChild(cell);
     });
-    while (fields.children.length < 5) {
-      const cell = document.createElement('span');
-      cell.className = 'business-table-header-cell-v030 is-empty';
-      fields.appendChild(cell);
-    }
     const action = document.createElement('span');
     action.className = 'business-table-header-action-v030';
     action.textContent = '操作';
     header.append(dragGutter, fields, action);
 
     rows.forEach(row => {
+      const grid = row.querySelector('.business-attribute-grid');
+      grid?.style.setProperty('--business-visible-count', String(count));
       const attrs = [...row.querySelectorAll('.business-attribute')];
-      attrs.forEach((attr, index) => {
+      attrs.forEach(attr => {
+        attr.classList.remove('business-preview-hidden-v030');
         const label = attr.querySelector('small')?.textContent?.trim() || '属性';
         const value = attr.querySelector('strong')?.textContent?.trim() || '';
-        attr.classList.toggle('business-preview-hidden-v030', index >= 5);
-        if (index < 5 && value && value !== '—') {
+        if (value && value !== '—') {
           attr.dataset.copySilent = value;
           attr.setAttribute('role', 'button');
           attr.tabIndex = 0;
