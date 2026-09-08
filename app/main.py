@@ -10,6 +10,7 @@ from .v026_routes import router as v026_router
 from .v026_home import router as v026_home_router
 from .v027_routes import router as v027_router
 from .v027_home import router as v027_home_router
+from .v028_routes import router as v028_router
 
 _legacy_routes = list(app.router.routes)
 
@@ -31,10 +32,11 @@ _v026_routes = _include(v026_router)
 _v026_home_routes = _include(v026_home_router)
 _v027_routes = _include(v027_router)
 _v027_home_routes = _include(v027_home_router)
+_v028_routes = _include(v028_router)
 
-# v0.2.7 rebuilt: latest display routes are unique. Older routers remain only for
-# historical POST/action endpoints that the current workspace still calls.
+# 最新核心展示路由唯一；旧路由只保留当前仍在使用的 POST/action 能力。
 _ordered = (
+    _v028_routes +
     _v027_home_routes + _v027_routes +
     _v026_home_routes + _v026_routes +
     _v025_home_routes + _v025_routes +
@@ -53,5 +55,5 @@ for route in _ordered:
     _final.append(route)
 app.router.routes[:] = _final
 
-app.title = '晨的助手 v0.2.7'
-app.version = '0.2.7'
+app.title = '晨的助手 v0.2.8'
+app.version = '0.2.8'
