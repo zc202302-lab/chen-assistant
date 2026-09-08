@@ -75,6 +75,21 @@ def wait_http(url):
     raise RuntimeError('server start failed')
 
 
+def set_business_orders(editor, orders):
+    rows = editor.locator('.global-attribute-row-v028')
+    for i in range(rows.count()):
+        row = rows.nth(i)
+        key = row.get_attribute('data-key') or ''
+        inp = row.locator('[data-business-display-order]')
+        assert inp.count() == 1, key
+        inp.fill(str(orders[key]) if key in orders else '')
+
+
+def header_labels(page):
+    page.wait_for_timeout(120)
+    return [x.strip() for x in page.locator('[data-business-table-header] .business-table-header-cell-v030').all_inner_texts()]
+
+
 def main():
     cid, (monthly, annual, every_two), token = seed()
     proc = subprocess.Popen(
@@ -98,54 +113,70 @@ def main():
             assert ids == [monthly, every_two], ids
             assert annual not in ids
 
-            # Payment amount is a core payment function: shown in table, absent from attribute chooser.
+            # Payment amount remains a core payment function and payment display selection is independent.
             headers = page.locator('[data-payment-column-head]')
             labels = [x.strip() for x in headers.locator('span').all_inner_texts()]
             assert '缴费金额' in labels, labels
             amount_head = page.locator('[data-payment-column-head][data-payment-attr-key="payment_amount"]')
             assert amount_head.get_attribute('draggable') == 'true'
             page.locator('[data-payment-columns-settings]').click()
-            dialog = page.locator('#paymentColumnsDialog')
-            dialog.wait_for(state='visible')
-            values = dialog.locator('select option').evaluate_all('opts => opts.map(o => o.value)')
+            payment_dialog = page.locator('#paymentColumnsDialog')
+            payment_dialog.wait_for(state='visible')
+            values = payment_dialog.locator('select option').evaluate_all('opts => opts.map(o => o.value)')
             assert 'payment_amount' not in values, values
-            assert dialog.locator('[data-payment-column-row]').count() == 4
-            dialog.locator('[data-payment-columns-close]').first.click()
+            payment_dialog.locator('[data-payment-columns-close]').first.click()
 
-            # Business module has independent visibility controls and an always-visible schedule state.
             page.locator('[data-customer-tab="services"]').click()
             row = page.locator(f'[data-business-row][data-service-id="{monthly}"]')
-            assert '本月应缴' in row.inner_text()
             row.locator('[data-open-service-editor]').click()
             editor = page.locator('#businessAttributeDialog')
             editor.wait_for(state='visible')
             editor.locator('[data-business-status-v0212]').wait_for(state='visible')
-            checks = editor.locator('[data-business-visible-v0212]')
-            assert checks.count() >= 5
+            editor.locator('.global-attribute-row-v028[data-key="__payment_state__"]').wait_for(state='visible')
 
-            account_row = editor.locator('.global-attribute-row-v028[data-key="account"]')
-            method_row = editor.locator('.global-attribute-row-v028[data-key="payment_method"]')
-            account_check = account_row.locator('[data-business-visible-v0212]')
-            method_check = method_row.locator('[data-business-visible-v0212]')
-            if account_check.is_checked():
-                account_check.uncheck()
-            if not method_check.is_checked():
-                method_check.check()
+            # Checkbox-based visibility is gone. Each attribute has a manual display-order number.
+            page.wait_for_timeout(100)
+            assert editor.locator('[data-business-visible-v0212]').count() == 0
+            order_inputs = editor.locator('[data-business-display-order]')
+            assert order_inputs.count() >= 6
+
+            # Only numbered attributes show; numeric order controls actual business-column order.
+            # Payment state is deliberately left blank to prove it is no longer a fixed column.
+            set_business_orders(editor, {
+                'payment_method': 1,
+                'service_type': 2,
+                'account': 3,
+            })
+            url_before = page.url
             editor.locator('[data-business-attribute-form] button[type="submit"]').click()
-            page.wait_for_load_state('networkidle')
+            editor.wait_for(state='hidden')
+            assert page.url == url_before  # no page navigation/reload required
+            assert header_labels(page) == ['付款方式', '业务类型', '账号'], header_labels(page)
 
-            page.locator('[data-customer-tab="services"]').click()
-            header_text = page.locator('[data-business-table-header]').inner_text()
-            assert '缴费状态' in header_text
-            assert '付款方式' in header_text
-            assert '账号' not in header_text
+            business_text = row.locator('[data-business-attrs]').inner_text()
+            assert '微信' in business_text and '月缴' in business_text and 'A1201' in business_text
+            assert '缴费状态' not in business_text
 
-            # Payment module kept its own selection; business visibility did not overwrite it.
+            # Payment module kept its own column selection; business display order did not overwrite it.
             page.locator('[data-customer-tab="payment"]').click()
             payment_header_text = page.locator('.v0211-payment-header').inner_text()
             assert '账号' in payment_header_text, payment_header_text
 
-            # Deferral: 1 means current month skipped; row immediately leaves payment workbench.
+            # Payment state behaves like an ordinary business display attribute: give it an order and it appears immediately.
+            page.locator('[data-customer-tab="services"]').click()
+            row.locator('[data-open-service-editor]').click()
+            editor.wait_for(state='visible')
+            set_business_orders(editor, {
+                '__payment_state__': 1,
+                'account': 2,
+            })
+            editor.locator('[data-business-attribute-form] button[type="submit"]').click()
+            editor.wait_for(state='hidden')
+            assert header_labels(page) == ['缴费状态', '账号'], header_labels(page)
+            assert '本月应缴' in row.locator('[data-business-attrs]').inner_text()
+
+            # Deferral updates the derived payment-state attribute through the shared runtime data.
+            page.locator('[data-customer-tab="payment"]').click()
             monthly_row = page.locator(f'[data-payment-row][data-service-id="{monthly}"]')
             monthly_row.locator('[data-defer-payment-v0212]').click()
             defer_input = monthly_row.locator('.payment-defer-input-v0212')
@@ -158,22 +189,23 @@ def main():
             monthly_business = page.locator(f'[data-business-row][data-service-id="{monthly}"]')
             assert '延期至' in monthly_business.inner_text()
 
-            # Business status controls whether a due row is allowed into payment.
+            # Business status still controls payment eligibility.
             two_business = page.locator(f'[data-business-row][data-service-id="{every_two}"]')
             two_business.locator('[data-open-service-editor]').click()
             editor.wait_for(state='visible')
             status = editor.locator('[data-business-status-v0212]')
             status.select_option('inactive')
             editor.locator('[data-business-attribute-form] button[type="submit"]').click()
-            page.wait_for_load_state('networkidle')
-            page.locator('[data-customer-tab="payment"]').click()
+            editor.wait_for(state='hidden')
+            page.reload(wait_until='networkidle')
             assert page.locator(f'[data-payment-row][data-service-id="{every_two}"]').count() == 0
 
-            # Hard delete from business editor.
+            # Hard delete remains available from the business editor.
             page.locator('[data-customer-tab="services"]').click()
             annual_row = page.locator(f'[data-business-row][data-service-id="{annual}"]')
             annual_row.locator('[data-open-service-editor]').click()
             editor.wait_for(state='visible')
+            assert editor.locator('[data-delete-service-v0212]').count() == 1
             page.once('dialog', lambda d: d.accept())
             editor.locator('[data-delete-service-v0212]').click()
             page.wait_for_load_state('networkidle')
