@@ -45,6 +45,9 @@ git merge --ff-only origin/main
 
 echo "===== 更新前代码检查 ====="
 .venv/bin/python -m compileall -q app
+if command -v node >/dev/null 2>&1; then
+  node --check app/static/v028.js
+fi
 .venv/bin/python - <<'PY'
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
@@ -52,21 +55,21 @@ from app import config
 from app.main import app
 
 env = Environment(loader=FileSystemLoader(str(config.ROOT / 'app' / 'templates')))
-for name in ('base.html', 'dashboard_v027.html', 'customer_workspace_v027.html'):
+for name in ('base.html', 'dashboard_v027.html', 'customer_workspace_v028.html'):
     env.get_template(name)
-assert app.version == '0.2.7', f'预期 v0.2.7，实际 v{app.version}'
+assert app.version == '0.2.8', f'预期 v0.2.8，实际 v{app.version}'
 
-# 三个核心展示路由必须各自只有一个，禁止旧版本重复注册。
 for path in ('/', '/customers/{customer_id}', '/health'):
     matches = [r for r in app.router.routes if getattr(r, 'path', '') == path]
     assert len(matches) == 1, f'{path} 路由数量异常：{len(matches)}'
 
-# 页面只允许一套当前控制器。旧客户页脚本如果重新出现，部署直接失败。
+customer_route = next(r for r in app.router.routes if getattr(r, 'path', '') == '/customers/{customer_id}')
+assert getattr(customer_route.endpoint, '__module__', '') == 'app.v028_routes', '客户页未由 v0.2.8 接管'
 base = (config.ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-assert base.count('/static/current.js') == 1, 'current.js 必须且只能加载一次'
-for old in ('/static/v025.js', '/static/v025_minor.js', '/static/v026.js', '/static/v027.js'):
+assert base.count('/static/v028.js') == 1, 'v028.js 必须且只能加载一次'
+for old in ('/static/current.js', '/static/v025.js', '/static/v025_minor.js', '/static/v026.js', '/static/v027.js'):
     assert old not in base, f'检测到旧客户页控制器仍在加载：{old}'
-assert (config.ROOT / 'app' / 'static' / 'current.js').is_file(), '缺少 current.js'
+assert (config.ROOT / 'app' / 'static' / 'v028.js').is_file(), '缺少 v028.js'
 print(f"✓ Python / 路由 / 模板 / 单控制器检查通过：v{app.version}")
 PY
 
@@ -83,7 +86,7 @@ import json, sys
 payload = json.loads(sys.argv[1])
 if payload.get('ok') is not True:
     raise SystemExit('健康检查返回 ok=false')
-if payload.get('version') != '0.2.7':
+if payload.get('version') != '0.2.8':
     raise SystemExit(f"版本不匹配：{payload.get('version')}")
 print(f"✓ 服务版本：{payload.get('version')}")
 PY
