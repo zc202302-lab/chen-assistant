@@ -49,15 +49,16 @@ jobs:
               assert len(matches)==1,(path,len(matches))
           customer_route=next(r for r in app.router.routes if getattr(r,'path','')=='/customers/{customer_id}')
           assert customer_route.endpoint.__module__=='app.v0212_routes'
-          for path,method in (
-              ('/customers/{customer_id}/payment-run','POST'),
-              ('/customers/{customer_id}/payment.txt','GET'),
-              ('/services/{service_id}/defer-v0212','POST'),
-              ('/services/{service_id}/delete-v0212','POST'),
-          ):
+          owned={
+              ('/customers/{customer_id}/payment-run','POST'):'app.v0212_payment_routes',
+              ('/customers/{customer_id}/payment.txt','GET'):'app.v0212_routes',
+              ('/services/{service_id}/defer-v0212','POST'):'app.v0212_routes',
+              ('/services/{service_id}/delete-v0212','POST'):'app.v0212_routes',
+          }
+          for (path,method),module in owned.items():
               matches=[r for r in app.router.routes if getattr(r,'path','')==path and method in getattr(r,'methods',set())]
               assert matches,(path,method)
-              assert matches[0].endpoint.__module__=='app.v0212_routes',(path,matches[0].endpoint.__module__)
+              assert matches[0].endpoint.__module__==module,(path,matches[0].endpoint.__module__)
           env=Environment(loader=FileSystemLoader(str(config.ROOT/'app'/'templates')))
           runtime_templates=('base.html','dashboard_v027.html','customer_workspace_v0211.html','account_detail.html','account_form.html','accounts.html','customer_form.html','login.html','search.html')
           for name in runtime_templates:
