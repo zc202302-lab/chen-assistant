@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install Python dependencies
-        run: pip install -r requirements.txt playwright
+        run: pip install -r requirements.txt playwright httpx
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
       - name: Check JavaScript syntax
