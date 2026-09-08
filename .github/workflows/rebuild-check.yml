@@ -1,8 +1,8 @@
-name: Rebuild validation
+name: v0.2.8 validation
 
 on:
   push:
-    branches: [v0.2.7-rebuild2]
+    branches: [v0.2.8-dev]
   workflow_dispatch:
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
       - name: Check JavaScript syntax
-        run: node --check app/static/current.js
+        run: node --check app/static/v028.js
       - name: Check Python, routes and templates
         run: |
           python -m compileall -q app
@@ -29,18 +29,20 @@ jobs:
           from app import config
           from app.main import app
 
-          assert app.version == '0.2.7'
+          assert app.version == '0.2.8'
           for path in ('/', '/customers/{customer_id}', '/health'):
               matches = [r for r in app.router.routes if getattr(r, 'path', '') == path]
               assert len(matches) == 1, (path, len(matches))
+          customer_route = next(r for r in app.router.routes if getattr(r, 'path', '') == '/customers/{customer_id}')
+          assert customer_route.endpoint.__module__ == 'app.v028_routes'
 
           env = Environment(loader=FileSystemLoader(str(config.ROOT / 'app' / 'templates')))
-          for name in ('base.html', 'dashboard_v027.html', 'customer_workspace_v027.html'):
+          for name in ('base.html', 'dashboard_v027.html', 'customer_workspace_v028.html'):
               env.get_template(name)
 
           base = (config.ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-          assert base.count('/static/current.js') == 1
-          for old in ('/static/v025.js', '/static/v025_minor.js', '/static/v026.js', '/static/v027.js'):
+          assert base.count('/static/v028.js') == 1
+          for old in ('/static/current.js', '/static/v025.js', '/static/v025_minor.js', '/static/v026.js', '/static/v027.js'):
               assert old not in base
-          print('rebuild validation passed')
+          print('v0.2.8 validation passed')
           PY
