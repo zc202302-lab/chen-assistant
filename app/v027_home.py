@@ -55,6 +55,7 @@ def dashboard_v027(request: Request, home: str = 'tasks'):
                ORDER BY c.name,p.expiry_date,p.id'''
         ).fetchall()
         promo_map = {}
+        promo_bucket_maps = {'expired': {}, 'soon': {}}
         for p in promo_rows:
             bucket = promotion_bucket(p['expiry_date'], p['status'])
             if bucket not in {'expired', 'soon'}:
@@ -68,7 +69,23 @@ def dashboard_v027(request: Request, home: str = 'tasks'):
             })
             item[bucket] += 1
             item['total'] += 1
+
+            bucket_item = promo_bucket_maps[bucket].setdefault(p['customer_id'], {
+                'customer_id': p['customer_id'],
+                'customer_name': p['customer_name'],
+                'count': 0,
+            })
+            bucket_item['count'] += 1
+
         promo_customers = sorted(promo_map.values(), key=lambda x: (0 if x['expired'] else 1, -x['total'], x['customer_name']))
+        promo_home_columns = {
+            bucket: sorted(items.values(), key=lambda x: (-x['count'], x['customer_name']))
+            for bucket, items in promo_bucket_maps.items()
+        }
+        promo_home_totals = {
+            bucket: sum(item['count'] for item in promo_home_columns[bucket])
+            for bucket in ('expired', 'soon')
+        }
 
         recent = conn.execute('SELECT id,name,group_code,tax_id FROM customers ORDER BY updated_at DESC LIMIT 12').fetchall()
 
@@ -82,6 +99,8 @@ def dashboard_v027(request: Request, home: str = 'tasks'):
             wait_payment=wait_payment,
             done_payment=done_payment,
             promo_customers=promo_customers,
+            promo_home_columns=promo_home_columns,
+            promo_home_totals=promo_home_totals,
             recent=recent,
         ),
     )
