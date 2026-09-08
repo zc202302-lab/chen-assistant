@@ -151,7 +151,7 @@ def main():
             editor.locator('[data-business-attribute-form] button[type="submit"]').click()
             editor.wait_for(state='hidden')
             assert page.url == url_before  # no page navigation/reload required
-            assert header_labels(page) == ['付款方式', '业务类型', '账号'], header_labels(page)
+            assert header_labels(page) == ['付款方式', '类型', '账号'], header_labels(page)
 
             business_text = row.locator('[data-business-attrs]').inner_text()
             assert '微信' in business_text and '月缴' in business_text and 'A1201' in business_text
