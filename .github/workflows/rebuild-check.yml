@@ -1,8 +1,8 @@
-name: v0.2.8 validation
+name: v0.2.9 validation
 
 on:
   push:
-    branches: [main, v0.2.8-css-consolidation, v0.2.8-production-layout-hotfix]
+    branches: [main, v0.2.9-dev]
   workflow_dispatch:
 
 jobs:
@@ -32,6 +32,7 @@ jobs:
           node --check app/static/app.js
           node --check app/static/v028.js
           node --check app/static/ui-drag.js
+          node --check app/static/service-promotions.js
       - name: Check Python, routes, templates and assets
         run: |
           python -m compileall -q app
@@ -39,14 +40,14 @@ jobs:
           from jinja2 import Environment, FileSystemLoader
           from app import config
           from app.main import app
-          assert app.version == '0.2.8'
+          assert app.version == '0.2.9'
           for path in ('/', '/customers/{customer_id}', '/health'):
               matches=[r for r in app.router.routes if getattr(r,'path','')==path]
               assert len(matches)==1,(path,len(matches))
           customer_route=next(r for r in app.router.routes if getattr(r,'path','')=='/customers/{customer_id}')
-          assert customer_route.endpoint.__module__=='app.v028_routes'
+          assert customer_route.endpoint.__module__=='app.v029_routes'
           env=Environment(loader=FileSystemLoader(str(config.ROOT/'app'/'templates')))
-          runtime_templates=('base.html','dashboard_v027.html','customer_workspace_v028.html','account_detail.html','account_form.html','accounts.html','customer_form.html','login.html','search.html')
+          runtime_templates=('base.html','dashboard_v027.html','customer_workspace_v029.html','account_detail.html','account_form.html','accounts.html','customer_form.html','login.html','search.html')
           for name in runtime_templates:
               p=config.ROOT/'app'/'templates'/name
               if not p.exists(): continue
@@ -54,11 +55,11 @@ jobs:
               text=p.read_text(encoding='utf-8')
               assert 'type="date"' not in text and "type='date'" not in text,name
           base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
-          for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/app.css','/static/v028.css'):
+          for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js','/static/app.css','/static/v028.css'):
               assert base.count(current)==1,current
           for old in ('/static/current.js','/static/v025.js','/static/v025_minor.js','/static/v026.js','/static/v027.js','/static/v02.css','/static/v021.css','/static/v022.css','/static/v023.css','/static/v024.css','/static/v025.css','/static/v026.css','/static/v027.css'):
               assert old not in base,old
-          print('static validation passed: final runtime assets + no runtime date picker')
+          print('static validation passed: v0.2.9 runtime assets + no runtime date picker')
           PY
       - name: Production experience regression
         run: python tests/production_experience_regression.py
@@ -68,3 +69,5 @@ jobs:
         run: python tests/ui_browser_smoke.py
       - name: Advanced business and promotion acceptance
         run: python tests/ui_advanced_acceptance_v2.py
+      - name: v0.2.9 density and complete editor acceptance
+        run: python tests/ui_v029_acceptance.py
