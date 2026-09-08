@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS customers (
     leased_own TEXT DEFAULT '',
     leased_other TEXT DEFAULT '',
     other_status TEXT DEFAULT '',
+    payment_display_attr_1 TEXT DEFAULT 'service_type',
+    payment_display_attr_2 TEXT DEFAULT 'holder_name',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -203,7 +205,7 @@ def _migrate(conn: sqlite3.Connection):
         conn.execute('ALTER TABLE payment_entries ADD COLUMN reference_amount REAL DEFAULT NULL')
         conn.execute('UPDATE payment_entries SET reference_amount=amount WHERE reference_amount IS NULL')
 
-    # v0.2.3: persistent manual row ordering and two selectable default attributes.
+    # v0.2.3: persistent manual row ordering and legacy per-row display settings.
     added_sort = False
     if not _has_column(conn, 'services', 'sort_order'):
         conn.execute('ALTER TABLE services ADD COLUMN sort_order INTEGER DEFAULT 0')
@@ -217,6 +219,14 @@ def _migrate(conn: sqlite3.Connection):
                         SET sort_order = CASE WHEN COALESCE(source_row,0)>0 THEN source_row*10 ELSE id*10 END''')
     conn.execute("UPDATE services SET display_attr_1='service_type' WHERE COALESCE(display_attr_1,'')='' ")
     conn.execute("UPDATE services SET display_attr_2='holder_name' WHERE COALESCE(display_attr_2,'')='' ")
+
+    # v0.2.4: display attributes are selected once per customer and applied to every payment row.
+    if not _has_column(conn, 'customers', 'payment_display_attr_1'):
+        conn.execute("ALTER TABLE customers ADD COLUMN payment_display_attr_1 TEXT DEFAULT 'service_type'")
+    if not _has_column(conn, 'customers', 'payment_display_attr_2'):
+        conn.execute("ALTER TABLE customers ADD COLUMN payment_display_attr_2 TEXT DEFAULT 'holder_name'")
+    conn.execute("UPDATE customers SET payment_display_attr_1='service_type' WHERE COALESCE(payment_display_attr_1,'')='' ")
+    conn.execute("UPDATE customers SET payment_display_attr_2='holder_name' WHERE COALESCE(payment_display_attr_2,'')='' ")
 
     marker = conn.execute("SELECT value FROM app_meta WHERE key='payment_history_bootstrap_v1'").fetchone()
     if not marker:
