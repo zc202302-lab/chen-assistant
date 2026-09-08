@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS services (
     monthly_fee REAL DEFAULT 0,
     fixed_fee INTEGER DEFAULT 0,
     payment_cycle TEXT DEFAULT '',
+    payment_interval_months INTEGER DEFAULT 0,
+    next_payment_period TEXT DEFAULT '',
     payment_method TEXT DEFAULT '',
     invoice_type TEXT DEFAULT '',
     package_type TEXT DEFAULT '',
@@ -100,11 +102,29 @@ CREATE TABLE IF NOT EXISTS payment_entries (
     UNIQUE(service_id, period)
 );
 
+CREATE TABLE IF NOT EXISTS customer_payment_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    period TEXT NOT NULL,
+    notified_at TEXT DEFAULT '',
+    paid_at TEXT DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(customer_id, period)
+);
+
 CREATE TABLE IF NOT EXISTS promotions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
     name TEXT DEFAULT '',
-    expiry_date TEXT DEFAULT ''
+    start_date TEXT DEFAULT '',
+    expiry_date TEXT DEFAULT '',
+    remind_days INTEGER NOT NULL DEFAULT 60,
+    status TEXT NOT NULL DEFAULT 'active',
+    renewed_at TEXT DEFAULT '',
+    renewed_to_id INTEGER DEFAULT NULL,
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
@@ -157,6 +177,7 @@ CREATE INDEX IF NOT EXISTS idx_services_customer ON services(customer_id);
 CREATE INDEX IF NOT EXISTS idx_services_type ON services(service_type);
 CREATE INDEX IF NOT EXISTS idx_services_number ON services(number);
 CREATE INDEX IF NOT EXISTS idx_payment_entries_period ON payment_entries(period, service_id);
+CREATE INDEX IF NOT EXISTS idx_payment_runs_customer_period ON customer_payment_runs(customer_id, period);
 CREATE INDEX IF NOT EXISTS idx_invoice_groups_customer ON invoice_groups(customer_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(done, remind_date);
 CREATE INDEX IF NOT EXISTS idx_promotions_expiry ON promotions(expiry_date);
@@ -189,10 +210,37 @@ def _has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
     return any(row['name'] == column for row in conn.execute(f'PRAGMA table_info({table})').fetchall())
 
 
+def _cycle_months(text: str) -> int:
+    s = (text or '').strip()
+    if s in {'月', '每月', '1个月'}:
+        return 1
+    if s in {'季度', '季', '3个月'}:
+        return 3
+    if s in {'半年', '6个月'}:
+        return 6
+    if s in {'年', '每年', '12个月'}:
+        return 12
+    if s.endswith('个月'):
+        try:
+            n = int(s[:-2])
+            return n if n > 0 else 0
+        except Exception:
+            return 0
+    return 0
+
+
+def _period_add(period: str, months: int) -> str:
+    try:
+        y, m = [int(x) for x in period[:7].split('-')]
+    except Exception:
+        return ''
+    idx = y * 12 + (m - 1) + months
+    return f'{idx // 12:04d}-{idx % 12 + 1:02d}'
+
+
 def _migrate(conn: sqlite3.Connection):
     if not _has_column(conn, 'services', 'invoice_group_id'):
         conn.execute('ALTER TABLE services ADD COLUMN invoice_group_id INTEGER DEFAULT NULL')
-
     if not _has_column(conn, 'services', 'active_from_period'):
         conn.execute("ALTER TABLE services ADD COLUMN active_from_period TEXT DEFAULT ''")
     if not _has_column(conn, 'services', 'inactive_from_period'):
@@ -205,7 +253,6 @@ def _migrate(conn: sqlite3.Connection):
         conn.execute('ALTER TABLE payment_entries ADD COLUMN reference_amount REAL DEFAULT NULL')
         conn.execute('UPDATE payment_entries SET reference_amount=amount WHERE reference_amount IS NULL')
 
-    # v0.2.3: persistent manual row ordering and legacy per-row display settings.
     added_sort = False
     if not _has_column(conn, 'services', 'sort_order'):
         conn.execute('ALTER TABLE services ADD COLUMN sort_order INTEGER DEFAULT 0')
@@ -220,7 +267,6 @@ def _migrate(conn: sqlite3.Connection):
     conn.execute("UPDATE services SET display_attr_1='service_type' WHERE COALESCE(display_attr_1,'')='' ")
     conn.execute("UPDATE services SET display_attr_2='holder_name' WHERE COALESCE(display_attr_2,'')='' ")
 
-    # v0.2.4: display attributes are selected once per customer and applied to every payment row.
     if not _has_column(conn, 'customers', 'payment_display_attr_1'):
         conn.execute("ALTER TABLE customers ADD COLUMN payment_display_attr_1 TEXT DEFAULT 'service_type'")
     if not _has_column(conn, 'customers', 'payment_display_attr_2'):
@@ -228,9 +274,46 @@ def _migrate(conn: sqlite3.Connection):
     conn.execute("UPDATE customers SET payment_display_attr_1='service_type' WHERE COALESCE(payment_display_attr_1,'')='' ")
     conn.execute("UPDATE customers SET payment_display_attr_2='holder_name' WHERE COALESCE(payment_display_attr_2,'')='' ")
 
+    # v0.2.5: explicit payment schedule. Existing free-text cycle is preserved and used to bootstrap it.
+    if not _has_column(conn, 'services', 'payment_interval_months'):
+        conn.execute('ALTER TABLE services ADD COLUMN payment_interval_months INTEGER DEFAULT 0')
+    if not _has_column(conn, 'services', 'next_payment_period'):
+        conn.execute("ALTER TABLE services ADD COLUMN next_payment_period TEXT DEFAULT ''")
+    current_period = datetime.now().strftime('%Y-%m')
+    rows = conn.execute('SELECT id,payment_cycle,last_payment_date,payment_interval_months,next_payment_period FROM services').fetchall()
+    for row in rows:
+        interval = int(row['payment_interval_months'] or 0)
+        if interval <= 0:
+            interval = _cycle_months(row['payment_cycle'])
+        next_period = (row['next_payment_period'] or '').strip()
+        if interval > 1 and not next_period:
+            last = (row['last_payment_date'] or '').strip()
+            next_period = _period_add(last[:7], interval) if len(last) >= 7 else current_period
+        conn.execute('UPDATE services SET payment_interval_months=?,next_payment_period=? WHERE id=?',
+                     (interval, next_period, row['id']))
+
+    # v0.2.5: promotion lifecycle fields; old imported rows remain active.
+    if not _has_column(conn, 'promotions', 'start_date'):
+        conn.execute("ALTER TABLE promotions ADD COLUMN start_date TEXT DEFAULT ''")
+    if not _has_column(conn, 'promotions', 'remind_days'):
+        conn.execute('ALTER TABLE promotions ADD COLUMN remind_days INTEGER NOT NULL DEFAULT 60')
+    if not _has_column(conn, 'promotions', 'status'):
+        conn.execute("ALTER TABLE promotions ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
+    if not _has_column(conn, 'promotions', 'renewed_at'):
+        conn.execute("ALTER TABLE promotions ADD COLUMN renewed_at TEXT DEFAULT ''")
+    if not _has_column(conn, 'promotions', 'renewed_to_id'):
+        conn.execute('ALTER TABLE promotions ADD COLUMN renewed_to_id INTEGER DEFAULT NULL')
+    if not _has_column(conn, 'promotions', 'notes'):
+        conn.execute("ALTER TABLE promotions ADD COLUMN notes TEXT DEFAULT ''")
+    if not _has_column(conn, 'promotions', 'created_at'):
+        conn.execute("ALTER TABLE promotions ADD COLUMN created_at TEXT DEFAULT ''")
+    conn.execute("UPDATE promotions SET status='active' WHERE COALESCE(status,'')='' ")
+    conn.execute('UPDATE promotions SET remind_days=60 WHERE remind_days IS NULL OR remind_days<0')
+    conn.execute('UPDATE promotions SET created_at=? WHERE COALESCE(created_at,\'\')=\'\'', (now_iso(),))
+
     marker = conn.execute("SELECT value FROM app_meta WHERE key='payment_history_bootstrap_v1'").fetchone()
     if not marker:
-        period = datetime.now().strftime('%Y-%m')
+        period = current_period
         now = now_iso()
         conn.execute(
             '''INSERT OR IGNORE INTO payment_entries(service_id,period,amount,reference_amount,source,confirmed,created_at,updated_at)
@@ -250,9 +333,25 @@ def _migrate(conn: sqlite3.Connection):
         (now,),
     )
 
+    # Carry the legacy customer-level notified/completed flags into the new monthly run table once.
+    legacy_rows = conn.execute(
+        "SELECT id,payment_period,notified,completed,created_at,updated_at FROM customers WHERE COALESCE(payment_period,'')<>''"
+    ).fetchall()
+    for c in legacy_rows:
+        notified_at = c['updated_at'] if c['notified'] else ''
+        paid_at = c['updated_at'] if c['completed'] else ''
+        conn.execute(
+            '''INSERT OR IGNORE INTO customer_payment_runs
+               (customer_id,period,notified_at,paid_at,created_at,updated_at)
+               VALUES(?,?,?,?,?,?)''',
+            (c['id'], c['payment_period'], notified_at, paid_at, c['created_at'] or now, c['updated_at'] or now),
+        )
+
     conn.execute('CREATE INDEX IF NOT EXISTS idx_services_invoice_group ON services(invoice_group_id)')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_services_customer_sort ON services(customer_id,sort_order,id)')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_payment_rules_service_period ON service_payment_rules(service_id,effective_period)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_payment_runs_customer_period ON customer_payment_runs(customer_id,period)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_promotions_service_status ON promotions(service_id,status,expiry_date)')
 
 
 def init_db():
