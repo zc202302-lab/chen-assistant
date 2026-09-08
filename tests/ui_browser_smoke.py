@@ -98,6 +98,10 @@ def near(a: float, b: float, tol: float, msg: str) -> None:
     assert abs(a-b) <= tol, f"{msg}: {a} vs {b}"
 
 
+def clipboard(page) -> str:
+    return page.evaluate("navigator.clipboard.readText()")
+
+
 def main() -> None:
     cid, cid2, token = seed()
     server = subprocess.Popen([sys.executable,"-m","uvicorn","app.main:app","--host","127.0.0.1","--port","8123"],
@@ -120,6 +124,26 @@ def main() -> None:
             assert css_names==["app.css","v028.css"],css_names
             forbidden={"v02.css","v021.css","v022.css","v023.css","v024.css","v025.css","v026.css","v027.css"}
             assert not forbidden.intersection(css_names),css_names
+
+            # 前期核心复制功能必须持续可用：客户名称、集团编码、税号。
+            hero_copies=page.locator('.v023-profile-card .copy-btn')
+            expected=['UI测试客户A','C0001','TEST-TAX-1']
+            assert hero_copies.count()>=3
+            for i,value in enumerate(expected):
+                hero_copies.nth(i).click(); page.wait_for_timeout(50)
+                assert clipboard(page)==value, (i, clipboard(page), value)
+
+            # 缴费号码/账号单击复制；复制时不能夺走正在编辑金额的焦点。
+            first_payment=page.locator('[data-payment-row]').first
+            amount=first_payment.locator('.quick-amount')
+            amount.click(); assert page.evaluate('document.activeElement===arguments[0]', amount.element_handle())
+            ids=first_payment.locator('.identifier-copy')
+            assert ids.count()==2
+            for i in range(2):
+                value=ids.nth(i).get_attribute('data-copy')
+                ids.nth(i).click(); page.wait_for_timeout(50)
+                assert clipboard(page)==value
+                assert page.evaluate('document.activeElement===arguments[0]', amount.element_handle()), 'copy stole amount focus'
 
             for tab in ("services","promotions","contacts","tasks","visits","payment"):
                 page.locator(f'[data-customer-tab="{tab}"]').click(); page.wait_for_timeout(60)
@@ -178,10 +202,10 @@ def main() -> None:
             near(name_box["height"],expiry_box["height"],4,"promo name/expiry height mismatch")
 
             number_btn=page.locator('.promo-number-copy-v028').first; number=number_btn.get_attribute('data-copy-silent')
-            number_btn.click(); page.wait_for_timeout(80); assert page.evaluate("navigator.clipboard.readText()")==number
+            number_btn.click(); page.wait_for_timeout(80); assert clipboard(page)==number
             assert page.locator('.app-toast').count()==0,"number copy showed toast"
             name_btn=page.locator('.promo-name-copy-v028').first; promo_name=name_btn.get_attribute('data-copy-silent')
-            name_btn.click(); page.wait_for_timeout(80); assert page.evaluate("navigator.clipboard.readText()")==promo_name
+            name_btn.click(); page.wait_for_timeout(80); assert clipboard(page)==promo_name
             assert page.locator('.app-toast').count()==0,"promo copy showed toast"
 
             page.goto("http://127.0.0.1:8123/?home=promos",wait_until="networkidle")
