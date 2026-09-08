@@ -67,11 +67,11 @@ customer_route=next(r for r in app.router.routes if getattr(r,'path','')=='/cust
 assert getattr(customer_route.endpoint,'__module__','')=='app.v029_routes','客户页未由 v0.2.9 接管'
 
 base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
-for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js','/static/app.css','/static/v028.css'):
+for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js','/static/app.css','/static/v028.css','/static/layout-refinement.css'):
     assert base.count(current)==1,f'{current} 必须且只能加载一次'
 for old in ('/static/current.js','/static/v025.js','/static/v025_minor.js','/static/v026.js','/static/v027.js','/static/v02.css','/static/v021.css','/static/v022.css','/static/v023.css','/static/v024.css','/static/v025.css','/static/v026.css','/static/v027.css'):
     assert old not in base,f'检测到历史前端资源仍在运行：{old}'
-for asset in ('app.js','v028.js','ui-drag.js','service-promotions.js','app.css','v028.css'):
+for asset in ('app.js','v028.js','ui-drag.js','service-promotions.js','app.css','v028.css','layout-refinement.css'):
     assert (config.ROOT/'app'/'static'/asset).is_file(),f'缺少 {asset}'
 print(f"✓ Python / 路由 / 模板 / 当前前端资源检查通过：v{app.version}")
 PY
@@ -91,7 +91,7 @@ PY
 
 echo "===== 已运行静态文件一致性检查 ====="
 REV="$(git rev-parse --short HEAD)"
-for ASSET in app.js v028.js ui-drag.js service-promotions.js app.css v028.css; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js app.css v028.css layout-refinement.css; do
   LOCAL_FILE="app/static/$ASSET"; TMP_FILE="$(mktemp)"
   curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP_FILE"
   LOCAL_SHA="$(sha256sum "$LOCAL_FILE"|awk '{print $1}')"; SERVED_SHA="$(sha256sum "$TMP_FILE"|awk '{print $1}')"; rm -f "$TMP_FILE"
