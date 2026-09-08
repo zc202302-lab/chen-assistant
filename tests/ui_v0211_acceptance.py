@@ -112,7 +112,7 @@ def drag_handle_to_before(page, handle, target):
     page.wait_for_timeout(100)
 
     with page.expect_response(
-        lambda response: '/services/reorder-v0211' in response.url and response.request.method == 'POST',
+        lambda response: '/services/reorder' in response.url and response.request.method == 'POST',
         timeout=5000,
     ) as response_info:
         page.mouse.up()
