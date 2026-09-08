@@ -1,7 +1,11 @@
 from pathlib import Path
+import sys
 
-from app.main import app
-from app.v0212_routes import _natural_due, _service_due
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from app.main import app  # noqa: E402
+from app.v0212_routes import _natural_due, _service_due  # noqa: E402
 
 
 class Row(dict):
@@ -52,10 +56,9 @@ def test_strict_payment_schedule():
 
 
 def test_ui_contracts():
-    root = Path(__file__).resolve().parents[1]
-    js = (root / 'app/static/v0212.js').read_text(encoding='utf-8')
-    business = (root / 'app/static/business-sync.js').read_text(encoding='utf-8')
-    routes = (root / 'app/v0212_routes.py').read_text(encoding='utf-8')
+    js = (ROOT / 'app/static/v0212.js').read_text(encoding='utf-8')
+    business = (ROOT / 'app/static/business-sync.js').read_text(encoding='utf-8')
+    routes = (ROOT / 'app/v0212_routes.py').read_text(encoding='utf-8')
 
     assert 'defer-v0212' in js and '删除此条数据' in js
     assert 'payment_amount' in js and 'scrubAmountFromAttributeDialog' in js
