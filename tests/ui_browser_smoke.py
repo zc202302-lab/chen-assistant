@@ -102,6 +102,12 @@ def clipboard(page) -> str:
     return page.evaluate("navigator.clipboard.readText()")
 
 
+def assert_copy_toast(page) -> None:
+    toast = page.locator('.app-toast.show')
+    assert toast.count() == 1, "copy feedback toast missing"
+    assert toast.inner_text().strip() in ("已复制", "密码已复制")
+
+
 def main() -> None:
     cid, cid2, token = seed()
     server = subprocess.Popen([sys.executable,"-m","uvicorn","app.main:app","--host","127.0.0.1","--port","8123"],
@@ -125,12 +131,18 @@ def main() -> None:
             forbidden={"v02.css","v021.css","v022.css","v023.css","v024.css","v025.css","v026.css","v027.css"}
             assert not forbidden.intersection(css_names),css_names
 
+            header_box=page.locator('.v028-payment-header').bounding_box()
+            first_row_box=page.locator('[data-payment-row]').first.bounding_box()
+            assert header_box and first_row_box
+            assert header_box['y'] + header_box['height'] <= first_row_box['y'] + 2, (header_box, first_row_box)
+
             hero_copies=page.locator('.v023-profile-card .copy-btn')
             expected=['UI测试客户A','C0001','TEST-TAX-1']
             assert hero_copies.count()>=3
             for i,value in enumerate(expected):
                 hero_copies.nth(i).click(); page.wait_for_timeout(50)
                 assert clipboard(page)==value, (i, clipboard(page), value)
+                assert_copy_toast(page)
 
             first_payment=page.locator('[data-payment-row]').first
             amount=first_payment.locator('.quick-amount')
@@ -142,6 +154,7 @@ def main() -> None:
                 ids.nth(i).click(); page.wait_for_timeout(50)
                 assert clipboard(page)==value
                 assert amount.evaluate('el => document.activeElement === el'), 'copy stole amount focus'
+                assert_copy_toast(page)
 
             for tab in ("services","promotions","contacts","tasks","visits","payment"):
                 page.locator(f'[data-customer-tab="{tab}"]').click(); page.wait_for_timeout(60)
@@ -201,10 +214,10 @@ def main() -> None:
 
             number_btn=page.locator('.promo-number-copy-v028').first; number=number_btn.get_attribute('data-copy-silent')
             number_btn.click(); page.wait_for_timeout(80); assert clipboard(page)==number
-            assert page.locator('.app-toast').count()==0,"number copy showed toast"
+            assert_copy_toast(page)
             name_btn=page.locator('.promo-name-copy-v028').first; promo_name=name_btn.get_attribute('data-copy-silent')
             name_btn.click(); page.wait_for_timeout(80); assert clipboard(page)==promo_name
-            assert page.locator('.app-toast').count()==0,"promo copy showed toast"
+            assert_copy_toast(page)
 
             page.goto("http://127.0.0.1:8123/?home=promos",wait_until="networkidle")
             assert page.locator('[data-home-panel="promos"]').is_visible(); home_rows=page.locator('.home-promo-customer')
