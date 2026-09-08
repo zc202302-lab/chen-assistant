@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block title %}联系人 · {{ customer.name }}{% endblock %}{% block content %}
+<section class="subpage-head"><a class="back-link" href="/customers/{{ customer.id }}">← {{ customer.name }}</a><div class="subpage-title"><div><p class="eyebrow">二级页面</p><h1>联系人</h1></div></div></section>
+<section class="card compact-card">
+{% for k in contacts %}<div class="info-row"><div><b>{{ k.name or '未命名联系人' }}</b><small>{{ k.kind }}{% if k.relationship %} · {{ k.relationship }}{% endif %}{% if k.phone %} · {{ k.phone }}{% endif %}</small></div><div class="mini-actions">{% if k.phone %}<a class="ghost small" href="tel:{{ k.phone }}">拨打</a><button class="copy-btn ghost small" data-copy="{{ k.phone }}">复制</button>{% endif %}<form method="post" action="/contacts/{{ k.id }}/delete" data-confirm="删除这个联系人？"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small">删除</button></form></div></div>{% else %}<p class="empty">还没有联系人。</p>{% endfor %}
+</section>
+<section class="card"><h2>添加联系人</h2><form method="post" action="/customers/{{ customer.id }}/contacts" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}"><label>类型<select name="kind"><option>关键联系人</option><option>业务对接人</option><option>其他</option></select></label><label>姓名<input name="name"></label><label>关系 / 职务<input name="relationship"></label><label>电话<input name="phone" inputmode="tel"></label><button class="primary">保存联系人</button></form></section>
+{% endblock %}

@@ -113,6 +113,25 @@ def ensure_payment_entry(conn: sqlite3.Connection, service, period: str):
         (service['id'], period),
     ).fetchone()
     rule = effective_payment_rule(conn, service['id'], period, service)
+
+    # A fixed rule is authoritative for the month. Older imported v0.1.1 rows
+    # may exist with confirmed=0, so normalize them here instead of treating
+    # fixed items as unresolved or silently dropping them from TXT.
+    if existing and rule['mode'] == 'fixed':
+        desired = float(rule['fixed_amount'])
+        if (not bool(existing['confirmed'])) or abs(float(existing['amount'] or 0) - desired) >= 0.005 or existing['source'] != 'fixed':
+            reference = existing['reference_amount']
+            if reference is None:
+                reference = float(existing['amount'] or 0)
+            conn.execute(
+                '''UPDATE payment_entries
+                   SET amount=?,reference_amount=?,source='fixed',confirmed=1,updated_at=?
+                   WHERE id=?''',
+                (desired, reference, now_iso(), existing['id']),
+            )
+            existing = conn.execute('SELECT * FROM payment_entries WHERE id=?', (existing['id'],)).fetchone()
+        return existing, rule
+
     if existing:
         return existing, rule
 

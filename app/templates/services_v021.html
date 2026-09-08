@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}业务 · {{ customer.name }}{% endblock %}
+{% block content %}
+<section class="subpage-head">
+  <a class="back-link" href="/customers/{{ customer.id }}">← {{ customer.name }}</a>
+  <div class="subpage-title"><div><p class="eyebrow">二级页面</p><h1>业务管理</h1></div></div>
+</section>
+
+<section class="card compact-card">
+  <div class="section-head"><h2>开票分组</h2><span>{{ invoice_groups|length }}</span></div>
+  {% for g in invoice_groups %}
+  <div class="info-row"><div><b>{{ g.name }}</b><small>{{ g.note or '同组业务合打一张发票' }}</small></div>
+    <form method="post" action="/invoice-groups/{{ g.id }}/delete" data-confirm="删除这个开票分组？业务不会删除。">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small">删除</button>
+    </form>
+  </div>
+  {% endfor %}
+  <details class="top-gap"><summary>＋ 新建开票分组</summary>
+    <form method="post" action="/customers/{{ customer.id }}/invoice-groups" class="stack top-gap">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>分组名称<input name="name" required></label>
+      <label>备注<input name="note"></label>
+      <button class="secondary">创建</button>
+    </form>
+  </details>
+</section>
+
+<section class="card compact-card">
+  <div class="section-head"><h2>在用业务</h2><span>{{ service_groups.values()|map('length')|sum }}</span></div>
+  <input id="serviceFilter" class="service-filter" placeholder="搜索号码 / 账号 / 姓名">
+  {% for type, items in service_groups.items() %}
+  <details class="service-group">
+    <summary>{{ type }} <span>{{ items|length }}</span></summary>
+    <div class="service-list">
+    {% for item in items %}{% set s=item.row %}{% set rule=item.rule %}
+      <article class="service-card" data-service-text="{{ type }} {{ s.holder_name }} {{ s.number }} {{ s.account }} {{ s.package_type }} {{ s.invoice_group_name or '' }}">
+        <div class="service-top"><div><b>{{ s.holder_name or type }}</b><small>{{ s.number }}{% if s.account %} · {{ s.account }}{% endif %}</small></div><strong>{{ '固定' if rule.mode=='fixed' else '变动' }}</strong></div>
+        <div class="service-meta">
+          {% if s.invoice_group_name %}<span>开票组：{{ s.invoice_group_name }}</span>{% endif %}
+          {% if s.payment_cycle %}<span>{{ s.payment_cycle }}</span>{% endif %}
+          {% if s.payment_method %}<span>{{ s.payment_method }}</span>{% endif %}
+          {% if s.invoice_type %}<span>{{ s.invoice_type }}</span>{% endif %}
+        </div>
+        <details><summary>编辑</summary>
+          <form method="post" action="/services/{{ s.id }}/edit" class="stack top-gap">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <div class="form-grid">
+              <label>类型<input name="service_type" value="{{ s.service_type }}"></label>
+              <label>姓名/属性<input name="holder_name" value="{{ s.holder_name }}"></label>
+              <label>号码<input name="number" value="{{ s.number }}"></label>
+              <label>账号<input name="account" value="{{ s.account }}"></label>
+              <label>缴费规则<select name="payment_mode"><option value="variable" {% if rule.mode=='variable' %}selected{% endif %}>变动</option><option value="fixed" {% if rule.mode=='fixed' %}selected{% endif %}>固定</option></select></label>
+              <label>固定金额<input type="number" step="0.01" min="0" name="fixed_amount" value="{{ rule.fixed_amount }}"></label>
+              <label>缴费周期<input name="payment_cycle" value="{{ s.payment_cycle }}"></label>
+              <label>付款方式<input name="payment_method" value="{{ s.payment_method }}"></label>
+              <label>发票类型<input name="invoice_type" value="{{ s.invoice_type }}"></label>
+              <label>套餐类型<input name="package_type" value="{{ s.package_type }}"></label>
+              <label>上次缴费日期<input type="date" name="last_payment_date" value="{{ s.last_payment_date }}"></label>
+              <label>开票分组<select name="invoice_group_id"><option value="">未分组</option>{% for g in invoice_groups %}<option value="{{ g.id }}" {% if s.invoice_group_id==g.id %}selected{% endif %}>{{ g.name }}</option>{% endfor %}</select></label>
+            </div>
+            <button class="primary">保存业务</button>
+          </form>
+          <form method="post" action="/services/{{ s.id }}/delete" class="danger-zone" data-confirm="从本月起停用这项业务？历史记录会保留。">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><button class="danger-button">本月起停用</button>
+          </form>
+        </details>
+      </article>
+    {% endfor %}
+    </div>
+  </details>
+  {% else %}<p class="empty">没有在用业务。</p>{% endfor %}
+</section>
+
+<section class="card add-service-card">
+  <details open>
+    <summary>＋ 添加新业务</summary>
+    <form method="post" action="/customers/{{ customer.id }}/services" class="stack top-gap">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="form-grid">
+        <label>业务类型 *<input name="service_type" required></label>
+        <label>姓名/属性<input name="holder_name"></label>
+        <label>号码<input name="number"></label>
+        <label>账号<input name="account"></label>
+        <label>缴费规则<select name="payment_mode"><option value="variable">变动</option><option value="fixed">固定</option></select></label>
+        <label>固定/初始金额<input type="number" step="0.01" min="0" name="fixed_amount" value="0"></label>
+        <label>缴费周期<input name="payment_cycle" placeholder="月 / 3个月 / 年"></label>
+        <label>付款方式<input name="payment_method"></label>
+        <label>发票类型<input name="invoice_type"></label>
+        <label>套餐类型<input name="package_type"></label>
+        <label>上次缴费日期<input type="date" name="last_payment_date"></label>
+        <label>开票分组<select name="invoice_group_id"><option value="">未分组</option>{% for g in invoice_groups %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}</select></label>
+      </div>
+      <button class="primary">保存业务</button>
+    </form>
+  </details>
+</section>
+
+{% if inactive_services %}
+<section class="card compact-card"><details><summary>已停用业务 {{ inactive_services|length }} 项</summary>
+{% for s in inactive_services %}<div class="info-row"><div><b>{{ s.service_type }} · {{ s.holder_name or '未命名' }}</b><small>{{ s.number }}{% if s.account %} · {{ s.account }}{% endif %}</small></div><span class="badge">{{ s.inactive_from_period }}起停用</span></div>{% endfor %}
+</details></section>
+{% endif %}
+{% endblock %}

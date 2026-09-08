@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}缴费 · {{ customer.name }}{% endblock %}
+{% block content %}
+<section class="subpage-head">
+  <a class="back-link" href="/customers/{{ customer.id }}">← {{ customer.name }}</a>
+  <div class="subpage-title payment-page-title">
+    <div><p class="eyebrow">{{ payment_period }}</p><h1>缴费工作区</h1></div>
+    <div class="payment-page-total"><span>合计</span><strong id="paymentGrandTotal">¥{{ '%.2f'|format(stats.total)|replace('.00','') }}</strong></div>
+  </div>
+  <p class="work-hint">单击号码/账号复制；双击任意属性进入快速修改；单击金额即全选，Enter 保存并核对。</p>
+</section>
+
+<section class="payment-shell" data-payment-workbench data-csrf="{{ csrf }}" data-default-filter="{{ 'pending' if stats.pending else 'all' }}">
+  <div class="payment-toolbar compact-toolbar">
+    <button type="button" class="payment-filter" data-payment-filter="pending">待核对 <b id="pendingCount">{{ stats.pending }}</b></button>
+    <button type="button" class="payment-filter" data-payment-filter="all">全部 <b>{{ payment_items|length }}</b></button>
+    <button type="button" class="payment-filter" data-payment-filter="changed">异动 <b id="changedCount">{{ stats.changed }}</b></button>
+    <button type="button" class="payment-filter" data-payment-filter="zero">0元 <b id="zeroCount">{{ stats.zero }}</b></button>
+    <div class="toolbar-spacer"></div>
+    <span class="legend">○ 待核对　✓ 已核对</span>
+  </div>
+
+  <div class="dense-payment-list">
+    <div class="dense-payment-header">
+      <span>属性</span><span>号码</span><span>账号</span><span>金额</span><span>规则</span><span>状态</span>
+    </div>
+    {% for item in payment_items %}{% set s=item.row %}{% set pe=item.payment %}
+    <article class="dense-payment-row {% if not pe.confirmed %}is-pending{% endif %}"
+      data-payment-row data-service-id="{{ s.id }}"
+      data-confirmed="{{ 1 if pe.confirmed else 0 }}"
+      data-mode="{{ item.rule.mode }}"
+      data-changed="{{ 1 if item.delta is not none else 0 }}"
+      data-zero="{{ 1 if pe.confirmed and pe.amount==0 else 0 }}">
+      <button type="button" class="dense-attr quick-edit-trigger" title="双击修改属性">
+        <b data-display="service_type">{{ s.service_type or '业务' }}</b>
+        <span data-display="holder_name">{{ s.holder_name or '—' }}</span>
+      </button>
+
+      {% if s.number %}
+      <button type="button" class="dense-id identifier-copy quick-edit-trigger" data-copy="{{ s.number }}" data-kind="号码" title="单击复制，双击修改">
+        <span>号码</span><b data-display="number">{{ s.number }}</b>
+      </button>
+      {% else %}
+      <button type="button" class="dense-id dense-empty quick-edit-trigger" title="双击补充号码"><span>号码</span><b data-display="number">—</b></button>
+      {% endif %}
+
+      {% if s.account %}
+      <button type="button" class="dense-id identifier-copy quick-edit-trigger" data-copy="{{ s.account }}" data-kind="账号" title="单击复制，双击修改">
+        <span>账号</span><b data-display="account">{{ s.account }}</b>
+      </button>
+      {% else %}
+      <button type="button" class="dense-id dense-empty quick-edit-trigger" title="双击补充账号"><span>账号</span><b data-display="account">—</b></button>
+      {% endif %}
+
+      <div class="dense-amount">
+        <input class="quick-amount" type="text" inputmode="decimal" autocomplete="off"
+          value="{{ ('%.2f'|format(pe.amount)).rstrip('0').rstrip('.') }}"
+          data-service-id="{{ s.id }}" aria-label="缴费金额">
+        <span class="amount-feedback">{% if item.delta is not none %}<em class="delta-badge {% if item.delta>0 %}up{% else %}down{% endif %}">{% if item.delta>0 %}+{% endif %}{{ '%.2f'|format(item.delta)|replace('.00','') }}</em>{% endif %}</span>
+      </div>
+
+      <button type="button" class="rule-toggle {% if item.rule.mode=='fixed' %}is-fixed{% endif %}" data-fixed-toggle>
+        {{ '固定' if item.rule.mode=='fixed' else '变动' }}
+      </button>
+
+      <div class="dense-status">
+        {% if item.rule.mode=='fixed' %}<span class="status-mark fixed-mark">◆</span>
+        {% elif pe.confirmed %}<span class="status-mark ok-mark">✓</span>
+        {% else %}<span class="status-mark pending-mark">○</span>{% endif %}
+      </div>
+
+      <form class="quick-editor" data-quick-editor>
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label>类型<input name="service_type" value="{{ s.service_type }}"></label>
+        <label>姓名/属性<input name="holder_name" value="{{ s.holder_name }}"></label>
+        <label>号码<input name="number" value="{{ s.number }}"></label>
+        <label>账号<input name="account" value="{{ s.account }}"></label>
+        <div class="quick-editor-actions">
+          <button type="submit" class="primary small">保存</button>
+          <button type="button" class="ghost small" data-editor-cancel>取消</button>
+        </div>
+      </form>
+    </article>
+    {% else %}
+    <div class="empty payment-empty">本周期没有需要缴费的业务。</div>
+    {% endfor %}
+  </div>
+
+  <div class="payment-footer sticky-payment-footer">
+    <span id="paymentReadiness">{% if stats.pending %}还有 {{ stats.pending }} 项待核对{% else %}本月金额已全部核对{% endif %}</span>
+    <div class="payment-footer-actions">
+      {% if stats.txt_ready %}
+      <a class="button primary" id="paymentTxtButton" href="/customers/{{ customer.id }}/payment.txt">生成缴费TXT</a>
+      {% else %}
+      <a class="button secondary disabled" id="paymentTxtButton" href="/customers/{{ customer.id }}/payment.txt" aria-disabled="true">生成缴费TXT</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="card compact-card">
+  <div class="section-head"><h2>客户缴费状态</h2><span>{% if payment_status.completed %}本期完成{% elif payment_status.notified %}已通知未缴费{% else %}待通知{% endif %}</span></div>
+  <div class="button-row top-gap">
+    <form method="post" action="/customers/{{ customer.id }}/payment-status"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="notify"><button class="ghost">标记已通知</button></form>
+    <form method="post" action="/customers/{{ customer.id }}/payment-status"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="complete"><button class="secondary">确认已缴费</button></form>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.name }}{% endblock %}
+{% block content %}
+<section class="subpage-head">
+  <a class="back-link" href="/customers">← 客户列表</a>
+  <div class="subpage-title">
+    <div>
+      <p class="eyebrow">客户</p>
+      <h1>{{ customer.name }}</h1>
+    </div>
+  </div>
+
+  <div class="identity-strip">
+    <button class="identity-copy copy-btn" data-copy="{{ customer.name }}"><span>客户名称</span><b>{{ customer.name }}</b></button>
+    {% if customer.group_code %}<button class="identity-copy copy-btn" data-copy="{{ customer.group_code }}"><span>集团编码</span><b>{{ customer.group_code }}</b></button>{% endif %}
+    {% if customer.tax_id %}<button class="identity-copy copy-btn" data-copy="{{ customer.tax_id }}"><span>税号</span><b>{{ customer.tax_id }}</b></button>{% endif %}
+  </div>
+</section>
+
+<section class="module-grid">
+  <a class="module-card module-primary" href="/customers/{{ customer.id }}/payment">
+    <div><span class="module-kicker">{{ payment_period }}</span><h2>缴费</h2><p>本月 {{ payment_count }} 项 · 待核对 {{ payment_stats.pending }}</p></div>
+    <strong>¥{{ '%.2f'|format(payment_stats.total)|replace('.00','') }}</strong>
+  </a>
+  <a class="module-card" href="/customers/{{ customer.id }}/services">
+    <div><span class="module-kicker">台账</span><h2>业务</h2><p>{{ active_services }} 项在用 · {{ invoice_group_count }} 个开票组</p></div><span class="module-arrow">›</span>
+  </a>
+  <a class="module-card" href="/customers/{{ customer.id }}/contacts">
+    <div><span class="module-kicker">关系</span><h2>联系人</h2><p>{{ contacts_count }} 人</p></div><span class="module-arrow">›</span>
+  </a>
+  <a class="module-card" href="/customers/{{ customer.id }}/tasks">
+    <div><span class="module-kicker">工作</span><h2>待办</h2><p>{{ open_tasks }} 项未完成</p></div><span class="module-arrow">›</span>
+  </a>
+  <a class="module-card" href="/customers/{{ customer.id }}/visits">
+    <div><span class="module-kicker">历史</span><h2>跟进</h2><p>{{ visits_count }} 条记录</p></div><span class="module-arrow">›</span>
+  </a>
+</section>
+
+<section class="card compact-card">
+  <details>
+    <summary>编辑客户资料</summary>
+    <form method="post" action="/customers/{{ customer.id }}/edit" class="stack top-gap">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>客户名称<input name="name" value="{{ customer.name }}" required></label>
+      <div class="form-grid">
+        <label>集团编码<input name="group_code" value="{{ customer.group_code }}"></label>
+        <label>税号<input name="tax_id" value="{{ customer.tax_id }}"></label>
+      </div>
+      <label>客情概述<textarea name="relation_summary" rows="4">{{ customer.relation_summary }}</textarea></label>
+      <label class="check"><input type="checkbox" name="payment_enabled" value="1" {% if customer.payment_enabled %}checked{% endif %}> 启用缴费提醒</label>
+      <div class="form-grid">
+        <label>员工·我网<input name="employee_own" value="{{ customer.employee_own }}"></label>
+        <label>员工·占比<input name="employee_share" value="{{ customer.employee_share }}"></label>
+        <label>专线·我网<input name="leased_own" value="{{ customer.leased_own }}"></label>
+        <label>专线·他网<input name="leased_other" value="{{ customer.leased_other }}"></label>
+      </div>
+      <label>其他业务现状<input name="other_status" value="{{ customer.other_status }}"></label>
+      <button class="primary">保存修改</button>
+    </form>
+  </details>
+</section>
+{% endblock %}
