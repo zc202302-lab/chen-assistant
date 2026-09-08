@@ -1,0 +1,109 @@
+/* v0.2.9 layout refinement — business preview density + home promotion columns */
+
+/* 业务列表：只显示模板前5项，全部信息留在编辑器；编辑按钮始终与属性同行。 */
+.business-row-line-v029{
+  display:flex;
+  align-items:center;
+  flex-wrap:nowrap;
+  gap:12px;
+  min-width:0;
+  min-height:38px;
+}
+.business-row-line-v029 .business-attribute-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:18px;
+  align-items:center;
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  padding:0;
+}
+.business-row-line-v029 .business-attribute{
+  display:flex;
+  align-items:baseline;
+  gap:6px;
+  min-width:0;
+  max-width:none;
+  overflow:hidden;
+}
+.business-row-line-v029 .business-attribute small{
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+.business-row-line-v029 .business-attribute strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.business-row-line-v029 .business-attribute:nth-child(n+6){display:none}
+.business-row-line-v029 .business-edit-v029{
+  flex:0 0 auto;
+  margin-left:auto;
+}
+
+/* 首页优惠：与客户优惠工作区一致，按“已经到期 / 即将到期”两列浏览。 */
+.home-promo-columns-v030{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:16px;
+  margin-top:12px;
+}
+.home-promo-column-v030{
+  min-width:0;
+  border:1px solid #e5eaf0;
+  border-radius:14px;
+  background:#fafbfc;
+  padding:12px;
+}
+.home-promo-column-head-v030{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:0 2px 8px;
+}
+.home-promo-column-head-v030 h3{
+  margin:0;
+  font-size:16px;
+}
+.home-promo-column-head-v030 span{
+  color:#667085;
+  font-size:12px;
+}
+.home-promo-column-v030.state-expired .home-promo-column-head-v030 h3{color:#b42318}
+.home-promo-column-v030.state-soon .home-promo-column-head-v030 h3{color:#9a6700}
+.home-promo-column-list-v030{display:grid;gap:7px}
+.home-promo-customer-v030{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-width:0;
+  padding:10px 11px;
+  border:1px solid #e6eaf0;
+  border-radius:10px;
+  background:#fff;
+}
+.home-promo-customer-v030:hover{background:#f7f9fb}
+.home-promo-customer-v030 b{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.home-promo-customer-v030 strong{
+  flex:0 0 auto;
+  color:#475467;
+  font-size:13px;
+}
+
+@media(max-width:1100px){
+  .business-row-line-v029 .business-attribute-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+  .business-row-line-v029 .business-attribute:nth-child(5){display:none}
+}
+
+@media(max-width:760px){
+  .home-promo-columns-v030{grid-template-columns:1fr}
+}
