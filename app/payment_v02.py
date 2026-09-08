@@ -211,7 +211,18 @@ def payment_snapshot(conn: sqlite3.Connection, customer_id: int, period: str | N
     total = 0.0
     due_count = 0
     for s in rows:
-        if not service_active_in_period(s, period) or not service_is_due(s):
+        if not service_active_in_period(s, period):
+            continue
+        due_now = service_is_due(s)
+        existing = conn.execute(
+            'SELECT * FROM payment_entries WHERE service_id=? AND period=?',
+            (s['id'], period),
+        ).fetchone()
+        # The v0.1 bootstrap created imported rows for every service. Those rows alone must
+        # not make a non-due service appear. A real current-period row (inherited/manual/fixed)
+        # stays visible after payment completion advances the next due period.
+        worked_this_period = bool(existing and existing['source'] != 'imported')
+        if not due_now and not worked_this_period:
             continue
         due_count += 1
         pe, rule = ensure_payment_entry(conn, s, period)
