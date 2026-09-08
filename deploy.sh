@@ -3,7 +3,8 @@ set -Eeuo pipefail
 
 APP_DIR="/opt/chen-assistant"
 SERVICE="chen-assistant"
-HEALTH_URL="http://172.19.0.1:8010/health"
+APP_HTTP="http://172.19.0.1:8010"
+HEALTH_URL="$APP_HTTP/health"
 BACKUP_DIR="$APP_DIR/backups"
 
 cd "$APP_DIR"
@@ -49,7 +50,6 @@ if command -v node >/dev/null 2>&1; then
   node --check app/static/v028.js
 fi
 .venv/bin/python - <<'PY'
-from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from app import config
 from app.main import app
@@ -91,6 +91,30 @@ if payload.get('version') != '0.2.8':
 print(f"✓ 服务版本：{payload.get('version')}")
 PY
 
+echo "===== 已运行静态文件一致性检查 ====="
+REV="$(git rev-parse --short HEAD)"
+for ASSET in app.js v028.js v028.css; do
+  LOCAL_FILE="app/static/$ASSET"
+  TMP_FILE="$(mktemp)"
+  curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP_FILE"
+  LOCAL_SHA="$(sha256sum "$LOCAL_FILE" | awk '{print $1}')"
+  SERVED_SHA="$(sha256sum "$TMP_FILE" | awk '{print $1}')"
+  rm -f "$TMP_FILE"
+  if [[ "$LOCAL_SHA" != "$SERVED_SHA" ]]; then
+    echo "✗ 正式服务返回的 $ASSET 与本地部署文件不一致"
+    echo "  本地：$LOCAL_SHA"
+    echo "  服务：$SERVED_SHA"
+    exit 1
+  fi
+  echo "✓ $ASSET：正式服务与Git工作区一致"
+done
+
+CACHE_HEADER="$(curl -fsSI "$APP_HTTP/static/v028.js?deploy=$REV" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^Cache-Control:/{sub(/^[^:]*:[ ]*/,""); print; exit}')"
+case "$CACHE_HEADER" in
+  *no-store*) echo "✓ v028.js 禁止浏览器缓存旧控制器" ;;
+  *) echo "✗ v028.js 缓存策略异常：${CACHE_HEADER:-未返回 Cache-Control}"; exit 1 ;;
+esac
+
 echo "✓ 服务健康检查通过"
-echo "更新后代码：$(git rev-parse --short HEAD)"
+echo "更新后代码：$REV"
 echo "===== 更新完成 ====="
