@@ -1,8 +1,8 @@
-name: v0.2.9 validation
+name: v0.2.10 validation
 
 on:
   push:
-    branches: [main, v0.2.9-dev, v0.2.10-dev]
+    branches: [main, v0.2.10-dev]
   workflow_dispatch:
 
 jobs:
@@ -33,6 +33,7 @@ jobs:
           node --check app/static/v028.js
           node --check app/static/ui-drag.js
           node --check app/static/service-promotions.js
+          node --check app/static/business-sync.js
       - name: Check Python, routes, templates and assets
         run: |
           python -m compileall -q app
@@ -40,7 +41,7 @@ jobs:
           from jinja2 import Environment, FileSystemLoader
           from app import config
           from app.main import app
-          assert app.version == '0.2.9'
+          assert app.version == '0.2.10'
           for path in ('/', '/customers/{customer_id}', '/health'):
               matches=[r for r in app.router.routes if getattr(r,'path','')==path]
               assert len(matches)==1,(path,len(matches))
@@ -55,11 +56,11 @@ jobs:
               text=p.read_text(encoding='utf-8')
               assert 'type="date"' not in text and "type='date'" not in text,name
           base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
-          for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js','/static/app.css','/static/v028.css','/static/layout-refinement.css'):
+          for current in ('/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js','/static/business-sync.js','/static/app.css','/static/v028.css','/static/layout-refinement.css'):
               assert base.count(current)==1,current
           for old in ('/static/current.js','/static/v025.js','/static/v025_minor.js','/static/v026.js','/static/v027.js','/static/v02.css','/static/v021.css','/static/v022.css','/static/v023.css','/static/v024.css','/static/v025.css','/static/v026.css','/static/v027.css'):
               assert old not in base,old
-          print('static validation passed: v0.2.9 runtime assets + no runtime date picker')
+          print('static validation passed: v0.2.10 runtime assets + no runtime date picker')
           PY
       - name: Production experience regression
         run: python tests/production_experience_regression.py
@@ -73,3 +74,5 @@ jobs:
         run: python tests/ui_v029_acceptance.py
       - name: Layout refinement regression
         run: python tests/layout_refinement_regression.py
+      - name: v0.2.10 interaction and synchronization acceptance
+        run: python tests/ui_v0210_acceptance.py
