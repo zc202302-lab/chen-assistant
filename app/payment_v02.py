@@ -114,9 +114,6 @@ def ensure_payment_entry(conn: sqlite3.Connection, service, period: str):
     ).fetchone()
     rule = effective_payment_rule(conn, service['id'], period, service)
 
-    # A fixed rule is authoritative for the month. Older imported v0.1.1 rows
-    # may exist with confirmed=0, so normalize them here instead of treating
-    # fixed items as unresolved or silently dropping them from TXT.
     if existing and rule['mode'] == 'fixed':
         desired = float(rule['fixed_amount'])
         if (not bool(existing['confirmed'])) or abs(float(existing['amount'] or 0) - desired) >= 0.005 or existing['source'] != 'fixed':
@@ -160,11 +157,12 @@ def payment_snapshot(conn: sqlite3.Connection, customer_id: int, period: str | N
            FROM services s
            LEFT JOIN invoice_groups g ON g.id=s.invoice_group_id
            WHERE s.customer_id=?
-           ORDER BY s.service_type, s.source_row, s.id''',
+           ORDER BY CASE WHEN COALESCE(s.sort_order,0)>0 THEN s.sort_order ELSE 100000000+s.id END,
+                    s.source_row,s.id''',
         (customer_id,),
     ).fetchall()
     items = []
-    pending = changed = zero = 0
+    required = pending = changed = zero = 0
     total = 0.0
     for s in rows:
         if not service_active_in_period(s, period) or not service_is_due(s):
@@ -178,8 +176,10 @@ def payment_snapshot(conn: sqlite3.Connection, customer_id: int, period: str | N
             diff = round(amount - float(reference), 2)
             if abs(diff) >= 0.005:
                 delta = diff
-        if rule['mode'] == 'variable' and not confirmed:
-            pending += 1
+        if rule['mode'] == 'variable':
+            required += 1
+            if not confirmed:
+                pending += 1
         if delta is not None:
             changed += 1
         if confirmed and abs(amount) < 0.005:
@@ -193,6 +193,7 @@ def payment_snapshot(conn: sqlite3.Connection, customer_id: int, period: str | N
             'invoice_group_name': s['invoice_group_name'] or '',
         })
     return items, {
+        'required': required,
         'pending': pending,
         'changed': changed,
         'zero': zero,
