@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}{{ customer.name }}{% endblock %}
+{% block content %}
+<div class="customer-workspace v025-workspace v026-workspace" data-customer-tabs data-active-tab="{{ active_tab }}" data-customer-id="{{ customer.id }}">
+  <div class="workspace-sticky-top">
+    <section class="v023-hero" id="overview">
+      <div class="v023-profile-card">
+        <div class="v023-name-line">
+          <div><span class="v023-kicker">客户</span><h1>{{ customer.name }}</h1></div>
+          <button class="copy-btn v023-copy-mini" data-copy="{{ customer.name }}">复制</button>
+        </div>
+        <div class="v023-identity-strip">
+          <div><small>集团编码</small><b>{{ customer.group_code or '未填写' }}</b>{% if customer.group_code %}<button class="copy-btn v023-copy-mini" data-copy="{{ customer.group_code }}">复制</button>{% endif %}</div>
+          <div><small>税号</small><b>{{ customer.tax_id or '未填写' }}</b>{% if customer.tax_id %}<button class="copy-btn v023-copy-mini" data-copy="{{ customer.tax_id }}">复制</button>{% endif %}</div>
+          <details class="v023-customer-edit">
+            <summary>编辑资料</summary>
+            <form method="post" action="/customers/{{ customer.id }}/edit" class="stack v023-edit-form selectable-editors">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <label>客户名称<input name="name" value="{{ customer.name }}" required></label>
+              <label>集团编码<input name="group_code" value="{{ customer.group_code }}"></label>
+              <label>税号<input name="tax_id" value="{{ customer.tax_id }}"></label>
+              <label>客情概述<textarea name="relation_summary" rows="3">{{ customer.relation_summary }}</textarea></label>
+              <label class="check"><input type="checkbox" name="payment_enabled" value="1" {% if customer.payment_enabled %}checked{% endif %}> 启用缴费提醒</label>
+              <button class="primary">保存修改</button>
+            </form>
+          </details>
+        </div>
+      </div>
+      <aside class="v023-task-card">
+        <div class="v023-task-head"><b>待办</b><button type="button" class="tab-text-link" data-tab-open="tasks">全部 {{ open_tasks|length }}</button></div>
+        {% for t in open_tasks[:2] %}<div class="v023-task-line"><span>{{ t.title }}</span><small>{{ (t.remind_date or '无日期')|replace('-','/') }}</small></div>
+        {% else %}<span class="v023-task-empty">暂无未完成待办</span>{% endfor %}
+        <button type="button" class="v023-add-task" data-tab-open="tasks">＋ 新增待办</button>
+      </aside>
+    </section>
+
+    <nav class="customer-module-tabs v023-tabs" aria-label="客户功能">
+      <button type="button" data-customer-tab="payment" class="{% if active_tab=='payment' %}active{% endif %}">缴费</button>
+      <button type="button" data-customer-tab="services" class="{% if active_tab=='services' %}active{% endif %}">业务</button>
+      <button type="button" data-customer-tab="promotions" class="{% if active_tab=='promotions' %}active{% endif %}">优惠{% if promo_attention %}<span class="tab-count">{{ promo_attention }}</span>{% endif %}</button>
+      <button type="button" data-customer-tab="contacts" class="{% if active_tab=='contacts' %}active{% endif %}">联系人</button>
+      <button type="button" data-customer-tab="tasks" class="{% if active_tab=='tasks' %}active{% endif %}">待办</button>
+      <button type="button" data-customer-tab="visits" class="{% if active_tab=='visits' %}active{% endif %}">跟进</button>
+    </nav>
+  </div>
+
+  <div class="customer-module-panels">
+    <section class="customer-panel" data-customer-panel="payment" {% if active_tab!='payment' %}hidden{% endif %}>
+      <div class="card payment-card v025-payment" data-payment-workbench data-csrf="{{ csrf }}">
+        <div class="v025-payment-head">
+          <div>
+            <div class="v023-payment-title-line">
+              <span class="eyebrow">{{ payment_period }}</span><h2>缴费工作区</h2>
+              <span class="v023-review-count">本月应缴 <b>{{ payment_stats.due_count }}</b></span>
+              <span class="v023-review-count">需核对 <b id="requiredCount">{{ payment_stats.required }}</b></span>
+              <span class="v023-review-count pending">未核对 <b id="pendingCount">{{ payment_stats.pending }}</b></span>
+            </div>
+            <p class="hint">单击号码/账号复制；金额单击全选，Enter 保存并进入下一条；✓ 可点击撤销核对。</p>
+          </div>
+          <div class="payment-total v023-total"><small>本月金额合计</small><strong id="paymentGrandTotal">¥{{ '%.2f'|format(payment_stats.total)|replace('.00','') }}</strong></div>
+        </div>
+
+        <div class="payment-run-card" data-payment-run>
+          <div class="payment-run-copy"><small>本单位本月缴费状态</small><strong id="paymentRunLabel">{{ payment_run.label }}</strong></div>
+          <div class="payment-run-steps">
+            <span class="run-step {% if payment_run.ready %}done{% endif %}">1 金额核对</span>
+            <button type="button" class="run-step action {% if payment_run.notified %}done{% endif %}" data-payment-action="notify" {% if not payment_run.ready or payment_run.notified %}disabled{% endif %}>2 通知客户</button>
+            <button type="button" class="run-step action {% if payment_run.paid %}done{% endif %}" data-payment-action="paid" {% if not payment_run.notified or payment_run.paid %}disabled{% endif %}>3 完成缴费</button>
+          </div>
+        </div>
+
+        {% if payment_items %}
+        <div class="dense-payment-list v023-dense-list" id="paymentSortable" data-reorder-url="/customers/{{ customer.id }}/services/reorder">
+          <div class="dense-payment-header v025-payment-header"><span></span><button type="button" class="attribute-header-button" data-display-settings>属性 ⚙</button><span>号码</span><span>账号</span><span>金额</span><span></span></div>
+          {% for item in payment_items %}{% set s=item.row %}{% set pe=item.payment %}
+          <article class="dense-payment-row v023-payment-row {% if item.rule.mode=='variable' and not pe.confirmed %}is-pending{% else %}is-confirmed{% endif %}"
+                   data-payment-row data-service-id="{{ s.id }}" data-confirmed="{{ 1 if pe.confirmed else 0 }}" data-mode="{{ item.rule.mode }}"
+                   data-service-type="{{ s.service_type|e }}" data-holder-name="{{ s.holder_name|e }}" data-number="{{ s.number|e }}" data-account="{{ s.account|e }}"
+                   data-payment-interval-months="{{ s.payment_interval_months or 0 }}" data-payment-method="{{ s.payment_method|e }}" data-invoice-type="{{ s.invoice_type|e }}"
+                   data-invoice-group-id="{{ s.invoice_group_id or '' }}" data-package-type="{{ s.package_type|e }}" data-last-payment-date="{{ item.last_payment_display|e }}" data-notes="{{ s.notes|e }}">
+            <button type="button" class="drag-handle" draggable="true" title="拖动改变位置" aria-label="拖动排序">⠿</button>
+            <button type="button" class="v025-attr-cell" data-open-attributes title="点击查看并编辑全部属性"><b data-display-value="1">{{ item.display_value_1 }}</b><span data-display-value="2">{{ item.display_value_2 }}</span></button>
+            <button type="button" class="dense-id {% if s.number %}identifier-copy{% else %}dense-empty{% endif %}" {% if s.number %}data-copy="{{ s.number }}" data-kind="号码"{% endif %}><span>号码</span><b data-display="number">{{ s.number or '—' }}</b></button>
+            <button type="button" class="dense-id {% if s.account %}identifier-copy{% else %}dense-empty{% endif %}" {% if s.account %}data-copy="{{ s.account }}" data-kind="账号"{% endif %}><span>账号</span><b data-display="account">{{ s.account or '—' }}</b></button>
+            <div class="dense-amount v023-amount-cell">
+              <input class="quick-amount" type="text" inputmode="decimal" autocomplete="off" value="{{ ('%.2f'|format(pe.amount)).rstrip('0').rstrip('.') }}" data-service-id="{{ s.id }}" aria-label="缴费金额">
+              <button type="button" class="row-state state-button {% if item.rule.mode=='variable' and not pe.confirmed %}pending{% else %}confirmed{% endif %}" data-row-state data-review-toggle title="{% if item.rule.mode=='fixed' %}固定金额自动确认{% elif pe.confirmed %}点击撤销本月核对{% else %}未核对；按Enter确认，也可点击确认当前金额{% endif %}">{% if item.rule.mode=='variable' and not pe.confirmed %}○{% else %}✓{% endif %}</button>
+              <span class="amount-feedback">{% if item.delta is not none %}<em class="delta-badge {% if item.delta>0 %}up{% else %}down{% endif %}">{% if item.delta>0 %}+{% endif %}{{ '%.2f'|format(item.delta)|replace('.00','') }}</em>{% endif %}</span>
+            </div>
+            <button type="button" class="rule-toggle quiet-rule {% if item.rule.mode=='fixed' %}is-fixed{% endif %}" data-fixed-toggle>{{ '固' if item.rule.mode=='fixed' else '变' }}</button>
+          </article>
+          {% endfor %}
+        </div>
+        {% else %}<p class="empty">系统根据缴费周期判断：本月没有需要缴费的业务。</p>{% endif %}
+        <div class="payment-footer v023-payment-footer"><span id="paymentReadiness">{% if payment_stats.pending %}还有 {{ payment_stats.pending }} 项金额未核对{% else %}本月应缴业务金额已全部核对{% endif %}</span>{% if payment_stats.txt_ready %}<a class="button primary" id="paymentTxtButton" href="/customers/{{ customer.id }}/payment.txt">生成缴费TXT</a>{% else %}<a class="button secondary disabled" id="paymentTxtButton" href="/customers/{{ customer.id }}/payment.txt" aria-disabled="true">生成缴费TXT</a>{% endif %}</div>
+      </div>
+    </section>
+
+    <section class="customer-panel" data-customer-panel="services" {% if active_tab!='services' %}hidden{% endif %}>
+      <section class="card compact-card business-v026">
+        <div class="section-head"><div><h2>业务总览</h2><p class="hint">这里是该客户所有在用业务的完整信息集合；标签可组合筛选。</p></div><span><b id="businessVisibleCount">{{ business_rows|length }}</b> / {{ business_rows|length }}</span></div>
+
+        <div class="business-filters" data-business-filters>
+          <div class="filter-line" data-filter-line="type"><b>类型</b><button type="button" class="filter-chip active" data-business-filter="type" data-value="">全部</button>{% for t in service_types %}<button type="button" class="filter-chip" data-business-filter="type" data-value="{{ t|e }}">{{ t }}</button>{% endfor %}</div>
+          <div class="filter-line" data-filter-line="due"><b>缴费</b><button type="button" class="filter-chip active" data-business-filter="due" data-value="">全部</button><button type="button" class="filter-chip" data-business-filter="due" data-value="1">本月应缴</button><button type="button" class="filter-chip" data-business-filter="due" data-value="0">本月不缴</button></div>
+          <div class="filter-line" data-filter-line="mode"><b>金额</b><button type="button" class="filter-chip active" data-business-filter="mode" data-value="">全部</button><button type="button" class="filter-chip" data-business-filter="mode" data-value="fixed">固定</button><button type="button" class="filter-chip" data-business-filter="mode" data-value="variable">变动</button></div>
+          <div class="filter-line" data-filter-line="promo"><b>优惠</b><button type="button" class="filter-chip active" data-business-filter="promo" data-value="">全部</button><button type="button" class="filter-chip urgent" data-business-filter="promo" data-value="expired">已经到期</button><button type="button" class="filter-chip warning" data-business-filter="promo" data-value="soon">即将到期</button><button type="button" class="filter-chip" data-business-filter="promo" data-value="later">后续到期</button><button type="button" class="filter-chip" data-business-filter="promo" data-value="none">无优惠</button></div>
+          {% if invoice_groups %}<div class="filter-line" data-filter-line="invoice"><b>发票组</b><button type="button" class="filter-chip active" data-business-filter="invoice" data-value="">全部</button>{% for g in invoice_groups %}<button type="button" class="filter-chip" data-business-filter="invoice" data-value="{{ g.id }}">{{ g.name }}</button>{% endfor %}<button type="button" class="filter-chip" data-business-filter="invoice" data-value="none">未分组</button></div>{% endif %}
+          <button type="button" class="ghost small" data-business-filter-reset>清除筛选</button>
+        </div>
+
+        <div class="business-list-v026" data-business-list>
+          {% for item in business_rows %}{% set s=item.row %}
+          <article class="business-row-v026" data-business-row data-filter-type="{{ (s.service_type or '未分类')|e }}" data-filter-due="{{ 1 if item.due else 0 }}" data-filter-mode="{{ item.rule.mode }}" data-filter-promo="{{ item.promo_bucket }}" data-filter-invoice="{{ s.invoice_group_id or 'none' }}">
+            <div class="business-row-main">
+              <div class="business-main-attr"><b>{{ s.service_type or '未分类' }}</b><span>{{ s.holder_name or '—' }}</span></div>
+              <div><small>号码</small><strong>{{ s.number or '—' }}</strong></div>
+              <div><small>账号</small><strong>{{ s.account or '—' }}</strong></div>
+              <div><small>周期（月）</small><strong>{{ item.months or 0 }}</strong></div>
+              <div><small>本月</small><strong class="{% if item.due %}due-now{% endif %}">{{ '应缴' if item.due else '不缴' }}</strong></div>
+              <div><small>金额规则</small><strong>{{ '固定' if item.rule.mode=='fixed' else '变动' }}</strong></div>
+              <div><small>优惠</small><strong class="promo-{{ item.promo_bucket }}">{{ item.promo_label }}</strong>{% if item.promo %}<span>{{ item.promo.expiry_display }}</span>{% endif %}</div>
+            </div>
+            <div class="business-row-meta">
+              <span><i>发票组</i>{{ s.invoice_group_name or '未分组' }}</span><span><i>付款</i>{{ s.payment_method or '—' }}</span><span><i>发票类型</i>{{ s.invoice_type or '—' }}</span><span><i>套餐</i>{{ s.package_type or '—' }}</span><span><i>上次缴费</i>{{ item.last_payment_display or '—' }}</span><span><i>下次应缴</i>{{ item.next_payment_display or ('每月' if item.months==1 else '—') }}</span>{% if s.notes %}<span class="wide"><i>备注</i>{{ s.notes }}</span>{% endif %}
+              <details class="business-inline-edit"><summary>编辑</summary>
+                <form method="post" action="/services/{{ s.id }}/edit-v026" class="stack selectable-editors">
+                  <input type="hidden" name="csrf" value="{{ csrf }}">
+                  <div class="form-grid">
+                    <label>类型<input name="service_type" value="{{ s.service_type }}"></label><label>姓名/属性<input name="holder_name" value="{{ s.holder_name }}"></label>
+                    <label>号码<input name="number" value="{{ s.number }}"></label><label>账号<input name="account" value="{{ s.account }}"></label>
+                    <label>缴费周期（月）<input type="number" min="0" max="120" name="payment_interval_months" value="{{ s.payment_interval_months or 0 }}"></label>
+                    <label>上次缴费日期<input class="manual-date" type="text" inputmode="numeric" name="last_payment_date" value="{{ item.last_payment_display }}" placeholder="1900/07/07" pattern="\d{4}/\d{2}/\d{2}"></label>
+                    <label>付款方式<input name="payment_method" value="{{ s.payment_method }}"></label><label>发票类型<input name="invoice_type" value="{{ s.invoice_type }}"></label>
+                    <label>套餐类型<input name="package_type" value="{{ s.package_type }}"></label><label>开票组<select name="invoice_group_id"><option value="">未分组</option>{% for g in invoice_groups %}<option value="{{ g.id }}" {% if s.invoice_group_id==g.id %}selected{% endif %}>{{ g.name }}</option>{% endfor %}</select></label>
+                  </div>
+                  <label>备注<textarea name="notes" rows="2">{{ s.notes }}</textarea></label><button class="secondary">保存业务</button>
+                </form>
+              </details>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+
+        <details class="top-gap"><summary>＋ 添加新业务</summary>
+          <form method="post" action="/customers/{{ customer.id }}/services-v026" class="stack top-gap selectable-editors">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <div class="form-grid">
+              <label>业务类型 *<input name="service_type" required></label><label>姓名/属性<input name="holder_name"></label><label>号码<input name="number"></label><label>账号<input name="account"></label>
+              <label>金额规则<select name="payment_mode"><option value="variable">变动</option><option value="fixed">固定</option></select></label><label>固定/初始金额<input name="fixed_amount" inputmode="decimal" value="0"></label>
+              <label>缴费周期（月）<input type="number" min="0" max="120" name="payment_interval_months" value="1"></label><label>上次缴费日期<input class="manual-date" type="text" inputmode="numeric" name="last_payment_date" placeholder="1900/07/07" pattern="\d{4}/\d{2}/\d{2}"></label>
+              <label>付款方式<input name="payment_method"></label><label>发票类型<input name="invoice_type"></label><label>套餐类型<input name="package_type"></label><label>开票组<select name="invoice_group_id"><option value="">未分组</option>{% for g in invoice_groups %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}</select></label>
+            </div>
+            <label>备注<textarea name="notes" rows="2"></textarea></label><button class="primary">添加业务</button>
+          </form>
+        </details>
+      </section>
+    </section>
+
+    <section class="customer-panel" data-customer-panel="promotions" {% if active_tab!='promotions' %}hidden{% endif %}>
+      <section class="card compact-card promotion-panel">
+        <div class="section-head"><div><h2>优惠 / 续约</h2><p class="hint">工作口径：到期月份为下个月或更早＝“已经到期”；到期月份为下下月＝“即将到期”。</p></div><span>{{ promo_attention }} 项需要行动</span></div>
+        {% for bucket,title in [('expired','已经到期'),('soon','即将到期'),('later','后续到期'),('history','历史')] %}
+        {% set group=promotion_groups.get(bucket,[]) %}
+        {% if group %}<section class="promotion-group promo-group-{{ bucket }}"><h3>{{ title }} <span>{{ group|length }}</span></h3>
+          {% for item in group %}{% set p=item.row %}
+          <article class="promotion-row state-{{ bucket }}"><div class="promotion-main"><b>{{ p.name or '未命名优惠' }}</b><span>{{ p.service_type }} · {{ p.holder_name or '' }}</span><strong>{{ p.number or p.account or '未填写号码/账号' }}</strong></div><div class="promotion-time"><span>{{ item.start_display or '—' }} → {{ item.expiry_display or '未填到期日' }}</span><b>{{ item.label }}</b></div><div class="promotion-actions">{% if p.status=='active' %}<details><summary>续约</summary><form method="post" action="/promotions/{{ p.id }}/renew" class="stack mini-form selectable-editors"><input type="hidden" name="csrf" value="{{ csrf }}"><label>新开始日期<input class="manual-date" type="text" inputmode="numeric" name="new_start_date" placeholder="1900/07/07" pattern="\d{4}/\d{2}/\d{2}"></label><label>新到期日期<input class="manual-date" type="text" inputmode="numeric" name="new_expiry_date" required placeholder="1900/07/07" pattern="\d{4}/\d{2}/\d{2}"></label><label>备注<input name="notes"></label><button class="primary small">确认续约</button></form></details><form method="post" action="/promotions/{{ p.id }}/close"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small">结束优惠</button></form>{% else %}<span class="muted">{{ '已续约' if p.status=='renewed' else '已结束' }}</span>{% endif %}</div></article>
+          {% endfor %}</section>{% endif %}
+        {% endfor %}
+        <details class="top-gap"><summary>＋ 添加优惠</summary><form method="post" action="/customers/{{ customer.id }}/promotions" class="stack top-gap selectable-editors"><input type="hidden" name="csrf" value="{{ csrf }}"><label>关联业务<select name="service_id" required>{% for item in business_rows %}{% set s=item.row %}<option value="{{ s.id }}">{{ s.service_type }} · {{ s.holder_name }} · {{ s.number or s.account }}</option>{% endfor %}</select></label><div class="form-grid"><label>优惠名称<input name="name" required></label><label>开始日期<input class="manual-date" type="text" inputmode="numeric" name="start_date" placeholder="1900/07/07" pattern="\d{4}/\d{2}/\d{2}"></label><label>到期日期<input class="manual-date" type="text" inputmode="numeric" name="expiry_date" required placeholder="1900/07/07" pattern="\d{4}/\d{2}/\d{2}"></label></div><label>备注<textarea name="notes" rows="2"></textarea></label><button class="primary">保存优惠</button></form></details>
+      </section>
+    </section>
+
+    <section class="customer-panel" data-customer-panel="contacts" {% if active_tab!='contacts' %}hidden{% endif %}><section class="card compact-card"><div class="section-head"><h2>联系人</h2><span>{{ contacts|length }} 人</span></div>{% for k in contacts %}<div class="info-row"><div><b>{{ k.name or '未命名联系人' }}</b><small>{{ k.kind }}{% if k.relationship %} · {{ k.relationship }}{% endif %}{% if k.phone %} · {{ k.phone }}{% endif %}</small></div>{% if k.phone %}<button class="copy-btn ghost small" data-copy="{{ k.phone }}">复制电话</button>{% endif %}</div>{% else %}<p class="empty">还没有联系人。</p>{% endfor %}</section></section>
+    <section class="customer-panel" data-customer-panel="tasks" {% if active_tab!='tasks' %}hidden{% endif %}><section class="card compact-card"><div class="section-head"><h2>待办</h2><span>{{ open_tasks|length }} 未完成</span></div>{% for t in tasks %}<div class="info-row {% if t.done %}muted{% endif %}"><div><b>{{ t.title }}</b><small>{{ (t.remind_date or '无日期')|replace('-','/') }}{% if t.note %} · {{ t.note }}{% endif %}</small></div><form method="post" action="/tasks/{{ t.id }}/toggle"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small">{{ '恢复' if t.done else '完成' }}</button></form></div>{% else %}<p class="empty">暂无待办。</p>{% endfor %}</section></section>
+    <section class="customer-panel" data-customer-panel="visits" {% if active_tab!='visits' %}hidden{% endif %}><section class="card compact-card"><div class="section-head"><h2>跟进记录</h2><span>{{ visits|length }}</span></div>{% for v in visits %}<div class="info-row"><div><b>{{ (v.visit_date or '')|replace('-','/') }} · {{ v.kind }}</b><small>{{ v.result }}{% if v.plan %} · 下一步：{{ v.plan }}{% endif %}</small></div></div>{% else %}<p class="empty">暂无跟进记录。</p>{% endfor %}</section></section>
+  </div>
+
+  <dialog id="displayAttributeDialog" class="service-attribute-dialog"><form method="dialog" class="attribute-dialog-shell" data-display-attribute-form><div class="attribute-dialog-head"><div><small>整个客户统一设置</small><h3>缴费表默认属性</h3></div><button type="button" class="dialog-close" data-display-close>×</button></div><input type="hidden" name="csrf" value="{{ csrf }}"><div class="attribute-grid two"><label>第一属性<select name="display_attr_1">{% for key,label in attr_options %}<option value="{{ key }}" {% if customer_display_attr_1==key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><label>第二属性<select name="display_attr_2">{% for key,label in attr_options %}<option value="{{ key }}" {% if customer_display_attr_2==key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label></div><div class="attribute-dialog-actions"><button type="button" class="ghost" data-display-close>取消</button><button type="submit" class="primary">应用到全部号码</button></div></form></dialog>
+
+  <dialog id="serviceAttributeDialog" class="service-attribute-dialog"><form method="dialog" class="attribute-dialog-shell selectable-editors" data-attribute-form><div class="attribute-dialog-head"><div><small>当前号码</small><h3>编辑全部属性</h3></div><button type="button" class="dialog-close" data-attribute-close>×</button></div><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="service_id" value=""><div class="attribute-grid"><label>类型<input name="service_type"></label><label>姓名/属性<input name="holder_name"></label><label>号码<input name="number"></label><label>账号<input name="account"></label><label>缴费周期（月）<input type="number" min="0" max="120" name="payment_interval_months"></label><label>发票组<select name="invoice_group_id"><option value="">未分组</option>{% for g in invoice_groups %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}</select></label><label>付款方式<input name="payment_method"></label><label>发票类型<input name="invoice_type"></label><label>套餐类型<input name="package_type"></label><label>上次缴费日期<input class="manual-date" type="text" inputmode="numeric" name="last_payment_date" placeholder="1900/07/07" pattern="\d{4}/\d{2}/\d{2}"></label></div><label>备注<textarea name="notes" rows="3"></textarea></label><div class="attribute-dialog-actions"><button type="button" class="ghost" data-attribute-close>取消</button><button type="submit" class="primary">保存属性</button></div></form></dialog>
+</div>
+{% endblock %}
