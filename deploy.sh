@@ -65,12 +65,23 @@ for path in ('/', '/customers/{customer_id}', '/health'):
 
 customer_route = next(r for r in app.router.routes if getattr(r, 'path', '') == '/customers/{customer_id}')
 assert getattr(customer_route.endpoint, '__module__', '') == 'app.v028_routes', '客户页未由 v0.2.8 接管'
+
 base = (config.ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
 assert base.count('/static/v028.js') == 1, 'v028.js 必须且只能加载一次'
-for old in ('/static/current.js', '/static/v025.js', '/static/v025_minor.js', '/static/v026.js', '/static/v027.js'):
-    assert old not in base, f'检测到旧客户页控制器仍在加载：{old}'
-assert (config.ROOT / 'app' / 'static' / 'v028.js').is_file(), '缺少 v028.js'
-print(f"✓ Python / 路由 / 模板 / 单控制器检查通过：v{app.version}")
+assert base.count('/static/v028.css') == 1, 'v028.css 必须且只能加载一次'
+assert base.count('/static/app.css') == 1, 'app.css 必须且只能加载一次'
+for old in (
+    '/static/current.js', '/static/v025.js', '/static/v025_minor.js', '/static/v026.js', '/static/v027.js',
+    '/static/v02.css', '/static/v021.css', '/static/v022.css', '/static/v023.css', '/static/v024.css',
+    '/static/v025.css', '/static/v026.css', '/static/v027.css',
+):
+    assert old not in base, f'检测到历史前端资源仍在运行：{old}'
+for asset in ('app.js', 'v028.js', 'app.css', 'v028.css'):
+    assert (config.ROOT / 'app' / 'static' / asset).is_file(), f'缺少 {asset}'
+for template in (config.ROOT / 'app' / 'templates').glob('*.html'):
+    text = template.read_text(encoding='utf-8')
+    assert 'type="date"' not in text and "type='date'" not in text, f'{template.name} 仍包含日期选择器'
+print(f"✓ Python / 路由 / 模板 / 单JS / 单CSS检查通过：v{app.version}")
 PY
 
 .venv/bin/python -c 'from app.db import init_db; init_db(); print("✓ 数据库结构检查/迁移完成")'
@@ -93,7 +104,7 @@ PY
 
 echo "===== 已运行静态文件一致性检查 ====="
 REV="$(git rev-parse --short HEAD)"
-for ASSET in app.js v028.js v028.css; do
+for ASSET in app.js v028.js app.css v028.css; do
   LOCAL_FILE="app/static/$ASSET"
   TMP_FILE="$(mktemp)"
   curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP_FILE"
