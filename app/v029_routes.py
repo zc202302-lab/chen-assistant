@@ -10,7 +10,7 @@ from . import config
 from .db import db, now_iso
 from .payment_v02 import current_period, payment_snapshot
 from .v025_routes import customer_or_404, service_or_404, promotion_or_404, _payment_run
-from .v026_routes import check_csrf, parse_date_text, date_text
+from .v026_routes import check_csrf, parse_date_text, date_text, promotion_bucket
 from .v027_routes import _column_widths
 from .v028_routes import (
     _template,
@@ -24,7 +24,7 @@ from .v028_routes import (
 
 router = APIRouter()
 templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
-APP_VERSION = '0.2.9'
+APP_VERSION = '0.2.10'
 
 
 def ctx(request: Request, **extra):
@@ -88,8 +88,6 @@ def customer_workspace_v029(request: Request, customer_id: int, tab: str = 'paym
 
         business_rows, _ = _business_payload(conn, customer_id, template, services, promo_rows)
         for item in business_rows:
-            # 业务列表只负责快速扫视。严格采用编辑器中的属性顺序，只展示前5项；
-            # 完整属性仍全部保留在“编辑业务”中。
             attrs = item.get('attributes') or []
             item['preview_attributes'] = attrs[:5]
 
@@ -198,7 +196,42 @@ def save_service_promotion_v029(
             )
             pid = int(cur.lastrowid)
         conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), service['customer_id']))
-    return JSONResponse({'ok': True, 'id': pid, 'name': clean_name, 'expiry_date': date_text(expiry_iso), 'notes': clean_notes})
+        bucket = promotion_bucket(expiry_iso, 'active')
+    return JSONResponse({
+        'ok': True,
+        'id': pid,
+        'service_id': service_id,
+        'name': clean_name,
+        'expiry_date': date_text(expiry_iso),
+        'notes': clean_notes,
+        'bucket': bucket,
+        'visible': bucket in {'expired', 'soon'},
+    })
+
+
+@router.post('/promotions/{promotion_id}/name-v030')
+def rename_promotion_v030(
+    request: Request,
+    promotion_id: int,
+    csrf: str = Form(...),
+    name: str = Form(...),
+):
+    check_csrf(request, csrf)
+    clean_name = name.strip()[:200]
+    if not clean_name:
+        raise HTTPException(400, '优惠名称不能为空')
+    with db() as conn:
+        row = promotion_or_404(conn, promotion_id)
+        service = service_or_404(conn, row['service_id'])
+        conn.execute('UPDATE promotions SET name=? WHERE id=?', (clean_name, promotion_id))
+        conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), service['customer_id']))
+    return JSONResponse({
+        'ok': True,
+        'id': promotion_id,
+        'service_id': service['id'],
+        'customer_id': service['customer_id'],
+        'name': clean_name,
+    })
 
 
 @router.post('/promotions/{promotion_id}/close-editor-v029')
@@ -209,4 +242,4 @@ def close_service_promotion_v029(request: Request, promotion_id: int, csrf: str 
         conn.execute("UPDATE promotions SET status='closed' WHERE id=?", (promotion_id,))
         service = service_or_404(conn, row['service_id'])
         conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), service['customer_id']))
-    return JSONResponse({'ok': True})
+    return JSONResponse({'ok': True, 'id': promotion_id, 'service_id': service['id']})
