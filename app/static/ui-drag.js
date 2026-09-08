@@ -95,23 +95,25 @@
       placePlaceholder(target, e.clientY < rect.top + rect.height / 2);
     };
 
-    const cleanupVisuals = () => {
-      if (!active) return;
-      active.ghost.remove();
-      active.placeholder.remove();
-      document.body.classList.remove('is-pointer-sorting');
-      removeWindowListeners();
-    };
-
     const finish = async (commit) => {
       if (!active) return;
       const state = active;
       active = null;
       const before = snapshotRects(state.list, state.rowSelector);
-      state.list.insertBefore(state.row, state.placeholder);
+
+      if (commit) {
+        state.list.insertBefore(state.row, state.placeholder);
+      } else if (state.originalNext && state.originalNext.parentElement === state.list) {
+        state.list.insertBefore(state.row, state.originalNext);
+      } else {
+        state.list.appendChild(state.row);
+      }
+
       state.row.classList.remove('sort-source-v0211');
-      state.row.classList.add('sort-drop-pulse-v0211');
-      setTimeout(() => state.row.classList.remove('sort-drop-pulse-v0211'), 380);
+      if (commit) {
+        state.row.classList.add('sort-drop-pulse-v0211');
+        setTimeout(() => state.row.classList.remove('sort-drop-pulse-v0211'), 380);
+      }
       state.ghost.remove();
       state.placeholder.remove();
       document.body.classList.remove('is-pointer-sorting');
@@ -149,6 +151,8 @@
       e.stopPropagation();
 
       const rect = row.getBoundingClientRect();
+      const originalOrder = directRows(list, rowSelector).map(rowIdentity).join('|');
+      const originalNext = row.nextSibling;
       const placeholder = document.createElement('div');
       placeholder.className = 'sort-insertion-placeholder-v0211';
       placeholder.style.height = `${Math.max(32, rect.height)}px`;
@@ -186,7 +190,8 @@
         offsetX:e.clientX - rect.left,
         offsetY:e.clientY - rect.top,
         distance:0,
-        originalOrder:directRows(list, rowSelector).map(rowIdentity).concat(rowIdentity(row)).join('|'),
+        originalOrder,
+        originalNext,
       };
       moveGhost(e);
       document.body.classList.add('is-pointer-sorting');
