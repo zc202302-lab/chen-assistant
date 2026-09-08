@@ -6,6 +6,8 @@ from .v023_routes import router as v023_router
 from .v024_routes import router as v024_router
 from .v025_routes import router as v025_router
 from .v025_home import router as v025_home_router
+from .v026_routes import router as v026_router
+from .v026_home import router as v026_home_router
 
 _legacy_routes = list(app.router.routes)
 
@@ -37,9 +39,17 @@ _before = len(app.router.routes)
 app.include_router(v025_home_router)
 _v025_home_routes = app.router.routes[_before:]
 
-# Newest routes first. v0.2.5 owns homepage data, customer workspace, payment lifecycle,
-# payment schedule editing, promotions and /health.
-app.router.routes[:] = _v025_home_routes + _v025_routes + _v024_routes + _v023_routes + _v022_routes + _v021_routes + _v02_routes + _legacy_routes
+_before = len(app.router.routes)
+app.include_router(v026_router)
+_v026_routes = app.router.routes[_before:]
 
-app.title = '晨的助手 v0.2.5'
-app.version = '0.2.5'
+_before = len(app.router.routes)
+app.include_router(v026_home_router)
+_v026_home_routes = app.router.routes[_before:]
+
+# Newest routes first. v0.2.6 owns homepage, customer workspace, review toggles,
+# month-only payment cycles, manual date input and promotion classification.
+app.router.routes[:] = _v026_home_routes + _v026_routes + _v025_home_routes + _v025_routes + _v024_routes + _v023_routes + _v022_routes + _v021_routes + _v02_routes + _legacy_routes
+
+app.title = '晨的助手 v0.2.6'
+app.version = '0.2.6'
