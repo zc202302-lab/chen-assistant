@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from email.message import EmailMessage
 from email.policy import SMTP
+from email.utils import parseaddr
 from urllib.parse import quote
 
 from fastapi import APIRouter, Request, Form, HTTPException
@@ -12,12 +13,14 @@ from .db import db, now_iso
 from .payment_v02 import current_period
 from .v025_routes import customer_or_404, service_or_404
 from .v026_routes import check_csrf
+from .v027_routes import _meta_get, _meta_set
 from .v028_routes import _template
 from . import v0212_routes as core
 from . import v0212_business_display_routes as business_display
 from . import v03_routes as v03
 
 router = APIRouter()
+RECIPIENT_META_KEY = 'payment_mail_recipient_v03'
 
 
 def _ensure_mail_templates(conn):
@@ -35,8 +38,25 @@ def _clean_header(value: str) -> str:
     return ' '.join((value or '').replace('\r', ' ').replace('\n', ' ').split()).strip()
 
 
-def _recipient() -> str:
+def _recipient(conn) -> str:
+    # Once the UI has saved this setting, even an intentionally blank value wins.
+    stored = _meta_get(conn, RECIPIENT_META_KEY, None)
+    if stored is not None:
+        return _clean_header(stored)
+    # Keep PAYMENT_EMAIL_TO only as a backwards-compatible first-run fallback.
     return _clean_header(os.getenv('PAYMENT_EMAIL_TO', ''))
+
+
+def _save_recipient(conn, recipient: str) -> str:
+    recipient = _clean_header(recipient)
+    if len(recipient) > 320:
+        raise HTTPException(400, '收件人地址过长')
+    if recipient:
+        _, address = parseaddr(recipient)
+        if not address or '@' not in address or address.startswith('@') or address.endswith('@'):
+            raise HTTPException(400, '收件人邮箱格式不正确')
+    _meta_set(conn, RECIPIENT_META_KEY, recipient)
+    return recipient
 
 
 def _get_template(conn, customer_id: int):
@@ -103,7 +123,7 @@ def get_customer_mail_template_v03(customer_id: int):
     with db() as conn:
         customer_or_404(conn, customer_id)
         template = _get_template(conn, customer_id)
-    recipient = _recipient()
+        recipient = _recipient(conn)
     return JSONResponse({
         'ok': True,
         'template': template,
@@ -119,17 +139,18 @@ def save_customer_mail_template_v03(
     csrf: str = Form(...),
     subject: str = Form(''),
     body: str = Form(''),
+    recipient: str = Form(''),
 ):
     check_csrf(request, csrf)
     with db() as conn:
         customer_or_404(conn, customer_id)
         template = _save_template(conn, customer_id, subject, body)
-    recipient = _recipient()
+        saved_recipient = _save_recipient(conn, recipient)
     return JSONResponse({
         'ok': True,
         'template': template,
-        'recipient': recipient,
-        'recipient_configured': bool(recipient),
+        'recipient': saved_recipient,
+        'recipient_configured': bool(saved_recipient),
     })
 
 
@@ -142,6 +163,7 @@ def download_payment_mail_draft_v03(customer_id: int):
         if not run['paid']:
             raise HTTPException(400, '请先完成本月缴费，再生成Foxmail邮件草稿')
         template = _get_template(conn, customer_id)
+        recipient = _recipient(conn)
 
     subject = _clean_header(template['subject'])
     if not subject:
@@ -154,7 +176,7 @@ def download_payment_mail_draft_v03(customer_id: int):
         subject=subject,
         body=template['body'],
         txt_content=txt_content,
-        recipient=_recipient(),
+        recipient=recipient,
     )
     filename = f'{_safe_filename(customer_name)}_{period}_Foxmail.eml'
     headers = {
