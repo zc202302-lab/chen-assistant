@@ -89,7 +89,7 @@ def main():
     )
     try:
         wait_http('http://127.0.0.1:8136/health')
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import expect, sync_playwright
 
         with sync_playwright() as p:
             browser = p.chromium.launch()
@@ -150,73 +150,68 @@ def main():
             variable_input.press('Enter')
             page.wait_for_timeout(450)
             assert page.locator('#pendingCount').inner_text().strip() == '0'
-            assert review.is_enabled()
+            expect(review).to_be_enabled(timeout=3000)
 
             review.click()
-            page.wait_for_timeout(180)
-            assert review.get_attribute('aria-pressed') == 'true'
-            assert notify.is_enabled()
+            expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(notify).to_be_enabled(timeout=3000)
 
             # Stage 2 first click only prepares/copies image; it must NOT complete the stage.
             accept_next_dialog(page)
             notify.click()
-            page.wait_for_timeout(220)
-            assert notify.get_attribute('aria-pressed') == 'false'
-            assert '待确认' in notify.inner_text()
+            expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(notify).to_contain_text('待确认', timeout=3000)
             assert 'awaiting-confirm' in (notify.get_attribute('class') or '')
             assert initiate.is_disabled()
 
             # Second click is the explicit human confirmation that WeChat send happened.
             accept_next_dialog(page)
             notify.click()
-            page.wait_for_timeout(180)
-            assert notify.get_attribute('aria-pressed') == 'true'
-            assert initiate.is_enabled()
+            expect(notify).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(initiate).to_be_enabled(timeout=3000)
             assert not readonly(variable_input)
 
             # Customer disputes the amount after receiving the WeChat image.
             variable_input.fill('110')
             variable_input.press('Enter')
-            page.wait_for_timeout(650)
-            assert review.get_attribute('aria-pressed') == 'false'
-            assert notify.get_attribute('aria-pressed') == 'false'
-            assert initiate.get_attribute('aria-pressed') == 'false'
+            expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
             assert fixed_row.get_attribute('data-confirmed') == '1'
             assert fixed_row.locator('[data-row-state]').inner_text().strip() == '✓'
 
-            # Reconfirm corrected amount and perform stage 2 again.
+            # Reconfirm corrected amount and perform stage 2 again. Wait for the
+            # authoritative workflow POST to finish instead of assuming 160 ms is enough.
+            expect(review).to_be_enabled(timeout=3000)
             review.click()
-            page.wait_for_timeout(160)
+            expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(notify).to_be_enabled(timeout=3000)
             accept_next_dialog(page)
             notify.click()
-            page.wait_for_timeout(180)
-            assert notify.get_attribute('aria-pressed') == 'false'
-            assert '待确认' in notify.inner_text()
+            expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(notify).to_contain_text('待确认', timeout=3000)
             accept_next_dialog(page)
             notify.click()
-            page.wait_for_timeout(180)
-            assert notify.get_attribute('aria-pressed') == 'true'
+            expect(notify).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(initiate).to_be_enabled(timeout=3000)
 
             # Stage 3 first click opens Foxmail but still stays incomplete.
             accept_next_dialog(page)
             initiate.click()
-            page.wait_for_timeout(220)
-            assert initiate.get_attribute('aria-pressed') == 'false'
-            assert '待确认' in initiate.inner_text()
+            expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(initiate).to_contain_text('待确认', timeout=3000)
             assert paid.is_disabled()
 
             # User returns after actually sending the email and confirms it.
             accept_next_dialog(page)
             initiate.click()
-            page.wait_for_timeout(180)
-            assert initiate.get_attribute('aria-pressed') == 'true'
-            assert paid.is_enabled()
+            expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(paid).to_be_enabled(timeout=3000)
 
             accept_next_dialog(page)
             paid.click()
-            page.wait_for_timeout(240)
-            assert paid.get_attribute('aria-pressed') == 'true'
-            assert readonly(variable_input)
+            expect(paid).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(variable_input).to_have_attribute('readonly', '', timeout=3000)
             with db() as conn:
                 next_period = conn.execute(
                     'SELECT next_payment_period FROM services WHERE id=?', (two_month_sid,)
@@ -226,10 +221,9 @@ def main():
             # Undo final completion: payment cycle restores, stage 3 remains completed.
             accept_next_dialog(page)
             paid.click()
-            page.wait_for_timeout(240)
-            assert paid.get_attribute('aria-pressed') == 'false'
-            assert initiate.get_attribute('aria-pressed') == 'true'
-            assert not readonly(variable_input)
+            expect(paid).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(variable_input).not_to_have_attribute('readonly', '', timeout=3000)
             with db() as conn:
                 restored = conn.execute(
                     'SELECT next_payment_period FROM services WHERE id=?', (two_month_sid,)
@@ -238,13 +232,11 @@ def main():
 
             accept_next_dialog(page)
             initiate.click()
-            page.wait_for_timeout(160)
-            assert initiate.get_attribute('aria-pressed') == 'false'
+            expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
             accept_next_dialog(page)
             notify.click()
-            page.wait_for_timeout(160)
-            assert notify.get_attribute('aria-pressed') == 'false'
-            assert review.get_attribute('aria-pressed') == 'true'
+            expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
 
             browser.close()
         print('v0.3.1 integrated four-stage browser acceptance passed (isolated test database)')
