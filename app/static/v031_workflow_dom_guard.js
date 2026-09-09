@@ -25,9 +25,13 @@
         row.classList.add('is-confirmed', 'v031-fixed-auto-confirmed');
         row.classList.remove('is-pending');
         if (review) {
-          review.disabled = true;
-          review.textContent = '✓';
-          review.title = '固定缴费金额自动确认，无需人工核对';
+          // Only mutate observed attributes when their value actually differs;
+          // otherwise MutationObserver would schedule this guard forever.
+          if (!review.disabled) review.disabled = true;
+          if (review.textContent !== '✓') review.textContent = '✓';
+          if (review.title !== '固定缴费金额自动确认，无需人工核对') {
+            review.title = '固定缴费金额自动确认，无需人工核对';
+          }
           review.classList.add('confirmed', 'v031-auto-confirmed');
           review.classList.remove('pending');
         }
