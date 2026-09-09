@@ -12,7 +12,7 @@
   let notifyPrepared = false;
   let initiatePrepared = false;
 
-  // v0.3.1 now integrates these actions into stage 2 / stage 3.
+  // v0.3.1 integrates these actions into stage 2 / stage 3.
   root.querySelectorAll('[data-v031-payment-image],[data-v03-foxmail-draft]').forEach(el => {
     el.hidden = true;
     el.setAttribute('aria-hidden', 'true');
@@ -73,6 +73,9 @@
 
   const normalizePrepared = () => {
     if (!state) return;
+    // Preserve a prepared external action while its prerequisite remains valid.
+    // Amount changes or a server-side rollback clear the prerequisite and therefore
+    // also clear the transient "待确认" state.
     if (!state.reviewed || state.notified) notifyPrepared = false;
     if (!state.notified || state.initiated) initiatePrepared = false;
   };
@@ -149,6 +152,13 @@
       if (!quiet) toast(`缴费流程初始化失败：${err.message}`);
       return false;
     }
+  };
+
+  // Single public renderer/refresh owner. Auxiliary scripts may request a refresh,
+  // but must not rewrite the four-stage button DOM themselves.
+  window.ChenPaymentWorkflowRuntimeV031 = {
+    refresh: () => loadState({quiet: true}),
+    render: () => render(),
   };
 
   const saveAction = async action => {
