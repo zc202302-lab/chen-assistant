@@ -86,6 +86,10 @@ def wait_http(url):
     raise RuntimeError('server start failed')
 
 
+def accept_next_dialog(page):
+    page.once('dialog', lambda dialog: dialog.accept())
+
+
 def main():
     cid, token = seed()
     assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
@@ -110,10 +114,8 @@ def main():
             assert root.get_attribute('data-v031-workflow-ready') == '1'
             flow = page.locator('[data-v031-payment-flow]')
             labels = [x.strip() for x in flow.locator('[data-v031-flow-action]').all_inner_texts()]
-            assert labels == ['✓ 金额核对', '✓ 已通知客户', '✓ 发起缴费', '4 完成缴费'], labels
+            assert labels == ['✓ 1 金额核对', '✓ 2 通知客户', '✓ 3 发起缴费', '4 完成缴费'], labels
 
-            # v0.3 used notified_at to lock editing. v0.3.1 must be the sole owner:
-            # a migrated initiated-but-not-paid customer remains editable.
             amount = page.locator('.quick-amount').first
             assert not bool(amount.evaluate('el => el.readOnly'))
 
@@ -121,11 +123,14 @@ def main():
             notify = flow.locator('[data-v031-flow-action="notify"]')
             review = flow.locator('[data-v031-flow-action="review"]')
             assert initiate.is_enabled()
+
+            accept_next_dialog(page)
             initiate.click()
             page.wait_for_timeout(180)
             assert initiate.get_attribute('aria-pressed') == 'false'
             assert notify.is_enabled()
 
+            accept_next_dialog(page)
             notify.click()
             page.wait_for_timeout(180)
             assert notify.get_attribute('aria-pressed') == 'false'
