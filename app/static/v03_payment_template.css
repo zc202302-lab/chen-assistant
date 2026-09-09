@@ -1,0 +1,124 @@
+/* v0.3 payment template + two-row payment header */
+
+.v025-payment-head.v03-payment-head-two-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  grid-template-areas:
+    "main total"
+    "tools tools"!important;
+  align-items:center!important;
+  gap:8px 14px!important;
+  padding:14px 18px 11px!important;
+}
+.v03-payment-head-two-row .v023-payment-title-line{
+  grid-area:main;
+  min-width:0;
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:wrap!important;
+  gap:6px 9px!important;
+}
+.v03-payment-head-two-row .payment-total,
+.v03-payment-head-two-row .v023-total{
+  grid-area:total;
+  align-self:start;
+}
+.v03-payment-head-tools{
+  grid-area:tools;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-width:0;
+  padding-top:8px;
+  border-top:1px solid #edf0f4;
+}
+.v03-payment-head-tools-left,
+.v03-payment-head-tools-right{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+}
+.v03-payment-head-tools-right{margin-left:auto}
+.v03-payment-head-tools .payment-columns-settings-v0211,
+.v03-payment-template-button{
+  min-height:30px!important;
+  padding:0 10px!important;
+  border-radius:9px!important;
+  white-space:nowrap;
+}
+.v03-payment-template-button{
+  border:1px solid #d9dfe8!important;
+  background:#fff!important;
+  color:#344054!important;
+  font-size:11px!important;
+  font-weight:750!important;
+}
+.v03-payment-template-button:hover{
+  border-color:#aeb8c7!important;
+  background:#f8fafc!important;
+}
+.v03-payment-head-tools .v03-payment-flow{
+  margin-left:0!important;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+/* The template button now lives in the title area; footer keeps Foxmail/output actions. */
+.v03-local-mail-actions{margin-left:0!important}
+.v03-local-mail-actions:empty{display:none!important}
+
+.v03-payment-attachment-field input{font-variant-numeric:tabular-nums}
+
+@media(max-width:900px){
+  .v025-payment-head.v03-payment-head-two-row{
+    grid-template-columns:minmax(0,1fr) auto!important;
+    gap:7px 10px!important;
+    padding:11px 12px 10px!important;
+  }
+  .v03-payment-head-tools{
+    align-items:flex-start;
+    flex-wrap:wrap;
+    gap:7px 10px;
+  }
+  .v03-payment-head-tools-right{
+    margin-left:0;
+    width:100%;
+  }
+  .v03-payment-head-tools .v03-payment-flow{
+    justify-content:flex-start;
+    overflow-x:auto;
+    flex-wrap:nowrap;
+    width:100%;
+    padding-bottom:1px;
+    scrollbar-width:none;
+  }
+  .v03-payment-head-tools .v03-payment-flow::-webkit-scrollbar{display:none}
+}
+
+@media(max-width:620px){
+  .v025-payment-head.v03-payment-head-two-row{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-areas:
+      "main"
+      "total"
+      "tools"!important;
+  }
+  .v03-payment-head-two-row .payment-total,
+  .v03-payment-head-two-row .v023-total{
+    width:100%;
+    min-height:auto!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    padding:8px 10px!important;
+  }
+  .v03-payment-head-tools-left{
+    width:100%;
+    flex-wrap:wrap;
+  }
+  .v03-payment-head-tools-left>*{
+    flex:1 1 auto;
+  }
+}
