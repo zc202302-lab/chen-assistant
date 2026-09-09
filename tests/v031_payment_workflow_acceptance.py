@@ -94,27 +94,55 @@ def main():
         with sync_playwright() as p:
             browser = p.chromium.launch()
             context = browser.new_context(viewport={'width': 1500, 'height': 1000})
+            context.grant_permissions(['clipboard-read', 'clipboard-write'], origin='http://127.0.0.1:8136')
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
             page = context.new_page()
+
+            # The browser acceptance does not run the Windows helper. Stub only the
+            # external bridge and compose payload; product state endpoints stay real.
+            page.route('http://127.0.0.1:18763/health', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body='{"ok":true,"verified_dispatch":true,"version":"test"}',
+                headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
+            ))
+            page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body='{"ok":true,"verified":true,"mode":"test"}',
+                headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
+            ))
+            page.route(f'**/customers/{cid}/payment-mail-compose-v031', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body='{"ok":true,"recipient_b64":"dGVzdEBleGFtcGxlLmNvbQ==","subject_b64":"dGVzdA==","body_b64":"","attachment_filename_b64":"dGVzdC50eHQ=","attachment_content_base64":"MTM4MDAwMDAwMDF8MTA1"}',
+            ))
+
             page.goto(f'http://127.0.0.1:8136/customers/{cid}', wait_until='networkidle')
 
             assert 'v0.3.1' in page.locator('.brand').inner_text()
             flow = page.locator('[data-v031-payment-flow]')
             flow.wait_for(state='visible')
+            page.wait_for_timeout(1100)
             labels = [x.strip() for x in flow.locator('[data-v031-flow-action]').all_inner_texts()]
-            assert labels == ['1 金额核对', '2 已通知客户', '3 发起缴费', '4 完成缴费'], labels
+            assert labels == ['1 金额核对', '2 通知客户', '3 发起缴费', '4 完成缴费'], labels
+
+            # Standalone action buttons are retired; actions now live inside stages 2 and 3.
             image_button = page.locator('[data-v031-payment-image]')
-            assert image_button.count() == 1
+            foxmail_button = page.locator('[data-v03-foxmail-draft]')
+            assert image_button.count() == 1 and image_button.is_hidden()
+            assert foxmail_button.count() == 1 and foxmail_button.is_hidden()
             assert page.locator('[data-v03-mail-template]').count() == 1
-            assert page.locator('[data-v03-foxmail-draft]').count() == 1
 
             review = flow.locator('[data-v031-flow-action="review"]')
             notify = flow.locator('[data-v031-flow-action="notify"]')
             initiate = flow.locator('[data-v031-flow-action="initiate"]')
             paid = flow.locator('[data-v031-flow-action="paid"]')
 
-            # One variable row starts unconfirmed. This is the production regression:
-            # after the final amount is entered, “金额核对” must become clickable immediately.
+            # Fixed amount is auto-confirmed and not manually toggleable.
+            fixed_row = page.locator(f'[data-payment-row][data-service-id="{two_month_sid}"]')
+            assert fixed_row.get_attribute('data-confirmed') == '1'
+            assert fixed_row.locator('[data-row-state]').inner_text().strip() == '✓'
+            assert fixed_row.locator('[data-row-state]').is_disabled()
+
+            # One variable row starts unconfirmed; entering it enables stage 1.
             assert page.locator('#pendingCount').inner_text().strip() == '1'
             assert review.is_disabled()
             variable_input = page.locator(f'[data-payment-row][data-service-id="{variable_sid}"] .quick-amount')
@@ -123,51 +151,70 @@ def main():
             page.wait_for_timeout(450)
             assert page.locator('#pendingCount').inner_text().strip() == '0'
             assert review.is_enabled()
-            assert notify.is_disabled()
-            assert initiate.is_disabled()
-            assert paid.is_disabled()
 
             review.click()
-            page.wait_for_timeout(150)
+            page.wait_for_timeout(180)
             assert review.get_attribute('aria-pressed') == 'true'
             assert notify.is_enabled()
-            assert image_button.is_enabled()
 
+            # Stage 2 first click only prepares/copies image; it must NOT complete the stage.
             accept_next_dialog(page)
             notify.click()
-            page.wait_for_timeout(150)
+            page.wait_for_timeout(220)
+            assert notify.get_attribute('aria-pressed') == 'false'
+            assert '待确认' in notify.inner_text()
+            assert 'awaiting-confirm' in (notify.get_attribute('class') or '')
+            assert initiate.is_disabled()
+
+            # Second click is the explicit human confirmation that WeChat send happened.
+            accept_next_dialog(page)
+            notify.click()
+            page.wait_for_timeout(180)
             assert notify.get_attribute('aria-pressed') == 'true'
             assert initiate.is_enabled()
             assert not readonly(variable_input)
 
             # Customer disputes the amount after receiving the WeChat image.
-            # Saving a changed amount must automatically invalidate review + notification.
             variable_input.fill('110')
             variable_input.press('Enter')
             page.wait_for_timeout(650)
             assert review.get_attribute('aria-pressed') == 'false'
             assert notify.get_attribute('aria-pressed') == 'false'
             assert initiate.get_attribute('aria-pressed') == 'false'
-            assert review.is_enabled()
-            assert notify.is_disabled()
+            assert fixed_row.get_attribute('data-confirmed') == '1'
+            assert fixed_row.locator('[data-row-state]').inner_text().strip() == '✓'
 
-            # Reconfirm the corrected amount and notify again.
+            # Reconfirm corrected amount and perform stage 2 again.
             review.click()
-            page.wait_for_timeout(140)
+            page.wait_for_timeout(160)
             accept_next_dialog(page)
             notify.click()
-            page.wait_for_timeout(140)
+            page.wait_for_timeout(180)
+            assert notify.get_attribute('aria-pressed') == 'false'
+            assert '待确认' in notify.inner_text()
+            accept_next_dialog(page)
+            notify.click()
+            page.wait_for_timeout(180)
             assert notify.get_attribute('aria-pressed') == 'true'
 
+            # Stage 3 first click opens Foxmail but still stays incomplete.
             accept_next_dialog(page)
             initiate.click()
-            page.wait_for_timeout(150)
+            page.wait_for_timeout(220)
+            assert initiate.get_attribute('aria-pressed') == 'false'
+            assert '待确认' in initiate.inner_text()
+            assert paid.is_disabled()
+
+            # User returns after actually sending the email and confirms it.
+            accept_next_dialog(page)
+            initiate.click()
+            page.wait_for_timeout(180)
             assert initiate.get_attribute('aria-pressed') == 'true'
             assert paid.is_enabled()
 
             accept_next_dialog(page)
             paid.click()
-            page.wait_for_timeout(220)
+            page.wait_for_timeout(240)
             assert paid.get_attribute('aria-pressed') == 'true'
             assert readonly(variable_input)
             with db() as conn:
@@ -176,10 +223,10 @@ def main():
                 ).fetchone()['next_payment_period']
                 assert next_period == add_periods(period, 2), next_period
 
-            # Undo final completion: actual payment cycle is restored, stage 3 remains completed.
+            # Undo final completion: payment cycle restores, stage 3 remains completed.
             accept_next_dialog(page)
             paid.click()
-            page.wait_for_timeout(220)
+            page.wait_for_timeout(240)
             assert paid.get_attribute('aria-pressed') == 'false'
             assert initiate.get_attribute('aria-pressed') == 'true'
             assert not readonly(variable_input)
@@ -189,16 +236,18 @@ def main():
                 ).fetchone()['next_payment_period']
                 assert restored == period, restored
 
+            accept_next_dialog(page)
             initiate.click()
-            page.wait_for_timeout(140)
+            page.wait_for_timeout(160)
             assert initiate.get_attribute('aria-pressed') == 'false'
+            accept_next_dialog(page)
             notify.click()
-            page.wait_for_timeout(140)
+            page.wait_for_timeout(160)
             assert notify.get_attribute('aria-pressed') == 'false'
             assert review.get_attribute('aria-pressed') == 'true'
 
             browser.close()
-        print('v0.3.1 four-stage browser acceptance passed (isolated test database)')
+        print('v0.3.1 integrated four-stage browser acceptance passed (isolated test database)')
     finally:
         proc.terminate()
         try:
