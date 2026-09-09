@@ -42,8 +42,6 @@
           box.dataset.attrKey = attr.key || '';
           const shown = attr.value || '—';
           box.title = `${attr.label || '属性'}：${shown} · 双击编辑`;
-          // Keep the label in the DOM because business-sync.js uses it to build the
-          // table header, but hide the repeated row label visually for readability.
           const small = document.createElement('small');
           small.className = 'business-attribute-label-v03';
           small.textContent = attr.label || '属性';
@@ -82,7 +80,6 @@
     primaryLabel.textContent = '快速筛选';
     primary.appendChild(primaryLabel);
 
-    // 缴费状态是业务总览里最高频的筛选，因此只把这一组常驻显示。
     const dueLine = lines.find(line => line.querySelector('[data-business-filter="due"]')) || lines[0];
     if (dueLine) primary.appendChild(dueLine);
 
@@ -116,11 +113,9 @@
         badge.hidden = extraActive.length === 0;
         more.classList.toggle('has-active', extraActive.length > 0);
       }
-      if (active.length === 0) {
-        selectedSummary.textContent = '全部业务';
-      } else {
-        selectedSummary.textContent = active.map(btn => btn.textContent.trim()).join(' · ');
-      }
+      selectedSummary.textContent = active.length
+        ? active.map(btn => btn.textContent.trim()).join(' · ')
+        : '全部业务';
       if (reset) reset.hidden = active.length === 0;
     };
 
@@ -132,8 +127,6 @@
   const footer = root.querySelector('.payment-footer');
   if (!footer || !customerId) return;
 
-  // SMTP is retired from the visible v0.3 workflow. Keep its old node hidden so
-  // legacy automation/compatibility checks do not break while the UI moves to Foxmail.
   const oldSmtpButton = footer.querySelector('[data-v03-send-email]');
   oldSmtpButton?.classList.add('v03-retired-smtp');
 
@@ -157,12 +150,13 @@
       </div>
       <div class="v03-mail-template-note">
         <b>发送方式</b>
-        <span>保存后长期绑定当前客户。完成缴费后优先调用 Windows Foxmail；未检测到本地助手时自动下载 .eml 草稿。</span>
+        <span>主题和正文长期绑定当前客户；收件人全局共用。完成缴费后优先调用 Windows Foxmail，未检测到本地助手时自动下载 .eml。</span>
         <i data-v03-foxmail-bridge-state>正在检测 Windows 助手…</i>
+        <a class="v03-foxmail-helper-download" href="/static/chen_foxmail_helper.ps1" download>下载 Windows 助手</a>
       </div>
       <label class="v03-mail-field">
-        <span>收件人 <small>全局固定</small></span>
-        <input type="text" data-v03-mail-recipient readonly placeholder="尚未配置，可在Foxmail中填写">
+        <span>收件人 <small>全局固定，修改后所有客户共用</small></span>
+        <input type="email" maxlength="320" data-v03-mail-recipient placeholder="同事邮箱，例如 colleague@example.com">
       </label>
       <label class="v03-mail-field">
         <span>邮件主题 <small>按客户长期保存</small></span>
@@ -239,7 +233,6 @@
     const data = await fetchJson(`/customers/${customerId}/mail-template-v03`);
     mailTemplate = data.template || {subject: '', body: ''};
     recipientInput.value = data.recipient || '';
-    recipientInput.placeholder = data.recipient_configured ? '' : '尚未配置，可在Foxmail中填写';
     subjectInput.value = mailTemplate.subject || '';
     bodyInput.value = mailTemplate.body || '';
     refreshDraftButton();
@@ -288,6 +281,7 @@
     submit.disabled = true;
     const fd = new FormData();
     fd.append('csrf', csrf);
+    fd.append('recipient', recipientInput.value.trim());
     fd.append('subject', subjectInput.value.trim());
     fd.append('body', bodyInput.value || '');
     try {
