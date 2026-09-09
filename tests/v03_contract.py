@@ -1,8 +1,19 @@
 from pathlib import Path
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+# Database-mutating contract checks must never run against production data/app.db.
+# Patch app.db's module-level paths before importing app.main or route helpers.
+import app.db as db_module  # noqa: E402
+
+_TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v03-contract-')
+TEST_DATA_DIR = Path(_TMPDIR.name)
+TEST_DB = TEST_DATA_DIR / 'app.db'
+db_module.DATA_DIR = TEST_DATA_DIR
+db_module.DB_PATH = TEST_DB
 
 from app.db import db, init_db  # noqa: E402
 from app.main import app  # noqa: E402
@@ -60,6 +71,7 @@ def test_v03_migration_is_safe_and_idempotent():
         tables = {row['name'] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
         assert 'payment_run_service_snapshots_v03' in tables
         assert 'payment_email_logs_v03' in tables
+    assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
 
 
 def test_schedule_regression():
@@ -124,4 +136,4 @@ if __name__ == '__main__':
     test_v03_migration_is_safe_and_idempotent()
     test_schedule_regression()
     test_ui_contracts()
-    print('v0.3 contract checks passed')
+    print('v0.3 contract checks passed (isolated test database)')
