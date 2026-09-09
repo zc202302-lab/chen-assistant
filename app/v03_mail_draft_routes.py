@@ -3,14 +3,18 @@ from __future__ import annotations
 import os
 from email.message import EmailMessage
 from email.policy import SMTP
+from urllib.parse import quote
 
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import JSONResponse, Response
 
 from .db import db, now_iso
 from .payment_v02 import current_period
-from .v025_routes import customer_or_404
+from .v025_routes import customer_or_404, service_or_404
 from .v026_routes import check_csrf
+from .v028_routes import _template
+from . import v0212_routes as core
+from . import v0212_business_display_routes as business_display
 from . import v03_routes as v03
 
 router = APIRouter()
@@ -78,6 +82,7 @@ def _safe_filename(value: str) -> str:
 
 def _build_eml(customer_name: str, period: str, subject: str, body: str, txt_content: str, recipient: str = '') -> bytes:
     msg = EmailMessage(policy=SMTP)
+    # X-Unsent is recognized by many Windows mail clients as an editable draft.
     msg['X-Unsent'] = '1'
     if recipient:
         msg['To'] = recipient
@@ -98,11 +103,12 @@ def get_customer_mail_template_v03(customer_id: int):
     with db() as conn:
         customer_or_404(conn, customer_id)
         template = _get_template(conn, customer_id)
+    recipient = _recipient()
     return JSONResponse({
         'ok': True,
         'template': template,
-        'recipient': _recipient(),
-        'recipient_configured': bool(_recipient()),
+        'recipient': recipient,
+        'recipient_configured': bool(recipient),
     })
 
 
@@ -118,11 +124,12 @@ def save_customer_mail_template_v03(
     with db() as conn:
         customer_or_404(conn, customer_id)
         template = _save_template(conn, customer_id, subject, body)
+    recipient = _recipient()
     return JSONResponse({
         'ok': True,
         'template': template,
-        'recipient': _recipient(),
-        'recipient_configured': bool(_recipient()),
+        'recipient': recipient,
+        'recipient_configured': bool(recipient),
     })
 
 
@@ -151,7 +158,73 @@ def download_payment_mail_draft_v03(customer_id: int):
     )
     filename = f'{_safe_filename(customer_name)}_{period}_Foxmail.eml'
     headers = {
-        'Content-Disposition': f'attachment; filename="{filename.encode("utf-8").decode("latin1", errors="ignore")}"; filename*=UTF-8\'\'{filename}',
+        'Content-Disposition': f"attachment; filename=payment.eml; filename*=UTF-8''{quote(filename)}",
         'Cache-Control': 'no-store, max-age=0',
     }
     return Response(content=eml, media_type='message/rfc822', headers=headers)
+
+
+# These two endpoints shadow the older v0.3 implementations so that any business
+# row refresh caused by status changes uses the CURRENT CUSTOMER'S display order.
+@router.post('/services/{service_id}/status-v03')
+def save_service_status_customer_display_v03(
+    request: Request,
+    service_id: int,
+    csrf: str = Form(...),
+    status: str = Form(...),
+):
+    check_csrf(request, csrf)
+    if status not in {'active', 'inactive'}:
+        raise HTTPException(400, '业务状态无效')
+
+    with db() as conn:
+        service = service_or_404(conn, service_id)
+        customer_id = int(service['customer_id'])
+        core._save_runtime(conn, service_id, status=status)
+        conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), customer_id))
+        template = _template(conn)
+        ordered = business_display._ordered_keys(conn, template, customer_id)
+        rows = business_display._customer_rows_payload(conn, customer_id, template, ordered)
+        runtime = core._runtime_for(conn, service_id)
+        state = core._schedule_state(service, runtime, current_period())
+
+    return JSONResponse({'ok': True, 'status': status, 'schedule_state': state, 'rows': rows})
+
+
+@router.post('/services/{service_id}/payment-status-v03')
+def save_payment_status_customer_display_v03(
+    request: Request,
+    service_id: int,
+    csrf: str = Form(...),
+    mode: str = Form(...),
+):
+    check_csrf(request, csrf)
+    if mode != 'normal':
+        raise HTTPException(400, '当前业务页仅支持恢复正常缴费周期')
+
+    period = current_period()
+    with db() as conn:
+        service = service_or_404(conn, service_id)
+        customer_id = int(service['customer_id'])
+        before = core._runtime_for(conn, service_id)
+        core._save_runtime(conn, service_id, deferred_until_period='')
+        conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), customer_id))
+
+        refreshed_service = service_or_404(conn, service_id)
+        runtime = core._runtime_for(conn, service_id)
+        state = core._schedule_state(refreshed_service, runtime, period)
+        due = core._service_due(refreshed_service, runtime, period)
+        template = _template(conn)
+        ordered = business_display._ordered_keys(conn, template, customer_id)
+        rows = business_display._customer_rows_payload(conn, customer_id, template, ordered)
+
+    return JSONResponse({
+        'ok': True,
+        'service_id': service_id,
+        'mode': 'normal',
+        'changed': bool((before.get('deferred_until_period') or '').strip()),
+        'deferred_until_period': '',
+        'schedule_state': state,
+        'due': bool(due),
+        'rows': rows,
+    })
