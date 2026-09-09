@@ -3,15 +3,10 @@
   const workbench = root?.querySelector('[data-payment-workbench]');
   const customerId = root?.dataset.customerId || '';
   const csrf = workbench?.dataset.csrf || '';
-  const pendingNode = document.getElementById('pendingCount');
-  const totalNode = document.getElementById('paymentGrandTotal');
-  if (!root || !workbench || !customerId || (!pendingNode && !totalNode)) return;
+  if (!root || !workbench || !customerId) return;
 
-  let lastPending = pendingNode?.textContent || '';
-  let lastTotal = totalNode?.textContent || '';
   let timer = 0;
   let checking = false;
-  let suppressUntil = Date.now() + 800;
 
   const toast = msg => {
     if (window.ChenToast) return window.ChenToast(msg);
@@ -74,6 +69,7 @@
         paint(run);
         return;
       }
+
       const wasInitiated = !!run.initiated;
       const wasNotified = !!run.notified;
       const fd = new FormData();
@@ -81,42 +77,40 @@
       fd.append('action', 'invalidate');
       const after = await fetchJson(`/customers/${customerId}/payment-workflow-v031`, {method: 'POST', body: fd});
       paint(after.run || {});
-      suppressUntil = Date.now() + 500;
       toast(wasInitiated
         ? '金额已修改：请重新核对、重新通知客户并重新发起缴费'
         : wasNotified
           ? '金额已修改：原客户通知已失效，请重新核对并重新通知客户'
           : '金额已修改：请重新完成金额核对');
-      // After stage 3 the primary script still has an in-memory initiated flag.
-      // Reload once so subsequent edits do not repeat the high-risk warning.
       if (wasInitiated) setTimeout(() => window.location.reload(), 350);
     } catch (_) {
-      // Main v0.3.1 handler remains the primary path. This layer is intentionally
-      // silent on transient errors to avoid duplicate error toasts.
+      // 主流程仍是第一处理路径。这里仅在主流程漏掉真实金额修改时兜底。
     } finally {
       checking = false;
     }
   };
 
-  const schedule = () => {
+  const scheduleRollbackCheck = () => {
     clearTimeout(timer);
-    const delay = Math.max(520, suppressUntil - Date.now() + 80);
-    timer = setTimeout(rollbackIfNeeded, delay);
+    // 给 payment-current 的保存请求和主 v0.3.1 状态同步留出时间。
+    timer = setTimeout(rollbackIfNeeded, 900);
   };
 
-  const observe = node => {
-    if (!node) return;
-    new MutationObserver(() => {
-      const pending = pendingNode?.textContent || '';
-      const total = totalNode?.textContent || '';
-      const changed = pending !== lastPending || total !== lastTotal;
-      lastPending = pending;
-      lastTotal = total;
-      if (!changed) return;
-      schedule();
-    }).observe(node, {childList: true, subtree: true, characterData: true});
-  };
+  // 只跟踪“金额输入框真实编辑后按 Enter 保存”。
+  // 不再观察待核对数量/总金额等页面统计，避免把正常的“金额核对”状态刷新误判成金额修改。
+  workbench.addEventListener('focusin', e => {
+    const input = e.target.closest?.('.quick-amount');
+    if (!input) return;
+    input.dataset.v031OriginalAmount = String(input.value ?? '');
+  }, true);
 
-  observe(pendingNode);
-  if (totalNode !== pendingNode) observe(totalNode);
+  workbench.addEventListener('keyup', e => {
+    const input = e.target.closest?.('.quick-amount');
+    if (!input || e.key !== 'Enter' || input.readOnly) return;
+    const original = input.dataset.v031OriginalAmount ?? String(input.value ?? '');
+    const current = String(input.value ?? '');
+    input.dataset.v031OriginalAmount = current;
+    if (current === original) return;
+    scheduleRollbackCheck();
+  }, true);
 })();
