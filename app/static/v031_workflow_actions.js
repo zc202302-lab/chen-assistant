@@ -187,7 +187,7 @@
     }
   };
 
-  const bridgeFetch = async (path, options = {}, timeoutMs = 12000) => {
+  const bridgeFetch = async (path, options = {}, timeoutMs = 22000) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -208,8 +208,8 @@
   };
 
   const prepareInitiate = async () => {
-    // Do not block the real action behind a short /health preflight. The verified
-    // /compose response is the authoritative proof that Foxmail actually opened.
+    // The local helper now waits for a stable, foreground Foxmail compose window,
+    // verifies the file-drop clipboard, and only then sends the single paste.
     const payload = await fetchJson(`/customers/${customerId}/payment-mail-compose-v031`);
     const response = await bridgeFetch('/compose', {
       method: 'POST',
@@ -221,7 +221,7 @@
         attachment_filename_b64: payload.attachment_filename_b64 || '',
         attachment_content_base64: payload.attachment_content_base64 || '',
       }),
-    }, 12000);
+    }, 22000);
     const result = await response.json().catch(() => ({}));
     if (!response.ok || result.ok !== true || result.verified !== true) {
       throw new Error(result.error || 'Foxmail写邮件窗口未确认打开');
