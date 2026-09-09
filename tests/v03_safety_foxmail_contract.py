@@ -42,14 +42,19 @@ def main():
 
     helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')
     assert 'BridgeMode' in helper and 'TcpListener' in helper
-    assert 'ComposeRequest' in helper and 'Invoke-SimpleMapiCompose' in helper
+    assert 'ComposeRequest' in helper and 'Invoke-FoxmailCompose' in helper
+    assert 'Get-FoxmailMapiDll' in helper
+    assert 'FMMAPI32' not in helper or 'Foxmail' in helper
+    assert 'LoadLibrary' in helper and 'GetProcAddress' in helper
     assert 'MAPISendMail' in helper and 'MAPI_DIALOG' in helper
     assert "Path -eq '/compose'" in helper
-    assert "version = '0.3'" in helper and 'compose = $true' in helper
+    assert "version = '0.4'" in helper and 'compose = $true' in helper
+    assert 'foxmail_direct' in helper
     assert 'SysWOW64\\WindowsPowerShell' in helper
     assert "AllowedRootDomain = 'ziboxiaozhushou.cn'" in helper
     assert 'Access-Control-Allow-Private-Network: true' in helper
     assert 'Start-Process -FilePath $path' in helper  # legacy .eml fallback remains
+    assert 'Get-CimInstance Win32_Process' in helper  # installer replaces old bridge process
     assert 'Startup' in helper
 
     bridge = (ROOT / 'windows' / 'foxmail_bridge.ps1').read_text(encoding='utf-8')
@@ -70,6 +75,7 @@ def main():
 
     main_py = (ROOT / 'app' / 'main.py').read_text(encoding='utf-8')
     assert "connect-src 'self' http://127.0.0.1:18763 http://localhost:18763" in main_py
+    assert "('.js', '.css', '.ps1')" in main_py
 
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
     assert 'tests/v03_' not in deploy, '生产 deploy.sh 不得执行 v0.3 测试脚本'
