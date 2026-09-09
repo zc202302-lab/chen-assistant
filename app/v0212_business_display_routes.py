@@ -38,12 +38,7 @@ def _normalize_loaded(template, loaded):
 
 
 def _legacy_default_order(conn, template):
-    """Read the old global setting only as a one-time migration source.
-
-    Attribute definitions are global, but display choices are per customer. Existing
-    customers inherit the old global display the first time they are opened after
-    this migration; subsequent edits are isolated to that customer.
-    """
+    """Read old global settings only as a one-time migration source."""
     valid = [str(x['key']) for x in template]
     raw = _meta_get(conn, BUSINESS_DISPLAY_ORDER_KEY, '')
     if raw:
@@ -65,12 +60,7 @@ def _legacy_default_order(conn, template):
 
 
 def _ordered_keys(conn, template, customer_id: int | None = None):
-    """Return business columns for one customer.
-
-    The template itself remains global. Only visibility/order is customer scoped.
-    A None customer_id is retained for backward compatibility with old callers and
-    returns the legacy/global migration default without persisting a new global edit.
-    """
+    """Business visibility/order is per customer; attribute definitions stay global."""
     if customer_id is None:
         return _legacy_default_order(conn, template)
 
@@ -199,6 +189,7 @@ def get_business_columns_v0212(customer_id: int):
         customer_or_404(conn, customer_id)
         template = _template(conn)
         ordered = _ordered_keys(conn, template, customer_id)
+        rows = _customer_rows_payload(conn, customer_id, template, ordered)
     options = [
         {'key': SYSTEM_PAYMENT_STATE_KEY, 'label': '缴费状态', 'kind': 'derived_state'},
         *[
@@ -206,7 +197,7 @@ def get_business_columns_v0212(customer_id: int):
             for item in template
         ],
     ]
-    return JSONResponse({'ok': True, 'columns': ordered, 'options': options})
+    return JSONResponse({'ok': True, 'columns': ordered, 'options': options, 'rows': rows})
 
 
 @router.post('/customers/{customer_id}/business-columns-v0212')
