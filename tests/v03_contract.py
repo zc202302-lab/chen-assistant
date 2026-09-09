@@ -101,7 +101,7 @@ def test_ui_contracts():
     assert "action == 'review'" in routes and "action == 'paid'" in routes
     assert 'smtplib.SMTP_SSL' in routes and 'PAYMENT_EMAIL_TO' in routes
     assert 'snapshot_count' in safe_routes
-    assert '旧版本' in safe_routes and '不能自动撤回' in safe_routes
+    assert '旧版本' in safe_routes and '不允许自动撤回' in safe_routes
 
 
 if __name__ == '__main__':
