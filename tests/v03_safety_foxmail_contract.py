@@ -32,17 +32,24 @@ def main():
     assert "button.disabled = false" in foxmail_action
     assert '当前客户本月缴费流程尚未完成' in foxmail_action
     assert '正在准备邮件' in foxmail_action
+    assert "payment-mail-compose-v03" in foxmail_action
     assert "payment-mail-draft-v03" in foxmail_action
-    assert "method: 'POST'" in foxmail_action and "'/open'" in foxmail_action
+    assert "'/compose'" in foxmail_action and "method: 'POST'" in foxmail_action
+    assert 'Windows助手版本较旧' in foxmail_action
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-    assert '/static/v03_foxmail_action_fix.js?v=0305' in base
+    assert '/static/v03_foxmail_action_fix.js?v=0306' in base
 
     helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')
     assert 'BridgeMode' in helper and 'TcpListener' in helper
+    assert 'ComposeRequest' in helper and 'Invoke-SimpleMapiCompose' in helper
+    assert 'MAPISendMail' in helper and 'MAPI_DIALOG' in helper
+    assert "Path -eq '/compose'" in helper
+    assert "version = '0.3'" in helper and 'compose = $true' in helper
+    assert 'SysWOW64\\WindowsPowerShell' in helper
     assert "AllowedRootDomain = 'ziboxiaozhushou.cn'" in helper
     assert 'Access-Control-Allow-Private-Network: true' in helper
-    assert 'Start-Process -FilePath $path' in helper
+    assert 'Start-Process -FilePath $path' in helper  # legacy .eml fallback remains
     assert 'Startup' in helper
 
     bridge = (ROOT / 'windows' / 'foxmail_bridge.ps1').read_text(encoding='utf-8')
@@ -58,6 +65,8 @@ def main():
     assert "RECIPIENT_META_KEY = 'payment_mail_recipient_v03'" in mail_routes
     assert '_save_recipient' in mail_routes
     assert "recipient: str = Form('')" in mail_routes
+    assert "payment-mail-compose-v03" in mail_routes
+    assert 'attachment_content_base64' in mail_routes
 
     main_py = (ROOT / 'app' / 'main.py').read_text(encoding='utf-8')
     assert "connect-src 'self' http://127.0.0.1:18763 http://localhost:18763" in main_py
