@@ -44,7 +44,7 @@ jobs:
           customer_route=next(r for r in app.router.routes if getattr(r,'path','')=='/customers/{customer_id}')
           assert customer_route.endpoint.__module__=='app.v0212_routes'
           owned={
-              ('/customers/{customer_id}/payment-run','POST'):'app.v03_routes',
+              ('/customers/{customer_id}/payment-run','POST'):'app.v03_payment_routes',
               ('/customers/{customer_id}/payment-run-v03','GET'):'app.v03_routes',
               ('/customers/{customer_id}/payment-email-v03','POST'):'app.v03_routes',
               ('/services/{service_id}/status-v03','POST'):'app.v03_routes',
