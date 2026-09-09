@@ -7,47 +7,56 @@
   if (!paymentList || !reviewButton) return;
 
   const rows = () => [...paymentList.querySelectorAll('[data-payment-row]')];
+  const variableRows = () => rows().filter(row => row.dataset.mode === 'variable');
   let wholeReset = false;
   let lastReviewState = reviewButton.getAttribute('aria-pressed');
 
   const paintRow = (row, confirmed) => {
+    // Fixed fee rows are automatic confirmations by definition.
+    if (row.dataset.mode === 'fixed') confirmed = true;
     const next = confirmed ? '1' : '0';
     if (row.dataset.confirmed !== next) row.dataset.confirmed = next;
     row.classList.toggle('is-confirmed', !!confirmed);
     row.classList.toggle('is-pending', !confirmed);
+    row.classList.toggle('v031-fixed-auto-confirmed', row.dataset.mode === 'fixed');
     const state = row.querySelector('[data-row-state]');
     if (state) {
       const symbol = confirmed ? '✓' : '○';
       if (state.textContent !== symbol) state.textContent = symbol;
       state.classList.toggle('confirmed', !!confirmed);
       state.classList.toggle('pending', !confirmed);
-      const label = confirmed ? '已核对' : '未核对';
+      state.classList.toggle('v031-auto-confirmed', row.dataset.mode === 'fixed');
+      const label = row.dataset.mode === 'fixed' ? '固定金额自动已确认' : (confirmed ? '已核对' : '未核对');
       if (state.getAttribute('aria-label') !== label) state.setAttribute('aria-label', label);
+      if (row.dataset.mode === 'fixed') {
+        state.disabled = true;
+        state.title = '固定缴费金额自动确认，无需人工核对';
+      }
     }
   };
 
   const normalizeFromData = () => {
-    rows().forEach(row => paintRow(row, row.dataset.confirmed === '1'));
+    rows().forEach(row => paintRow(row, row.dataset.mode === 'fixed' || row.dataset.confirmed === '1'));
   };
 
   const detectPersistedWholeReset = () => {
-    wholeReset = rows().some(row => row.dataset.mode === 'fixed' && row.dataset.confirmed === '0');
+    wholeReset = variableRows().some(row => row.dataset.confirmed === '0');
     root.classList.toggle('v03-whole-review-reset', wholeReset);
   };
 
   const syncResetCounters = () => {
     if (!wholeReset) return;
-    const all = rows();
-    const unconfirmed = all.filter(row => row.dataset.confirmed !== '1').length;
+    const variable = variableRows();
+    const unconfirmed = variable.filter(row => row.dataset.confirmed !== '1').length;
     const required = document.getElementById('requiredCount');
     const pending = document.getElementById('pendingCount');
     const readiness = document.getElementById('paymentReadiness');
-    if (required) required.textContent = String(all.length);
+    if (required) required.textContent = String(variable.length);
     if (pending) pending.textContent = String(unconfirmed);
     if (readiness) {
       readiness.textContent = unconfirmed
-        ? `整批核对已撤销，还有 ${unconfirmed} 项待重新确认`
-        : '本月金额已重新确认，可再次完成金额核对';
+        ? `还有 ${unconfirmed} 项变动金额待重新确认；固定金额已自动确认`
+        : '变动金额已确认；固定金额自动确认，可完成金额核对';
     }
   };
 
@@ -65,8 +74,8 @@
       if (pending && data.stats?.pending !== undefined) pending.textContent = String(data.stats.pending);
       if (readiness && data.stats?.pending !== undefined) {
         readiness.textContent = Number(data.stats.pending)
-          ? `还有 ${data.stats.pending} 项金额未核对`
-          : '本月应缴业务金额已全部核对';
+          ? `还有 ${data.stats.pending} 项变动金额未核对；固定金额已自动确认`
+          : '本月变动金额已全部核对；固定金额自动确认';
       }
     } catch (_) {}
   };
@@ -80,12 +89,11 @@
     if (current === lastReviewState) return;
 
     if (lastReviewState === 'true' && current === 'false') {
-      wholeReset = true;
-      root.classList.add('v03-whole-review-reset');
-      rows().forEach(row => paintRow(row, false));
+      wholeReset = variableRows().length > 0;
+      root.classList.toggle('v03-whole-review-reset', wholeReset);
+      rows().forEach(row => paintRow(row, row.dataset.mode === 'fixed'));
       syncResetCounters();
     } else if (lastReviewState === 'false' && current === 'true') {
-      // Fixed rows are restored in one batch by the v0.3.1 review action.
       rows().forEach(row => paintRow(row, true));
       wholeReset = false;
       root.classList.remove('v03-whole-review-reset');
