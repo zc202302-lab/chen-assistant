@@ -1,0 +1,39 @@
+name: Windows Foxmail helper validation
+
+on:
+  push:
+    branches: [main, v0.3-dev]
+    paths:
+      - 'app/static/chen_foxmail_helper.ps1'
+      - 'windows/**'
+      - '.github/workflows/windows-foxmail-helper.yml'
+  workflow_dispatch:
+
+jobs:
+  powershell-51:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse helper with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'app/static/chen_foxmail_helper.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | Format-List *
+            throw "Windows PowerShell 5.1 parse failed with $($errors.Count) error(s)."
+          }
+          Write-Host 'Windows PowerShell 5.1 syntax check passed.'
+      - name: Verify helper stays ASCII-safe
+        shell: powershell
+        run: |
+          $bytes = [IO.File]::ReadAllBytes((Resolve-Path 'app/static/chen_foxmail_helper.ps1'))
+          if (($bytes | Where-Object { $_ -gt 127 }).Count -gt 0) {
+            throw 'Helper contains non-ASCII bytes. Keep the downloadable PowerShell 5.1 helper ASCII-only.'
+          }
+          Write-Host 'ASCII compatibility check passed.'
