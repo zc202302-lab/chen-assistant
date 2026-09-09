@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from .db import db, now_iso
 from .payment_v02 import current_period, effective_payment_rule
-from .v025_routes import service_or_404
+from .v025_routes import customer_or_404, service_or_404
 from .v026_routes import check_csrf, date_text, promotion_bucket
 from .v027_routes import _meta_get, _meta_set
 from .v028_routes import _template, _custom_map, _service_attrs
@@ -24,8 +24,6 @@ def _ordered_keys(conn, template):
     valid = [str(x['key']) for x in template]
     raw = _meta_get(conn, BUSINESS_DISPLAY_ORDER_KEY, '')
     if not raw:
-        # Migrate once from the previous checkbox-based setting. Payment state used to be
-        # forcibly displayed, so preserve it as an ordinary ordered attribute on migration.
         legacy_raw = _meta_get(conn, core.BUSINESS_VISIBLE_KEY, '')
         try:
             legacy = json.loads(legacy_raw) if legacy_raw else valid[:5]
@@ -54,6 +52,20 @@ def _ordered_keys(conn, template):
             seen.add(key)
     if ordered != loaded:
         _meta_set(conn, BUSINESS_DISPLAY_ORDER_KEY, json.dumps(ordered, ensure_ascii=False))
+    return ordered
+
+
+def _normalize_requested(template, requested):
+    valid = {str(x['key']) for x in template}
+    valid.add(SYSTEM_PAYMENT_STATE_KEY)
+    ordered = []
+    seen = set()
+    for raw in requested:
+        key = str(raw)
+        if key not in valid or key in seen:
+            continue
+        ordered.append(key)
+        seen.add(key)
     return ordered
 
 
@@ -110,10 +122,78 @@ def _business_payload_ordered(conn, customer_id: int, template, services, promo_
     return rows
 
 
-# The existing customer workspace resolves these functions at request time, so replacing
-# them here upgrades the current page without duplicating the whole customer route.
+def _customer_rows_payload(conn, customer_id: int, template, ordered):
+    services = conn.execute(
+        '''SELECT s.*,g.name invoice_group_name FROM services s
+           LEFT JOIN invoice_groups g ON g.id=s.invoice_group_id
+           WHERE s.customer_id=?
+           ORDER BY CASE WHEN COALESCE(s.sort_order,0)>0 THEN s.sort_order ELSE 100000000+s.id END,s.id''',
+        (customer_id,),
+    ).fetchall()
+    runtime = core._runtime_map(conn, [s['id'] for s in services])
+    promo_rows = conn.execute(
+        '''SELECT p.*,s.service_type,s.holder_name,s.number,s.account,s.customer_id
+           FROM promotions p JOIN services s ON s.id=p.service_id
+           WHERE s.customer_id=? AND COALESCE(p.status,'active')='active'
+           ORDER BY p.expiry_date,p.id''',
+        (customer_id,),
+    ).fetchall()
+    business_rows = _business_payload_ordered(
+        conn, customer_id, template, services, promo_rows, ordered, runtime
+    )
+    return {
+        str(item['row']['id']): {
+            'preview_attributes': item['preview_attributes'],
+            'due': bool(item['due']),
+        }
+        for item in business_rows
+    }
+
+
+# Existing customer workspace resolves these names at request time.
 core._visible_keys = _ordered_keys
 core._business_payload_v0212 = _business_payload_ordered
+
+
+@router.get('/customers/{customer_id}/business-columns-v0212')
+def get_business_columns_v0212(customer_id: int):
+    with db() as conn:
+        customer_or_404(conn, customer_id)
+        template = _template(conn)
+        ordered = _ordered_keys(conn, template)
+    options = [
+        {'key': SYSTEM_PAYMENT_STATE_KEY, 'label': '缴费状态', 'kind': 'derived_state'},
+        *[
+            {'key': str(item['key']), 'label': item['label'], 'kind': item.get('kind', 'text')}
+            for item in template
+        ],
+    ]
+    return JSONResponse({'ok': True, 'columns': ordered, 'options': options})
+
+
+@router.post('/customers/{customer_id}/business-columns-v0212')
+def save_business_columns_v0212(
+    request: Request,
+    customer_id: int,
+    csrf: str = Form(...),
+    columns_json: str = Form('[]'),
+):
+    check_csrf(request, csrf)
+    try:
+        requested = json.loads(columns_json)
+    except Exception:
+        raise HTTPException(400, '业务显示属性设置无效')
+    if not isinstance(requested, list) or len(requested) > 41:
+        raise HTTPException(400, '业务显示属性设置无效')
+
+    with db() as conn:
+        customer_or_404(conn, customer_id)
+        template = _template(conn)
+        ordered = _normalize_requested(template, requested)
+        _meta_set(conn, BUSINESS_DISPLAY_ORDER_KEY, json.dumps(ordered, ensure_ascii=False))
+        conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), customer_id))
+        rows = _customer_rows_payload(conn, customer_id, template, ordered)
+    return JSONResponse({'ok': True, 'columns': ordered, 'rows': rows})
 
 
 @router.post('/services/{service_id}/runtime-v0212')
@@ -137,48 +217,13 @@ def save_service_runtime_display_order_v0212(
     with db() as conn:
         service = service_or_404(conn, service_id)
         template = _template(conn)
-        valid = {str(x['key']) for x in template}
-        valid.add(SYSTEM_PAYMENT_STATE_KEY)
-        ordered = []
-        seen = set()
-        for raw in requested:
-            key = str(raw)
-            if key not in valid or key in seen:
-                continue
-            ordered.append(key)
-            seen.add(key)
-
+        ordered = _normalize_requested(template, requested)
         _meta_set(conn, BUSINESS_DISPLAY_ORDER_KEY, json.dumps(ordered, ensure_ascii=False))
         core._save_runtime(conn, service_id, status=status)
         conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), service['customer_id']))
-
-        services = conn.execute(
-            '''SELECT s.*,g.name invoice_group_name FROM services s
-               LEFT JOIN invoice_groups g ON g.id=s.invoice_group_id
-               WHERE s.customer_id=?
-               ORDER BY CASE WHEN COALESCE(s.sort_order,0)>0 THEN s.sort_order ELSE 100000000+s.id END,s.id''',
-            (service['customer_id'],),
-        ).fetchall()
-        runtime = core._runtime_map(conn, [s['id'] for s in services])
-        promo_rows = conn.execute(
-            '''SELECT p.*,s.service_type,s.holder_name,s.number,s.account,s.customer_id
-               FROM promotions p JOIN services s ON s.id=p.service_id
-               WHERE s.customer_id=? AND COALESCE(p.status,'active')='active'
-               ORDER BY p.expiry_date,p.id''',
-            (service['customer_id'],),
-        ).fetchall()
-        business_rows = _business_payload_ordered(
-            conn, int(service['customer_id']), template, services, promo_rows, ordered, runtime
-        )
-        result_rows = {
-            str(item['row']['id']): {
-                'preview_attributes': item['preview_attributes'],
-                'due': bool(item['due']),
-            }
-            for item in business_rows
-        }
-        current_runtime = runtime[int(service_id)]
-        schedule_state = core._schedule_state(service, current_runtime, current_period())
+        result_rows = _customer_rows_payload(conn, int(service['customer_id']), template, ordered)
+        runtime = core._runtime_map(conn, [service_id])
+        schedule_state = core._schedule_state(service, runtime[int(service_id)], current_period())
 
     return JSONResponse({
         'ok': True,
