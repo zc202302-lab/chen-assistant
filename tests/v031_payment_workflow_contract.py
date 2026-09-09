@@ -56,6 +56,15 @@ def main():
     assert "fd.append('action', 'invalidate')" not in rollback, '前端兜底不应再负责写入回退状态'
     assert 'MutationObserver' not in rollback, '金额回退不得监听页面统计变化，避免正常核对被误回退'
 
+    runtime_owner = (ROOT / 'app' / 'static' / 'v031_workflow_runtime_fix.js').read_text(encoding='utf-8')
+    for token in (
+        'sole runtime controller' if False else 'Capture phase deliberately takes ownership',
+        "flow.addEventListener('click'", 'event.stopImmediatePropagation()',
+        'payment-workflow-v031', 'data-v031-workflow-ready' if False else 'v031WorkflowReady',
+        'setTimeout(() => loadState({quiet: true}), 1000)',
+    ):
+        assert token in runtime_owner, token
+
     routes = (ROOT / 'app' / 'v031_payment_workflow_routes.py').read_text(encoding='utf-8')
     for token in (
         "initiated_at", "action == 'initiate'", "action == 'invalidate'",
@@ -80,8 +89,10 @@ def main():
     assert 'v0.3.1' in base
     assert '/static/v031_payment_workflow.js?v=0311' in base
     assert '/static/v031_amount_rollback_fix.js?v=0311' in base
+    assert '/static/v031_workflow_runtime_fix.js?v=0312' in base
     assert '/static/v031_payment_workflow.css?v=0311' in base
     assert base.index('/static/v031_amount_rollback_fix.js') > base.index('/static/v031_payment_workflow.js')
+    assert base.index('/static/v031_workflow_runtime_fix.js') > base.index('/static/v031_amount_rollback_fix.js')
 
     print('v0.3.1 payment workflow contract passed')
 
