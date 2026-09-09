@@ -5,6 +5,7 @@ on:
     branches: [main, v0.3-dev]
     paths:
       - 'app/static/chen_foxmail_helper.ps1'
+      - 'app/static/chen_foxmail_bootstrap.ps1'
       - 'windows/**'
       - '.github/workflows/windows-foxmail-helper.yml'
   workflow_dispatch:
@@ -14,26 +15,36 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Parse helper with Windows PowerShell 5.1
+      - name: Parse helper and bootstrap with Windows PowerShell 5.1
         shell: powershell
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path 'app/static/chen_foxmail_helper.ps1'),
-            [ref]$tokens,
-            [ref]$errors
-          ) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | Format-List *
-            throw "Windows PowerShell 5.1 parse failed with $($errors.Count) error(s)."
+          foreach ($path in @(
+            'app/static/chen_foxmail_helper.ps1',
+            'app/static/chen_foxmail_bootstrap.ps1'
+          )) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $path),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | Format-List *
+              throw "Windows PowerShell 5.1 parse failed for $path with $($errors.Count) error(s)."
+            }
+            Write-Host "Windows PowerShell 5.1 syntax check passed: $path"
           }
-          Write-Host 'Windows PowerShell 5.1 syntax check passed.'
-      - name: Verify helper stays ASCII-safe
+      - name: Verify helper scripts stay ASCII-safe
         shell: powershell
         run: |
-          $bytes = [IO.File]::ReadAllBytes((Resolve-Path 'app/static/chen_foxmail_helper.ps1'))
-          if (($bytes | Where-Object { $_ -gt 127 }).Count -gt 0) {
-            throw 'Helper contains non-ASCII bytes. Keep the downloadable PowerShell 5.1 helper ASCII-only.'
+          foreach ($path in @(
+            'app/static/chen_foxmail_helper.ps1',
+            'app/static/chen_foxmail_bootstrap.ps1'
+          )) {
+            $bytes = [IO.File]::ReadAllBytes((Resolve-Path $path))
+            if (($bytes | Where-Object { $_ -gt 127 }).Count -gt 0) {
+              throw "$path contains non-ASCII bytes. Keep downloadable PowerShell 5.1 scripts ASCII-only."
+            }
+            Write-Host "ASCII compatibility check passed: $path"
           }
-          Write-Host 'ASCII compatibility check passed.'
