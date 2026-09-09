@@ -51,7 +51,7 @@ def main():
     assert '/static/v03_foxmail_action_fix.js?v=0311' in base
     assert '/static/v031_payment_workflow.js?v=0311' in base
     assert '/static/v031_amount_rollback_fix.js?v=0314' in base
-    assert '/static/v031_workflow_actions.js?v=0315' in base
+    assert '/static/v031_workflow_actions.js?v=0316' in base
     assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
     assert '/static/v031_workflow_dom_guard.js?v=0314' in base
 
@@ -61,13 +61,20 @@ def main():
     assert 'Get-FoxmailExe' in helper
     assert 'Build-MailtoUri' in helper and "'mailto:'" in helper
     assert 'Clipboard]::SetFileDropList' in helper
+    assert 'Clipboard]::ContainsFileDropList' in helper
+    assert 'Clipboard]::GetFileDropList' in helper
     assert "SendWait('^v')" in helper
-    assert 'SetForegroundWindow' in helper and 'GetFoxmailWindows' in helper
+    assert 'ForceForeground' in helper and 'IsForeground' in helper
+    assert 'AttachThreadInput' in helper and 'GetForegroundWindow' in helper
+    assert 'Focus-ComposeWindow' in helper and 'Set-AttachmentClipboard' in helper
     assert "Path -eq '/compose'" in helper
-    assert "version = '0.7'" in helper and 'compose = $true' in helper
+    assert "version = '0.8'" in helper and 'compose = $true' in helper
     assert "compose_mode = 'mailto-clipboard'" in helper
     assert 'foxmail_direct' in helper and 'verified_dispatch' in helper
     assert 'attachment_filename_exact = $true' in helper
+    assert 'attachment_focus_verified = $true' in helper
+    assert 'clipboard_verified = $true' in helper
+    assert 'WaitForExit(18000)' in helper
     assert '$composeDir = Join-Path $MailDir $prefix' in helper
     assert '$attachmentPath = Join-Path $composeDir $attachmentName' in helper
     assert "($prefix + '-' + $attachmentName)" not in helper
