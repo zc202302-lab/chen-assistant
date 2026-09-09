@@ -11,15 +11,18 @@
   let lastReviewState = reviewButton.getAttribute('aria-pressed');
 
   const paintRow = (row, confirmed) => {
-    row.dataset.confirmed = confirmed ? '1' : '0';
+    const next = confirmed ? '1' : '0';
+    if (row.dataset.confirmed !== next) row.dataset.confirmed = next;
     row.classList.toggle('is-confirmed', !!confirmed);
     row.classList.toggle('is-pending', !confirmed);
     const state = row.querySelector('[data-row-state]');
     if (state) {
-      state.textContent = confirmed ? '✓' : '○';
+      const symbol = confirmed ? '✓' : '○';
+      if (state.textContent !== symbol) state.textContent = symbol;
       state.classList.toggle('confirmed', !!confirmed);
       state.classList.toggle('pending', !confirmed);
-      state.setAttribute('aria-label', confirmed ? '已核对' : '未核对');
+      const label = confirmed ? '已核对' : '未核对';
+      if (state.getAttribute('aria-label') !== label) state.setAttribute('aria-label', label);
     }
   };
 
