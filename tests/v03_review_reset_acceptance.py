@@ -3,17 +3,16 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-DB = ROOT / 'data' / 'app.db'
-for suffix in ('', '-wal', '-shm'):
-    p = Path(str(DB) + suffix)
-    if p.exists():
-        p.unlink()
+_TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v03-review-reset-')
+TEST_DB = Path(_TMPDIR.name) / 'app.db'
+os.environ['APP_DB_PATH'] = str(TEST_DB)
 
 os.environ.update({
     'APP_USERNAME': 'ui-test',
@@ -73,6 +72,7 @@ def wait_http(url):
 
 def main():
     cid, ids, token = seed()
+    assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
     period = current_period()
     proc = subprocess.Popen(
         [sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8133'],
@@ -148,7 +148,7 @@ def main():
                 assert all(row['source'] == 'fixed' for row in entries)
 
             browser.close()
-        print('v0.3 whole review reset acceptance passed')
+        print('v0.3 whole review reset acceptance passed (isolated test database)')
     finally:
         proc.terminate()
         try:
