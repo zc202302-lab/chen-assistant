@@ -4,7 +4,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
-    # Any v0.3 browser acceptance that starts the app or seeds data must opt into
+    # Any v0.3/v0.3.1 browser acceptance that starts the app or seeds data must opt into
     # an isolated APP_DB_PATH. This guards against ever repeating a production
     # deployment accidentally deleting data/app.db.
     acceptance_files = sorted((ROOT / 'tests').glob('v03*_acceptance.py'))
@@ -42,8 +42,14 @@ def main():
     assert 'downloadEmlFallback' not in foxmail_action
     assert 'payment-mail-draft-v03' not in foxmail_action
 
+    v031 = (ROOT / 'app' / 'static' / 'v031_payment_workflow.js').read_text(encoding='utf-8')
+    assert 'payment-mail-compose-v031' in v031
+    assert '发送邮件后回到这里点击“发起缴费”' in v031
+    assert "FOXMAIL_BRIDGE = 'http://127.0.0.1:18763'" in v031
+
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-    assert '/static/v03_foxmail_action_fix.js?v=0307' in base
+    assert '/static/v03_foxmail_action_fix.js?v=0310' in base
+    assert '/static/v031_payment_workflow.js?v=0310' in base
 
     helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')
     assert 'BridgeMode' in helper and 'TcpListener' in helper
@@ -64,8 +70,8 @@ def main():
     assert "'-STA'" in helper
     assert "AllowedRootDomain = 'ziboxiaozhushou.cn'" in helper
     assert 'Access-Control-Allow-Private-Network: true' in helper
-    assert 'Start-Process -FilePath $path' in helper  # manual .eml fallback remains only in helper/open endpoint
-    assert 'Get-CimInstance Win32_Process' in helper  # installer replaces old bridge process
+    assert 'Start-Process -FilePath $path' in helper
+    assert 'Get-CimInstance Win32_Process' in helper
     assert 'Startup' in helper
 
     bridge = (ROOT / 'windows' / 'foxmail_bridge.ps1').read_text(encoding='utf-8')
@@ -91,7 +97,7 @@ def main():
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
     assert 'tests/v03_' not in deploy, '生产 deploy.sh 不得执行 v0.3 测试脚本'
 
-    print('v0.3 safety/Foxmail contract passed')
+    print('v0.3.1 safety/Foxmail contract passed')
 
 
 if __name__ == '__main__':
