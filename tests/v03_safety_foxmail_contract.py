@@ -24,6 +24,15 @@ def main():
     assert 'openWithLocalFoxmail' in js
     assert 'downloadBlob' in js
     assert '未检测到 Windows 助手' in js
+    assert '/static/chen_foxmail_helper.ps1' in js
+    assert "fd.append('recipient'" in js
+
+    helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')
+    assert 'BridgeMode' in helper and 'TcpListener' in helper
+    assert "AllowedRootDomain = 'ziboxiaozhushou.cn'" in helper
+    assert 'Access-Control-Allow-Private-Network: true' in helper
+    assert 'Start-Process -FilePath $path' in helper
+    assert 'Startup' in helper
 
     bridge = (ROOT / 'windows' / 'foxmail_bridge.ps1').read_text(encoding='utf-8')
     installer = (ROOT / 'windows' / 'install_foxmail_bridge.ps1').read_text(encoding='utf-8')
@@ -33,6 +42,11 @@ def main():
     assert "Path -eq '/open'" in bridge
     assert '[IO.File]::WriteAllBytes' in bridge and 'Start-Process' in bridge
     assert 'Startup' in installer and 'foxmail_bridge.ps1' in installer
+
+    mail_routes = (ROOT / 'app' / 'v03_mail_draft_routes.py').read_text(encoding='utf-8')
+    assert "RECIPIENT_META_KEY = 'payment_mail_recipient_v03'" in mail_routes
+    assert '_save_recipient' in mail_routes
+    assert "recipient: str = Form('')" in mail_routes
 
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
     assert 'tests/v03_' not in deploy, '生产 deploy.sh 不得执行 v0.3 测试脚本'
