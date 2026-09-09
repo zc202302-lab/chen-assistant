@@ -8,7 +8,7 @@ HEALTH_URL="$APP_HTTP/health"
 BACKUP_DIR="$APP_DIR/backups"
 
 cd "$APP_DIR"
-echo "===== 晨的助手 v0.3 一键更新 ====="
+echo "===== 晨的助手 v0.3.1 一键更新 ====="
 
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   echo "✗ 检测到服务器上的受 Git 管理文件有本地修改，已停止更新。"
@@ -49,7 +49,7 @@ git merge --ff-only origin/main
 echo "===== 更新前代码检查 ====="
 .venv/bin/python -m compileall -q app
 if command -v node >/dev/null 2>&1; then
-  for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js; do
+  for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js; do
     node --check "app/static/$ASSET"
   done
 fi
@@ -69,24 +69,24 @@ for name in runtime_templates:
     text=p.read_text(encoding='utf-8')
     assert 'type="date"' not in text and "type='date'" not in text, f'{name} 仍包含日期选择器'
 
-assert app.version=='0.3',f'预期 v0.3，实际 v{app.version}'
+assert app.version=='0.3.1',f'预期 v0.3.1，实际 v{app.version}'
 for path in ('/','/customers/{customer_id}','/health'):
     matches=[r for r in app.router.routes if getattr(r,'path','')==path]
     assert len(matches)==1,f'{path} 路由数量异常：{len(matches)}'
 customer_route=next(r for r in app.router.routes if getattr(r,'path','')=='/customers/{customer_id}')
 assert getattr(customer_route.endpoint,'__module__','')=='app.v0212_routes','客户工作区渲染路由异常'
+health_route=next(r for r in app.router.routes if getattr(r,'path','')=='/health')
+assert getattr(health_route.endpoint,'__module__','')=='app.v031_payment_workflow_routes','v0.3.1 健康检查路由异常'
 
 owned={
+    ('/customers/{customer_id}/payment-workflow-v031','GET'):'app.v031_payment_workflow_routes',
+    ('/customers/{customer_id}/payment-workflow-v031','POST'):'app.v031_payment_workflow_routes',
+    ('/customers/{customer_id}/payment-mail-compose-v031','GET'):'app.v031_payment_workflow_routes',
     ('/customers/{customer_id}/payment-run','POST'):'app.v03_payment_routes',
     ('/customers/{customer_id}/payment-run-v03','GET'):'app.v03_routes',
     ('/customers/{customer_id}/workflow-state-v03','GET'):'app.v031_runtime_routes',
-    ('/customers/{customer_id}/payment-email-v03','POST'):'app.v03_routes',
     ('/customers/{customer_id}/mail-template-v03','GET'):'app.v03_mail_draft_routes',
     ('/customers/{customer_id}/mail-template-v03','POST'):'app.v03_mail_draft_routes',
-    ('/customers/{customer_id}/payment-mail-compose-v03','GET'):'app.v03_mail_draft_routes',
-    ('/customers/{customer_id}/payment-mail-draft-v03','GET'):'app.v03_mail_draft_routes',
-    ('/services/{service_id}/status-v03','POST'):'app.v03_mail_draft_routes',
-    ('/services/{service_id}/payment-status-v03','POST'):'app.v03_mail_draft_routes',
     ('/customers/{customer_id}/payment.txt','GET'):'app.v0212_routes',
     ('/services/{service_id}/defer-v0212','POST'):'app.v0212_routes',
     ('/services/{service_id}/delete-v0212','POST'):'app.v0212_routes',
@@ -94,8 +94,8 @@ owned={
 }
 for (path,method),module in owned.items():
     matches=[r for r in app.router.routes if getattr(r,'path','')==path and method in getattr(r,'methods',set())]
-    assert matches,f'缺少 v0.3 核心路由：{path} {method}'
-    assert getattr(matches[0].endpoint,'__module__','')==module,f'{path} 未由预期 v0.3 路由接管：{matches[0].endpoint.__module__}'
+    assert matches,f'缺少 v0.3.1 核心路由：{path} {method}'
+    assert getattr(matches[0].endpoint,'__module__','')==module,f'{path} 未由预期路由接管：{matches[0].endpoint.__module__}'
 
 base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
 current_assets=(
@@ -103,9 +103,10 @@ current_assets=(
     '/static/business-sync.js','/static/v0211.js','/static/workspace-refinement-v0212.js','/static/v03.js',
     '/static/v03_runtime_fix.js','/static/v03_business_mail.js','/static/v03_payment_template.js',
     '/static/v03_foxmail_action_fix.js','/static/v03_insert_order.js','/static/v03_review_reset.js',
+    '/static/v031_payment_workflow.js',
     '/static/app.css','/static/v028.css','/static/layout-refinement.css','/static/v0212.css',
     '/static/workspace-refinement-v0212.css','/static/v03.css','/static/v03_business_mail.css',
-    '/static/v03_payment_template.css',
+    '/static/v03_payment_template.css','/static/v031_payment_workflow.css',
 )
 for current in current_assets:
     assert base.count(current)==1,f'{current} 必须且只能加载一次'
@@ -114,28 +115,28 @@ for retired in ('/static/v0212.js','/static/business-editor-hotfix.js','/static/
 for asset in (
     'app.js','v028.js','ui-drag.js','service-promotions.js','business-sync.js','v0211.js',
     'workspace-refinement-v0212.js','v03.js','v03_runtime_fix.js','v03_business_mail.js','v03_payment_template.js',
-    'v03_foxmail_action_fix.js','v03_insert_order.js','v03_review_reset.js',
+    'v03_foxmail_action_fix.js','v03_insert_order.js','v03_review_reset.js','v031_payment_workflow.js',
     'app.css','v028.css','layout-refinement.css','v0212.css','workspace-refinement-v0212.css','v03.css','v03_business_mail.css',
-    'v03_payment_template.css','chen_foxmail_helper.ps1',
+    'v03_payment_template.css','v031_payment_workflow.css','chen_foxmail_helper.ps1',
 ):
     assert (config.ROOT/'app'/'static'/asset).is_file(),f'缺少 {asset}'
-print(f"✓ Python / 路由 / 模板 / v0.3 前端资源检查通过：v{app.version}")
+print(f"✓ Python / 路由 / 模板 / v0.3.1 前端资源检查通过：v{app.version}")
 PY
 
-echo "===== 数据库结构与 v0.3 安全迁移 ====="
+echo "===== 数据库结构与 v0.3.1 安全迁移 ====="
 .venv/bin/python - <<'PY'
 from app.db import init_db, db
 from app.v03_routes import _ensure_v03
 from app.v03_mail_draft_routes import _ensure_mail_templates
+from app.v031_payment_workflow_routes import ensure_v031
 init_db()
 with db() as conn:
     _ensure_v03(conn)
     _ensure_mail_templates(conn)
-print('✓ v0.3 数据库结构检查/迁移完成')
+    ensure_v031(conn)
+print('✓ v0.3.1 数据库结构检查/迁移完成')
 PY
 
-# deploy.sh 由 root 执行数据库迁移时，SQLite 主文件可能保留/变成 root 所有，
-# 而正式服务以专用用户运行。每次迁移后都把 data 目录及 SQLite 文件归还给服务账户。
 if [[ -d data ]]; then
   chown "$SERVICE_USER:$SERVICE_GROUP" data
   find data -maxdepth 1 -type f \( -name 'app.db' -o -name 'app.db-wal' -o -name 'app.db-shm' \) \
@@ -147,7 +148,6 @@ if [[ -d data ]]; then
 fi
 
 # 生产部署绝不执行 tests/ 下的测试程序。完整测试只在 GitHub CI 的隔离环境运行。
-# 此处只对生产库做只读安全核对：完整性必须正常，且客户/业务数量不得少于部署前备份。
 if [[ -f "$BACKUP_FILE" && -f data/app.db ]]; then
   .venv/bin/python - "$BACKUP_FILE" data/app.db <<'PY'
 import sqlite3, sys
@@ -183,13 +183,13 @@ echo "$HEALTH_JSON"
 import json,sys
 p=json.loads(sys.argv[1])
 if p.get('ok') is not True: raise SystemExit('健康检查返回 ok=false')
-if p.get('version')!='0.3': raise SystemExit(f"版本不匹配：{p.get('version')}")
+if p.get('version')!='0.3.1': raise SystemExit(f"版本不匹配：{p.get('version')}")
 print(f"✓ 服务版本：{p.get('version')}")
 PY
 
 echo "===== 已运行静态文件一致性检查 ====="
 REV="$(git rev-parse --short HEAD)"
-for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js app.css v028.css layout-refinement.css v0212.css workspace-refinement-v0212.css v03.css v03_business_mail.css v03_payment_template.css chen_foxmail_helper.ps1; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js app.css v028.css layout-refinement.css v0212.css workspace-refinement-v0212.css v03.css v03_business_mail.css v03_payment_template.css v031_payment_workflow.css chen_foxmail_helper.ps1; do
   LOCAL_FILE="app/static/$ASSET"; TMP_FILE="$(mktemp)"
   curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP_FILE"
   LOCAL_SHA="$(sha256sum "$LOCAL_FILE"|awk '{print $1}')"; SERVED_SHA="$(sha256sum "$TMP_FILE"|awk '{print $1}')"; rm -f "$TMP_FILE"
@@ -199,7 +199,7 @@ for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0
   echo "✓ $ASSET：正式服务与 Git 工作区一致"
 done
 
-for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js; do
   CACHE_HEADER="$(curl -fsSI "$APP_HTTP/static/$ASSET?deploy=$REV" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^Cache-Control:/{sub(/^[^:]*:[ ]*/,""); print; exit}')"
   case "$CACHE_HEADER" in
     *no-store*) echo "✓ $ASSET 禁止浏览器缓存旧控制代码" ;;
@@ -207,6 +207,6 @@ for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0
   esac
 done
 
-echo "✓ v0.3 服务健康检查通过"
+echo "✓ v0.3.1 服务健康检查通过"
 echo "更新后代码：$REV"
-echo "===== v0.3 更新完成 ====="
+echo "===== v0.3.1 更新完成 ====="
