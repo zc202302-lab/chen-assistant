@@ -24,6 +24,15 @@ function Get-BridgeProcesses {
     })
 }
 
+function Get-WatchProcesses {
+    return @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+        $_.ProcessId -ne $PID -and
+        $_.CommandLine -and
+        $_.CommandLine -like '*chen_foxmail_bootstrap.ps1*' -and
+        $_.CommandLine -like '*-Watch*'
+    })
+}
+
 function Stop-Bridge {
     foreach ($proc in (Get-BridgeProcesses)) {
         Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
@@ -40,6 +49,16 @@ function Start-Bridge {
     )
     Start-Sleep -Milliseconds 900
     return ((Get-BridgeProcesses).Count -gt 0)
+}
+
+function Start-Watchdog {
+    foreach ($proc in (Get-WatchProcesses)) {
+        Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+    Start-Sleep -Milliseconds 250
+    Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -ArgumentList @(
+        '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', "`"$BootstrapPath`"", '-Watch'
+    )
 }
 
 function Test-HelperFile([string]$Path) {
@@ -79,7 +98,7 @@ function Update-Helper {
     $staged = Join-Path $InstallDir 'chen_foxmail_helper.new.ps1'
 
     Remove-Item -Force -ErrorAction SilentlyContinue $download, $staged
-    $uri = $HelperUrl + '?autoupdate=' + [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $uri = $HelperUrl + '?autoupdate=' + [DateTime]::UtcNow.Ticks
 
     try {
         Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $download -TimeoutSec 20
@@ -141,6 +160,7 @@ if (-not $Watch) {
     $updated = Update-Helper
     Stop-Bridge
     $started = Start-Bridge
+    Start-Watchdog
 
     Write-Host ''
     Write-Host 'Chen Assistant Windows helper bootstrap installed.' -ForegroundColor Green
