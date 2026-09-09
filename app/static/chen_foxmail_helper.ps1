@@ -28,6 +28,16 @@ function Safe-AttachmentName([string]$Name) {
     return $Name
 }
 
+function Safe-EmlName([string]$Name) {
+    if (-not $Name) { return 'payment.eml' }
+    foreach ($c in [IO.Path]::GetInvalidFileNameChars()) {
+        $Name = $Name.Replace([string]$c, '_')
+    }
+    if (-not $Name.ToLowerInvariant().EndsWith('.eml')) { $Name += '.eml' }
+    if ($Name.Length -gt 120) { $Name = $Name.Substring(0, 116) + '.eml' }
+    return $Name
+}
+
 function Get-FoxmailMapiDll {
     $views = @(
         [Microsoft.Win32.RegistryView]::Registry32,
@@ -58,6 +68,80 @@ function Get-FoxmailMapiDll {
     return ''
 }
 
+function Get-MapiErrorText([int]$Code) {
+    switch ($Code) {
+        0 { return 'success' }
+        1 { return 'user aborted' }
+        2 { return 'general MAPI failure' }
+        3 { return 'MAPI logon failed' }
+        4 { return 'disk full' }
+        5 { return 'insufficient memory' }
+        6 { return 'access denied' }
+        8 { return 'too many sessions' }
+        9 { return 'too many files' }
+        10 { return 'too many recipients' }
+        11 { return 'attachment not found' }
+        12 { return 'attachment could not be opened' }
+        13 { return 'unknown recipient' }
+        14 { return 'bad recipient type' }
+        17 { return 'message text too large' }
+        18 { return 'invalid session' }
+        19 { return 'message type not supported' }
+        20 { return 'ambiguous recipient' }
+        22 { return 'network failure' }
+        24 { return 'invalid recipients' }
+        25 { return 'MAPI operation not supported' }
+        90 { return 'helper exception' }
+        default { return "MAPI error $Code" }
+    }
+}
+
+function Ensure-WindowProbeType {
+    if ('ChenFoxmailWindowProbe' -as [type]) { return }
+    Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+
+public static class ChenFoxmailWindowProbe
+{
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+    public static int CountVisibleForPids(int[] processIds)
+    {
+        if (processIds == null || processIds.Length == 0) return 0;
+        var ids = new HashSet<int>(processIds);
+        int count = 0;
+        EnumWindows(delegate(IntPtr hWnd, IntPtr lParam)
+        {
+            if (!IsWindowVisible(hWnd)) return true;
+            uint pid;
+            GetWindowThreadProcessId(hWnd, out pid);
+            if (ids.Contains((int)pid)) count++;
+            return true;
+        }, IntPtr.Zero);
+        return count;
+    }
+}
+'@
+}
+
+function Get-FoxmailVisibleWindowCount {
+    Ensure-WindowProbeType
+    $ids = @(Get-Process -Name Foxmail -ErrorAction SilentlyContinue | ForEach-Object { [int]$_.Id })
+    if ($ids.Count -eq 0) { return 0 }
+    return [ChenFoxmailWindowProbe]::CountVisibleForPids([int[]]$ids)
+}
+
 function Invoke-FoxmailCompose([string]$RequestPath) {
     $payload = Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $recipient = Decode-B64Text ([string]$payload.recipient_b64)
@@ -83,6 +167,8 @@ using System.Runtime.InteropServices;
 
 public static class ChenFoxmailMapi
 {
+    private const int MAPI_LOGON_UI = 0x00000001;
+    private const int MAPI_NEW_SESSION = 0x00000002;
     private const int MAPI_DIALOG = 0x00000008;
     private const int MAPI_TO = 1;
 
@@ -216,7 +302,8 @@ public static class ChenFoxmailMapi
                 msg.files = filePtr;
             }
 
-            return send(IntPtr.Zero, IntPtr.Zero, ref msg, MAPI_DIALOG, 0);
+            int flags = MAPI_LOGON_UI | MAPI_NEW_SESSION | MAPI_DIALOG;
+            return send(IntPtr.Zero, IntPtr.Zero, ref msg, flags, 0);
         }
         finally
         {
@@ -250,8 +337,10 @@ public static class ChenFoxmailMapi
 
 if ($ComposeRequest) {
     try {
-        [void](Invoke-FoxmailCompose $ComposeRequest)
-        exit 0
+        $result = [int](Invoke-FoxmailCompose $ComposeRequest)
+        if ($result -eq 0) { exit 0 }
+        if ($result -lt 1 -or $result -gt 89) { exit 89 }
+        exit $result
     } catch {
         exit 90
     }
@@ -298,6 +387,7 @@ if (-not $BridgeMode) {
     } else {
         Write-Host 'Direct Foxmail MAPI was not found.' -ForegroundColor Yellow
     }
+    Write-Host 'Compose dispatch verification: enabled'
     Write-Host ''
     Write-Host 'Return to Chen Assistant and refresh the page.'
     Read-Host 'Press Enter to close'
@@ -427,16 +517,6 @@ function Read-Request([System.Net.Sockets.NetworkStream]$Stream) {
     }
 }
 
-function Safe-FileName([string]$Name) {
-    if (-not $Name) { return 'payment.eml' }
-    foreach ($c in [IO.Path]::GetInvalidFileNameChars()) {
-        $Name = $Name.Replace([string]$c, '_')
-    }
-    if (-not $Name.ToLowerInvariant().EndsWith('.eml')) { $Name += '.eml' }
-    if ($Name.Length -gt 120) { $Name = $Name.Substring(0, 116) + '.eml' }
-    return $Name
-}
-
 Get-ChildItem -Path $MailDir -File -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-7) } |
     Remove-Item -Force -ErrorAction SilentlyContinue
@@ -450,8 +530,7 @@ try {
             $stream = $client.GetStream()
             $req = Read-Request $stream
             if ($null -eq $req) {
-                $json = ConvertTo-CompactJson @{ ok = $false }
-                Write-Response $stream 400 $json
+                Write-Response $stream 400 (ConvertTo-CompactJson @{ ok = $false })
                 continue
             }
 
@@ -459,14 +538,12 @@ try {
             if ($req.Headers.ContainsKey('origin')) { $origin = $req.Headers['origin'] }
 
             if (-not (Test-AllowedOrigin $origin)) {
-                $json = ConvertTo-CompactJson @{ ok = $false; error = 'origin denied' }
-                Write-Response $stream 403 $json
+                Write-Response $stream 403 (ConvertTo-CompactJson @{ ok = $false; error = 'origin denied' })
                 continue
             }
 
             if ($req.TooLarge) {
-                $json = ConvertTo-CompactJson @{ ok = $false; error = 'payload too large' }
-                Write-Response $stream 413 $json $origin
+                Write-Response $stream 413 (ConvertTo-CompactJson @{ ok = $false; error = 'payload too large' }) $origin
                 continue
             }
 
@@ -476,14 +553,14 @@ try {
             }
 
             if ($req.Method -eq 'GET' -and $req.Path -eq '/health') {
-                $json = ConvertTo-CompactJson @{
+                Write-Response $stream 200 (ConvertTo-CompactJson @{
                     ok = $true
                     name = 'Chen Foxmail Helper'
-                    version = '0.4'
+                    version = '0.5'
                     compose = $true
                     foxmail_direct = [bool]$FoxmailMapiDll
-                }
-                Write-Response $stream 200 $json $origin
+                    verified_dispatch = $true
+                }) $origin
                 continue
             }
 
@@ -494,25 +571,61 @@ try {
                     foreach ($name in @('subject_b64', 'attachment_filename_b64', 'attachment_content_base64')) {
                         if (-not $payload.$name) { throw "missing $name" }
                     }
+
                     $requestFile = Join-Path $MailDir ((Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '-compose.json')
                     [IO.File]::WriteAllText($requestFile, $req.Body, [Text.Encoding]::UTF8)
+                    $beforeWindows = Get-FoxmailVisibleWindowCount
 
                     $composePowerShell = Join-Path $env:WINDIR 'SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
                     if (-not (Test-Path $composePowerShell)) { $composePowerShell = 'powershell.exe' }
-                    Start-Process -FilePath $composePowerShell -WindowStyle Hidden -ArgumentList @(
+                    $process = Start-Process -FilePath $composePowerShell -WindowStyle Hidden -PassThru -ArgumentList @(
                         '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$InstalledScript`"",
                         '-ComposeRequest', "`"$requestFile`""
                     )
 
-                    $json = ConvertTo-CompactJson @{
-                        ok = $true
-                        mode = 'foxmail-direct-mapi'
-                        queued = $true
+                    $exitedQuickly = $process.WaitForExit(1800)
+                    if (-not $exitedQuickly) {
+                        Write-Response $stream 200 (ConvertTo-CompactJson @{
+                            ok = $true
+                            mode = 'foxmail-direct-mapi'
+                            verified = $true
+                            state = 'dialog-active'
+                        }) $origin
+                        continue
                     }
-                    Write-Response $stream 200 $json $origin
+
+                    $exitCode = [int]$process.ExitCode
+                    if ($exitCode -ne 0) {
+                        $errorText = Get-MapiErrorText $exitCode
+                        Write-Response $stream 500 (ConvertTo-CompactJson @{
+                            ok = $false
+                            error = "Foxmail MAPI failed: $errorText (code $exitCode)"
+                            code = $exitCode
+                        }) $origin
+                        continue
+                    }
+
+                    Start-Sleep -Milliseconds 700
+                    $afterWindows = Get-FoxmailVisibleWindowCount
+                    if ($afterWindows -gt $beforeWindows) {
+                        Write-Response $stream 200 (ConvertTo-CompactJson @{
+                            ok = $true
+                            mode = 'foxmail-direct-mapi'
+                            verified = $true
+                            state = 'new-window-detected'
+                        }) $origin
+                    } else {
+                        Write-Response $stream 500 (ConvertTo-CompactJson @{
+                            ok = $false
+                            error = 'Foxmail MAPI returned success but no compose window was detected'
+                            code = 0
+                        }) $origin
+                    }
                 } catch {
-                    $json = ConvertTo-CompactJson @{ ok = $false; error = 'compose failed' }
-                    Write-Response $stream 500 $json $origin
+                    Write-Response $stream 500 (ConvertTo-CompactJson @{
+                        ok = $false
+                        error = $_.Exception.Message
+                    }) $origin
                 }
                 continue
             }
@@ -521,7 +634,7 @@ try {
                 try {
                     $payload = $req.Body | ConvertFrom-Json
                     $decodedName = Decode-B64Text ([string]$payload.filename_b64)
-                    $fileName = Safe-FileName $decodedName
+                    $fileName = Safe-EmlName $decodedName
                     $mailBytes = [Convert]::FromBase64String([string]$payload.content_base64)
                     if ($mailBytes.Length -lt 20) { throw 'empty mail payload' }
 
@@ -529,18 +642,17 @@ try {
                     $path = Join-Path $MailDir ($prefix + '-' + $fileName)
                     [IO.File]::WriteAllBytes($path, $mailBytes)
                     Start-Process -FilePath $path
-
-                    $json = ConvertTo-CompactJson @{ ok = $true; mode = 'eml' }
-                    Write-Response $stream 200 $json $origin
+                    Write-Response $stream 200 (ConvertTo-CompactJson @{ ok = $true; mode = 'eml' }) $origin
                 } catch {
-                    $json = ConvertTo-CompactJson @{ ok = $false; error = 'open failed' }
-                    Write-Response $stream 500 $json $origin
+                    Write-Response $stream 500 (ConvertTo-CompactJson @{
+                        ok = $false
+                        error = $_.Exception.Message
+                    }) $origin
                 }
                 continue
             }
 
-            $json = ConvertTo-CompactJson @{ ok = $false; error = 'not found' }
-            Write-Response $stream 404 $json $origin
+            Write-Response $stream 404 (ConvertTo-CompactJson @{ ok = $false; error = 'not found' }) $origin
         } finally {
             try { $client.Close() } catch {}
         }
