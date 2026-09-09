@@ -2,8 +2,6 @@ from pathlib import Path
 import os
 
 ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = ROOT / "data"
-DB_PATH = DATA_DIR / "app.db"
 ENV_PATH = ROOT / ".env"
 
 
@@ -19,6 +17,12 @@ def load_env(path: Path = ENV_PATH):
 
 
 load_env()
+
+# Tests and local tooling may explicitly point at an isolated SQLite database.
+# Production leaves APP_DB_PATH unset and continues to use data/app.db.
+_db_override = os.getenv("APP_DB_PATH", "").strip()
+DB_PATH = Path(_db_override).expanduser() if _db_override else ROOT / "data" / "app.db"
+DATA_DIR = DB_PATH.parent
 
 APP_USERNAME = os.getenv("APP_USERNAME", "晨")
 APP_PASSWORD_SALT = os.getenv("APP_PASSWORD_SALT", "")
