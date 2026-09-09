@@ -34,16 +34,22 @@ def main():
         row = conn.execute('SELECT initiated_at,paid_at FROM customer_payment_runs WHERE id=?', (rid,)).fetchone()
         assert row['initiated_at'] == row['paid_at'] == now
 
-    js = (ROOT / 'app' / 'static' / 'v031_payment_workflow.js').read_text(encoding='utf-8')
+    actions = (ROOT / 'app' / 'static' / 'v031_workflow_actions.js').read_text(encoding='utf-8')
     for token in (
-        '生成缴费图片', '已通知客户', '发起缴费', '完成缴费',
-        'navigator.clipboard.write', 'ClipboardItem',
-        'payment-mail-compose-v031', 'payment-workflow-v031',
-        "['review', '金额核对']", "['notify', '已通知客户']",
-        "['initiate', '发起缴费']", "['paid', '完成缴费']",
-        "postAction('invalidate')",
+        'prepareNotice', 'prepareInitiate', 'navigator.clipboard.write', 'ClipboardItem',
+        'payment-mail-compose-v031', '127.0.0.1:18763', 'attachment_filename_b64',
     ):
-        assert token in js, token
+        assert token in actions, token
+
+    runtime_owner = (ROOT / 'app' / 'static' / 'v031_workflow_runtime_fix.js').read_text(encoding='utf-8')
+    for token in (
+        "['notify', '通知客户'", '待确认 ·', 'notifyPrepared', 'initiatePrepared',
+        'prepareNotify', 'prepareInitiate', 'event.stopImmediatePropagation()',
+        '确认缴费图片已经通过微信发送给客户', '确认缴费邮件已经在Foxmail中发送给同事',
+        "root.querySelectorAll('[data-v031-payment-image],[data-v03-foxmail-draft]')",
+        '固定缴费金额自动确认', 'v031-auto-confirmed',
+    ):
+        assert token in runtime_owner, token
 
     rollback = (ROOT / 'app' / 'static' / 'v031_amount_rollback_fix.js').read_text(encoding='utf-8')
     for token in (
@@ -53,48 +59,48 @@ def main():
         '原客户通知已失效', '重新发起缴费',
     ):
         assert token in rollback, token
-    assert "fd.append('action', 'invalidate')" not in rollback, '前端兜底不应再负责写入回退状态'
-    assert 'MutationObserver' not in rollback, '金额回退不得监听页面统计变化，避免正常核对被误回退'
+    assert "fd.append('action', 'invalidate')" not in rollback
+    assert 'MutationObserver' not in rollback
 
-    runtime_owner = (ROOT / 'app' / 'static' / 'v031_workflow_runtime_fix.js').read_text(encoding='utf-8')
+    fixed_patch = (ROOT / 'app' / 'v031_fixed_review_patch.py').read_text(encoding='utf-8')
     for token in (
-        'sole runtime controller' if False else 'Capture phase deliberately takes ownership',
-        "flow.addEventListener('click'", 'event.stopImmediatePropagation()',
-        'payment-workflow-v031', 'data-v031-workflow-ready' if False else 'v031WorkflowReady',
-        'setTimeout(() => loadState({quiet: true}), 1000)',
+        "item['rule']['mode'] == 'fixed'", "item['rule']['mode'] != 'variable'",
+        "confirmed=1", "source='fixed_review_reset'", 'fixed_auto_confirmed',
+        'workflow._paint_review_reset = _fixed_amount_review',
     ):
-        assert token in runtime_owner, token
+        assert token in fixed_patch, token
 
     routes = (ROOT / 'app' / 'v031_payment_workflow_routes.py').read_text(encoding='utf-8')
     for token in (
-        "initiated_at", "action == 'initiate'", "action == 'invalidate'",
+        'initiated_at', "action == 'initiate'", "action == 'invalidate'",
         "@router.post('/services/{service_id}/payment-current')",
         'amount_changed', 'workflow_invalidated', '_invalidate_after_amount_change',
-        '请先完成“发起缴费”', 'payment-mail-compose-v031',
-        "'version': '0.3.1'",
+        '请先完成“发起缴费”', 'payment-mail-compose-v031', "'version': '0.3.1'",
     ):
         assert token in routes, token
 
-    # v0.3.1 must own the public amount-save route so save + workflow rollback are atomic.
     from app.main import app  # noqa: E402
     matches = [
         r for r in app.router.routes
         if getattr(r, 'path', '') == '/services/{service_id}/payment-current'
         and 'POST' in getattr(r, 'methods', set())
     ]
-    assert matches, '缺少 payment-current POST 路由'
-    assert matches[0].endpoint.__module__ == 'app.v031_payment_workflow_routes', matches[0].endpoint.__module__
+    assert matches
+    assert matches[0].endpoint.__module__ == 'app.v031_payment_workflow_routes'
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert 'v0.3.1' in base
-    assert '/static/v031_payment_workflow.js?v=0311' in base
-    assert '/static/v031_amount_rollback_fix.js?v=0311' in base
-    assert '/static/v031_workflow_runtime_fix.js?v=0312' in base
-    assert '/static/v031_payment_workflow.css?v=0311' in base
-    assert base.index('/static/v031_amount_rollback_fix.js') > base.index('/static/v031_payment_workflow.js')
-    assert base.index('/static/v031_workflow_runtime_fix.js') > base.index('/static/v031_amount_rollback_fix.js')
+    assert '/static/v031_workflow_actions.js?v=0313' in base
+    assert '/static/v031_workflow_runtime_fix.js?v=0313' in base
+    assert '/static/v031_payment_workflow.css?v=0313' in base
+    assert base.index('/static/v031_workflow_actions.js') > base.index('/static/v031_payment_workflow.js')
+    assert base.index('/static/v031_workflow_runtime_fix.js') > base.index('/static/v031_workflow_actions.js')
 
-    print('v0.3.1 payment workflow contract passed')
+    css = (ROOT / 'app' / 'static' / 'v031_payment_workflow.css').read_text(encoding='utf-8')
+    for token in ('.awaiting-confirm', '.current', '.done', '.v031-fixed-auto-confirmed'):
+        assert token in css, token
+
+    print('v0.3.1 integrated workflow contract passed')
 
 
 if __name__ == '__main__':
