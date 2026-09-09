@@ -14,6 +14,7 @@
 
   let busy = false;
   let bridgeOnline = false;
+  let bridgeCompose = false;
 
   const toast = msg => {
     if (window.ChenToast) return window.ChenToast(msg);
@@ -25,7 +26,7 @@
     }
     el.textContent = msg;
     requestAnimationFrame(() => el.classList.add('show'));
-    setTimeout(() => el.classList.remove('show'), 2600);
+    setTimeout(() => el.classList.remove('show'), 3000);
   };
 
   const fetchJson = async (url, options = {}) => {
@@ -58,8 +59,10 @@
       const response = await bridgeFetch('/health', {}, 1200);
       const data = await response.json().catch(() => ({}));
       bridgeOnline = response.ok && data.ok === true;
+      bridgeCompose = bridgeOnline && data.compose === true;
     } catch (_) {
       bridgeOnline = false;
+      bridgeCompose = false;
     }
     if (!busy) button.textContent = bridgeOnline ? '调用Foxmail' : 'Foxmail草稿';
     return bridgeOnline;
@@ -90,42 +93,6 @@
     return plain?.[1]?.trim() || fallback;
   };
 
-  const bytesToBase64 = bytes => {
-    let binary = '';
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-    }
-    return btoa(binary);
-  };
-
-  const textToBase64 = text => {
-    return bytesToBase64(new TextEncoder().encode(text || ''));
-  };
-
-  const openLocal = async (blob, filename) => {
-    if (!bridgeOnline && !(await probeBridge())) return false;
-    try {
-      const bytes = new Uint8Array(await blob.arrayBuffer());
-      const response = await bridgeFetch('/open', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          filename_b64: textToBase64(filename),
-          content_base64: bytesToBase64(bytes),
-        }),
-      }, 5000);
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.ok !== true) {
-        throw new Error(data.error || 'Windows 助手打开失败');
-      }
-      return true;
-    } catch (_) {
-      bridgeOnline = false;
-      return false;
-    }
-  };
-
   const downloadBlob = (blob, filename) => {
     const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -135,6 +102,40 @@
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+  };
+
+  const downloadEmlFallback = async () => {
+    const response = await fetch(`/customers/${customerId}/payment-mail-draft-v03`, {
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.detail || data.error || '邮件草稿生成失败');
+    }
+    const blob = await response.blob();
+    const filename = filenameFromDisposition(response.headers.get('Content-Disposition'));
+    downloadBlob(blob, filename);
+  };
+
+  const composeLocal = async () => {
+    const payload = await fetchJson(`/customers/${customerId}/payment-mail-compose-v03`);
+    const response = await bridgeFetch('/compose', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        recipient_b64: payload.recipient_b64 || '',
+        subject_b64: payload.subject_b64 || '',
+        body_b64: payload.body_b64 || '',
+        attachment_filename_b64: payload.attachment_filename_b64 || '',
+        attachment_content_base64: payload.attachment_content_base64 || '',
+      }),
+    }, 5000);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok !== true) {
+      throw new Error(data.error || 'Windows助手新建邮件失败');
+    }
+    return true;
   };
 
   const setBusy = value => {
@@ -160,24 +161,24 @@
         return;
       }
 
-      const response = await fetch(`/customers/${customerId}/payment-mail-draft-v03`, {
-        credentials: 'same-origin',
-        cache: 'no-store',
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.detail || data.error || '邮件草稿生成失败');
+      if (!bridgeOnline) {
+        await downloadEmlFallback();
+        toast('未检测到Windows助手，已下载.eml备用草稿');
+        return;
       }
 
-      const blob = await response.blob();
-      const filename = filenameFromDisposition(response.headers.get('Content-Disposition'));
-      const opened = await openLocal(blob, filename);
+      if (!bridgeCompose) {
+        toast('Windows助手版本较旧，请在“邮件模板”中重新下载并安装一次助手');
+        root.querySelector('[data-v03-mail-template]')?.click();
+        return;
+      }
 
-      if (opened) {
-        toast('Foxmail已打开，请核对收件人、主题、正文和TXT附件');
-      } else {
-        downloadBlob(blob, filename);
-        toast('Windows助手未能打开邮件，已自动下载.eml草稿');
+      try {
+        await composeLocal();
+        toast('已调用Foxmail新建邮件，请核对收件人、主题、正文和TXT附件');
+      } catch (err) {
+        await downloadEmlFallback();
+        toast(`${err.message || 'Foxmail新建邮件失败'}；已下载.eml备用草稿`);
       }
     } catch (err) {
       toast(err.message || '调用Foxmail失败');
