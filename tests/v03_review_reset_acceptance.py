@@ -90,7 +90,8 @@ def main():
             page = context.new_page()
             page.goto(f'http://127.0.0.1:8133/customers/{cid}', wait_until='networkidle')
 
-            review = page.locator('[data-v03-flow-action="review"]')
+            review = page.locator('[data-v031-flow-action="review"]')
+            review.wait_for(state='visible')
             rows = page.locator('[data-payment-row]')
             assert rows.count() == 2
             assert all(rows.nth(i).get_attribute('data-confirmed') == '1' for i in range(2))
@@ -126,7 +127,7 @@ def main():
             for i in range(2):
                 assert rows.nth(i).get_attribute('data-confirmed') == '0'
                 assert rows.nth(i).locator('[data-row-state]').inner_text().strip() == '○'
-            review = page.locator('[data-v03-flow-action="review"]')
+            review = page.locator('[data-v031-flow-action="review"]')
             assert review.is_enabled()
 
             # Re-confirming the whole review restores all fixed rows at once.
@@ -148,7 +149,7 @@ def main():
                 assert all(row['source'] == 'fixed' for row in entries)
 
             browser.close()
-        print('v0.3 whole review reset acceptance passed (isolated test database)')
+        print('v0.3.1 whole review reset acceptance passed (isolated test database)')
     finally:
         proc.terminate()
         try:
