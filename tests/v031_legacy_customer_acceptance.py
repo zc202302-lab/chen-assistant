@@ -94,7 +94,7 @@ def wait_stage(page, action: str, pressed: bool):
     wanted = 'true' if pressed else 'false'
     page.wait_for_function(
         "args => document.querySelector(`[data-v031-flow-action=\"${args.action}\"]`)?.getAttribute('aria-pressed') === args.wanted",
-        {'action': action, 'wanted': wanted},
+        arg={'action': action, 'wanted': wanted},
         timeout=5000,
     )
 
