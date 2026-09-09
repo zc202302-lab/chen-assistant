@@ -88,7 +88,7 @@ app.version = '0.3'
 async def current_asset_cache_policy(request, call_next):
     response = await call_next(request)
     path = request.url.path
-    if path.startswith('/static/') and path.endswith(('.js', '.css')):
+    if path.startswith('/static/') and path.endswith(('.js', '.css', '.ps1')):
         response.headers['Cache-Control'] = 'no-store, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
