@@ -153,6 +153,7 @@
 .business-row-v028:hover .business-drag-handle{opacity:.72!important}
 
 /* ---------------- local Foxmail workflow ---------------- */
+.v03-retired-smtp{display:none!important}
 .v03-local-mail-actions{
   display:inline-flex;
   align-items:center;
