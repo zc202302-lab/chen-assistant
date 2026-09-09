@@ -1,0 +1,161 @@
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+DB = ROOT / 'data' / 'app.db'
+for suffix in ('', '-wal', '-shm'):
+    p = Path(str(DB) + suffix)
+    if p.exists():
+        p.unlink()
+
+os.environ.update({
+    'APP_USERNAME': 'ui-test',
+    'APP_PASSWORD_SALT': 'dGVzdHNhbHQ=',
+    'APP_PASSWORD_HASH': 'x',
+    'APP_SESSION_SECRET': 'ui-test-session-secret',
+    'APP_ENCRYPTION_KEY': 'x',
+    'APP_SECURE_COOKIE': '0',
+})
+
+from app.db import db, init_db, now_iso  # noqa: E402
+from app.payment_v02 import current_period  # noqa: E402
+from app.security import create_session  # noqa: E402
+
+
+def seed():
+    init_db()
+    now = now_iso()
+    period = current_period()
+    with db() as conn:
+        cid = int(conn.execute(
+            'INSERT INTO customers (name,group_code,tax_id,payment_enabled,created_at,updated_at) VALUES(?,?,?,?,?,?)',
+            ('固定金额整批撤销测试', 'C-RESET', 'RESET-TAX', 1, now, now),
+        ).lastrowid)
+        ids = []
+        for idx in range(2):
+            amount = 40 + idx * 10
+            sid = int(conn.execute(
+                '''INSERT INTO services
+                   (customer_id,service_type,holder_name,number,account,monthly_fee,fixed_fee,
+                    payment_cycle,payment_interval_months,next_payment_period,active_from_period,
+                    sort_order,source_row,payment_method,invoice_type,package_type,notes)
+                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                (cid, '成员', f'成员{idx + 1}', f'1580000000{idx}', f'53380000000{idx}', amount, 1,
+                 '1个月', 1, '', period, (idx + 1) * 10, idx + 1,
+                 '微信', '普票', '', ''),
+            ).lastrowid)
+            ids.append(sid)
+            conn.execute(
+                'INSERT INTO service_payment_rules(service_id,effective_period,mode,fixed_amount,created_at) VALUES(?,?,?,?,?)',
+                (sid, '1900-01', 'fixed', amount, now),
+            )
+    token, _, _ = create_session()
+    return cid, ids, token
+
+
+def wait_http(url):
+    for _ in range(100):
+        try:
+            if urllib.request.urlopen(url, timeout=1).status == 200:
+                return
+        except Exception:
+            pass
+        time.sleep(.2)
+    raise RuntimeError('server start failed')
+
+
+def main():
+    cid, ids, token = seed()
+    period = current_period()
+    proc = subprocess.Popen(
+        [sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8133'],
+        cwd=ROOT,
+        env=os.environ.copy(),
+    )
+    try:
+        wait_http('http://127.0.0.1:8133/health')
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            context = browser.new_context(viewport={'width': 1500, 'height': 1000})
+            context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8133'}])
+            page = context.new_page()
+            page.goto(f'http://127.0.0.1:8133/customers/{cid}', wait_until='networkidle')
+
+            review = page.locator('[data-v03-flow-action="review"]')
+            rows = page.locator('[data-payment-row]')
+            assert rows.count() == 2
+            assert all(rows.nth(i).get_attribute('data-confirmed') == '1' for i in range(2))
+
+            review.click()
+            page.wait_for_timeout(120)
+            assert review.get_attribute('aria-pressed') == 'true'
+
+            # Undoing the whole review resets every visible row, including fixed fees.
+            review.click()
+            page.wait_for_timeout(180)
+            assert review.get_attribute('aria-pressed') == 'false'
+            for i in range(2):
+                row = rows.nth(i)
+                assert row.get_attribute('data-confirmed') == '0'
+                assert row.locator('[data-row-state]').inner_text().strip() == '○'
+            assert page.locator('#pendingCount').inner_text().strip() == '2'
+
+            with db() as conn:
+                entries = conn.execute(
+                    '''SELECT pe.service_id,pe.confirmed,pe.source
+                       FROM payment_entries pe JOIN services s ON s.id=pe.service_id
+                       WHERE s.customer_id=? AND pe.period=? ORDER BY pe.service_id''',
+                    (cid, period),
+                ).fetchall()
+                assert len(entries) == 2
+                assert all(int(row['confirmed']) == 0 for row in entries)
+                assert all(row['source'] == 'fixed_review_reset' for row in entries)
+
+            # The reset survives a page reload; fixed rows must not auto-confirm early.
+            page.reload(wait_until='networkidle')
+            rows = page.locator('[data-payment-row]')
+            for i in range(2):
+                assert rows.nth(i).get_attribute('data-confirmed') == '0'
+                assert rows.nth(i).locator('[data-row-state]').inner_text().strip() == '○'
+            review = page.locator('[data-v03-flow-action="review"]')
+            assert review.is_enabled()
+
+            # Re-confirming the whole review restores all fixed rows at once.
+            review.click()
+            page.wait_for_timeout(180)
+            assert review.get_attribute('aria-pressed') == 'true'
+            for i in range(2):
+                assert rows.nth(i).get_attribute('data-confirmed') == '1'
+                assert rows.nth(i).locator('[data-row-state]').inner_text().strip() == '✓'
+
+            with db() as conn:
+                entries = conn.execute(
+                    '''SELECT pe.confirmed,pe.source
+                       FROM payment_entries pe JOIN services s ON s.id=pe.service_id
+                       WHERE s.customer_id=? AND pe.period=? ORDER BY pe.service_id''',
+                    (cid, period),
+                ).fetchall()
+                assert all(int(row['confirmed']) == 1 for row in entries)
+                assert all(row['source'] == 'fixed' for row in entries)
+
+            browser.close()
+        print('v0.3 whole review reset acceptance passed')
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+
+if __name__ == '__main__':
+    main()
