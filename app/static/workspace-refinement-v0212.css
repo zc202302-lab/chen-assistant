@@ -5,7 +5,6 @@
    automated acceptance can still invoke them. */
 .payment-edit-v0211,
 .business-edit-v029{
-  position:absolute!important;
   width:1px!important;
   height:1px!important;
   min-width:1px!important;
