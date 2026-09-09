@@ -70,6 +70,15 @@ def wait_http(url):
     raise RuntimeError('server start failed')
 
 
+def wait_review_state(page, pressed: bool):
+    wanted = 'true' if pressed else 'false'
+    page.wait_for_function(
+        "wanted => document.querySelector('[data-v031-flow-action=\"review\"]')?.getAttribute('aria-pressed') === wanted",
+        wanted,
+        timeout=5000,
+    )
+
+
 def main():
     cid, ids, token = seed()
     assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
@@ -103,12 +112,12 @@ def main():
             assert page.locator('#pendingCount').inner_text().strip() == '0'
 
             review.click()
-            page.wait_for_timeout(160)
+            wait_review_state(page, True)
             assert review.get_attribute('aria-pressed') == 'true'
 
             # Undoing stage 1 must NOT undo fixed amount confirmations.
             review.click()
-            page.wait_for_timeout(200)
+            wait_review_state(page, False)
             assert review.get_attribute('aria-pressed') == 'false'
             for i in range(2):
                 row = rows.nth(i)
@@ -139,7 +148,7 @@ def main():
             assert review.is_enabled()
 
             review.click()
-            page.wait_for_timeout(180)
+            wait_review_state(page, True)
             assert review.get_attribute('aria-pressed') == 'true'
             for i in range(2):
                 assert rows.nth(i).get_attribute('data-confirmed') == '1'
