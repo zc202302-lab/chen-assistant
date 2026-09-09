@@ -17,6 +17,7 @@ from .v0211_promotion_routes import router as v0211_promotion_router
 from .v0212_routes import router as v0212_router
 from .v0212_payment_routes import router as v0212_payment_router
 from .v0212_business_display_routes import router as v0212_business_display_router
+from .v03_routes import router as v03_router
 
 _legacy_routes = list(app.router.routes)
 
@@ -45,9 +46,12 @@ _v0211_promotion_routes = _include(v0211_promotion_router)
 _v0212_routes = _include(v0212_router)
 _v0212_payment_routes = _include(v0212_payment_router)
 _v0212_business_display_routes = _include(v0212_business_display_router)
+_v03_routes = _include(v03_router)
 
-# 最新核心展示路由唯一；旧路由只保留当前仍在使用的 POST/action 能力。
+# v0.3 owns the reversible payment workflow and health endpoint. The v0.2.12
+# customer workspace remains the stable renderer while v0.3 upgrades its behavior.
 _ordered = (
+    _v03_routes +
     _v0212_business_display_routes + _v0212_payment_routes + _v0212_routes +
     _v0211_promotion_routes + _v0211_routes + _v029_routes + _v028_routes +
     _v027_home_routes + _v027_routes +
@@ -68,8 +72,8 @@ for route in _ordered:
     _final.append(route)
 app.router.routes[:] = _final
 
-app.title = '晨的助手 v0.2.12'
-app.version = '0.2.12'
+app.title = '晨的助手 v0.3'
+app.version = '0.3'
 
 
 @app.middleware('http')
