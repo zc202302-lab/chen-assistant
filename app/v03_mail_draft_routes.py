@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import os
 from email.message import EmailMessage
 from email.policy import SMTP
@@ -100,6 +101,10 @@ def _safe_filename(value: str) -> str:
     return cleaned[:80] or '客户'
 
 
+def _b64_text(value: str) -> str:
+    return base64.b64encode((value or '').encode('utf-8')).decode('ascii')
+
+
 def _build_eml(customer_name: str, period: str, subject: str, body: str, txt_content: str, recipient: str = '') -> bytes:
     msg = EmailMessage(policy=SMTP)
     # X-Unsent is recognized by many Windows mail clients as an editable draft.
@@ -151,6 +156,39 @@ def save_customer_mail_template_v03(
         'template': template,
         'recipient': saved_recipient,
         'recipient_configured': bool(saved_recipient),
+    })
+
+
+@router.get('/customers/{customer_id}/payment-mail-compose-v03')
+def payment_mail_compose_v03(customer_id: int):
+    """Return an ASCII-safe payload for the local Windows helper.
+
+    All human-readable strings are base64 encoded so the PowerShell 5.1 helper
+    never has to parse non-ASCII request bytes through its tiny HTTP server.
+    """
+    period = current_period()
+    with db() as conn:
+        customer, txt_content, stats = v03._payment_txt_content(conn, customer_id, period)
+        run = v03._payment_run_v03(conn, customer_id, period, stats)
+        if not run['paid']:
+            raise HTTPException(400, '请先完成本月缴费，再调用Foxmail')
+        template = _get_template(conn, customer_id)
+        recipient = _recipient(conn)
+
+    subject = _clean_header(template['subject'])
+    if not subject:
+        raise HTTPException(400, '请先为这个客户保存邮件主题')
+
+    customer_name = customer['name'] or '客户'
+    txt_name = f'{_safe_filename(customer_name)}_{period}_缴费.txt'
+    return JSONResponse({
+        'ok': True,
+        'recipient_b64': _b64_text(recipient),
+        'subject_b64': _b64_text(subject),
+        'body_b64': _b64_text(template['body']),
+        'attachment_filename_b64': _b64_text(txt_name),
+        'attachment_content_base64': base64.b64encode(txt_content.encode('utf-8')).decode('ascii'),
+        'period': period,
     })
 
 
