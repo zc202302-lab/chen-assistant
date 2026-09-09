@@ -27,6 +27,17 @@ def main():
     assert '/static/chen_foxmail_helper.ps1' in js
     assert "fd.append('recipient'" in js
 
+    foxmail_action = (ROOT / 'app' / 'static' / 'v03_foxmail_action_fix.js').read_text(encoding='utf-8')
+    assert "FOXMAIL_BRIDGE = 'http://127.0.0.1:18763'" in foxmail_action
+    assert "button.disabled = false" in foxmail_action
+    assert '当前客户本月缴费流程尚未完成' in foxmail_action
+    assert '正在准备邮件' in foxmail_action
+    assert "payment-mail-draft-v03" in foxmail_action
+    assert "method: 'POST'" in foxmail_action and "'/open'" in foxmail_action
+
+    base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
+    assert '/static/v03_foxmail_action_fix.js?v=0305' in base
+
     helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')
     assert 'BridgeMode' in helper and 'TcpListener' in helper
     assert "AllowedRootDomain = 'ziboxiaozhushou.cn'" in helper
