@@ -90,6 +90,15 @@ def accept_next_dialog(page):
     page.once('dialog', lambda dialog: dialog.accept())
 
 
+def wait_stage(page, action: str, pressed: bool):
+    wanted = 'true' if pressed else 'false'
+    page.wait_for_function(
+        "args => document.querySelector(`[data-v031-flow-action=\"${args.action}\"]`)?.getAttribute('aria-pressed') === args.wanted",
+        {'action': action, 'wanted': wanted},
+        timeout=5000,
+    )
+
+
 def main():
     cid, token = seed()
     assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
@@ -126,18 +135,26 @@ def main():
 
             accept_next_dialog(page)
             initiate.click()
-            page.wait_for_timeout(180)
+            wait_stage(page, 'initiate', False)
             assert initiate.get_attribute('aria-pressed') == 'false'
+            page.wait_for_function(
+                "() => !document.querySelector('[data-v031-flow-action=\"notify\"]')?.disabled",
+                timeout=5000,
+            )
             assert notify.is_enabled()
 
             accept_next_dialog(page)
             notify.click()
-            page.wait_for_timeout(180)
+            wait_stage(page, 'notify', False)
             assert notify.get_attribute('aria-pressed') == 'false'
+            page.wait_for_function(
+                "() => !document.querySelector('[data-v031-flow-action=\"review\"]')?.disabled",
+                timeout=5000,
+            )
             assert review.is_enabled()
 
             review.click()
-            page.wait_for_timeout(180)
+            wait_stage(page, 'review', False)
             assert review.get_attribute('aria-pressed') == 'false'
 
             browser.close()
