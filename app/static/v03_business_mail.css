@@ -2,11 +2,11 @@
 
 /* ---------------- business overview readability ---------------- */
 .business-v028{
-  padding:16px 16px 18px!important;
+  padding:14px 16px 18px!important;
 }
 .business-v028>.section-head{
-  min-height:42px!important;
-  padding:0 2px 8px!important;
+  min-height:38px!important;
+  padding:0 2px 7px!important;
   border-bottom:1px solid #edf0f4!important;
 }
 .business-v028>.section-head h2{
@@ -21,69 +21,87 @@
   display:flex!important;
   flex-direction:column!important;
   align-items:stretch!important;
-  gap:8px!important;
-  margin:10px 0 12px!important;
-  padding:10px 12px!important;
+  gap:5px!important;
+  margin:8px 0 10px!important;
+  padding:7px 10px!important;
   border:1px solid #edf0f4!important;
-  border-radius:12px!important;
+  border-radius:11px!important;
   background:#fafbfc!important;
 }
 .v03-filter-primary{
   display:flex;
   align-items:center;
   flex-wrap:wrap;
-  gap:8px 18px;
+  gap:6px 10px;
   min-width:0;
+  min-height:30px;
+}
+.v03-filter-primary-label{
+  flex:0 0 auto;
+  color:#98a2b3;
+  font-size:10px;
+  font-weight:750;
+  letter-spacing:.04em;
+}
+.v03-filter-selection-summary{
+  margin-left:auto;
+  max-width:38%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#98a2b3;
+  font-size:10px;
+  font-weight:650;
 }
 .business-filters.v03-readable-filters .filter-line{
   display:flex!important;
   align-items:center!important;
-  gap:6px!important;
-  min-height:30px;
+  gap:5px!important;
+  min-height:28px;
 }
 .business-filters.v03-readable-filters .filter-line>b{
-  min-width:32px!important;
+  min-width:28px!important;
   color:#667085!important;
-  font-size:11px!important;
+  font-size:10px!important;
   letter-spacing:.02em;
 }
 .business-filters.v03-readable-filters .filter-chip{
-  min-height:27px;
-  padding:4px 9px!important;
+  min-height:25px;
+  padding:4px 8px!important;
   border-radius:999px!important;
-  font-size:11px!important;
+  font-size:10.5px!important;
   line-height:1!important;
 }
 .v03-filter-more{
   width:100%;
   border-top:1px solid #edf0f4;
-  padding-top:7px;
+  padding-top:4px;
 }
 .v03-filter-more>summary{
   display:inline-flex;
   align-items:center;
-  gap:6px;
-  min-height:28px;
+  gap:5px;
+  min-height:25px;
   color:#667085;
   cursor:pointer;
   user-select:none;
-  font-size:11px;
-  font-weight:700;
+  font-size:10.5px;
+  font-weight:750;
   list-style:none;
 }
 .v03-filter-more>summary::-webkit-details-marker{display:none}
 .v03-filter-more>summary::before{
   content:'›';
   display:inline-block;
-  font-size:16px;
+  font-size:15px;
   line-height:1;
   transition:transform .12s ease;
 }
 .v03-filter-more[open]>summary::before{transform:rotate(90deg)}
 .v03-filter-more.has-active>summary{color:#344054}
 .v03-filter-more>summary em{
-  min-width:19px;
-  height:19px;
+  min-width:18px;
+  height:18px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -91,40 +109,42 @@
   border-radius:999px;
   background:#111827;
   color:#fff;
-  font-size:10px;
+  font-size:9px;
   font-style:normal;
 }
 .v03-filter-more-body{
   display:flex;
   align-items:center;
   flex-wrap:wrap;
-  gap:8px 18px;
-  padding:8px 0 1px;
+  gap:5px 14px;
+  padding:5px 0 1px;
 }
 .business-filters.v03-readable-filters>[data-business-filter-reset]{
   align-self:flex-end;
-  margin:-36px 0 0!important;
-  min-height:28px;
-  padding:4px 9px!important;
-  font-size:10px!important;
+  margin:-30px 0 0!important;
+  min-height:25px;
+  padding:4px 8px!important;
+  font-size:9.5px!important;
 }
+.business-filters.v03-readable-filters>[data-business-filter-reset][hidden]{display:none!important}
 
 .business-table-header-v030{
-  min-height:34px!important;
+  min-height:32px!important;
   align-items:center;
-  margin-top:2px;
+  margin-top:1px;
   border-top:1px solid #edf0f4!important;
   border-bottom:1px solid #dfe4ea!important;
   background:#f8fafc!important;
 }
 .business-table-header-cell-v030{
   color:#667085!important;
-  font-size:11px!important;
+  font-size:10.5px!important;
   font-weight:750!important;
+  text-align:center!important;
 }
 .business-row-v028{
   min-height:47px!important;
-  padding:4px 4px!important;
+  padding:3px 4px!important;
   border-bottom:1px solid #e7ebf0!important;
   background:#fff;
   transition:background .12s ease,box-shadow .12s ease;
@@ -139,18 +159,35 @@
   align-items:center!important;
 }
 .business-attribute{
-  height:38px!important;
+  height:36px!important;
   padding:4px 6px!important;
   border-radius:8px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+}
+/* Column names already live in the table header; repeating them in every row was
+   the main source of the dense, noisy appearance. Keep the label in DOM only. */
+.business-row-v028 .business-attribute>small{
+  display:none!important;
 }
 .business-attribute strong{
+  display:block!important;
+  width:100%;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
   line-height:1.35!important;
+  text-align:center!important;
 }
 .business-drag-handle{
-  opacity:.38!important;
-  transition:opacity .12s ease,background .12s ease;
+  opacity:.30!important;
+  transition:opacity .12s ease,background .12s ease,transform .12s ease;
 }
 .business-row-v028:hover .business-drag-handle{opacity:.72!important}
+.business-row-v028.is-dragging .business-drag-handle{opacity:1!important;transform:scale(1.08)}
 
 /* ---------------- local Foxmail workflow ---------------- */
 .v03-retired-smtp{display:none!important}
@@ -203,7 +240,7 @@
 .v03-mail-template-note{
   display:grid;
   grid-template-columns:auto minmax(0,1fr);
-  gap:8px 12px;
+  gap:6px 12px;
   align-items:start;
   padding:10px 12px;
   border:1px solid #e8ecf1;
@@ -214,6 +251,14 @@
   line-height:1.5;
 }
 .v03-mail-template-note b{color:#344054}
+.v03-mail-template-note i{
+  grid-column:2;
+  color:#98a2b3;
+  font-size:10.5px;
+  font-style:normal;
+  font-weight:650;
+}
+.v03-mail-template-note i.online{color:#2f7d4d}
 .v03-mail-field{
   display:grid!important;
   gap:6px!important;
@@ -266,11 +311,18 @@
 
 @media(max-width:760px){
   .business-v028{padding:10px 8px 14px!important}
-  .business-filters.v03-readable-filters{padding:8px!important}
-  .v03-filter-primary,
+  .business-filters.v03-readable-filters{padding:7px 8px!important}
+  .v03-filter-primary{
+    gap:5px 7px;
+  }
+  .v03-filter-primary-label{display:none}
+  .v03-filter-selection-summary{
+    max-width:42%;
+    margin-left:auto;
+  }
   .v03-filter-more-body{
     display:grid;
-    gap:7px;
+    gap:6px;
   }
   .business-filters.v03-readable-filters .filter-line{
     overflow-x:auto;
@@ -282,7 +334,7 @@
     margin:0!important;
   }
   .business-row-v028{min-height:44px!important}
-  .business-attribute{height:35px!important}
+  .business-attribute{height:34px!important}
 
   .v03-local-mail-actions{
     width:100%;
@@ -291,4 +343,5 @@
   .v03-local-mail-actions button{flex:1 1 0}
   .v03-mail-template-card{padding:15px}
   .v03-mail-template-note{grid-template-columns:1fr}
+  .v03-mail-template-note i{grid-column:1}
 }
