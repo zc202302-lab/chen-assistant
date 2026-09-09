@@ -49,7 +49,7 @@ git merge --ff-only origin/main
 echo "===== 更新前代码检查 ====="
 .venv/bin/python -m compileall -q app
 if command -v node >/dev/null 2>&1; then
-  for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js; do
+  for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js v031_windows_bootstrap.js; do
     node --check "app/static/$ASSET"
   done
 fi
@@ -106,6 +106,7 @@ current_assets=(
     '/static/v03_foxmail_action_fix.js','/static/v03_insert_order.js','/static/v03_review_reset.js',
     '/static/v031_payment_workflow.js','/static/v031_amount_rollback_fix.js',
     '/static/v031_workflow_actions.js','/static/v031_workflow_runtime_fix.js','/static/v031_workflow_dom_guard.js',
+    '/static/v031_windows_bootstrap.js',
     '/static/app.css','/static/v028.css','/static/layout-refinement.css','/static/v0212.css',
     '/static/workspace-refinement-v0212.css','/static/v03.css','/static/v03_business_mail.css',
     '/static/v03_payment_template.css','/static/v031_payment_workflow.css',
@@ -119,8 +120,9 @@ for asset in (
     'workspace-refinement-v0212.js','v03.js','v03_runtime_fix.js','v03_business_mail.js','v03_payment_template.js',
     'v03_foxmail_action_fix.js','v03_insert_order.js','v03_review_reset.js','v031_payment_workflow.js',
     'v031_amount_rollback_fix.js','v031_workflow_actions.js','v031_workflow_runtime_fix.js','v031_workflow_dom_guard.js',
+    'v031_windows_bootstrap.js',
     'app.css','v028.css','layout-refinement.css','v0212.css','workspace-refinement-v0212.css','v03.css','v03_business_mail.css',
-    'v03_payment_template.css','v031_payment_workflow.css','chen_foxmail_helper.ps1',
+    'v03_payment_template.css','v031_payment_workflow.css','chen_foxmail_helper.ps1','chen_foxmail_bootstrap.ps1',
 ):
     assert (config.ROOT/'app'/'static'/asset).is_file(),f'缺少 {asset}'
 print(f"✓ Python / 路由 / 模板 / v0.3.1 前端资源检查通过：v{app.version}")
@@ -195,7 +197,7 @@ PY
 
 echo "===== 已运行静态文件一致性检查 ====="
 REV="$(git rev-parse --short HEAD)"
-for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js app.css v028.css layout-refinement.css v0212.css workspace-refinement-v0212.css v03.css v03_business_mail.css v03_payment_template.css v031_payment_workflow.css chen_foxmail_helper.ps1; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js v031_windows_bootstrap.js app.css v028.css layout-refinement.css v0212.css workspace-refinement-v0212.css v03.css v03_business_mail.css v03_payment_template.css v031_payment_workflow.css chen_foxmail_helper.ps1 chen_foxmail_bootstrap.ps1; do
   LOCAL_FILE="app/static/$ASSET"; TMP_FILE="$(mktemp)"
   curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP_FILE"
   LOCAL_SHA="$(sha256sum "$LOCAL_FILE"|awk '{print $1}')"; SERVED_SHA="$(sha256sum "$TMP_FILE"|awk '{print $1}')"; rm -f "$TMP_FILE"
@@ -205,7 +207,7 @@ for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0
   echo "✓ $ASSET：正式服务与 Git 工作区一致"
 done
 
-for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js v031_windows_bootstrap.js chen_foxmail_helper.ps1 chen_foxmail_bootstrap.ps1; do
   CACHE_HEADER="$(curl -fsSI "$APP_HTTP/static/$ASSET?deploy=$REV" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^Cache-Control:/{sub(/^[^:]*:[ ]*/,""); print; exit}')"
   case "$CACHE_HEADER" in
     *no-store*) echo "✓ $ASSET 禁止浏览器缓存旧控制代码" ;;
@@ -214,5 +216,6 @@ for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0
 done
 
 echo "✓ v0.3.1 服务健康检查通过"
+echo "✓ Windows 助手自动更新启动器已纳入部署一致性检查"
 echo "更新后代码：$REV"
 echo "===== v0.3.1 更新完成 ====="
