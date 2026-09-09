@@ -37,7 +37,7 @@ def test_route_ownership():
     assert app.version == '0.3'
     assert first_route('/health', 'GET').endpoint.__module__ == 'app.v03_routes'
     assert first_route('/customers/{customer_id}').endpoint.__module__ == 'app.v0212_routes'
-    assert first_route('/customers/{customer_id}/payment-run', 'POST').endpoint.__module__ == 'app.v03_routes'
+    assert first_route('/customers/{customer_id}/payment-run', 'POST').endpoint.__module__ == 'app.v03_payment_routes'
     assert first_route('/customers/{customer_id}/payment-run-v03', 'GET').endpoint.__module__ == 'app.v03_routes'
     assert first_route('/customers/{customer_id}/payment-email-v03', 'POST').endpoint.__module__ == 'app.v03_routes'
     assert first_route('/services/{service_id}/status-v03', 'POST').endpoint.__module__ == 'app.v03_routes'
@@ -76,6 +76,7 @@ def test_ui_contracts():
     css = (ROOT / 'app/static/v03.css').read_text(encoding='utf-8')
     drag = (ROOT / 'app/static/ui-drag.js').read_text(encoding='utf-8')
     routes = (ROOT / 'app/v03_routes.py').read_text(encoding='utf-8')
+    safe_routes = (ROOT / 'app/v03_payment_routes.py').read_text(encoding='utf-8')
 
     assert 'v0.3' in base
     assert '/static/v03.js' in base and '/static/v03.css' in base
@@ -99,6 +100,8 @@ def test_ui_contracts():
     assert 'payment_run_service_snapshots_v03' in routes
     assert "action == 'review'" in routes and "action == 'paid'" in routes
     assert 'smtplib.SMTP_SSL' in routes and 'PAYMENT_EMAIL_TO' in routes
+    assert 'snapshot_count' in safe_routes
+    assert '旧版本' in safe_routes and '不能自动撤回' in safe_routes
 
 
 if __name__ == '__main__':
