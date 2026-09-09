@@ -22,6 +22,7 @@ from .v03_payment_routes import router as v03_payment_router
 from .v031_runtime_routes import router as v031_runtime_router
 from .v03_mail_draft_routes import router as v03_mail_draft_router
 from .v031_payment_workflow_routes import router as v031_payment_workflow_router
+from . import v031_fixed_review_patch as _v031_fixed_review_patch  # noqa: F401
 
 _legacy_routes = list(app.router.routes)
 
