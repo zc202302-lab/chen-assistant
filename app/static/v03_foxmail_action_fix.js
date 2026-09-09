@@ -15,6 +15,7 @@
   let busy = false;
   let bridgeOnline = false;
   let bridgeCompose = false;
+  let bridgeVersion = '';
 
   const toast = msg => {
     if (window.ChenToast) return window.ChenToast(msg);
@@ -26,7 +27,7 @@
     }
     el.textContent = msg;
     requestAnimationFrame(() => el.classList.add('show'));
-    setTimeout(() => el.classList.remove('show'), 3000);
+    setTimeout(() => el.classList.remove('show'), 5000);
   };
 
   const fetchJson = async (url, options = {}) => {
@@ -60,11 +61,13 @@
       const data = await response.json().catch(() => ({}));
       bridgeOnline = response.ok && data.ok === true;
       bridgeCompose = bridgeOnline && data.compose === true && data.verified_dispatch === true;
+      bridgeVersion = data.version || '';
     } catch (_) {
       bridgeOnline = false;
       bridgeCompose = false;
+      bridgeVersion = '';
     }
-    if (!busy) button.textContent = bridgeOnline ? '调用Foxmail' : 'Foxmail草稿';
+    if (!busy) button.textContent = '调用Foxmail';
     return bridgeOnline;
   };
 
@@ -83,41 +86,6 @@
     return data.template || {subject: '', body: ''};
   };
 
-  const filenameFromDisposition = (value, fallback = 'payment.eml') => {
-    const header = value || '';
-    const utf8 = header.match(/filename\*=UTF-8''([^;]+)/i);
-    if (utf8) {
-      try { return decodeURIComponent(utf8[1].trim()); } catch (_) {}
-    }
-    const plain = header.match(/filename="?([^";]+)"?/i);
-    return plain?.[1]?.trim() || fallback;
-  };
-
-  const downloadBlob = (blob, filename) => {
-    const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = objectUrl;
-    a.download = filename || 'payment.eml';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
-  };
-
-  const downloadEmlFallback = async () => {
-    const response = await fetch(`/customers/${customerId}/payment-mail-draft-v03`, {
-      credentials: 'same-origin',
-      cache: 'no-store',
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.detail || data.error || '邮件草稿生成失败');
-    }
-    const blob = await response.blob();
-    const filename = filenameFromDisposition(response.headers.get('Content-Disposition'));
-    downloadBlob(blob, filename);
-  };
-
   const composeLocal = async () => {
     const payload = await fetchJson(`/customers/${customerId}/payment-mail-compose-v03`);
     const response = await bridgeFetch('/compose', {
@@ -130,7 +98,7 @@
         attachment_filename_b64: payload.attachment_filename_b64 || '',
         attachment_content_base64: payload.attachment_content_base64 || '',
       }),
-    }, 5000);
+    }, 7000);
     const data = await response.json().catch(() => ({}));
     if (!response.ok || data.ok !== true || data.verified !== true) {
       throw new Error(data.error || 'Windows助手没有确认Foxmail写邮件窗口');
@@ -141,7 +109,7 @@
   const setBusy = value => {
     busy = value;
     button.disabled = value;
-    button.textContent = value ? '正在准备邮件…' : (bridgeOnline ? '调用Foxmail' : 'Foxmail草稿');
+    button.textContent = value ? '正在准备邮件…' : '调用Foxmail';
   };
 
   button.addEventListener('click', async () => {
@@ -162,14 +130,13 @@
       }
 
       if (!bridgeOnline) {
-        await downloadEmlFallback();
-        toast('未检测到Windows助手，已下载.eml备用草稿');
+        toast('未检测到Windows助手。请确认助手正在运行；本次不会自动下载.eml，以便保留故障信息。');
         return;
       }
 
       if (!bridgeCompose) {
-        toast('Windows助手版本较旧，请在“邮件模板”中重新下载并安装一次助手');
-        root.querySelector('[data-v03-mail-template]')?.click();
+        const versionText = bridgeVersion ? `（当前版本 ${bridgeVersion}）` : '';
+        toast(`Windows助手版本不支持可靠调用${versionText}，请重新下载并安装最新版助手。`);
         return;
       }
 
@@ -177,8 +144,7 @@
         await composeLocal();
         toast('Foxmail写邮件窗口已确认打开，请核对收件人、主题、正文和TXT附件');
       } catch (err) {
-        await downloadEmlFallback();
-        toast(`${err.message || 'Foxmail新建邮件失败'}；已下载.eml备用草稿`);
+        toast(`Foxmail调用失败：${err.message || '未知错误'}。本次未自动下载.eml。`);
       }
     } catch (err) {
       toast(err.message || '调用Foxmail失败');
