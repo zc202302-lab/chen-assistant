@@ -112,6 +112,7 @@ for asset in (
     'app.js','v028.js','ui-drag.js','service-promotions.js','business-sync.js','v0211.js',
     'workspace-refinement-v0212.js','v03.js','v03_runtime_fix.js','v03_business_mail.js','v03_insert_order.js','v03_review_reset.js',
     'app.css','v028.css','layout-refinement.css','v0212.css','workspace-refinement-v0212.css','v03.css','v03_business_mail.css',
+    'chen_foxmail_helper.ps1',
 ):
     assert (config.ROOT/'app'/'static'/asset).is_file(),f'缺少 {asset}'
 print(f"✓ Python / 路由 / 模板 / v0.3 前端资源检查通过：v{app.version}")
@@ -184,7 +185,7 @@ PY
 
 echo "===== 已运行静态文件一致性检查 ====="
 REV="$(git rev-parse --short HEAD)"
-for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_insert_order.js v03_review_reset.js app.css v028.css layout-refinement.css v0212.css workspace-refinement-v0212.css v03.css v03_business_mail.css; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_insert_order.js v03_review_reset.js app.css v028.css layout-refinement.css v0212.css workspace-refinement-v0212.css v03.css v03_business_mail.css chen_foxmail_helper.ps1; do
   LOCAL_FILE="app/static/$ASSET"; TMP_FILE="$(mktemp)"
   curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP_FILE"
   LOCAL_SHA="$(sha256sum "$LOCAL_FILE"|awk '{print $1}')"; SERVED_SHA="$(sha256sum "$TMP_FILE"|awk '{print $1}')"; rm -f "$TMP_FILE"
