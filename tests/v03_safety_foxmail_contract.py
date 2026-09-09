@@ -48,8 +48,9 @@ def main():
     assert "FOXMAIL_BRIDGE = 'http://127.0.0.1:18763'" in v031
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-    assert '/static/v03_foxmail_action_fix.js?v=0310' in base
-    assert '/static/v031_payment_workflow.js?v=0310' in base
+    assert '/static/v03_foxmail_action_fix.js?v=0311' in base
+    assert '/static/v031_payment_workflow.js?v=0311' in base
+    assert '/static/v031_amount_rollback_fix.js?v=0311' in base
 
     helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')
     assert 'BridgeMode' in helper and 'TcpListener' in helper
