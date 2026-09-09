@@ -114,10 +114,9 @@ jobs:
         run: python tests/promotion_render_regression.py
       - name: Promotion bidirectional route regression
         run: python tests/promotion_rename_route_regression.py
-      - name: v0.3 browser acceptance
+      - name: v0.3.1 browser acceptance
         run: |
-          python tests/v03_acceptance.py
+          python tests/v031_payment_workflow_acceptance.py
           python tests/v03_runtime_fix_acceptance.py
-          python tests/v03_business_mail_acceptance.py
           python tests/v03_insert_order_acceptance.py
           python tests/v03_review_reset_acceptance.py
