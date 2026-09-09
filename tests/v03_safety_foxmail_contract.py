@@ -48,6 +48,9 @@ def main():
     assert '_save_recipient' in mail_routes
     assert "recipient: str = Form('')" in mail_routes
 
+    main_py = (ROOT / 'app' / 'main.py').read_text(encoding='utf-8')
+    assert "connect-src 'self' http://127.0.0.1:18763 http://localhost:18763" in main_py
+
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
     assert 'tests/v03_' not in deploy, '生产 deploy.sh 不得执行 v0.3 测试脚本'
 
