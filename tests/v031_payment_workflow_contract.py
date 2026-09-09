@@ -38,8 +38,13 @@ def main():
     for token in (
         'prepareNotice', 'prepareInitiate', 'navigator.clipboard.write', 'ClipboardItem',
         'payment-mail-compose-v031', '127.0.0.1:18763', 'attachment_filename_b64',
+        "bridgeFetch('/compose'", '12000', 'Windows Foxmail助手响应超时',
+        'verified !== true',
     ):
         assert token in actions, token
+    prepare_initiate = actions.split('const prepareInitiate = async () => {', 1)[1].split('\n  };', 1)[0]
+    assert "bridgeFetch('/health'" not in prepare_initiate, '发起缴费不得被短时health探测阻断'
+    assert "bridgeFetch('/compose'" in prepare_initiate, '发起缴费必须直接以compose确认Foxmail打开'
 
     runtime_owner = (ROOT / 'app' / 'static' / 'v031_workflow_runtime_fix.js').read_text(encoding='utf-8')
     for token in (
@@ -101,7 +106,7 @@ def main():
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert 'v0.3.1' in base
-    assert '/static/v031_workflow_actions.js?v=0314' in base
+    assert '/static/v031_workflow_actions.js?v=0315' in base
     assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
     assert '/static/v031_workflow_dom_guard.js?v=0314' in base
     assert '/static/v031_payment_workflow.css?v=0314' in base
