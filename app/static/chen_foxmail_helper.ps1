@@ -188,9 +188,15 @@ function Invoke-FoxmailCompose([string]$RequestPath) {
     $foxmailExe = Get-FoxmailExe
     if (-not $foxmailExe) { return 93 }
 
+    # Use a unique folder for every compose operation, but preserve the exact
+    # customer-defined file name inside that folder. Foxmail displays the base
+    # file name of the clipboard attachment, so prefixing the file itself would
+    # incorrectly leak our temporary timestamp into the visible attachment name.
     New-Item -ItemType Directory -Force -Path $MailDir | Out-Null
     $prefix = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
-    $attachmentPath = Join-Path $MailDir ($prefix + '-' + $attachmentName)
+    $composeDir = Join-Path $MailDir $prefix
+    New-Item -ItemType Directory -Force -Path $composeDir | Out-Null
+    $attachmentPath = Join-Path $composeDir $attachmentName
     [IO.File]::WriteAllBytes($attachmentPath, $attachmentBytes)
 
     $before = @{}
@@ -402,9 +408,9 @@ function Read-Request([System.Net.Sockets.NetworkStream]$Stream) {
     return @{ Method = $parts[0].ToUpperInvariant(); Path = $parts[1]; Headers = $headers; TooLarge = $false; Body = $body }
 }
 
-Get-ChildItem -Path $MailDir -File -ErrorAction SilentlyContinue |
+Get-ChildItem -Path $MailDir -Force -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-7) } |
-    Remove-Item -Force -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
 try {
     while ($true) {
@@ -425,11 +431,12 @@ try {
                 Write-Response $stream 200 (ConvertTo-CompactJson @{
                     ok = $true
                     name = 'Chen Foxmail Helper'
-                    version = '0.6'
+                    version = '0.7'
                     compose = $true
                     foxmail_direct = [bool]$FoxmailExe
                     verified_dispatch = $true
                     compose_mode = 'mailto-clipboard'
+                    attachment_filename_exact = $true
                 }) $origin
                 continue
             }
@@ -461,6 +468,7 @@ try {
                             verified = $true
                             mode = 'foxmail-mailto-clipboard'
                             state = 'compose-opened-and-attachment-pasted'
+                            attachment_filename_exact = $true
                         }) $origin
                     } else {
                         Write-Response $stream 500 (ConvertTo-CompactJson @{
