@@ -3,17 +3,16 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-DB = ROOT / 'data' / 'app.db'
-for suffix in ('', '-wal', '-shm'):
-    p = Path(str(DB) + suffix)
-    if p.exists():
-        p.unlink()
+_TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v03-acceptance-')
+TEST_DB = Path(_TMPDIR.name) / 'app.db'
+os.environ['APP_DB_PATH'] = str(TEST_DB)
 
 os.environ.update({
     'APP_USERNAME': 'ui-test',
@@ -82,6 +81,7 @@ def wait_http(url):
 
 def main():
     cid, ids, token = seed()
+    assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
     monthly1, monthly2, every_two = ids
     period = current_period()
     proc = subprocess.Popen(
@@ -196,14 +196,13 @@ def main():
                 restored = conn.execute('SELECT next_payment_period FROM services WHERE id=?', (every_two,)).fetchone()['next_payment_period']
                 assert restored == period, restored
 
-            # Mail foundation is visible but safely disabled until server SMTP config exists.
+            # Legacy SMTP node remains hidden/disabled for compatibility only.
             email_button = page.locator('[data-v03-send-email]')
             assert email_button.is_disabled()
-            assert '邮件未配置' in email_button.inner_text()
 
             browser.close()
 
-        print('v0.3 browser acceptance passed')
+        print('v0.3 browser acceptance passed (isolated test database)')
     finally:
         proc.terminate()
         try:
