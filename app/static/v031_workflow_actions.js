@@ -187,24 +187,29 @@
     }
   };
 
-  const bridgeFetch = async (path, options = {}, timeoutMs = 7000) => {
+  const bridgeFetch = async (path, options = {}, timeoutMs = 12000) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       return await fetch(`${FOXMAIL_BRIDGE}${path}`, {
         mode: 'cors', credentials: 'omit', cache: 'no-store', signal: controller.signal, ...options,
       });
+    } catch (err) {
+      if (err?.name === 'AbortError' || controller.signal.aborted) {
+        throw new Error('Windows Foxmail助手响应超时，请确认助手正在运行后重试');
+      }
+      if (err instanceof TypeError) {
+        throw new Error('无法连接Windows Foxmail助手，请确认本机助手正在运行');
+      }
+      throw err;
     } finally {
       clearTimeout(timer);
     }
   };
 
   const prepareInitiate = async () => {
-    const health = await bridgeFetch('/health', {}, 1400);
-    const helper = await health.json().catch(() => ({}));
-    if (!health.ok || helper.ok !== true || helper.verified_dispatch !== true) {
-      throw new Error('未检测到可用的 Windows Foxmail 助手');
-    }
+    // Do not block the real action behind a short /health preflight. The verified
+    // /compose response is the authoritative proof that Foxmail actually opened.
     const payload = await fetchJson(`/customers/${customerId}/payment-mail-compose-v031`);
     const response = await bridgeFetch('/compose', {
       method: 'POST',
@@ -216,7 +221,7 @@
         attachment_filename_b64: payload.attachment_filename_b64 || '',
         attachment_content_base64: payload.attachment_content_base64 || '',
       }),
-    });
+    }, 12000);
     const result = await response.json().catch(() => ({}));
     if (!response.ok || result.ok !== true || result.verified !== true) {
       throw new Error(result.error || 'Foxmail写邮件窗口未确认打开');
