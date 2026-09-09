@@ -47,21 +47,34 @@ def main():
 
     rollback = (ROOT / 'app' / 'static' / 'v031_amount_rollback_fix.js').read_text(encoding='utf-8')
     for token in (
-        'payment-workflow-v031', "fd.append('action', 'invalidate')",
+        'payment-workflow-v031', 'syncAfterSavedAmount',
         "workbench.addEventListener('focusin'", "workbench.addEventListener('keyup'",
-        "e.key !== 'Enter'", 'v031OriginalAmount',
+        "e.key !== 'Enter'", 'v031OriginalAmount', 'attempt < 6',
         '原客户通知已失效', '重新发起缴费',
     ):
         assert token in rollback, token
-    assert 'MutationObserver' not in rollback, '金额回退兜底不得监听页面统计变化，避免正常核对被误回退'
+    assert "fd.append('action', 'invalidate')" not in rollback, '前端兜底不应再负责写入回退状态'
+    assert 'MutationObserver' not in rollback, '金额回退不得监听页面统计变化，避免正常核对被误回退'
 
     routes = (ROOT / 'app' / 'v031_payment_workflow_routes.py').read_text(encoding='utf-8')
     for token in (
         "initiated_at", "action == 'initiate'", "action == 'invalidate'",
+        "@router.post('/services/{service_id}/payment-current')",
+        'amount_changed', 'workflow_invalidated', '_invalidate_after_amount_change',
         '请先完成“发起缴费”', 'payment-mail-compose-v031',
         "'version': '0.3.1'",
     ):
         assert token in routes, token
+
+    # v0.3.1 must own the public amount-save route so save + workflow rollback are atomic.
+    from app.main import app  # noqa: E402
+    matches = [
+        r for r in app.router.routes
+        if getattr(r, 'path', '') == '/services/{service_id}/payment-current'
+        and 'POST' in getattr(r, 'methods', set())
+    ]
+    assert matches, '缺少 payment-current POST 路由'
+    assert matches[0].endpoint.__module__ == 'app.v031_payment_workflow_routes', matches[0].endpoint.__module__
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert 'v0.3.1' in base
