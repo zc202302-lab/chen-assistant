@@ -44,12 +44,15 @@ def main():
     assert 'BridgeMode' in helper and 'TcpListener' in helper
     assert 'ComposeRequest' in helper and 'Invoke-FoxmailCompose' in helper
     assert 'Get-FoxmailMapiDll' in helper
-    assert 'FMMAPI32' not in helper or 'Foxmail' in helper
     assert 'LoadLibrary' in helper and 'GetProcAddress' in helper
     assert 'MAPISendMail' in helper and 'MAPI_DIALOG' in helper
+    assert 'MAPI_LOGON_UI' in helper and 'MAPI_NEW_SESSION' in helper
     assert "Path -eq '/compose'" in helper
-    assert "version = '0.4'" in helper and 'compose = $true' in helper
-    assert 'foxmail_direct' in helper
+    assert "version = '0.5'" in helper and 'compose = $true' in helper
+    assert 'foxmail_direct' in helper and 'verified_dispatch' in helper
+    assert 'WaitForExit(1800)' in helper
+    assert 'Get-FoxmailVisibleWindowCount' in helper
+    assert 'no compose window was detected' in helper
     assert 'SysWOW64\\WindowsPowerShell' in helper
     assert "AllowedRootDomain = 'ziboxiaozhushou.cn'" in helper
     assert 'Access-Control-Allow-Private-Network: true' in helper
