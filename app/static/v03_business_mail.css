@@ -1,0 +1,293 @@
+/* v0.3 business readability + per-customer Foxmail draft UI */
+
+/* ---------------- business overview readability ---------------- */
+.business-v028{
+  padding:16px 16px 18px!important;
+}
+.business-v028>.section-head{
+  min-height:42px!important;
+  padding:0 2px 8px!important;
+  border-bottom:1px solid #edf0f4!important;
+}
+.business-v028>.section-head h2{
+  font-size:20px!important;
+  letter-spacing:-.01em;
+}
+.business-v028>.section-head>span{
+  font-size:12px!important;
+}
+
+.business-filters.v03-readable-filters{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  gap:8px!important;
+  margin:10px 0 12px!important;
+  padding:10px 12px!important;
+  border:1px solid #edf0f4!important;
+  border-radius:12px!important;
+  background:#fafbfc!important;
+}
+.v03-filter-primary{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px 18px;
+  min-width:0;
+}
+.business-filters.v03-readable-filters .filter-line{
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  min-height:30px;
+}
+.business-filters.v03-readable-filters .filter-line>b{
+  min-width:32px!important;
+  color:#667085!important;
+  font-size:11px!important;
+  letter-spacing:.02em;
+}
+.business-filters.v03-readable-filters .filter-chip{
+  min-height:27px;
+  padding:4px 9px!important;
+  border-radius:999px!important;
+  font-size:11px!important;
+  line-height:1!important;
+}
+.v03-filter-more{
+  width:100%;
+  border-top:1px solid #edf0f4;
+  padding-top:7px;
+}
+.v03-filter-more>summary{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:28px;
+  color:#667085;
+  cursor:pointer;
+  user-select:none;
+  font-size:11px;
+  font-weight:700;
+  list-style:none;
+}
+.v03-filter-more>summary::-webkit-details-marker{display:none}
+.v03-filter-more>summary::before{
+  content:'›';
+  display:inline-block;
+  font-size:16px;
+  line-height:1;
+  transition:transform .12s ease;
+}
+.v03-filter-more[open]>summary::before{transform:rotate(90deg)}
+.v03-filter-more.has-active>summary{color:#344054}
+.v03-filter-more>summary em{
+  min-width:19px;
+  height:19px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 5px;
+  border-radius:999px;
+  background:#111827;
+  color:#fff;
+  font-size:10px;
+  font-style:normal;
+}
+.v03-filter-more-body{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px 18px;
+  padding:8px 0 1px;
+}
+.business-filters.v03-readable-filters>[data-business-filter-reset]{
+  align-self:flex-end;
+  margin:-36px 0 0!important;
+  min-height:28px;
+  padding:4px 9px!important;
+  font-size:10px!important;
+}
+
+.business-table-header-v030{
+  min-height:34px!important;
+  align-items:center;
+  margin-top:2px;
+  border-top:1px solid #edf0f4!important;
+  border-bottom:1px solid #dfe4ea!important;
+  background:#f8fafc!important;
+}
+.business-table-header-cell-v030{
+  color:#667085!important;
+  font-size:11px!important;
+  font-weight:750!important;
+}
+.business-row-v028{
+  min-height:47px!important;
+  padding:4px 4px!important;
+  border-bottom:1px solid #e7ebf0!important;
+  background:#fff;
+  transition:background .12s ease,box-shadow .12s ease;
+}
+.business-row-v028:nth-of-type(even){background:#fcfdfe}
+.business-row-v028:hover{
+  background:#f7f9fc!important;
+  box-shadow:inset 3px 0 0 #d7dde7;
+}
+.business-row-line-v029{
+  min-height:39px!important;
+  align-items:center!important;
+}
+.business-attribute{
+  height:38px!important;
+  padding:4px 6px!important;
+  border-radius:8px!important;
+}
+.business-attribute strong{
+  line-height:1.35!important;
+}
+.business-drag-handle{
+  opacity:.38!important;
+  transition:opacity .12s ease,background .12s ease;
+}
+.business-row-v028:hover .business-drag-handle{opacity:.72!important}
+
+/* ---------------- local Foxmail workflow ---------------- */
+.v03-local-mail-actions{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  margin-left:2px;
+}
+.v03-local-mail-actions button{
+  min-height:32px;
+  white-space:nowrap;
+}
+
+.v03-mail-template-dialog{
+  width:min(680px,calc(100vw - 28px));
+  max-width:680px;
+  border:0;
+  border-radius:18px;
+  padding:0;
+  color:#111827;
+  background:#fff;
+  box-shadow:0 28px 80px rgba(15,23,42,.28);
+}
+.v03-mail-template-dialog::backdrop{
+  background:rgba(15,23,42,.38);
+  backdrop-filter:blur(3px);
+}
+.v03-mail-template-card{
+  display:grid;
+  gap:14px;
+  padding:20px;
+}
+.v03-mail-template-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+.v03-mail-template-head small{
+  display:block;
+  margin-bottom:3px;
+  color:#98a2b3;
+  font-size:11px;
+}
+.v03-mail-template-head h3{
+  margin:0;
+  font-size:21px;
+}
+.v03-mail-template-note{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:8px 12px;
+  align-items:start;
+  padding:10px 12px;
+  border:1px solid #e8ecf1;
+  border-radius:11px;
+  background:#f8fafc;
+  color:#667085;
+  font-size:12px;
+  line-height:1.5;
+}
+.v03-mail-template-note b{color:#344054}
+.v03-mail-field{
+  display:grid!important;
+  gap:6px!important;
+}
+.v03-mail-field>span{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  color:#344054;
+  font-size:12px;
+  font-weight:750;
+}
+.v03-mail-field>span small{
+  color:#98a2b3;
+  font-size:10px;
+  font-weight:600;
+}
+.v03-mail-field input,
+.v03-mail-field textarea{
+  width:100%!important;
+  min-width:0!important;
+  border:1px solid #d9dfe7!important;
+  border-radius:9px!important;
+  background:#fff!important;
+  padding:9px 11px!important;
+  font-size:14px!important;
+  line-height:1.45!important;
+  box-sizing:border-box!important;
+}
+.v03-mail-field input:focus,
+.v03-mail-field textarea:focus{
+  border-color:#9aa7b8!important;
+  box-shadow:0 0 0 3px rgba(100,116,139,.09)!important;
+  outline:0;
+}
+.v03-mail-field input[readonly]{
+  background:#f7f8fa!important;
+  color:#667085!important;
+}
+.v03-mail-field textarea{
+  min-height:128px;
+  resize:vertical;
+}
+.v03-mail-template-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  padding-top:2px;
+}
+
+@media(max-width:760px){
+  .business-v028{padding:10px 8px 14px!important}
+  .business-filters.v03-readable-filters{padding:8px!important}
+  .v03-filter-primary,
+  .v03-filter-more-body{
+    display:grid;
+    gap:7px;
+  }
+  .business-filters.v03-readable-filters .filter-line{
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  .business-filters.v03-readable-filters .filter-line::-webkit-scrollbar{display:none}
+  .business-filters.v03-readable-filters>[data-business-filter-reset]{
+    align-self:flex-start;
+    margin:0!important;
+  }
+  .business-row-v028{min-height:44px!important}
+  .business-attribute{height:35px!important}
+
+  .v03-local-mail-actions{
+    width:100%;
+    margin-left:0;
+  }
+  .v03-local-mail-actions button{flex:1 1 0}
+  .v03-mail-template-card{padding:15px}
+  .v03-mail-template-note{grid-template-columns:1fr}
+}
