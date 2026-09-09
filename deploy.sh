@@ -16,6 +16,12 @@ if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   exit 1
 fi
 
+SERVICE_USER="$(systemctl show "$SERVICE" -p User --value)"
+SERVICE_GROUP="$(systemctl show "$SERVICE" -p Group --value)"
+[[ -n "$SERVICE_USER" ]] || SERVICE_USER="root"
+[[ -n "$SERVICE_GROUP" ]] || SERVICE_GROUP="$SERVICE_USER"
+echo "服务运行账户：$SERVICE_USER:$SERVICE_GROUP"
+
 mkdir -p "$BACKUP_DIR"
 TS="$(date +%Y%m%d-%H%M%S)"
 BACKUP_FILE="$BACKUP_DIR/app.db.$TS"
@@ -119,6 +125,19 @@ with db() as conn:
     _ensure_mail_templates(conn)
 print('✓ v0.3 数据库结构检查/迁移完成')
 PY
+
+# deploy.sh 由 root 执行数据库迁移时，SQLite 主文件可能保留/变成 root 所有，
+# 而正式服务以专用用户运行。每次迁移后都把 data 目录及 SQLite 文件归还给服务账户，
+# 防止启动时报 "attempt to write a readonly database"。
+if [[ -d data ]]; then
+  chown "$SERVICE_USER:$SERVICE_GROUP" data
+  find data -maxdepth 1 -type f \( -name 'app.db' -o -name 'app.db-wal' -o -name 'app.db-shm' \) \
+    -exec chown "$SERVICE_USER:$SERVICE_GROUP" {} +
+  chmod u+rwx data
+  find data -maxdepth 1 -type f \( -name 'app.db' -o -name 'app.db-wal' -o -name 'app.db-shm' \) \
+    -exec chmod u+rw {} +
+  echo "✓ SQLite 权限已校正：$SERVICE_USER:$SERVICE_GROUP"
+fi
 
 .venv/bin/python tests/v03_contract.py
 .venv/bin/python tests/v03_runtime_fix_contract.py
