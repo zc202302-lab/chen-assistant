@@ -81,7 +81,7 @@ def main():
     )
     try:
         wait_http('http://127.0.0.1:8131/health')
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import expect, sync_playwright
 
         with sync_playwright() as p:
             browser = p.chromium.launch()
@@ -98,28 +98,33 @@ def main():
 
             review = flow.locator('[data-v031-flow-action="review"]')
             review.click()
-            page.wait_for_timeout(120)
-            assert review.get_attribute('aria-pressed') == 'true'
+            expect(review).to_have_attribute('aria-pressed', 'true', timeout=5000)
             review.click()
-            page.wait_for_timeout(120)
-            assert review.get_attribute('aria-pressed') == 'false'
+            expect(review).to_have_attribute('aria-pressed', 'false', timeout=5000)
 
             # Business editor still exposes an editable payment-state select for a deferred service.
             page.locator('[data-customer-tab="services"]').click()
             row = page.locator(f'[data-business-row][data-service-id="{deferred_sid}"]')
+            row.wait_for(state='visible')
             row.locator('.business-attribute').first.dblclick()
             editor = page.locator('#businessAttributeDialog')
             editor.wait_for(state='visible')
             payment_mode = editor.locator('[data-v031-payment-mode]')
             payment_mode.wait_for(state='visible')
-            assert payment_mode.input_value() == 'deferred'
+            # The select is inserted synchronously, then hydrated by /runtime-v0212.
+            expect(payment_mode).to_have_value('deferred', timeout=5000)
+            expect(payment_mode).to_be_enabled(timeout=5000)
             assert '延期至' in payment_mode.locator('option[value="deferred"]').inner_text()
 
             page.once('dialog', lambda d: d.accept())
-            payment_mode.select_option('normal')
-            page.wait_for_timeout(180)
-            assert payment_mode.input_value() == 'normal'
-            assert '本月应缴' in editor.locator('[data-v03-payment-state]').inner_text()
+            with page.expect_response(
+                lambda r: f'/services/{deferred_sid}/payment-status-v03' in r.url and r.request.method == 'POST',
+                timeout=5000,
+            ) as response_info:
+                payment_mode.select_option('normal')
+            assert response_info.value.ok
+            expect(payment_mode).to_have_value('normal', timeout=5000)
+            expect(editor.locator('[data-v03-payment-state]')).to_contain_text('本月应缴', timeout=5000)
             with db() as conn:
                 runtime = core._runtime_for(conn, deferred_sid)
                 assert runtime['deferred_until_period'] == '', runtime
