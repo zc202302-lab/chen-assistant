@@ -45,6 +45,13 @@ def main():
     ):
         assert token in js, token
 
+    rollback = (ROOT / 'app' / 'static' / 'v031_amount_rollback_fix.js').read_text(encoding='utf-8')
+    for token in (
+        'payment-workflow-v031', "fd.append('action', 'invalidate')",
+        'MutationObserver', '原客户通知已失效', '重新发起缴费',
+    ):
+        assert token in rollback, token
+
     routes = (ROOT / 'app' / 'v031_payment_workflow_routes.py').read_text(encoding='utf-8')
     for token in (
         "initiated_at", "action == 'initiate'", "action == 'invalidate'",
@@ -55,8 +62,10 @@ def main():
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert 'v0.3.1' in base
-    assert '/static/v031_payment_workflow.js?v=0310' in base
-    assert '/static/v031_payment_workflow.css?v=0310' in base
+    assert '/static/v031_payment_workflow.js?v=0311' in base
+    assert '/static/v031_amount_rollback_fix.js?v=0311' in base
+    assert '/static/v031_payment_workflow.css?v=0311' in base
+    assert base.index('/static/v031_amount_rollback_fix.js') > base.index('/static/v031_payment_workflow.js')
 
     print('v0.3.1 payment workflow contract passed')
 
