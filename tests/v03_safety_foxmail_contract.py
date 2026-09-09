@@ -33,15 +33,17 @@ def main():
     assert '当前客户本月缴费流程尚未完成' in foxmail_action
     assert '正在准备邮件' in foxmail_action
     assert "payment-mail-compose-v03" in foxmail_action
-    assert "payment-mail-draft-v03" in foxmail_action
     assert "'/compose'" in foxmail_action and "method: 'POST'" in foxmail_action
-    assert 'Windows助手版本较旧' in foxmail_action
     assert 'verified_dispatch === true' in foxmail_action
     assert 'data.verified !== true' in foxmail_action
     assert 'Foxmail写邮件窗口已确认打开' in foxmail_action
+    assert '本次不会自动下载.eml' in foxmail_action
+    assert '本次未自动下载.eml' in foxmail_action
+    assert 'downloadEmlFallback' not in foxmail_action
+    assert 'payment-mail-draft-v03' not in foxmail_action
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-    assert '/static/v03_foxmail_action_fix.js?v=0306' in base
+    assert '/static/v03_foxmail_action_fix.js?v=0307' in base
 
     helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')
     assert 'BridgeMode' in helper and 'TcpListener' in helper
@@ -59,7 +61,7 @@ def main():
     assert 'SysWOW64\\WindowsPowerShell' in helper
     assert "AllowedRootDomain = 'ziboxiaozhushou.cn'" in helper
     assert 'Access-Control-Allow-Private-Network: true' in helper
-    assert 'Start-Process -FilePath $path' in helper  # legacy .eml fallback remains
+    assert 'Start-Process -FilePath $path' in helper  # legacy .eml fallback remains in helper/open endpoint
     assert 'Get-CimInstance Win32_Process' in helper  # installer replaces old bridge process
     assert 'Startup' in helper
 
