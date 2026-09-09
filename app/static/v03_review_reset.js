@@ -3,7 +3,7 @@
   if (!root) return;
 
   const paymentList = document.getElementById('paymentSortable');
-  const reviewButton = root.querySelector('[data-v03-flow-action="review"]');
+  const reviewButton = root.querySelector('[data-v031-flow-action="review"], [data-v03-flow-action="review"]');
   if (!paymentList || !reviewButton) return;
 
   const rows = () => [...paymentList.querySelectorAll('[data-payment-row]')];
@@ -55,7 +55,7 @@
     const customerId = root.dataset.customerId || '';
     if (!customerId) return;
     try {
-      const r = await fetch(`/customers/${customerId}/workflow-state-v03`, {credentials: 'same-origin'});
+      const r = await fetch(`/customers/${customerId}/payment-workflow-v031`, {credentials: 'same-origin', cache: 'no-store'});
       const data = await r.json();
       if (!r.ok || !data.ok) return;
       const required = document.getElementById('requiredCount');
@@ -85,8 +85,7 @@
       rows().forEach(row => paintRow(row, false));
       syncResetCounters();
     } else if (lastReviewState === 'false' && current === 'true') {
-      // The backend only allows this transition after every variable row has been
-      // rechecked; fixed rows are re-confirmed automatically as part of this action.
+      // Fixed rows are restored in one batch by the v0.3.1 review action.
       rows().forEach(row => paintRow(row, true));
       wholeReset = false;
       root.classList.remove('v03-whole-review-reset');
