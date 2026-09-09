@@ -35,7 +35,7 @@ def seed():
     with db() as conn:
         cid = int(conn.execute(
             'INSERT INTO customers (name,group_code,tax_id,payment_enabled,created_at,updated_at) VALUES(?,?,?,?,?,?)',
-            ('固定金额整批撤销测试', 'C-RESET', 'RESET-TAX', 1, now, now),
+            ('固定金额自动确认测试', 'C-RESET', 'RESET-TAX', 1, now, now),
         ).lastrowid)
         ids = []
         for idx in range(2):
@@ -89,26 +89,33 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8133'}])
             page = context.new_page()
             page.goto(f'http://127.0.0.1:8133/customers/{cid}', wait_until='networkidle')
+            page.wait_for_timeout(1100)
 
             review = page.locator('[data-v031-flow-action="review"]')
             review.wait_for(state='visible')
             rows = page.locator('[data-payment-row]')
             assert rows.count() == 2
-            assert all(rows.nth(i).get_attribute('data-confirmed') == '1' for i in range(2))
+            for i in range(2):
+                row = rows.nth(i)
+                assert row.get_attribute('data-confirmed') == '1'
+                assert row.locator('[data-row-state]').inner_text().strip() == '✓'
+                assert row.locator('[data-row-state]').is_disabled()
+            assert page.locator('#pendingCount').inner_text().strip() == '0'
 
             review.click()
-            page.wait_for_timeout(120)
+            page.wait_for_timeout(160)
             assert review.get_attribute('aria-pressed') == 'true'
 
-            # Undoing the whole review resets every visible row, including fixed fees.
+            # Undoing stage 1 must NOT undo fixed amount confirmations.
             review.click()
-            page.wait_for_timeout(180)
+            page.wait_for_timeout(200)
             assert review.get_attribute('aria-pressed') == 'false'
             for i in range(2):
                 row = rows.nth(i)
-                assert row.get_attribute('data-confirmed') == '0'
-                assert row.locator('[data-row-state]').inner_text().strip() == '○'
-            assert page.locator('#pendingCount').inner_text().strip() == '2'
+                assert row.get_attribute('data-confirmed') == '1'
+                assert row.locator('[data-row-state]').inner_text().strip() == '✓'
+                assert row.locator('[data-row-state]').is_disabled()
+            assert page.locator('#pendingCount').inner_text().strip() == '0'
 
             with db() as conn:
                 entries = conn.execute(
@@ -118,38 +125,27 @@ def main():
                     (cid, period),
                 ).fetchall()
                 assert len(entries) == 2
-                assert all(int(row['confirmed']) == 0 for row in entries)
-                assert all(row['source'] == 'fixed_review_reset' for row in entries)
+                assert all(int(row['confirmed']) == 1 for row in entries)
+                assert all(row['source'] != 'fixed_review_reset' for row in entries)
 
-            # The reset survives a page reload; fixed rows must not auto-confirm early.
+            # Automatic confirmation survives reload and stage 1 remains immediately available.
             page.reload(wait_until='networkidle')
+            page.wait_for_timeout(1100)
             rows = page.locator('[data-payment-row]')
             for i in range(2):
-                assert rows.nth(i).get_attribute('data-confirmed') == '0'
-                assert rows.nth(i).locator('[data-row-state]').inner_text().strip() == '○'
+                assert rows.nth(i).get_attribute('data-confirmed') == '1'
+                assert rows.nth(i).locator('[data-row-state]').inner_text().strip() == '✓'
             review = page.locator('[data-v031-flow-action="review"]')
             assert review.is_enabled()
 
-            # Re-confirming the whole review restores all fixed rows at once.
             review.click()
             page.wait_for_timeout(180)
             assert review.get_attribute('aria-pressed') == 'true'
             for i in range(2):
                 assert rows.nth(i).get_attribute('data-confirmed') == '1'
-                assert rows.nth(i).locator('[data-row-state]').inner_text().strip() == '✓'
-
-            with db() as conn:
-                entries = conn.execute(
-                    '''SELECT pe.confirmed,pe.source
-                       FROM payment_entries pe JOIN services s ON s.id=pe.service_id
-                       WHERE s.customer_id=? AND pe.period=? ORDER BY pe.service_id''',
-                    (cid, period),
-                ).fetchall()
-                assert all(int(row['confirmed']) == 1 for row in entries)
-                assert all(row['source'] == 'fixed' for row in entries)
 
             browser.close()
-        print('v0.3.1 whole review reset acceptance passed (isolated test database)')
+        print('v0.3.1 fixed amount auto-confirm acceptance passed (isolated test database)')
     finally:
         proc.terminate()
         try:
