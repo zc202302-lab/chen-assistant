@@ -123,6 +123,9 @@ public static class ChenFoxmailWindowTools
     private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
 
     [DllImport("user32.dll")]
+    public static extern bool IsWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
     private static extern bool IsWindowVisible(IntPtr hWnd);
 
     [DllImport("user32.dll")]
@@ -135,7 +138,67 @@ public static class ChenFoxmailWindowTools
     public static extern bool SetForegroundWindow(IntPtr hWnd);
 
     [DllImport("user32.dll")]
+    public static extern bool BringWindowToTop(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetActiveWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetFocus(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    public static bool IsForeground(IntPtr hWnd)
+    {
+        return hWnd != IntPtr.Zero && GetForegroundWindow() == hWnd;
+    }
+
+    public static bool ForceForeground(IntPtr hWnd)
+    {
+        if (hWnd == IntPtr.Zero || !IsWindow(hWnd)) return false;
+        ShowWindow(hWnd, 9);
+
+        IntPtr foreground = GetForegroundWindow();
+        uint ignored;
+        uint foregroundThread = foreground == IntPtr.Zero ? 0 : GetWindowThreadProcessId(foreground, out ignored);
+        uint targetPid;
+        uint targetThread = GetWindowThreadProcessId(hWnd, out targetPid);
+        uint currentThread = GetCurrentThreadId();
+        bool attachedCurrent = false;
+        bool attachedForeground = false;
+
+        try
+        {
+            if (currentThread != targetThread)
+                attachedCurrent = AttachThreadInput(currentThread, targetThread, true);
+            if (foregroundThread != 0 && foregroundThread != targetThread && foregroundThread != currentThread)
+                attachedForeground = AttachThreadInput(foregroundThread, targetThread, true);
+
+            BringWindowToTop(hWnd);
+            SetActiveWindow(hWnd);
+            SetForegroundWindow(hWnd);
+            SetFocus(hWnd);
+        }
+        finally
+        {
+            if (attachedForeground)
+                AttachThreadInput(foregroundThread, targetThread, false);
+            if (attachedCurrent)
+                AttachThreadInput(currentThread, targetThread, false);
+        }
+
+        return GetForegroundWindow() == hWnd;
+    }
 
     public static WindowInfo[] GetFoxmailWindows()
     {
@@ -176,6 +239,45 @@ function Build-MailtoUri([string]$Recipient, [string]$Subject, [string]$Body) {
     return 'mailto:' + $recipientPart + $query
 }
 
+function Set-AttachmentClipboard([string]$AttachmentPath) {
+    Add-Type -AssemblyName System.Windows.Forms
+    $files = New-Object System.Collections.Specialized.StringCollection
+    [void]$files.Add($AttachmentPath)
+
+    for ($attempt = 0; $attempt -lt 6; $attempt++) {
+        try {
+            [System.Windows.Forms.Clipboard]::SetFileDropList($files)
+            Start-Sleep -Milliseconds 120
+            if ([System.Windows.Forms.Clipboard]::ContainsFileDropList()) {
+                $readBack = [System.Windows.Forms.Clipboard]::GetFileDropList()
+                if ($readBack -and $readBack.Contains($AttachmentPath)) { return $true }
+            }
+        } catch {
+        }
+        Start-Sleep -Milliseconds 180
+    }
+    return $false
+}
+
+function Focus-ComposeWindow($ComposeWindow) {
+    Ensure-WindowTools
+    $hwnd = [IntPtr]::new([long]$ComposeWindow.Handle)
+    $stableForeground = 0
+
+    for ($attempt = 0; $attempt -lt 14; $attempt++) {
+        if (-not [ChenFoxmailWindowTools]::IsWindow($hwnd)) { return $false }
+        [void][ChenFoxmailWindowTools]::ForceForeground($hwnd)
+        Start-Sleep -Milliseconds 180
+        if ([ChenFoxmailWindowTools]::IsForeground($hwnd)) {
+            $stableForeground += 1
+            if ($stableForeground -ge 3) { return $true }
+        } else {
+            $stableForeground = 0
+        }
+    }
+    return $false
+}
+
 function Invoke-FoxmailCompose([string]$RequestPath) {
     $payload = Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $recipient = Decode-B64Text ([string]$payload.recipient_b64)
@@ -188,10 +290,6 @@ function Invoke-FoxmailCompose([string]$RequestPath) {
     $foxmailExe = Get-FoxmailExe
     if (-not $foxmailExe) { return 93 }
 
-    # Use a unique folder for every compose operation, but preserve the exact
-    # customer-defined file name inside that folder. Foxmail displays the base
-    # file name of the clipboard attachment, so prefixing the file itself would
-    # incorrectly leak our temporary timestamp into the visible attachment name.
     New-Item -ItemType Directory -Force -Path $MailDir | Out-Null
     $prefix = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
     $composeDir = Join-Path $MailDir $prefix
@@ -206,7 +304,7 @@ function Invoke-FoxmailCompose([string]$RequestPath) {
     Start-Process -FilePath $foxmailExe -ArgumentList @($mailto) | Out-Null
 
     $composeWindow = $null
-    $deadline = (Get-Date).AddSeconds(7)
+    $deadline = (Get-Date).AddSeconds(8)
     while ((Get-Date) -lt $deadline -and $null -eq $composeWindow) {
         Start-Sleep -Milliseconds 250
         foreach ($w in (Get-FoxmailWindows)) {
@@ -222,17 +320,23 @@ function Invoke-FoxmailCompose([string]$RequestPath) {
     try {
         Add-Type -AssemblyName System.Windows.Forms
         Add-Type -AssemblyName System.Drawing
-        $files = New-Object System.Collections.Specialized.StringCollection
-        [void]$files.Add($attachmentPath)
-        [System.Windows.Forms.Clipboard]::SetFileDropList($files)
-
+        Ensure-WindowTools
         $hwnd = [IntPtr]::new([long]$composeWindow.Handle)
-        [void][ChenFoxmailWindowTools]::ShowWindow($hwnd, 9)
-        Start-Sleep -Milliseconds 250
-        [void][ChenFoxmailWindowTools]::SetForegroundWindow($hwnd)
-        Start-Sleep -Milliseconds 350
+
+        Start-Sleep -Milliseconds 850
+        if (-not [ChenFoxmailWindowTools]::IsWindow($hwnd)) { return 91 }
+        if (-not (Focus-ComposeWindow $composeWindow)) { return 96 }
+        if (-not (Set-AttachmentClipboard $attachmentPath)) { return 97 }
+
+        [void][ChenFoxmailWindowTools]::ForceForeground($hwnd)
+        Start-Sleep -Milliseconds 320
+        if (-not [ChenFoxmailWindowTools]::IsForeground($hwnd)) {
+            if (-not (Focus-ComposeWindow $composeWindow)) { return 96 }
+        }
+
+        Start-Sleep -Milliseconds 280
         [System.Windows.Forms.SendKeys]::SendWait('^v')
-        Start-Sleep -Milliseconds 500
+        Start-Sleep -Milliseconds 1100
         return 0
     } catch {
         return 92
@@ -247,6 +351,8 @@ function Get-ComposeErrorText([int]$Code) {
         93 { return 'Foxmail.exe was not found' }
         94 { return 'TXT attachment payload was empty' }
         95 { return 'compose helper timed out' }
+        96 { return 'Foxmail compose window could not be focused reliably' }
+        97 { return 'TXT attachment clipboard could not be prepared reliably' }
         default { return "Foxmail helper error $Code" }
     }
 }
@@ -299,7 +405,7 @@ if (-not $BridgeMode) {
     } else {
         Write-Host 'Foxmail.exe was not found.' -ForegroundColor Yellow
     }
-    Write-Host 'Compose mode: Foxmail mailto + automatic TXT clipboard attachment'
+    Write-Host 'Compose mode: Foxmail mailto + verified-focus TXT clipboard attachment'
     Write-Host ''
     Write-Host 'Return to Chen Assistant and refresh the page.'
     Read-Host 'Press Enter to close'
@@ -431,12 +537,14 @@ try {
                 Write-Response $stream 200 (ConvertTo-CompactJson @{
                     ok = $true
                     name = 'Chen Foxmail Helper'
-                    version = '0.7'
+                    version = '0.8'
                     compose = $true
                     foxmail_direct = [bool]$FoxmailExe
                     verified_dispatch = $true
                     compose_mode = 'mailto-clipboard'
                     attachment_filename_exact = $true
+                    attachment_focus_verified = $true
+                    clipboard_verified = $true
                 }) $origin
                 continue
             }
@@ -455,7 +563,7 @@ try {
                         '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', "`"$InstalledScript`"",
                         '-ComposeRequest', "`"$requestFile`""
                     )
-                    if (-not $process.WaitForExit(10000)) {
+                    if (-not $process.WaitForExit(18000)) {
                         try { $process.Kill() } catch {}
                         $code = 95
                     } else {
@@ -467,8 +575,10 @@ try {
                             ok = $true
                             verified = $true
                             mode = 'foxmail-mailto-clipboard'
-                            state = 'compose-opened-and-attachment-pasted'
+                            state = 'compose-opened-focused-and-attachment-pasted'
                             attachment_filename_exact = $true
+                            attachment_focus_verified = $true
+                            clipboard_verified = $true
                         }) $origin
                     } else {
                         Write-Response $stream 500 (ConvertTo-CompactJson @{
