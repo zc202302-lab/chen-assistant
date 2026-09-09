@@ -23,44 +23,10 @@
     return data;
   };
 
-  const paint = run => {
-    if (!run) return;
-    const defs = [
-      ['review', '金额核对', !!run.reviewed],
-      ['notify', '已通知客户', !!run.notified],
-      ['initiate', '发起缴费', !!run.initiated],
-      ['paid', '完成缴费', !!run.paid],
-    ];
-    defs.forEach(([action, label, done], index) => {
-      const btn = root.querySelector(`[data-v031-flow-action="${action}"]`);
-      if (!btn) return;
-      btn.textContent = done ? `✓ ${label}` : `${index + 1} ${label}`;
-      btn.setAttribute('aria-pressed', done ? 'true' : 'false');
-      btn.classList.toggle('done', done);
-      const current = !done && (
-        (action === 'review' && run.ready) ||
-        (action === 'notify' && run.reviewed) ||
-        (action === 'initiate' && run.notified) ||
-        (action === 'paid' && run.initiated)
-      );
-      btn.classList.toggle('current', current);
-      if (action === 'review') btn.disabled = done ? !!(run.notified || run.initiated || run.paid) : !run.ready;
-      else if (action === 'notify') btn.disabled = done ? !!(run.initiated || run.paid) : !run.reviewed;
-      else if (action === 'initiate') btn.disabled = done ? !!run.paid : !run.notified;
-      else btn.disabled = !done && !run.initiated;
-    });
-
-    const image = root.querySelector('[data-v031-payment-image]');
-    if (image) image.disabled = !run.reviewed || !!run.paid;
-    const foxmail = root.querySelector('[data-v03-foxmail-draft]');
-    if (foxmail) foxmail.disabled = !run.notified || !!run.paid;
-    const label = document.getElementById('paymentRunLabel');
-    if (label) label.textContent = run.label || '';
-  };
-
-  const numberValue = value => {
-    const parsed = Number(String(value ?? '').trim().replace(',', '.'));
-    return Number.isFinite(parsed) ? parsed : null;
+  const refreshWorkflowOwner = async () => {
+    const owner = window.ChenPaymentWorkflowRuntimeV031;
+    if (owner?.refresh) return owner.refresh();
+    return false;
   };
 
   const syncAfterSavedAmount = async (beforeFlags, attempt = 0) => {
@@ -75,15 +41,16 @@
         (beforeFlags.reviewed && run.reviewed)
       );
 
-      // payment-current is authoritative and invalidates in the same DB transaction.
-      // If this GET arrived just before that transaction committed, retry briefly.
+      // payment-current invalidates workflow state in the same DB transaction.
+      // A very fast GET can still race the response path, so retry briefly. This
+      // helper never paints buttons itself; the four-stage runtime is the sole renderer.
       if (stillOld && attempt < 6) {
         checking = false;
         timer = setTimeout(() => syncAfterSavedAmount(beforeFlags, attempt + 1), 80);
         return;
       }
 
-      paint(run);
+      await refreshWorkflowOwner();
       if (!stillOld && (beforeFlags.reviewed || beforeFlags.notified || beforeFlags.initiated)) {
         toast(beforeFlags.initiated
           ? '金额已修改：请重新核对、重新通知客户并重新发起缴费'
@@ -116,10 +83,10 @@
     const original = input.dataset.v031OriginalAmount ?? String(input.value ?? '');
     const current = String(input.value ?? '');
     input.dataset.v031OriginalAmount = current;
-    const before = numberValue(original);
-    const after = numberValue(current);
-    if (before !== null && after !== null && Math.abs(before - after) <= 0.000001) return;
-    if (before === null && after === null && original === current) return;
+    const before = Number(String(original).trim().replace(',', '.'));
+    const after = Number(String(current).trim().replace(',', '.'));
+    if (Number.isFinite(before) && Number.isFinite(after) && Math.abs(before - after) <= 0.000001) return;
+    if (!Number.isFinite(before) && !Number.isFinite(after) && original === current) return;
 
     const beforeFlags = {
       reviewed: root.querySelector('[data-v031-flow-action="review"]')?.getAttribute('aria-pressed') === 'true',
