@@ -73,6 +73,10 @@ def accept_next_dialog(page):
     page.once('dialog', lambda dialog: dialog.accept())
 
 
+def readonly(locator):
+    return bool(locator.evaluate('el => el.readOnly'))
+
+
 def main():
     cid, ids, token = seed()
     assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
@@ -134,7 +138,7 @@ def main():
             page.wait_for_timeout(150)
             assert notify.get_attribute('aria-pressed') == 'true'
             assert initiate.is_enabled()
-            assert not variable_input.is_readonly()
+            assert not readonly(variable_input)
 
             # Customer disputes the amount after receiving the WeChat image.
             # Saving a changed amount must automatically invalidate review + notification.
@@ -165,7 +169,7 @@ def main():
             paid.click()
             page.wait_for_timeout(220)
             assert paid.get_attribute('aria-pressed') == 'true'
-            assert variable_input.is_readonly()
+            assert readonly(variable_input)
             with db() as conn:
                 next_period = conn.execute(
                     'SELECT next_payment_period FROM services WHERE id=?', (two_month_sid,)
@@ -178,7 +182,7 @@ def main():
             page.wait_for_timeout(220)
             assert paid.get_attribute('aria-pressed') == 'false'
             assert initiate.get_attribute('aria-pressed') == 'true'
-            assert not variable_input.is_readonly()
+            assert not readonly(variable_input)
             with db() as conn:
                 restored = conn.execute(
                     'SELECT next_payment_period FROM services WHERE id=?', (two_month_sid,)
