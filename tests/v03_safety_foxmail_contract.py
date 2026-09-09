@@ -31,7 +31,7 @@ def main():
     assert "AllowedRootDomain = 'ziboxiaozhushou.cn'" in bridge
     assert 'Access-Control-Allow-Private-Network: true' in bridge
     assert "Path -eq '/open'" in bridge
-    assert 'X-Unsent' not in bridge  # bridge opens bytes; server owns mail construction
+    assert '[IO.File]::WriteAllBytes' in bridge and 'Start-Process' in bridge
     assert 'Startup' in installer and 'foxmail_bridge.ps1' in installer
 
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
