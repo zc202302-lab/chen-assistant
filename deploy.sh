@@ -40,7 +40,7 @@ git merge --ff-only origin/main
 echo "===== 更新前代码检查 ====="
 .venv/bin/python -m compileall -q app
 if command -v node >/dev/null 2>&1; then
-  for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_insert_order.js; do
+  for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_insert_order.js v03_review_reset.js; do
     node --check "app/static/$ASSET"
   done
 fi
@@ -91,7 +91,7 @@ base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
 current_assets=(
     '/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js',
     '/static/business-sync.js','/static/v0211.js','/static/workspace-refinement-v0212.js','/static/v03.js',
-    '/static/v03_runtime_fix.js','/static/v03_business_mail.js','/static/v03_insert_order.js',
+    '/static/v03_runtime_fix.js','/static/v03_business_mail.js','/static/v03_insert_order.js','/static/v03_review_reset.js',
     '/static/app.css','/static/v028.css','/static/layout-refinement.css','/static/v0212.css',
     '/static/workspace-refinement-v0212.css','/static/v03.css','/static/v03_business_mail.css',
 )
@@ -101,7 +101,7 @@ for retired in ('/static/v0212.js','/static/business-editor-hotfix.js','/static/
     assert retired not in base,f'检测到已退役前端资源仍在运行：{retired}'
 for asset in (
     'app.js','v028.js','ui-drag.js','service-promotions.js','business-sync.js','v0211.js',
-    'workspace-refinement-v0212.js','v03.js','v03_runtime_fix.js','v03_business_mail.js','v03_insert_order.js',
+    'workspace-refinement-v0212.js','v03.js','v03_runtime_fix.js','v03_business_mail.js','v03_insert_order.js','v03_review_reset.js',
     'app.css','v028.css','layout-refinement.css','v0212.css','workspace-refinement-v0212.css','v03.css','v03_business_mail.css',
 ):
     assert (config.ROOT/'app'/'static'/asset).is_file(),f'缺少 {asset}'
@@ -138,7 +138,7 @@ PY
 
 echo "===== 已运行静态文件一致性检查 ====="
 REV="$(git rev-parse --short HEAD)"
-for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_insert_order.js app.css v028.css layout-refinement.css v0212.css workspace-refinement-v0212.css v03.css v03_business_mail.css; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_insert_order.js v03_review_reset.js app.css v028.css layout-refinement.css v0212.css workspace-refinement-v0212.css v03.css v03_business_mail.css; do
   LOCAL_FILE="app/static/$ASSET"; TMP_FILE="$(mktemp)"
   curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP_FILE"
   LOCAL_SHA="$(sha256sum "$LOCAL_FILE"|awk '{print $1}')"; SERVED_SHA="$(sha256sum "$TMP_FILE"|awk '{print $1}')"; rm -f "$TMP_FILE"
@@ -148,7 +148,7 @@ for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0
   echo "✓ $ASSET：正式服务与 Git 工作区一致"
 done
 
-for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_insert_order.js; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_insert_order.js v03_review_reset.js; do
   CACHE_HEADER="$(curl -fsSI "$APP_HTTP/static/$ASSET?deploy=$REV" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^Cache-Control:/{sub(/^[^:]*:[ ]*/,""); print; exit}')"
   case "$CACHE_HEADER" in
     *no-store*) echo "✓ $ASSET 禁止浏览器缓存旧控制代码" ;;
