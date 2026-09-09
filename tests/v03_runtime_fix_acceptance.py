@@ -94,7 +94,7 @@ def main():
             flow = page.locator('[data-v031-payment-flow]')
             flow.wait_for(state='visible')
             labels = [x.strip() for x in flow.locator('[data-v031-flow-action]').all_inner_texts()]
-            assert labels == ['1 金额核对', '2 已通知客户', '3 发起缴费', '4 完成缴费'], labels
+            assert labels == ['1 金额核对', '2 通知客户', '3 发起缴费', '4 完成缴费'], labels
 
             review = flow.locator('[data-v031-flow-action="review"]')
             review.click()
