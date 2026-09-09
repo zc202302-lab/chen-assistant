@@ -108,7 +108,6 @@ def main():
             assert shell.locator('.v03-filter-selection-summary').inner_text() == '全部业务'
             row_height = page.locator('[data-business-row]').first.evaluate('el => el.getBoundingClientRect().height')
             assert row_height >= 44, row_height
-            # Row cells no longer repeat their attribute label visually; table header owns it.
             small_display = page.locator('[data-business-row] .business-attribute small').first.evaluate('el => getComputedStyle(el).display')
             assert small_display == 'none', small_display
 
@@ -120,6 +119,9 @@ def main():
             dialog.wait_for(state='visible')
             assert '按客户长期保存' in dialog.inner_text()
             assert dialog.locator('[data-v03-foxmail-bridge-state]').count() == 1
+            helper_link = dialog.locator('.v03-foxmail-helper-download')
+            assert helper_link.get_attribute('href') == '/static/chen_foxmail_helper.ps1'
+            dialog.locator('[data-v03-mail-recipient]').fill('colleague@example.com')
             dialog.locator('[data-v03-mail-subject]').fill('中泰物流长期缴费主题')
             dialog.locator('[data-v03-mail-body]').fill('这是长期保存的正文，也允许留空。')
             dialog.locator('button[type="submit"]').click()
@@ -137,6 +139,7 @@ def main():
             raw = eml_path.read_bytes()
             msg = BytesParser(policy=policy.default).parsebytes(raw)
             assert msg['X-Unsent'] == '1'
+            assert msg['To'] == 'colleague@example.com'
             assert msg['Subject'] == '中泰物流长期缴费主题'
             body = msg.get_body(preferencelist=('plain',)).get_content()
             assert '长期保存的正文' in body
@@ -146,9 +149,10 @@ def main():
             text = attachments[0].get_payload(decode=True).decode('utf-8')
             assert '18353386915|165' in text
 
-            # Reopen template: per-customer values survive without relying on Foxmail.
+            # Reopen template: client values and the global recipient survive.
             template_button.click()
             dialog.wait_for(state='visible')
+            assert dialog.locator('[data-v03-mail-recipient]').input_value() == 'colleague@example.com'
             assert dialog.locator('[data-v03-mail-subject]').input_value() == '中泰物流长期缴费主题'
             assert '长期保存的正文' in dialog.locator('[data-v03-mail-body]').input_value()
             browser.close()
