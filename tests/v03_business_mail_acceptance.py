@@ -6,16 +6,16 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-DB = ROOT / 'data' / 'app.db'
-for suffix in ('', '-wal', '-shm'):
-    p = Path(str(DB) + suffix)
-    if p.exists():
-        p.unlink()
+
+_TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v03-business-mail-')
+TEST_DB = Path(_TMPDIR.name) / 'app.db'
+os.environ['APP_DB_PATH'] = str(TEST_DB)
 
 os.environ.update({
     'APP_USERNAME': 'ui-test',
@@ -79,6 +79,7 @@ def wait_http(url):
 
 def main():
     cid, token = seed()
+    assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
     proc = subprocess.Popen(
         [sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8132'],
         cwd=ROOT,
@@ -101,10 +102,15 @@ def main():
             more = shell.locator('.v03-filter-more')
             assert more.count() == 1
             assert '更多筛选' in more.locator('summary').inner_text()
-            assert more.locator('.filter-line').count() >= 2
+            assert more.locator('.filter-line').count() >= 3
             assert not more.get_attribute('open')
+            assert shell.locator('.v03-filter-primary [data-business-filter="due"]').count() >= 1
+            assert shell.locator('.v03-filter-selection-summary').inner_text() == '全部业务'
             row_height = page.locator('[data-business-row]').first.evaluate('el => el.getBoundingClientRect().height')
-            assert row_height >= 45, row_height
+            assert row_height >= 44, row_height
+            # Row cells no longer repeat their attribute label visually; table header owns it.
+            small_display = page.locator('[data-business-row] .business-attribute small').first.evaluate('el => getComputedStyle(el).display')
+            assert small_display == 'none', small_display
 
             page.locator('[data-customer-tab="payment"]').click()
             template_button = page.locator('[data-v03-mail-template]')
@@ -113,6 +119,7 @@ def main():
             dialog = page.locator('.v03-mail-template-dialog')
             dialog.wait_for(state='visible')
             assert '按客户长期保存' in dialog.inner_text()
+            assert dialog.locator('[data-v03-foxmail-bridge-state]').count() == 1
             dialog.locator('[data-v03-mail-subject]').fill('中泰物流长期缴费主题')
             dialog.locator('[data-v03-mail-body]').fill('这是长期保存的正文，也允许留空。')
             dialog.locator('button[type="submit"]').click()
@@ -121,6 +128,8 @@ def main():
             draft = page.locator('[data-v03-foxmail-draft]')
             draft.wait_for(state='visible')
             page.wait_for_function("!document.querySelector('[data-v03-foxmail-draft]').disabled")
+            # CI has no Windows bridge, so the production UI must gracefully fall back
+            # to an .eml browser download.
             with page.expect_download() as info:
                 draft.click()
             download = info.value
@@ -144,7 +153,7 @@ def main():
             assert '长期保存的正文' in dialog.locator('[data-v03-mail-body]').input_value()
             browser.close()
 
-        print('v0.3 business/mail browser acceptance passed')
+        print('v0.3 business/mail browser acceptance passed (isolated test database)')
     finally:
         proc.terminate()
         try:
