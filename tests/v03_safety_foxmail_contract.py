@@ -48,20 +48,19 @@ def main():
     helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')
     assert 'BridgeMode' in helper and 'TcpListener' in helper
     assert 'ComposeRequest' in helper and 'Invoke-FoxmailCompose' in helper
-    assert 'Get-FoxmailMapiDll' in helper
-    assert 'LoadLibrary' in helper and 'GetProcAddress' in helper
-    assert 'MAPISendMail' in helper and 'MAPI_DIALOG' in helper
-    assert 'MAPI_LOGON_UI' in helper and 'MAPI_NEW_SESSION' in helper
+    assert 'Get-FoxmailExe' in helper
+    assert 'Build-MailtoUri' in helper and "'mailto:'" in helper
+    assert 'Clipboard]::SetFileDropList' in helper
+    assert "SendWait('^v')" in helper
+    assert 'SetForegroundWindow' in helper and 'GetFoxmailWindows' in helper
     assert "Path -eq '/compose'" in helper
-    assert "version = '0.5'" in helper and 'compose = $true' in helper
+    assert "version = '0.6'" in helper and 'compose = $true' in helper
+    assert "compose_mode = 'mailto-clipboard'" in helper
     assert 'foxmail_direct' in helper and 'verified_dispatch' in helper
-    assert 'WaitForExit(1800)' in helper
-    assert 'Get-FoxmailVisibleWindowCount' in helper
-    assert 'no compose window was detected' in helper
-    assert 'SysWOW64\\WindowsPowerShell' in helper
+    assert "'-STA'" in helper
     assert "AllowedRootDomain = 'ziboxiaozhushou.cn'" in helper
     assert 'Access-Control-Allow-Private-Network: true' in helper
-    assert 'Start-Process -FilePath $path' in helper  # legacy .eml fallback remains in helper/open endpoint
+    assert 'Start-Process -FilePath $path' in helper  # manual .eml fallback remains only in helper/open endpoint
     assert 'Get-CimInstance Win32_Process' in helper  # installer replaces old bridge process
     assert 'Startup' in helper
 
