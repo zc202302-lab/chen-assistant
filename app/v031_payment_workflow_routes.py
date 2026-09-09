@@ -34,22 +34,25 @@ def _has_column(conn, table: str, column: str) -> bool:
 
 
 def ensure_v031(conn):
-    """Migrate the existing v0.3 payment run into the four-stage v0.3.1 workflow."""
+    """Migrate the existing v0.3 payment run into the four-stage v0.3.1 workflow once."""
     v03._ensure_v03(conn)
+    added_initiated = False
     if not _has_column(conn, 'customer_payment_runs', 'initiated_at'):
         conn.execute("ALTER TABLE customer_payment_runs ADD COLUMN initiated_at TEXT DEFAULT ''")
+        added_initiated = True
 
-    # Old completed or server-emailed records have necessarily passed the new
-    # "发起缴费" stage. Backfill only those records; a plain notified record remains
-    # at stage 2 so historical state is not advanced accidentally.
-    conn.execute(
-        """UPDATE customer_payment_runs
-           SET initiated_at=CASE
-             WHEN COALESCE(initiated_at,'')<>'' THEN initiated_at
-             WHEN COALESCE(paid_at,'')<>'' THEN paid_at
-             WHEN COALESCE(emailed_at,'')<>'' THEN emailed_at
-             ELSE '' END"""
-    )
+    # Migration backfill must run only when the column is first introduced.
+    # Re-running it on every state read would recreate a deliberately withdrawn
+    # "发起缴费" state from historical emailed_at and make the workflow appear broken.
+    if added_initiated:
+        conn.execute(
+            """UPDATE customer_payment_runs
+               SET initiated_at=CASE
+                 WHEN COALESCE(initiated_at,'')<>'' THEN initiated_at
+                 WHEN COALESCE(paid_at,'')<>'' THEN paid_at
+                 WHEN COALESCE(emailed_at,'')<>'' THEN emailed_at
+                 ELSE '' END"""
+        )
 
 
 def _run_v031(conn, customer_id: int, period: str | None = None):
