@@ -1,0 +1,36 @@
+name: workspace refinement syntax
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate-refinement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check refinement JavaScript
+        run: node --check app/static/workspace-refinement-v0212.js
+      - name: Check refinement Python syntax
+        run: python -m py_compile app/v0212_business_display_routes.py
+      - name: Check refinement assets are loaded
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          base = Path('app/templates/base.html').read_text(encoding='utf-8')
+          assert base.count('/static/workspace-refinement-v0212.js') == 1
+          assert base.count('/static/workspace-refinement-v0212.css') == 1
+          js = Path('app/static/workspace-refinement-v0212.js').read_text(encoding='utf-8')
+          css = Path('app/static/workspace-refinement-v0212.css').read_text(encoding='utf-8')
+          assert "document.addEventListener('dblclick'" in js
+          assert 'business-columns-v0212' in js
+          assert 'repeat(var(--payment-column-count,1),minmax(0,1fr))' in css
+          print('workspace refinement syntax contract passed')
+          PY
