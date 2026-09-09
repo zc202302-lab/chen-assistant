@@ -1,4 +1,4 @@
-name: v0.3 validation
+name: v0.3.1 validation
 
 on:
   push:
@@ -36,6 +36,7 @@ jobs:
           node --check app/static/v03_foxmail_action_fix.js
           node --check app/static/v03_insert_order.js
           node --check app/static/v03_review_reset.js
+          node --check app/static/v031_payment_workflow.js
       - name: Check Python, routes, templates and assets
         run: |
           python -m compileall -q app
@@ -43,13 +44,18 @@ jobs:
           from jinja2 import Environment, FileSystemLoader
           from app import config
           from app.main import app
-          assert app.version == '0.3'
+          assert app.version == '0.3.1'
           for path in ('/', '/customers/{customer_id}', '/health'):
               matches=[r for r in app.router.routes if getattr(r,'path','')==path]
               assert len(matches)==1,(path,len(matches))
           customer_route=next(r for r in app.router.routes if getattr(r,'path','')=='/customers/{customer_id}')
           assert customer_route.endpoint.__module__=='app.v0212_routes'
+          health_route=next(r for r in app.router.routes if getattr(r,'path','')=='/health')
+          assert health_route.endpoint.__module__=='app.v031_payment_workflow_routes'
           owned={
+              ('/customers/{customer_id}/payment-workflow-v031','GET'):'app.v031_payment_workflow_routes',
+              ('/customers/{customer_id}/payment-workflow-v031','POST'):'app.v031_payment_workflow_routes',
+              ('/customers/{customer_id}/payment-mail-compose-v031','GET'):'app.v031_payment_workflow_routes',
               ('/customers/{customer_id}/payment-run','POST'):'app.v03_payment_routes',
               ('/customers/{customer_id}/payment-run-v03','GET'):'app.v03_routes',
               ('/customers/{customer_id}/workflow-state-v03','GET'):'app.v031_runtime_routes',
@@ -83,24 +89,25 @@ jobs:
               '/static/business-sync.js','/static/v0211.js','/static/workspace-refinement-v0212.js',
               '/static/v03.js','/static/v03_runtime_fix.js','/static/v03_business_mail.js',
               '/static/v03_payment_template.js','/static/v03_foxmail_action_fix.js','/static/v03_insert_order.js',
-              '/static/v03_review_reset.js',
+              '/static/v03_review_reset.js','/static/v031_payment_workflow.js',
               '/static/app.css','/static/v028.css','/static/layout-refinement.css','/static/v0212.css',
               '/static/workspace-refinement-v0212.css','/static/v03.css','/static/v03_business_mail.css',
-              '/static/v03_payment_template.css',
+              '/static/v03_payment_template.css','/static/v031_payment_workflow.css',
           )
           for current in current_assets:
               assert base.count(current)==1,current
           for retired in ('/static/v0212.js','/static/business-editor-hotfix.js'):
               assert retired not in base,retired
-          print('static validation passed: v0.3 runtime assets')
+          print('static validation passed: v0.3.1 runtime assets')
           PY
-      - name: v0.3 contracts
+      - name: v0.3.1 contracts
         run: |
           python tests/v03_contract.py
           python tests/v03_runtime_fix_contract.py
           python tests/v03_customer_scope_contract.py
           python tests/v03_safety_foxmail_contract.py
           python tests/v03_payment_template_contract.py
+          python tests/v031_payment_workflow_contract.py
       - name: Production experience regression
         run: python tests/production_experience_regression.py
       - name: Promotion render regression
