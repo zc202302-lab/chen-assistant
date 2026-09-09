@@ -30,13 +30,32 @@ def _ensure_mail_templates(conn):
                customer_id INTEGER PRIMARY KEY REFERENCES customers(id) ON DELETE CASCADE,
                subject TEXT NOT NULL DEFAULT '',
                body TEXT NOT NULL DEFAULT '',
+               attachment_filename TEXT NOT NULL DEFAULT '',
                updated_at TEXT NOT NULL DEFAULT ''
            )'''
     )
+    columns = {row['name'] for row in conn.execute('PRAGMA table_info(customer_mail_templates_v03)').fetchall()}
+    if 'attachment_filename' not in columns:
+        conn.execute("ALTER TABLE customer_mail_templates_v03 ADD COLUMN attachment_filename TEXT NOT NULL DEFAULT ''")
 
 
 def _clean_header(value: str) -> str:
     return ' '.join((value or '').replace('\r', ' ').replace('\n', ' ').split()).strip()
+
+
+def _clean_attachment_filename(value: str) -> str:
+    name = (value or '').replace('\r', ' ').replace('\n', ' ').strip()
+    if not name:
+        return ''
+    if len(name) > 160:
+        raise HTTPException(400, 'TXT附件文件名不能超过160个字符')
+    if any(ch in '/\\:*?"<>|' for ch in name):
+        raise HTTPException(400, 'TXT附件文件名不能包含 / \\ : * ? " < > |')
+    if name in {'.', '..'} or name.endswith('.'):
+        raise HTTPException(400, 'TXT附件文件名无效')
+    if not name.lower().endswith('.txt'):
+        name += '.txt'
+    return name
 
 
 def _recipient(conn) -> str:
@@ -63,20 +82,22 @@ def _save_recipient(conn, recipient: str) -> str:
 def _get_template(conn, customer_id: int):
     _ensure_mail_templates(conn)
     row = conn.execute(
-        'SELECT subject,body,updated_at FROM customer_mail_templates_v03 WHERE customer_id=?',
+        'SELECT subject,body,attachment_filename,updated_at FROM customer_mail_templates_v03 WHERE customer_id=?',
         (customer_id,),
     ).fetchone()
     if not row:
-        return {'subject': '', 'body': '', 'updated_at': ''}
+        return {'subject': '', 'body': '', 'attachment_filename': '', 'updated_at': ''}
     return {
         'subject': row['subject'] or '',
         'body': row['body'] or '',
+        'attachment_filename': row['attachment_filename'] or '',
         'updated_at': row['updated_at'] or '',
     }
 
 
-def _save_template(conn, customer_id: int, subject: str, body: str):
+def _save_template(conn, customer_id: int, subject: str, body: str, attachment_filename: str = ''):
     subject = _clean_header(subject)
+    attachment_filename = _clean_attachment_filename(attachment_filename)
     if len(subject) > 300:
         raise HTTPException(400, '邮件主题不能超过300个字符')
     if len(body or '') > 10000:
@@ -84,15 +105,21 @@ def _save_template(conn, customer_id: int, subject: str, body: str):
     now = now_iso()
     _ensure_mail_templates(conn)
     conn.execute(
-        '''INSERT INTO customer_mail_templates_v03(customer_id,subject,body,updated_at)
-           VALUES(?,?,?,?)
+        '''INSERT INTO customer_mail_templates_v03(customer_id,subject,body,attachment_filename,updated_at)
+           VALUES(?,?,?,?,?)
            ON CONFLICT(customer_id) DO UPDATE SET
              subject=excluded.subject,
              body=excluded.body,
+             attachment_filename=excluded.attachment_filename,
              updated_at=excluded.updated_at''',
-        (customer_id, subject, body or '', now),
+        (customer_id, subject, body or '', attachment_filename, now),
     )
-    return {'subject': subject, 'body': body or '', 'updated_at': now}
+    return {
+        'subject': subject,
+        'body': body or '',
+        'attachment_filename': attachment_filename,
+        'updated_at': now,
+    }
 
 
 def _safe_filename(value: str) -> str:
@@ -101,11 +128,26 @@ def _safe_filename(value: str) -> str:
     return cleaned[:80] or '客户'
 
 
+def _attachment_filename(template: dict, customer_name: str, period: str) -> str:
+    custom = _clean_attachment_filename(template.get('attachment_filename') or '')
+    if custom:
+        return custom
+    return f'{_safe_filename(customer_name)}_{period}_缴费.txt'
+
+
 def _b64_text(value: str) -> str:
     return base64.b64encode((value or '').encode('utf-8')).decode('ascii')
 
 
-def _build_eml(customer_name: str, period: str, subject: str, body: str, txt_content: str, recipient: str = '') -> bytes:
+def _build_eml(
+    customer_name: str,
+    period: str,
+    subject: str,
+    body: str,
+    txt_content: str,
+    recipient: str = '',
+    txt_filename: str = '',
+) -> bytes:
     msg = EmailMessage(policy=SMTP)
     # X-Unsent is recognized by many Windows mail clients as an editable draft.
     msg['X-Unsent'] = '1'
@@ -113,7 +155,7 @@ def _build_eml(customer_name: str, period: str, subject: str, body: str, txt_con
         msg['To'] = recipient
     msg['Subject'] = _clean_header(subject)
     msg.set_content(body or '', subtype='plain', charset='utf-8')
-    txt_name = f'{_safe_filename(customer_name)}_{period}_缴费.txt'
+    txt_name = txt_filename or f'{_safe_filename(customer_name)}_{period}_缴费.txt'
     msg.add_attachment(
         txt_content.encode('utf-8'),
         maintype='text',
@@ -145,11 +187,12 @@ def save_customer_mail_template_v03(
     subject: str = Form(''),
     body: str = Form(''),
     recipient: str = Form(''),
+    attachment_filename: str = Form(''),
 ):
     check_csrf(request, csrf)
     with db() as conn:
         customer_or_404(conn, customer_id)
-        template = _save_template(conn, customer_id, subject, body)
+        template = _save_template(conn, customer_id, subject, body, attachment_filename)
         saved_recipient = _save_recipient(conn, recipient)
     return JSONResponse({
         'ok': True,
@@ -180,7 +223,7 @@ def payment_mail_compose_v03(customer_id: int):
         raise HTTPException(400, '请先为这个客户保存邮件主题')
 
     customer_name = customer['name'] or '客户'
-    txt_name = f'{_safe_filename(customer_name)}_{period}_缴费.txt'
+    txt_name = _attachment_filename(template, customer_name, period)
     return JSONResponse({
         'ok': True,
         'recipient_b64': _b64_text(recipient),
@@ -208,6 +251,7 @@ def download_payment_mail_draft_v03(customer_id: int):
         raise HTTPException(400, '请先为这个客户保存邮件主题')
 
     customer_name = customer['name'] or '客户'
+    txt_name = _attachment_filename(template, customer_name, period)
     eml = _build_eml(
         customer_name=customer_name,
         period=period,
@@ -215,6 +259,7 @@ def download_payment_mail_draft_v03(customer_id: int):
         body=template['body'],
         txt_content=txt_content,
         recipient=recipient,
+        txt_filename=txt_name,
     )
     filename = f'{_safe_filename(customer_name)}_{period}_Foxmail.eml'
     headers = {
