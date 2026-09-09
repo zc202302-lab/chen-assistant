@@ -3,9 +3,22 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+# CRITICAL SAFETY RULE:
+# This contract test must never touch ROOT/data/app.db.  deploy.sh may be run from
+# the production checkout, so every database-mutating test uses its own temporary
+# SQLite database before importing helpers that call app.db.db().
+import app.db as db_module  # noqa: E402
+
+_TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v03-scope-')
+TEST_DATA_DIR = Path(_TMPDIR.name)
+TEST_DB = TEST_DATA_DIR / 'app.db'
+db_module.DATA_DIR = TEST_DATA_DIR
+db_module.DB_PATH = TEST_DB
 
 from app.db import db, init_db, now_iso  # noqa: E402
 from app.v027_routes import _meta_set  # noqa: E402
@@ -16,14 +29,14 @@ from app.v0212_business_display_routes import (  # noqa: E402
     _ordered_keys,
 )
 
-DB = ROOT / 'data' / 'app.db'
-for suffix in ('', '-wal', '-shm'):
-    p = Path(str(DB) + suffix)
-    if p.exists():
-        p.unlink()
-
 
 def main():
+    # The test database is disposable and lives outside the production data dir.
+    for suffix in ('', '-wal', '-shm'):
+        p = Path(str(TEST_DB) + suffix)
+        if p.exists():
+            p.unlink()
+
     init_db()
     now = now_iso()
     with db() as conn:
@@ -72,7 +85,9 @@ def main():
         assert custom['key'] not in _ordered_keys(conn, reduced_template, c1)
         assert custom['key'] not in _ordered_keys(conn, reduced_template, c2)
 
-    print('v0.3 customer scope contract passed')
+    # Explicitly prove the safety invariant used by production deployments.
+    assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
+    print('v0.3 customer scope contract passed (isolated test database)')
 
 
 if __name__ == '__main__':
