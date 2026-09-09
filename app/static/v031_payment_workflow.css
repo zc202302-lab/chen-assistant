@@ -1,7 +1,8 @@
-/* v0.3.1 — four-stage payment workflow + WeChat notice image */
+/* v0.3.1 — integrated four-stage payment workflow */
 
 .v031-payment-head .v03-payment-head-tools{
   align-items:center;
+  gap:12px;
 }
 
 .v031-payment-head .v03-payment-head-tools-left{
@@ -9,53 +10,95 @@
 }
 
 .v031-payment-head .v03-payment-head-tools-left > button{
-  min-height:30px!important;
-  padding:0 10px!important;
+  min-height:32px!important;
+  padding:0 12px!important;
   border-radius:9px!important;
   white-space:nowrap;
-  font-size:11px!important;
+  font-size:12px!important;
   font-weight:750!important;
-}
-
-.v031-image-button{
-  border-color:#c7d7fe!important;
-  background:#f5f8ff!important;
-  color:#254e9b!important;
-}
-.v031-image-button:hover:not(:disabled){background:#edf3ff!important}
-
-.v031-foxmail-button{
-  border-color:#cdd5df!important;
-  background:#fff!important;
-  color:#344054!important;
 }
 
 .v031-payment-flow{
   display:flex;
   align-items:center;
-  gap:6px;
+  gap:8px;
   margin:0!important;
   min-width:0;
+  padding:7px;
+  border:1px solid #e4e7ec;
+  border-radius:13px;
+  background:#f8fafc;
 }
 
 .v031-payment-flow .v03-flow-step{
-  min-height:30px!important;
-  padding:0 10px!important;
-  border-radius:9px!important;
-  font-size:11px!important;
-  line-height:1!important;
+  position:relative;
+  min-height:40px!important;
+  padding:0 15px!important;
+  border:1px solid #d0d5dd!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  color:#667085!important;
+  font-size:12px!important;
+  font-weight:750!important;
+  line-height:1.15!important;
   white-space:nowrap;
+  transition:background .14s ease,border-color .14s ease,color .14s ease,box-shadow .14s ease,transform .14s ease;
 }
 
-.v031-payment-flow .v03-flow-step.current:not(.done){
-  box-shadow:0 0 0 2px rgba(47,94,166,.10);
+.v031-payment-flow .v03-flow-step:not(:disabled):hover{
+  transform:translateY(-1px);
 }
 
+/* 当前可执行步骤：蓝色高亮 */
+.v031-payment-flow .v03-flow-step.current:not(.done):not(.awaiting-confirm){
+  border-color:#5b8def!important;
+  background:#eef4ff!important;
+  color:#174ea6!important;
+  box-shadow:0 0 0 3px rgba(91,141,239,.14);
+  font-weight:850!important;
+}
+
+/* 已执行外部动作但尚未人工确认：橙色，避免误认为已经完成 */
+.v031-payment-flow .v03-flow-step.awaiting-confirm{
+  border-color:#f0a126!important;
+  background:#fff7e8!important;
+  color:#9a5b00!important;
+  box-shadow:0 0 0 3px rgba(240,161,38,.15);
+  font-weight:900!important;
+}
+
+/* 已完成：绿色 */
 .v031-payment-flow .v03-flow-step.done{
-  font-weight:800!important;
+  border-color:#78c69a!important;
+  background:#edf9f1!important;
+  color:#237a48!important;
+  box-shadow:inset 0 0 0 1px rgba(35,122,72,.04);
+  font-weight:900!important;
 }
 
-/* Stage 2 no longer freezes amounts. Only final payment completion locks editing. */
+/* 尚未轮到的步骤更弱，但保持可读 */
+.v031-payment-flow .v03-flow-step:disabled:not(.done){
+  opacity:.48!important;
+  background:#f5f6f7!important;
+  color:#98a2b3!important;
+  cursor:not-allowed!important;
+}
+
+/* 固定金额自动确认状态 */
+.v031-fixed-auto-confirmed [data-row-state],
+[data-row-state].v031-auto-confirmed{
+  border-color:#a6d8b9!important;
+  background:#effaf3!important;
+  color:#237a48!important;
+  opacity:1!important;
+  cursor:default!important;
+}
+
+.v031-fixed-auto-confirmed .quick-amount:not([readonly]){
+  background:#fbfefc!important;
+}
+
+/* Stage 2/3 仍允许客户异议后改金额；只有最终完成缴费才锁定。 */
 .v031-payment-editable-after-notice .quick-amount:not([readonly]){
   background:#fff!important;
 }
@@ -73,7 +116,7 @@
     width:100%;
     overflow-x:auto;
     scrollbar-width:none;
-    padding-bottom:2px;
+    padding-bottom:7px;
   }
   .v031-payment-flow::-webkit-scrollbar{display:none}
 }
@@ -90,5 +133,7 @@
   }
   .v031-payment-flow .v03-flow-step{
     flex:0 0 auto;
+    min-height:42px!important;
+    padding:0 13px!important;
   }
 }
