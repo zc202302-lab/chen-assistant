@@ -48,6 +48,7 @@ def main():
         '确认缴费图片已经通过微信发送给客户', '确认缴费邮件已经在Foxmail中发送给同事',
         "root.querySelectorAll('[data-v031-payment-image],[data-v03-foxmail-draft]')",
         '固定缴费金额自动确认', 'v031-auto-confirmed',
+        'window.ChenPaymentWorkflowRuntimeV031', "refresh: () => loadState({quiet: true})",
     ):
         assert token in runtime_owner, token
 
@@ -57,10 +58,12 @@ def main():
         "workbench.addEventListener('focusin'", "workbench.addEventListener('keyup'",
         "e.key !== 'Enter'", 'v031OriginalAmount', 'attempt < 6',
         '原客户通知已失效', '重新发起缴费',
+        'ChenPaymentWorkflowRuntimeV031', 'refreshWorkflowOwner',
     ):
         assert token in rollback, token
     assert "fd.append('action', 'invalidate')" not in rollback
     assert 'MutationObserver' not in rollback
+    assert 'btn.textContent' not in rollback, '金额回退辅助脚本不得直接改四步按钮'
 
     fixed_patch = (ROOT / 'app' / 'v031_fixed_review_patch.py').read_text(encoding='utf-8')
     for token in (
@@ -69,6 +72,14 @@ def main():
         'workflow._paint_review_reset = _fixed_amount_review',
     ):
         assert token in fixed_patch, token
+
+    guard = (ROOT / 'app' / 'static' / 'v031_workflow_dom_guard.js').read_text(encoding='utf-8')
+    for token in (
+        'data-v031-flow-action="paid"', 'input.readOnly !== paid',
+        '固定缴费金额自动确认', 'v031-fixed-auto-confirmed',
+        "attributeFilter: ['readonly', 'disabled', 'data-confirmed']",
+    ):
+        assert token in guard, token
 
     routes = (ROOT / 'app' / 'v031_payment_workflow_routes.py').read_text(encoding='utf-8')
     for token in (
@@ -90,11 +101,13 @@ def main():
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert 'v0.3.1' in base
-    assert '/static/v031_workflow_actions.js?v=0313' in base
-    assert '/static/v031_workflow_runtime_fix.js?v=0313' in base
-    assert '/static/v031_payment_workflow.css?v=0313' in base
+    assert '/static/v031_workflow_actions.js?v=0314' in base
+    assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
+    assert '/static/v031_workflow_dom_guard.js?v=0314' in base
+    assert '/static/v031_payment_workflow.css?v=0314' in base
     assert base.index('/static/v031_workflow_actions.js') > base.index('/static/v031_payment_workflow.js')
     assert base.index('/static/v031_workflow_runtime_fix.js') > base.index('/static/v031_workflow_actions.js')
+    assert base.index('/static/v031_workflow_dom_guard.js') > base.index('/static/v031_workflow_runtime_fix.js')
 
     css = (ROOT / 'app' / 'static' / 'v031_payment_workflow.css').read_text(encoding='utf-8')
     for token in ('.awaiting-confirm', '.current', '.done', '.v031-fixed-auto-confirmed'):
