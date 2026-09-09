@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from email import policy
-from email.parser import BytesParser
 import os
 from pathlib import Path
 import subprocess
@@ -130,26 +128,17 @@ def main():
             draft = page.locator('[data-v03-foxmail-draft]')
             draft.wait_for(state='visible')
             page.wait_for_function("!document.querySelector('[data-v03-foxmail-draft]').disabled")
-            # CI has no Windows bridge, so the production UI must gracefully fall back
-            # to an .eml browser download.
-            with page.expect_download() as info:
-                draft.click()
-            download = info.value
-            eml_path = Path(download.path())
-            raw = eml_path.read_bytes()
-            msg = BytesParser(policy=policy.default).parsebytes(raw)
-            assert msg['X-Unsent'] == '1'
-            assert msg['To'] == 'colleague@example.com'
-            assert msg['Subject'] == '中泰物流长期缴费主题'
-            body = msg.get_body(preferencelist=('plain',)).get_content()
-            assert '长期保存的正文' in body
-            attachments = list(msg.iter_attachments())
-            assert len(attachments) == 1
-            assert attachments[0].get_filename().endswith('缴费.txt')
-            text = attachments[0].get_payload(decode=True).decode('utf-8')
-            assert '18353386915|165' in text
+            # Linux CI intentionally has no Windows helper. The main action must
+            # clearly explain that state instead of silently downloading an .eml.
+            draft.click()
+            page.wait_for_function(
+                "document.querySelector('.app-toast') && document.querySelector('.app-toast').textContent.includes('本次不会自动下载.eml')"
+            )
+            toast_text = page.locator('.app-toast').inner_text()
+            assert '未检测到Windows助手' in toast_text
+            assert '本次不会自动下载.eml' in toast_text
 
-            # Reopen template: client values and the global recipient survive.
+            # Reopen template: per-customer values and global recipient survive.
             template_button.click()
             dialog.wait_for(state='visible')
             assert dialog.locator('[data-v03-mail-recipient]').input_value() == 'colleague@example.com'
