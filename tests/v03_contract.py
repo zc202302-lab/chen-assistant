@@ -45,9 +45,12 @@ def first_route(path, method=None):
 
 
 def test_route_ownership():
-    assert app.version == '0.3'
-    assert first_route('/health', 'GET').endpoint.__module__ == 'app.v03_routes'
+    assert app.version == '0.3.1'
+    assert first_route('/health', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
     assert first_route('/customers/{customer_id}').endpoint.__module__ == 'app.v0212_routes'
+    assert first_route('/customers/{customer_id}/payment-workflow-v031', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
+    assert first_route('/customers/{customer_id}/payment-workflow-v031', 'POST').endpoint.__module__ == 'app.v031_payment_workflow_routes'
+    assert first_route('/customers/{customer_id}/payment-mail-compose-v031', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
     assert first_route('/customers/{customer_id}/payment-run', 'POST').endpoint.__module__ == 'app.v03_payment_routes'
     assert first_route('/customers/{customer_id}/payment-run-v03', 'GET').endpoint.__module__ == 'app.v03_routes'
     assert first_route('/customers/{customer_id}/payment-email-v03', 'POST').endpoint.__module__ == 'app.v03_routes'
@@ -96,10 +99,13 @@ def test_ui_contracts():
     local_mail_js = (ROOT / 'app/static/v03_business_mail.js').read_text(encoding='utf-8')
     local_mail_css = (ROOT / 'app/static/v03_business_mail.css').read_text(encoding='utf-8')
     local_mail_routes = (ROOT / 'app/v03_mail_draft_routes.py').read_text(encoding='utf-8')
+    v031_js = (ROOT / 'app/static/v031_payment_workflow.js').read_text(encoding='utf-8')
+    v031_routes = (ROOT / 'app/v031_payment_workflow_routes.py').read_text(encoding='utf-8')
 
-    assert 'v0.3' in base
+    assert 'v0.3.1' in base
     assert '/static/v03.js' in base and '/static/v03.css' in base
     assert '/static/v03_business_mail.js' in base and '/static/v03_business_mail.css' in base
+    assert '/static/v031_payment_workflow.js' in base and '/static/v031_payment_workflow.css' in base
     assert '/static/v0212.js' not in base
     assert '/static/business-editor-hotfix.js' not in base
 
@@ -108,6 +114,12 @@ def test_ui_contracts():
     assert 'data-v03-payment-order' in js and '缴费金额必须填写显示序号' in js
     assert 'data-v03-flow-action' in js and "['review', 'notify', 'paid']" in js
     assert '/api/v03/customers/search' in js
+
+    assert '生成缴费图片' in v031_js
+    assert '已通知客户' in v031_js and '发起缴费' in v031_js and '完成缴费' in v031_js
+    assert 'navigator.clipboard.write' in v031_js and 'ClipboardItem' in v031_js
+    assert 'payment-workflow-v031' in v031_js and 'payment-mail-compose-v031' in v031_js
+    assert "action == 'initiate'" in v031_routes and "action == 'invalidate'" in v031_routes
 
     assert 'repeat(var(--v03-payment-count,1),minmax(0,1fr))' in css
     assert 'repeat(var(--business-visible-count,var(--v03-business-count,1)),minmax(0,1fr))' in css
@@ -136,4 +148,4 @@ if __name__ == '__main__':
     test_v03_migration_is_safe_and_idempotent()
     test_schedule_regression()
     test_ui_contracts()
-    print('v0.3 contract checks passed (isolated test database)')
+    print('v0.3.1 contract checks passed (isolated test database)')
