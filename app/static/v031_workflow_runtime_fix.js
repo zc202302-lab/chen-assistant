@@ -9,6 +9,14 @@
   let state = null;
   let busy = false;
   let syncTimer = 0;
+  let notifyPrepared = false;
+  let initiatePrepared = false;
+
+  // v0.3.1 now integrates these actions into stage 2 / stage 3.
+  root.querySelectorAll('[data-v031-payment-image],[data-v03-foxmail-draft]').forEach(el => {
+    el.hidden = true;
+    el.setAttribute('aria-hidden', 'true');
+  });
 
   const toast = msg => {
     if (window.ChenToast) return window.ChenToast(msg);
@@ -42,17 +50,39 @@
   const setPaidLock = () => {
     const locked = !!state?.paid;
     root.querySelectorAll('.quick-amount,[data-review-toggle],[data-fixed-toggle],[data-defer-payment-v0212]').forEach(control => {
-      if (control.matches('.quick-amount')) control.readOnly = locked;
-      else control.disabled = locked;
+      const fixedReview = control.matches('[data-review-toggle]') && control.closest('[data-payment-row]')?.dataset.mode === 'fixed';
+      if (control.matches('.quick-amount')) {
+        control.readOnly = locked;
+      } else if (fixedReview) {
+        control.disabled = true;
+        control.title = '固定缴费金额自动确认，无需人工核对';
+        control.textContent = '✓';
+        control.classList.add('confirmed', 'v031-auto-confirmed');
+        control.classList.remove('pending');
+      } else {
+        control.disabled = locked;
+      }
+    });
+    root.querySelectorAll('[data-payment-row][data-mode="fixed"]').forEach(row => {
+      row.dataset.confirmed = '1';
+      row.classList.add('is-confirmed', 'v031-fixed-auto-confirmed');
+      row.classList.remove('is-pending');
     });
     root.classList.toggle('v03-payment-locked', locked);
   };
 
+  const normalizePrepared = () => {
+    if (!state) return;
+    if (!state.reviewed || state.notified) notifyPrepared = false;
+    if (!state.notified || state.initiated) initiatePrepared = false;
+  };
+
   const render = () => {
     if (!state) return;
+    normalizePrepared();
     const defs = [
       ['review', '金额核对', !!state.reviewed],
-      ['notify', '已通知客户', !!state.notified],
+      ['notify', '通知客户', !!state.notified],
       ['initiate', '发起缴费', !!state.initiated],
       ['paid', '完成缴费', !!state.paid],
     ];
@@ -60,6 +90,7 @@
     defs.forEach(([action, label, done], index) => {
       const btn = flow.querySelector(`[data-v031-flow-action="${action}"]`);
       if (!btn) return;
+      const awaiting = !done && ((action === 'notify' && notifyPrepared) || (action === 'initiate' && initiatePrepared));
       let disabled = busy;
       if (action === 'review') disabled ||= done ? !!(state.notified || state.initiated || state.paid) : !state.ready;
       else if (action === 'notify') disabled ||= done ? !!(state.initiated || state.paid) : !state.reviewed;
@@ -67,21 +98,40 @@
       else disabled ||= !done && !state.initiated;
 
       btn.disabled = !!disabled;
-      btn.textContent = done ? `✓ ${label}` : `${index + 1} ${label}`;
+      btn.textContent = done
+        ? `✓ ${index + 1} ${label}`
+        : awaiting
+          ? `待确认 · ${index + 1} ${label}`
+          : `${index + 1} ${label}`;
       btn.setAttribute('aria-pressed', done ? 'true' : 'false');
       btn.classList.toggle('done', done);
-      btn.classList.toggle('current', !done && (
+      btn.classList.toggle('awaiting-confirm', awaiting);
+      btn.classList.toggle('current', !done && !awaiting && (
         (action === 'review' && state.ready) ||
         (action === 'notify' && state.reviewed) ||
         (action === 'initiate' && state.notified) ||
         (action === 'paid' && state.initiated)
       ));
+
+      if (action === 'review') {
+        btn.title = done ? '点击撤回金额核对；固定金额仍保持自动已确认' : '确认所有变动金额已核对';
+      } else if (action === 'notify') {
+        btn.title = done
+          ? '点击撤回客户通知状态'
+          : awaiting
+            ? '缴费图片已准备；发送微信后点击这里确认已发送'
+            : '点击后自动生成并复制缴费图片';
+      } else if (action === 'initiate') {
+        btn.title = done
+          ? '点击撤回发起缴费状态'
+          : awaiting
+            ? 'Foxmail写邮件窗口已打开；邮件发送后点击这里确认已发送'
+            : '点击后直接打开Foxmail写邮件窗口';
+      } else {
+        btn.title = done ? '点击撤回完成缴费并恢复缴费前周期' : '确认已经完成实际支付';
+      }
     });
 
-    const image = root.querySelector('[data-v031-payment-image]');
-    if (image) image.disabled = busy || !state.reviewed || !!state.paid;
-    const foxmail = root.querySelector('[data-v03-foxmail-draft]');
-    if (foxmail) foxmail.disabled = busy || !state.notified || !!state.paid;
     const label = document.getElementById('paymentRunLabel');
     if (label) label.textContent = state.label || '';
     setPaidLock();
@@ -101,15 +151,71 @@
     }
   };
 
-  const confirmAction = action => {
-    if (action === 'notify' && !state?.notified) return confirm('确认已经把本次缴费图片通过微信发送给客户？');
-    if (action === 'initiate' && !state?.initiated) return confirm('确认已经在Foxmail中将缴费邮件发送给同事？');
-    if (action === 'paid' && !state?.paid) return confirm('确认同事已收到邮件，并且你已经完成本次实际支付？');
-    if (action === 'paid' && state?.paid) return confirm('撤回“完成缴费”并恢复本次缴费前的周期状态？');
-    return true;
+  const saveAction = async action => {
+    busy = true;
+    render();
+    try {
+      const data = await postAction(action);
+      state = data.run || state;
+      if (action === 'notify') notifyPrepared = false;
+      if (action === 'initiate') initiatePrepared = false;
+      render();
+      const messages = {
+        review: state.reviewed ? '金额核对已确认' : '已撤回金额核对；固定金额仍保持自动已确认',
+        notify: state.notified ? '已确认客户通知完成' : '已撤回客户通知',
+        initiate: state.initiated ? '已确认缴费邮件已发送' : '已撤回发起缴费',
+        paid: state.paid ? '本月缴费已完成' : '已撤回完成缴费并恢复缴费周期',
+      };
+      toast(messages[action] || '状态已更新');
+    } catch (err) {
+      toast(`缴费流程操作失败：${err.message}`);
+      await loadState({quiet: true});
+    } finally {
+      busy = false;
+      render();
+    }
   };
 
-  // Capture phase deliberately takes ownership before the older v0.3/v0.3.1 bubble listeners.
+  const prepareNotify = async () => {
+    const actions = window.ChenPaymentWorkflowActionsV031;
+    if (!actions?.prepareNotice) throw new Error('通知客户功能尚未加载完成，请刷新页面重试');
+    busy = true;
+    render();
+    try {
+      const result = await actions.prepareNotice();
+      notifyPrepared = true;
+      render();
+      if (result?.mode === 'clipboard') {
+        alert('缴费图片已生成并复制到剪贴板。\n\n请进入微信直接粘贴并发送给客户；发送完成后回到本页面，再点击“待确认 · 2 通知客户”确认已发送。\n\n在你确认前，本环节不会标记为完成。');
+        toast('缴费图片已复制；发送后回来确认“通知客户”');
+      } else {
+        alert(`缴费图片已生成，但自动复制到剪贴板失败（${result?.warning || '浏览器限制'}）。\n\n系统已下载图片作为备用，请发送给客户；发送完成后回到本页面，再点击“待确认 · 2 通知客户”确认已发送。`);
+        toast('缴费图片已下载备用；发送后回来确认“通知客户”');
+      }
+    } finally {
+      busy = false;
+      render();
+    }
+  };
+
+  const prepareInitiate = async () => {
+    const actions = window.ChenPaymentWorkflowActionsV031;
+    if (!actions?.prepareInitiate) throw new Error('Foxmail功能尚未加载完成，请刷新页面重试');
+    busy = true;
+    render();
+    try {
+      await actions.prepareInitiate();
+      initiatePrepared = true;
+      render();
+      alert('Foxmail写邮件窗口已打开，并已带入收件人、主题、正文和TXT附件。\n\n请在Foxmail中检查并发送；发送完成后回到本页面，再点击“待确认 · 3 发起缴费”确认已发送。\n\n在你确认前，本环节不会标记为完成。');
+      toast('Foxmail已打开；发送邮件后回来确认“发起缴费”');
+    } finally {
+      busy = false;
+      render();
+    }
+  };
+
+  // Capture phase owns the four-stage workflow before older listeners can act.
   flow.addEventListener('click', async event => {
     const btn = event.target.closest('[data-v031-flow-action]');
     if (!btn) return;
@@ -122,31 +228,50 @@
       if (!ok) return;
     }
     const action = btn.dataset.v031FlowAction || '';
-    if (!confirmAction(action)) return;
 
-    busy = true;
-    render();
     try {
-      const data = await postAction(action);
-      state = data.run || state;
-      render();
-      const messages = {
-        review: state.reviewed ? '金额核对已确认' : '已撤回金额核对',
-        notify: state.notified ? '已确认客户通知' : '已撤回客户通知',
-        initiate: state.initiated ? '已确认发起缴费' : '已撤回发起缴费',
-        paid: state.paid ? '本月缴费已完成' : '已撤回完成缴费并恢复缴费周期',
-      };
-      toast(messages[action] || '状态已更新');
+      if (action === 'notify' && !state.notified) {
+        if (!notifyPrepared) {
+          await prepareNotify();
+          return;
+        }
+        if (!confirm('确认缴费图片已经通过微信发送给客户？\n\n点击“确定”后，第2步才会标记为完成。')) return;
+        await saveAction('notify');
+        return;
+      }
+
+      if (action === 'initiate' && !state.initiated) {
+        if (!initiatePrepared) {
+          await prepareInitiate();
+          return;
+        }
+        if (!confirm('确认缴费邮件已经在Foxmail中发送给同事？\n\n点击“确定”后，第3步才会标记为完成。')) return;
+        await saveAction('initiate');
+        return;
+      }
+
+      if (action === 'paid' && !state.paid) {
+        if (!confirm('确认同事已收到邮件，并且你已经完成本次实际支付？')) return;
+      }
+      if (action === 'paid' && state.paid) {
+        if (!confirm('撤回“完成缴费”并恢复本次缴费前的周期状态？')) return;
+      }
+      if (action === 'notify' && state.notified) {
+        if (!confirm('确认撤回“通知客户”状态？')) return;
+      }
+      if (action === 'initiate' && state.initiated) {
+        if (!confirm('确认撤回“发起缴费”状态？')) return;
+      }
+
+      await saveAction(action);
     } catch (err) {
-      toast(`缴费流程操作失败：${err.message}`);
-      await loadState({quiet: true});
-    } finally {
+      toast(`操作失败：${err.message || '未知错误'}`);
       busy = false;
       render();
     }
   }, true);
 
-  // Amount saving is authoritative on the server. Re-read the four-stage state after Enter.
+  // Amount saving is authoritative on the server. Re-read state after Enter.
   workbench.addEventListener('keyup', event => {
     const input = event.target.closest?.('.quick-amount');
     if (!input || event.key !== 'Enter') return;
@@ -154,8 +279,6 @@
     syncTimer = setTimeout(() => loadState({quiet: true}), 260);
   }, true);
 
-  // The legacy v0.3 request may finish after this script and re-lock controls. Reassert
-  // v0.3.1 state a few times during initial page settling, then normal actions own it.
   loadState();
   setTimeout(() => loadState({quiet: true}), 350);
   setTimeout(() => loadState({quiet: true}), 1000);
