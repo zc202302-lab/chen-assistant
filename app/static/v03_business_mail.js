@@ -104,9 +104,10 @@
   const footer = root.querySelector('.payment-footer');
   if (!footer || !customerId) return;
 
-  // Retire the old SMTP button from the visible v0.3 workflow. v03.js may still
-  // hold a reference to the detached element, but can no longer affect this UI.
-  footer.querySelector('[data-v03-send-email]')?.remove();
+  // SMTP is retired from the visible v0.3 workflow. Keep its old node hidden so
+  // legacy automation/compatibility checks do not break while the UI moves to Foxmail.
+  const oldSmtpButton = footer.querySelector('[data-v03-send-email]');
+  oldSmtpButton?.classList.add('v03-retired-smtp');
 
   const mailActions = document.createElement('div');
   mailActions.className = 'v03-local-mail-actions';
