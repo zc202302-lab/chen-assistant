@@ -48,9 +48,12 @@ def main():
     rollback = (ROOT / 'app' / 'static' / 'v031_amount_rollback_fix.js').read_text(encoding='utf-8')
     for token in (
         'payment-workflow-v031', "fd.append('action', 'invalidate')",
-        'MutationObserver', '原客户通知已失效', '重新发起缴费',
+        "workbench.addEventListener('focusin'", "workbench.addEventListener('keyup'",
+        "e.key !== 'Enter'", 'v031OriginalAmount',
+        '原客户通知已失效', '重新发起缴费',
     ):
         assert token in rollback, token
+    assert 'MutationObserver' not in rollback, '金额回退兜底不得监听页面统计变化，避免正常核对被误回退'
 
     routes = (ROOT / 'app' / 'v031_payment_workflow_routes.py').read_text(encoding='utf-8')
     for token in (
