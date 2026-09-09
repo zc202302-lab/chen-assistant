@@ -1,0 +1,94 @@
+/* v0.3.1 — four-stage payment workflow + WeChat notice image */
+
+.v031-payment-head .v03-payment-head-tools{
+  align-items:center;
+}
+
+.v031-payment-head .v03-payment-head-tools-left{
+  flex-wrap:wrap;
+}
+
+.v031-payment-head .v03-payment-head-tools-left > button{
+  min-height:30px!important;
+  padding:0 10px!important;
+  border-radius:9px!important;
+  white-space:nowrap;
+  font-size:11px!important;
+  font-weight:750!important;
+}
+
+.v031-image-button{
+  border-color:#c7d7fe!important;
+  background:#f5f8ff!important;
+  color:#254e9b!important;
+}
+.v031-image-button:hover:not(:disabled){background:#edf3ff!important}
+
+.v031-foxmail-button{
+  border-color:#cdd5df!important;
+  background:#fff!important;
+  color:#344054!important;
+}
+
+.v031-payment-flow{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin:0!important;
+  min-width:0;
+}
+
+.v031-payment-flow .v03-flow-step{
+  min-height:30px!important;
+  padding:0 10px!important;
+  border-radius:9px!important;
+  font-size:11px!important;
+  line-height:1!important;
+  white-space:nowrap;
+}
+
+.v031-payment-flow .v03-flow-step.current:not(.done){
+  box-shadow:0 0 0 2px rgba(47,94,166,.10);
+}
+
+.v031-payment-flow .v03-flow-step.done{
+  font-weight:800!important;
+}
+
+/* Stage 2 no longer freezes amounts. Only final payment completion locks editing. */
+.v031-payment-editable-after-notice .quick-amount:not([readonly]){
+  background:#fff!important;
+}
+
+@media(max-width:1050px){
+  .v031-payment-head .v03-payment-head-tools{
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+  .v031-payment-head .v03-payment-head-tools-right{
+    width:100%;
+    margin-left:0;
+  }
+  .v031-payment-flow{
+    width:100%;
+    overflow-x:auto;
+    scrollbar-width:none;
+    padding-bottom:2px;
+  }
+  .v031-payment-flow::-webkit-scrollbar{display:none}
+}
+
+@media(max-width:620px){
+  .v031-payment-head .v03-payment-head-tools-left{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    width:100%;
+  }
+  .v031-payment-head .v03-payment-head-tools-left > *{
+    width:100%;
+    min-width:0;
+  }
+  .v031-payment-flow .v03-flow-step{
+    flex:0 0 auto;
+  }
+}
