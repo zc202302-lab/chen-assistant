@@ -1,0 +1,109 @@
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from app.db import db, init_db  # noqa: E402
+from app.main import app  # noqa: E402
+from app.v03_routes import _ensure_v03  # noqa: E402
+from app.v0212_routes import _natural_due, _service_due  # noqa: E402
+
+
+class Row(dict):
+    pass
+
+
+def service(*, interval=1, next_period='', last='2026-01-01', start='', stop=''):
+    return Row(
+        payment_interval_months=interval,
+        payment_cycle=f'{interval}个月',
+        next_payment_period=next_period,
+        last_payment_date=last,
+        active_from_period=start,
+        inactive_from_period=stop,
+    )
+
+
+def first_route(path, method=None):
+    matches = [r for r in app.router.routes if getattr(r, 'path', '') == path]
+    if method:
+        matches = [r for r in matches if method in getattr(r, 'methods', set())]
+    assert matches, path
+    return matches[0]
+
+
+def test_route_ownership():
+    assert app.version == '0.3'
+    assert first_route('/health', 'GET').endpoint.__module__ == 'app.v03_routes'
+    assert first_route('/customers/{customer_id}').endpoint.__module__ == 'app.v0212_routes'
+    assert first_route('/customers/{customer_id}/payment-run', 'POST').endpoint.__module__ == 'app.v03_routes'
+    assert first_route('/customers/{customer_id}/payment-run-v03', 'GET').endpoint.__module__ == 'app.v03_routes'
+    assert first_route('/customers/{customer_id}/payment-email-v03', 'POST').endpoint.__module__ == 'app.v03_routes'
+    assert first_route('/services/{service_id}/status-v03', 'POST').endpoint.__module__ == 'app.v03_routes'
+    assert first_route('/customers/{customer_id}/payment.txt', 'GET').endpoint.__module__ == 'app.v0212_routes'
+    assert first_route('/customers/{customer_id}/business-columns-v0212', 'POST').endpoint.__module__ == 'app.v0212_business_display_routes'
+
+
+def test_v03_migration_is_safe_and_idempotent():
+    init_db()
+    with db() as conn:
+        _ensure_v03(conn)
+        _ensure_v03(conn)
+        columns = {row['name'] for row in conn.execute('PRAGMA table_info(customer_payment_runs)').fetchall()}
+        for key in ('reviewed_at', 'emailed_at', 'email_to', 'email_subject'):
+            assert key in columns, key
+        tables = {row['name'] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        assert 'payment_run_service_snapshots_v03' in tables
+        assert 'payment_email_logs_v03' in tables
+
+
+def test_schedule_regression():
+    annual = service(interval=12, next_period='2027-08')
+    assert _natural_due(annual, '2026-09') is False
+    assert _natural_due(annual, '2027-08') is True
+    every_two = service(interval=2, next_period='2026-10')
+    assert _natural_due(every_two, '2026-09') is False
+    assert _natural_due(every_two, '2026-10') is True
+    due_now = service(interval=2, next_period='2026-09')
+    assert _service_due(due_now, {'status': 'inactive', 'deferred_until_period': ''}, '2026-09') is False
+    assert _service_due(due_now, {'status': 'active', 'deferred_until_period': '2026-10'}, '2026-09') is False
+
+
+def test_ui_contracts():
+    base = (ROOT / 'app/templates/base.html').read_text(encoding='utf-8')
+    js = (ROOT / 'app/static/v03.js').read_text(encoding='utf-8')
+    css = (ROOT / 'app/static/v03.css').read_text(encoding='utf-8')
+    drag = (ROOT / 'app/static/ui-drag.js').read_text(encoding='utf-8')
+    routes = (ROOT / 'app/v03_routes.py').read_text(encoding='utf-8')
+
+    assert 'v0.3' in base
+    assert '/static/v03.js' in base and '/static/v03.css' in base
+    assert '/static/v0212.js' not in base
+    assert '/static/business-editor-hotfix.js' not in base
+
+    assert 'data-v03-business-status-panel' in js
+    assert '开停状态' in js and '缴费状态' in js
+    assert 'data-v03-payment-order' in js and '缴费金额必须填写显示序号' in js
+    assert 'data-v03-flow-action' in js and "['review', 'notify', 'paid']" in js
+    assert '/payment-email-v03' in js
+    assert '/api/v03/customers/search' in js
+
+    assert 'repeat(var(--v03-payment-count,1),minmax(0,1fr))' in css
+    assert 'repeat(var(--business-visible-count,var(--v03-business-count,1)),minmax(0,1fr))' in css
+    assert 'text-align:center' in css
+    assert 'v03-home-search' in css
+
+    assert 'bindFastBusinessSort' in drag
+    assert "bindPointerSort(paymentList, '.drag-handle'" not in drag
+    assert 'payment_run_service_snapshots_v03' in routes
+    assert "action == 'review'" in routes and "action == 'paid'" in routes
+    assert 'smtplib.SMTP_SSL' in routes and 'PAYMENT_EMAIL_TO' in routes
+
+
+if __name__ == '__main__':
+    test_route_ownership()
+    test_v03_migration_is_safe_and_idempotent()
+    test_schedule_regression()
+    test_ui_contracts()
+    print('v0.3 contract checks passed')
