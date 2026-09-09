@@ -40,7 +40,11 @@ def test_route_ownership():
     assert first_route('/customers/{customer_id}/payment-run', 'POST').endpoint.__module__ == 'app.v03_payment_routes'
     assert first_route('/customers/{customer_id}/payment-run-v03', 'GET').endpoint.__module__ == 'app.v03_routes'
     assert first_route('/customers/{customer_id}/payment-email-v03', 'POST').endpoint.__module__ == 'app.v03_routes'
-    assert first_route('/services/{service_id}/status-v03', 'POST').endpoint.__module__ == 'app.v03_routes'
+    assert first_route('/services/{service_id}/status-v03', 'POST').endpoint.__module__ == 'app.v03_mail_draft_routes'
+    assert first_route('/services/{service_id}/payment-status-v03', 'POST').endpoint.__module__ == 'app.v03_mail_draft_routes'
+    assert first_route('/customers/{customer_id}/mail-template-v03', 'GET').endpoint.__module__ == 'app.v03_mail_draft_routes'
+    assert first_route('/customers/{customer_id}/mail-template-v03', 'POST').endpoint.__module__ == 'app.v03_mail_draft_routes'
+    assert first_route('/customers/{customer_id}/payment-mail-draft-v03', 'GET').endpoint.__module__ == 'app.v03_mail_draft_routes'
     assert first_route('/customers/{customer_id}/payment.txt', 'GET').endpoint.__module__ == 'app.v0212_routes'
     assert first_route('/customers/{customer_id}/business-columns-v0212', 'POST').endpoint.__module__ == 'app.v0212_business_display_routes'
 
@@ -77,9 +81,13 @@ def test_ui_contracts():
     drag = (ROOT / 'app/static/ui-drag.js').read_text(encoding='utf-8')
     routes = (ROOT / 'app/v03_routes.py').read_text(encoding='utf-8')
     safe_routes = (ROOT / 'app/v03_payment_routes.py').read_text(encoding='utf-8')
+    local_mail_js = (ROOT / 'app/static/v03_business_mail.js').read_text(encoding='utf-8')
+    local_mail_css = (ROOT / 'app/static/v03_business_mail.css').read_text(encoding='utf-8')
+    local_mail_routes = (ROOT / 'app/v03_mail_draft_routes.py').read_text(encoding='utf-8')
 
     assert 'v0.3' in base
     assert '/static/v03.js' in base and '/static/v03.css' in base
+    assert '/static/v03_business_mail.js' in base and '/static/v03_business_mail.css' in base
     assert '/static/v0212.js' not in base
     assert '/static/business-editor-hotfix.js' not in base
 
@@ -87,7 +95,6 @@ def test_ui_contracts():
     assert '开停状态' in js and '缴费状态' in js
     assert 'data-v03-payment-order' in js and '缴费金额必须填写显示序号' in js
     assert 'data-v03-flow-action' in js and "['review', 'notify', 'paid']" in js
-    assert '/payment-email-v03' in js
     assert '/api/v03/customers/search' in js
 
     assert 'repeat(var(--v03-payment-count,1),minmax(0,1fr))' in css
@@ -95,11 +102,19 @@ def test_ui_contracts():
     assert 'text-align:center' in css
     assert 'v03-home-search' in css
 
+    assert 'v03-readable-filters' in local_mail_js
+    assert '更多筛选' in local_mail_js
+    assert 'mail-template-v03' in local_mail_js
+    assert 'payment-mail-draft-v03' in local_mail_js
+    assert 'v03-mail-template-dialog' in local_mail_css
+    assert 'customer_mail_templates_v03' in local_mail_routes
+    assert "msg['X-Unsent'] = '1'" in local_mail_routes
+    assert 'business_display' in local_mail_routes
+
     assert 'bindFastBusinessSort' in drag
     assert "bindPointerSort(paymentList, '.drag-handle'" not in drag
     assert 'payment_run_service_snapshots_v03' in routes
     assert "action == 'review'" in routes and "action == 'paid'" in routes
-    assert 'smtplib.SMTP_SSL' in routes and 'PAYMENT_EMAIL_TO' in routes
     assert 'snapshot_count' in safe_routes
     assert '旧版本' in safe_routes and '不允许自动撤回' in safe_routes
 
