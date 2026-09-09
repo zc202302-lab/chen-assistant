@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import os
 from pathlib import Path
 import subprocess
@@ -110,11 +111,20 @@ def main():
             assert small_display == 'none', small_display
 
             page.locator('[data-customer-tab="payment"]').click()
-            template_button = page.locator('[data-v03-mail-template]')
-            template_button.wait_for(state='visible')
+
+            # Payment header is now two rows: template/display settings + workflow live in row 2.
+            tools = page.locator('[data-v03-payment-head-tools]')
+            tools.wait_for(state='visible')
+            template_button = tools.locator('[data-v03-mail-template]')
+            assert template_button.inner_text() == '缴费模板'
+            assert page.locator('.payment-footer [data-v03-mail-template]').count() == 0
+            assert tools.locator('[data-payment-columns-settings]').count() == 1
+            assert tools.locator('[data-v03-payment-flow]').count() == 1
+
             template_button.click()
             dialog = page.locator('.v03-mail-template-dialog')
             dialog.wait_for(state='visible')
+            assert dialog.locator('h3').inner_text() == '缴费模板'
             assert '按客户长期保存' in dialog.inner_text()
             assert dialog.locator('[data-v03-foxmail-bridge-state]').count() == 1
             helper_link = dialog.locator('.v03-foxmail-helper-download')
@@ -122,6 +132,8 @@ def main():
             dialog.locator('[data-v03-mail-recipient]').fill('colleague@example.com')
             dialog.locator('[data-v03-mail-subject]').fill('中泰物流长期缴费主题')
             dialog.locator('[data-v03-mail-body]').fill('这是长期保存的正文，也允许留空。')
+            attachment = dialog.locator('[data-v03-mail-attachment-filename]')
+            attachment.fill('中泰物流缴费明细')
             dialog.locator('button[type="submit"]').click()
             dialog.wait_for(state='hidden')
 
@@ -137,15 +149,25 @@ def main():
             assert '未检测到Windows助手' in toast_text
             assert '本次不会自动下载.eml' in toast_text
 
-            # Reopen template: per-customer values and global recipient survive.
+            # Reopen template: per-customer values, TXT filename and global recipient survive.
             template_button.click()
             dialog.wait_for(state='visible')
             assert dialog.locator('[data-v03-mail-recipient]').input_value() == 'colleague@example.com'
             assert dialog.locator('[data-v03-mail-subject]').input_value() == '中泰物流长期缴费主题'
             assert '长期保存的正文' in dialog.locator('[data-v03-mail-body]').input_value()
+            assert dialog.locator('[data-v03-mail-attachment-filename]').input_value() == '中泰物流缴费明细.txt'
+            dialog.locator('[data-v03-mail-close]').click()
+
+            # The actual Foxmail compose payload must use the customer's saved TXT filename.
+            compose_response = context.request.get(f'http://127.0.0.1:8132/customers/{cid}/payment-mail-compose-v03')
+            assert compose_response.ok, compose_response.text()
+            compose = compose_response.json()
+            txt_name = base64.b64decode(compose['attachment_filename_b64']).decode('utf-8')
+            assert txt_name == '中泰物流缴费明细.txt', txt_name
+
             browser.close()
 
-        print('v0.3 business/mail browser acceptance passed (isolated test database)')
+        print('v0.3 business/mail/payment-template browser acceptance passed (isolated test database)')
     finally:
         proc.terminate()
         try:
