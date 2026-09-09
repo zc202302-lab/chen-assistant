@@ -175,9 +175,6 @@ fi
 
 echo "✓ 生产服务器不运行 tests/ 测试套件；完整自动测试由 GitHub CI 隔离执行"
 
-# 隔离数据库契约检查：只验证迁移/模板逻辑，不接触生产库。
-APP_DB_PATH="$(mktemp -u /tmp/chen-payment-template-XXXXXX.db)" .venv/bin/python tests/v03_payment_template_contract.py
-
 systemctl restart "$SERVICE"
 sleep 3
 HEALTH_JSON="$(curl -fsS "$HEALTH_URL")"
