@@ -30,8 +30,11 @@ if [[ -f data/app.db ]]; then
 import sqlite3, sys
 from pathlib import Path
 src=Path('data/app.db'); dst=Path(sys.argv[1]); dst.parent.mkdir(parents=True,exist_ok=True)
-with sqlite3.connect(src) as s, sqlite3.connect(dst) as d: s.backup(d)
-print(f"✓ 数据库已备份：{dst}")
+with sqlite3.connect(src) as s, sqlite3.connect(dst) as d:
+    s.backup(d)
+    if d.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
+        raise SystemExit('数据库备份完整性检查失败')
+print(f"✓ 数据库已备份并通过完整性检查：{dst}")
 PY
 else
   echo "! 未发现 data/app.db，本次跳过数据库备份"
@@ -127,8 +130,7 @@ print('✓ v0.3 数据库结构检查/迁移完成')
 PY
 
 # deploy.sh 由 root 执行数据库迁移时，SQLite 主文件可能保留/变成 root 所有，
-# 而正式服务以专用用户运行。每次迁移后都把 data 目录及 SQLite 文件归还给服务账户，
-# 防止启动时报 "attempt to write a readonly database"。
+# 而正式服务以专用用户运行。每次迁移后都把 data 目录及 SQLite 文件归还给服务账户。
 if [[ -d data ]]; then
   chown "$SERVICE_USER:$SERVICE_GROUP" data
   find data -maxdepth 1 -type f \( -name 'app.db' -o -name 'app.db-wal' -o -name 'app.db-shm' \) \
@@ -139,9 +141,34 @@ if [[ -d data ]]; then
   echo "✓ SQLite 权限已校正：$SERVICE_USER:$SERVICE_GROUP"
 fi
 
-.venv/bin/python tests/v03_contract.py
-.venv/bin/python tests/v03_runtime_fix_contract.py
-.venv/bin/python tests/v03_customer_scope_contract.py
+# 生产部署绝不执行 tests/ 下的测试程序。完整测试只在 GitHub CI 的隔离环境运行。
+# 此处只对生产库做只读安全核对：完整性必须正常，且客户/业务数量不得少于部署前备份。
+if [[ -f "$BACKUP_FILE" && -f data/app.db ]]; then
+  .venv/bin/python - "$BACKUP_FILE" data/app.db <<'PY'
+import sqlite3, sys
+
+def stats(path):
+    con=sqlite3.connect(f'file:{path}?mode=ro', uri=True)
+    try:
+        integrity=con.execute('PRAGMA integrity_check').fetchone()[0]
+        customers=con.execute('SELECT COUNT(*) FROM customers').fetchone()[0]
+        services=con.execute('SELECT COUNT(*) FROM services').fetchone()[0]
+        return integrity, customers, services
+    finally:
+        con.close()
+
+before=stats(sys.argv[1]); after=stats(sys.argv[2])
+print(f'部署前备份：完整性={before[0]} 客户={before[1]} 业务={before[2]}')
+print(f'迁移后生产库：完整性={after[0]} 客户={after[1]} 业务={after[2]}')
+if before[0] != 'ok' or after[0] != 'ok':
+    raise SystemExit('✗ SQLite 完整性检查失败，停止部署')
+if after[1] < before[1] or after[2] < before[2]:
+    raise SystemExit('✗ 检测到生产客户/业务数量减少，停止部署；请使用本次部署前备份检查数据')
+print('✓ 生产数据库安全核对通过')
+PY
+fi
+
+echo "✓ 生产服务器不运行 tests/ 测试套件；完整自动测试由 GitHub CI 隔离执行"
 
 systemctl restart "$SERVICE"
 sleep 3
