@@ -18,11 +18,12 @@ def first_route(path, method=None):
 def main():
     assert app.version == '0.3'
     assert first_route('/customers/{customer_id}/workflow-state-v03', 'GET').endpoint.__module__ == 'app.v031_runtime_routes'
-    assert first_route('/services/{service_id}/payment-status-v03', 'POST').endpoint.__module__ == 'app.v031_runtime_routes'
+    assert first_route('/services/{service_id}/payment-status-v03', 'POST').endpoint.__module__ == 'app.v03_mail_draft_routes'
 
     base = (ROOT / 'app/templates/base.html').read_text(encoding='utf-8')
     js = (ROOT / 'app/static/v03_runtime_fix.js').read_text(encoding='utf-8')
     routes = (ROOT / 'app/v031_runtime_routes.py').read_text(encoding='utf-8')
+    scoped_routes = (ROOT / 'app/v03_mail_draft_routes.py').read_text(encoding='utf-8')
 
     assert base.count('/static/v03_runtime_fix.js') == 1
     assert '金额核对' in js and '通知客户' in js and '完成缴费' in js
@@ -32,6 +33,7 @@ def main():
     assert 'payment-status-v03' in js
     assert "deferred_until_period=''" in routes
     assert "mode != 'normal'" in routes
+    assert "business_display._ordered_keys(conn, template, customer_id)" in scoped_routes
     print('v0.3 runtime fix contract passed')
 
 
