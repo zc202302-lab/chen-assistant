@@ -21,6 +21,7 @@ from .v03_routes import router as v03_router
 from .v03_payment_routes import router as v03_payment_router
 from .v031_runtime_routes import router as v031_runtime_router
 from .v03_mail_draft_routes import router as v03_mail_draft_router
+from .v031_payment_workflow_routes import router as v031_payment_workflow_router
 
 _legacy_routes = list(app.router.routes)
 
@@ -53,12 +54,13 @@ _v03_routes = _include(v03_router)
 _v03_payment_routes = _include(v03_payment_router)
 _v031_runtime_routes = _include(v031_runtime_router)
 _v03_mail_draft_routes = _include(v03_mail_draft_router)
+_v031_payment_workflow_routes = _include(v031_payment_workflow_router)
 
-# v0.3 owns the reversible payment workflow and health endpoint. The v0.2.12
-# customer workspace remains the stable renderer while v0.3 upgrades its behavior.
-# The safety wrapper is placed before the v0.3 workflow endpoint so legacy paid
-# records without a pre-payment snapshot can never be auto-reverted incorrectly.
+# v0.3.1 owns the public health endpoint and the new four-stage payment workflow.
+# Older v0.3 routes remain available as compatibility endpoints while the stable
+# v0.2.12 customer workspace remains the renderer.
 _ordered = (
+    _v031_payment_workflow_routes +
     _v03_mail_draft_routes + _v031_runtime_routes + _v03_payment_routes + _v03_routes +
     _v0212_business_display_routes + _v0212_payment_routes + _v0212_routes +
     _v0211_promotion_routes + _v0211_routes + _v029_routes + _v028_routes +
@@ -80,8 +82,8 @@ for route in _ordered:
     _final.append(route)
 app.router.routes[:] = _final
 
-app.title = '晨的助手 v0.3'
-app.version = '0.3'
+app.title = '晨的助手 v0.3.1'
+app.version = '0.3.1'
 
 
 @app.middleware('http')
@@ -94,12 +96,10 @@ async def current_asset_cache_policy(request, call_next):
         response.headers['Expires'] = '0'
 
     if 'Content-Security-Policy' in response.headers:
-        # Keep the application locked to same-origin resources, while explicitly
-        # allowing only the loopback Foxmail helper used by the Windows client.
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
             "style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; "
-            "script-src 'self'; img-src 'self' data:; "
+            "script-src 'self'; img-src 'self' data: blob:; "
             "connect-src 'self' http://127.0.0.1:18763 http://localhost:18763; "
             "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
         )
