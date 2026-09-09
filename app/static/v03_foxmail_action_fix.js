@@ -59,7 +59,7 @@
       const response = await bridgeFetch('/health', {}, 1200);
       const data = await response.json().catch(() => ({}));
       bridgeOnline = response.ok && data.ok === true;
-      bridgeCompose = bridgeOnline && data.compose === true;
+      bridgeCompose = bridgeOnline && data.compose === true && data.verified_dispatch === true;
     } catch (_) {
       bridgeOnline = false;
       bridgeCompose = false;
@@ -132,10 +132,10 @@
       }),
     }, 5000);
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || data.ok !== true) {
-      throw new Error(data.error || 'Windows助手新建邮件失败');
+    if (!response.ok || data.ok !== true || data.verified !== true) {
+      throw new Error(data.error || 'Windows助手没有确认Foxmail写邮件窗口');
     }
-    return true;
+    return data;
   };
 
   const setBusy = value => {
@@ -175,7 +175,7 @@
 
       try {
         await composeLocal();
-        toast('已调用Foxmail新建邮件，请核对收件人、主题、正文和TXT附件');
+        toast('Foxmail写邮件窗口已确认打开，请核对收件人、主题、正文和TXT附件');
       } catch (err) {
         await downloadEmlFallback();
         toast(`${err.message || 'Foxmail新建邮件失败'}；已下载.eml备用草稿`);
