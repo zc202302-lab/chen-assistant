@@ -94,6 +94,7 @@ jobs:
           python tests/v03_contract.py
           python tests/v03_runtime_fix_contract.py
           python tests/v03_customer_scope_contract.py
+          python tests/v03_safety_foxmail_contract.py
       - name: Production experience regression
         run: python tests/production_experience_regression.py
       - name: Promotion render regression
