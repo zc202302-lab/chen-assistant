@@ -20,38 +20,74 @@ SYSTEM_PAYMENT_STATE_KEY = '__payment_state__'
 BUSINESS_DISPLAY_ORDER_KEY = 'business_display_order_v0212h2'
 
 
-def _ordered_keys(conn, template):
+def _customer_display_key(customer_id: int) -> str:
+    return f'{BUSINESS_DISPLAY_ORDER_KEY}:{int(customer_id)}'
+
+
+def _normalize_loaded(template, loaded):
+    valid = {str(x['key']) for x in template}
+    valid.add(SYSTEM_PAYMENT_STATE_KEY)
+    ordered = []
+    seen = set()
+    for raw_key in loaded if isinstance(loaded, list) else []:
+        key = str(raw_key)
+        if key in valid and key not in seen:
+            ordered.append(key)
+            seen.add(key)
+    return ordered
+
+
+def _legacy_default_order(conn, template):
+    """Read the old global setting only as a one-time migration source.
+
+    Attribute definitions are global, but display choices are per customer. Existing
+    customers inherit the old global display the first time they are opened after
+    this migration; subsequent edits are isolated to that customer.
+    """
     valid = [str(x['key']) for x in template]
     raw = _meta_get(conn, BUSINESS_DISPLAY_ORDER_KEY, '')
-    if not raw:
-        legacy_raw = _meta_get(conn, core.BUSINESS_VISIBLE_KEY, '')
+    if raw:
         try:
-            legacy = json.loads(legacy_raw) if legacy_raw else valid[:5]
+            loaded = json.loads(raw)
         except Exception:
-            legacy = valid[:5]
-        legacy = [str(x) for x in legacy] if isinstance(legacy, list) else valid[:5]
-        ordered = [SYSTEM_PAYMENT_STATE_KEY] + [x for x in legacy if x in valid]
-        _meta_set(conn, BUSINESS_DISPLAY_ORDER_KEY, json.dumps(ordered, ensure_ascii=False))
+            loaded = []
+        normalized = _normalize_loaded(template, loaded)
+        if normalized:
+            return normalized
+
+    legacy_raw = _meta_get(conn, core.BUSINESS_VISIBLE_KEY, '')
+    try:
+        legacy = json.loads(legacy_raw) if legacy_raw else valid[:5]
+    except Exception:
+        legacy = valid[:5]
+    legacy = [str(x) for x in legacy] if isinstance(legacy, list) else valid[:5]
+    return [SYSTEM_PAYMENT_STATE_KEY] + [x for x in legacy if x in set(valid)]
+
+
+def _ordered_keys(conn, template, customer_id: int | None = None):
+    """Return business columns for one customer.
+
+    The template itself remains global. Only visibility/order is customer scoped.
+    A None customer_id is retained for backward compatibility with old callers and
+    returns the legacy/global migration default without persisting a new global edit.
+    """
+    if customer_id is None:
+        return _legacy_default_order(conn, template)
+
+    key = _customer_display_key(customer_id)
+    raw = _meta_get(conn, key, '')
+    if not raw:
+        ordered = _legacy_default_order(conn, template)
+        _meta_set(conn, key, json.dumps(ordered, ensure_ascii=False))
         return ordered
 
     try:
         loaded = json.loads(raw)
     except Exception:
         loaded = []
-    if not isinstance(loaded, list):
-        loaded = []
-
-    allowed = set(valid)
-    allowed.add(SYSTEM_PAYMENT_STATE_KEY)
-    ordered = []
-    seen = set()
-    for raw_key in loaded:
-        key = str(raw_key)
-        if key in allowed and key not in seen:
-            ordered.append(key)
-            seen.add(key)
+    ordered = _normalize_loaded(template, loaded)
     if ordered != loaded:
-        _meta_set(conn, BUSINESS_DISPLAY_ORDER_KEY, json.dumps(ordered, ensure_ascii=False))
+        _meta_set(conn, key, json.dumps(ordered, ensure_ascii=False))
     return ordered
 
 
@@ -122,7 +158,9 @@ def _business_payload_ordered(conn, customer_id: int, template, services, promo_
     return rows
 
 
-def _customer_rows_payload(conn, customer_id: int, template, ordered):
+def _customer_rows_payload(conn, customer_id: int, template, ordered=None):
+    if ordered is None:
+        ordered = _ordered_keys(conn, template, customer_id)
     services = conn.execute(
         '''SELECT s.*,g.name invoice_group_name FROM services s
            LEFT JOIN invoice_groups g ON g.id=s.invoice_group_id
@@ -160,7 +198,7 @@ def get_business_columns_v0212(customer_id: int):
     with db() as conn:
         customer_or_404(conn, customer_id)
         template = _template(conn)
-        ordered = _ordered_keys(conn, template)
+        ordered = _ordered_keys(conn, template, customer_id)
     options = [
         {'key': SYSTEM_PAYMENT_STATE_KEY, 'label': '缴费状态', 'kind': 'derived_state'},
         *[
@@ -190,7 +228,7 @@ def save_business_columns_v0212(
         customer_or_404(conn, customer_id)
         template = _template(conn)
         ordered = _normalize_requested(template, requested)
-        _meta_set(conn, BUSINESS_DISPLAY_ORDER_KEY, json.dumps(ordered, ensure_ascii=False))
+        _meta_set(conn, _customer_display_key(customer_id), json.dumps(ordered, ensure_ascii=False))
         conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), customer_id))
         rows = _customer_rows_payload(conn, customer_id, template, ordered)
     return JSONResponse({'ok': True, 'columns': ordered, 'rows': rows})
@@ -216,12 +254,13 @@ def save_service_runtime_display_order_v0212(
 
     with db() as conn:
         service = service_or_404(conn, service_id)
+        customer_id = int(service['customer_id'])
         template = _template(conn)
         ordered = _normalize_requested(template, requested)
-        _meta_set(conn, BUSINESS_DISPLAY_ORDER_KEY, json.dumps(ordered, ensure_ascii=False))
+        _meta_set(conn, _customer_display_key(customer_id), json.dumps(ordered, ensure_ascii=False))
         core._save_runtime(conn, service_id, status=status)
-        conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), service['customer_id']))
-        result_rows = _customer_rows_payload(conn, int(service['customer_id']), template, ordered)
+        conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), customer_id))
+        result_rows = _customer_rows_payload(conn, customer_id, template, ordered)
         runtime = core._runtime_map(conn, [service_id])
         schedule_state = core._schedule_state(service, runtime[int(service_id)], current_period())
 
