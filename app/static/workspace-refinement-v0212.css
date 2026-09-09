@@ -1,0 +1,168 @@
+/* v0.2.12 workspace refinement: fit payment table, double-click editing, module display settings. */
+
+/* Row editing is now opened by double-clicking a visible field. Keep the old buttons
+   in the DOM as internal triggers so the proven editor path stays intact. */
+.payment-edit-v0211,
+.business-edit-v029{
+  display:none!important;
+}
+
+/* Payment table always stays inside the page width. Long content is ellipsized rather
+   than forcing a horizontal scroll. */
+.v0211-payment-list.payment-auto-fit-v0212{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow-x:hidden!important;
+}
+.v0211-payment-list.payment-auto-fit-v0212 .v0211-payment-header,
+.v0211-payment-list.payment-auto-fit-v0212 .v0211-payment-row{
+  grid-template-columns:28px repeat(var(--payment-column-count,1),minmax(0,1fr)) 128px!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  column-gap:4px!important;
+  box-sizing:border-box!important;
+}
+.v0211-payment-list.payment-auto-fit-v0212 .v0211-payment-header>* ,
+.v0211-payment-list.payment-auto-fit-v0212 .v0211-payment-row>*{
+  min-width:0!important;
+  max-width:100%;
+}
+.v0211-payment-list.payment-auto-fit-v0212 [data-payment-column-head]{
+  overflow:hidden;
+  padding:0 4px;
+  border-right:0;
+}
+.v0211-payment-list.payment-auto-fit-v0212 [data-payment-column-head]>span{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.v0211-payment-list.payment-auto-fit-v0212 .col-resizer{
+  display:none!important;
+}
+.v0211-payment-list.payment-auto-fit-v0212 [data-payment-business-cell]{
+  width:100%!important;
+  min-width:0!important;
+  padding:3px 5px!important;
+  overflow:hidden!important;
+}
+.v0211-payment-list.payment-auto-fit-v0212 [data-payment-business-cell] strong{
+  display:block;
+  width:100%;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.v0211-payment-list.payment-auto-fit-v0212 .payment-amount-cell-v0211{
+  width:100%;
+  min-width:0!important;
+  gap:2px!important;
+  justify-content:stretch!important;
+}
+.v0211-payment-list.payment-auto-fit-v0212 .quick-amount{
+  width:calc(100% - 23px)!important;
+  min-width:0!important;
+  max-width:none!important;
+  padding:3px 5px!important;
+  font-size:14px!important;
+}
+.v0211-payment-list.payment-auto-fit-v0212 .row-state{
+  width:18px!important;
+  min-width:18px!important;
+}
+.v0211-payment-list.payment-auto-fit-v0212 .payment-row-actions-v0211{
+  min-width:0!important;
+  width:100%!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:3px!important;
+  overflow:visible;
+}
+.v0211-payment-list.payment-auto-fit-v0212 .payment-action-head-v0211{
+  text-align:right;
+  padding-right:4px;
+}
+.v0211-payment-list.payment-auto-fit-v0212 .payment-defer-wrap-v0212{
+  min-width:0!important;
+}
+
+/* Visible data cells advertise the new interaction. */
+.v0211-payment-list.payment-auto-fit-v0212 [data-payment-attr-key],
+.business-row-v028 .business-attribute{
+  cursor:default;
+}
+.business-row-v028 .business-attribute:hover,
+.v0211-payment-list.payment-auto-fit-v0212 [data-payment-business-cell]:hover{
+  background:#f3f5f8;
+}
+
+/* Business display settings dialog. */
+.business-columns-settings-v0212{
+  margin-left:auto;
+  margin-right:8px;
+}
+.business-columns-help-v0212{
+  margin:0;
+  padding:8px 10px;
+  border-radius:9px;
+  background:#f6f8fa;
+  color:#667085;
+  font-size:12px;
+}
+.business-columns-list-v0212{
+  display:grid;
+  gap:6px;
+  max-height:55vh;
+  overflow:auto;
+  padding-right:3px;
+}
+.business-column-setting-row-v0212{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 108px;
+  align-items:center;
+  gap:12px!important;
+  padding:7px 9px;
+  border:1px solid #e5e9ef;
+  border-radius:9px;
+  background:#fff;
+}
+.business-column-setting-row-v0212>span{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font-weight:650;
+}
+.business-column-setting-row-v0212>span small{
+  flex:0 0 auto;
+  padding:2px 5px;
+  border-radius:999px;
+  background:#eef2f6;
+  color:#667085;
+  font-size:10px;
+  font-weight:600;
+}
+.business-column-setting-row-v0212 input{
+  width:108px!important;
+  text-align:center;
+}
+
+@media(max-width:760px){
+  .v0211-payment-list.payment-auto-fit-v0212 .v0211-payment-header,
+  .v0211-payment-list.payment-auto-fit-v0212 .v0211-payment-row{
+    grid-template-columns:22px repeat(var(--payment-column-count,1),minmax(0,1fr)) 104px!important;
+    column-gap:2px!important;
+    padding-left:4px!important;
+    padding-right:4px!important;
+  }
+  .v0211-payment-list.payment-auto-fit-v0212 [data-payment-business-cell]{padding-left:3px!important;padding-right:3px!important}
+  .v0211-payment-list.payment-auto-fit-v0212 .quick-amount{font-size:13px!important;padding-left:3px!important;padding-right:3px!important}
+  .business-column-setting-row-v0212{grid-template-columns:minmax(0,1fr) 90px}
+  .business-column-setting-row-v0212 input{width:90px!important}
+}
