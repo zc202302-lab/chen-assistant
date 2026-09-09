@@ -127,13 +127,12 @@ def main():
 
             draft = page.locator('[data-v03-foxmail-draft]')
             draft.wait_for(state='visible')
-            page.wait_for_function("!document.querySelector('[data-v03-foxmail-draft]').disabled")
-            # Linux CI intentionally has no Windows helper. The main action must
-            # clearly explain that state instead of silently downloading an .eml.
+            page.wait_for_timeout(500)
+            assert not draft.is_disabled()
+            # Linux CI has no Windows helper. The main action must show a clear
+            # explanation and must not silently download an .eml fallback.
             draft.click()
-            page.wait_for_function(
-                "document.querySelector('.app-toast') && document.querySelector('.app-toast').textContent.includes('本次不会自动下载.eml')"
-            )
+            page.wait_for_timeout(700)
             toast_text = page.locator('.app-toast').inner_text()
             assert '未检测到Windows助手' in toast_text
             assert '本次不会自动下载.eml' in toast_text
