@@ -28,7 +28,37 @@ function Safe-AttachmentName([string]$Name) {
     return $Name
 }
 
-function Invoke-SimpleMapiCompose([string]$RequestPath) {
+function Get-FoxmailMapiDll {
+    $views = @(
+        [Microsoft.Win32.RegistryView]::Registry32,
+        [Microsoft.Win32.RegistryView]::Registry64
+    )
+    foreach ($view in $views) {
+        $base = $null
+        $key = $null
+        try {
+            $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
+                [Microsoft.Win32.RegistryHive]::LocalMachine,
+                $view
+            )
+            $key = $base.OpenSubKey('SOFTWARE\Clients\Mail\Foxmail')
+            if ($null -ne $key) {
+                $value = [string]$key.GetValue('DLLPath', '')
+                if ($value) {
+                    $value = [Environment]::ExpandEnvironmentVariables($value)
+                    if (Test-Path -LiteralPath $value) { return $value }
+                }
+            }
+        } catch {
+        } finally {
+            if ($null -ne $key) { $key.Close() }
+            if ($null -ne $base) { $base.Close() }
+        }
+    }
+    return ''
+}
+
+function Invoke-FoxmailCompose([string]$RequestPath) {
     $payload = Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $recipient = Decode-B64Text ([string]$payload.recipient_b64)
     $subject = Decode-B64Text ([string]$payload.subject_b64)
@@ -42,13 +72,16 @@ function Invoke-SimpleMapiCompose([string]$RequestPath) {
     $attachmentPath = Join-Path $MailDir ($prefix + '-' + $attachmentName)
     [IO.File]::WriteAllBytes($attachmentPath, $attachmentBytes)
 
-    if (-not ('ChenSimpleMapi' -as [type])) {
+    $foxmailDll = Get-FoxmailMapiDll
+    if (-not $foxmailDll) { throw 'Foxmail MAPI DLL not found' }
+
+    if (-not ('ChenFoxmailMapi' -as [type])) {
         Add-Type -TypeDefinition @'
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
 
-public static class ChenSimpleMapi
+public static class ChenFoxmailMapi
 {
     private const int MAPI_DIALOG = 0x00000008;
     private const int MAPI_TO = 1;
@@ -92,8 +125,8 @@ public static class ChenSimpleMapi
         public IntPtr fileType;
     }
 
-    [DllImport("MAPI32.DLL", CharSet = CharSet.Ansi)]
-    private static extern int MAPISendMail(
+    [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+    private delegate int MapiSendMailDelegate(
         IntPtr session,
         IntPtr uiParam,
         ref MapiMessage message,
@@ -101,12 +134,50 @@ public static class ChenSimpleMapi
         int reserved
     );
 
-    public static int Compose(string recipient, string subject, string body, string attachmentPath, string attachmentName)
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr LoadLibrary(string fileName);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
+    private static extern IntPtr GetProcAddress(IntPtr module, string procName);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool FreeLibrary(IntPtr module);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool SetDllDirectory(string pathName);
+
+    public static int Compose(
+        string mapiDllPath,
+        string recipient,
+        string subject,
+        string body,
+        string attachmentPath,
+        string attachmentName)
     {
+        IntPtr module = IntPtr.Zero;
         IntPtr recipPtr = IntPtr.Zero;
         IntPtr filePtr = IntPtr.Zero;
         try
         {
+            if (string.IsNullOrWhiteSpace(mapiDllPath) || !File.Exists(mapiDllPath))
+                throw new InvalidOperationException("Foxmail MAPI DLL is missing.");
+
+            var dllDir = Path.GetDirectoryName(mapiDllPath);
+            if (!string.IsNullOrWhiteSpace(dllDir)) SetDllDirectory(dllDir);
+            module = LoadLibrary(mapiDllPath);
+            if (module == IntPtr.Zero)
+                throw new InvalidOperationException("Cannot load Foxmail MAPI DLL. Win32=" + Marshal.GetLastWin32Error());
+
+            IntPtr proc = GetProcAddress(module, "MAPISendMail");
+            if (proc == IntPtr.Zero) proc = GetProcAddress(module, "MAPISendMail@20");
+            if (proc == IntPtr.Zero)
+                throw new InvalidOperationException("Foxmail MAPISendMail export was not found.");
+
+            var send = (MapiSendMailDelegate)Marshal.GetDelegateForFunctionPointer(
+                proc,
+                typeof(MapiSendMailDelegate)
+            );
+
             var msg = new MapiMessage
             {
                 subject = subject ?? string.Empty,
@@ -145,7 +216,7 @@ public static class ChenSimpleMapi
                 msg.files = filePtr;
             }
 
-            return MAPISendMail(IntPtr.Zero, IntPtr.Zero, ref msg, MAPI_DIALOG, 0);
+            return send(IntPtr.Zero, IntPtr.Zero, ref msg, MAPI_DIALOG, 0);
         }
         finally
         {
@@ -159,18 +230,27 @@ public static class ChenSimpleMapi
                 Marshal.DestroyStructure(filePtr, typeof(MapiFileDesc));
                 Marshal.FreeHGlobal(filePtr);
             }
+            if (module != IntPtr.Zero) FreeLibrary(module);
+            SetDllDirectory(null);
         }
     }
 }
 '@
     }
 
-    return [ChenSimpleMapi]::Compose($recipient, $subject, $body, $attachmentPath, $attachmentName)
+    return [ChenFoxmailMapi]::Compose(
+        $foxmailDll,
+        $recipient,
+        $subject,
+        $body,
+        $attachmentPath,
+        $attachmentName
+    )
 }
 
 if ($ComposeRequest) {
     try {
-        [void](Invoke-SimpleMapiCompose $ComposeRequest)
+        [void](Invoke-FoxmailCompose $ComposeRequest)
         exit 0
     } catch {
         exit 90
@@ -179,6 +259,18 @@ if ($ComposeRequest) {
 
 if (-not $BridgeMode) {
     New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.ProcessId -ne $PID -and
+            $_.CommandLine -like '*chen_foxmail_helper.ps1*' -and
+            $_.CommandLine -like '*-BridgeMode*'
+        } |
+        ForEach-Object {
+            Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+    Start-Sleep -Milliseconds 350
+
     Copy-Item -Force $PSCommandPath $InstalledScript
 
     $Startup = [Environment]::GetFolderPath('Startup')
@@ -195,12 +287,17 @@ if (-not $BridgeMode) {
         '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$InstalledScript`"", '-BridgeMode'
     )
 
-    Start-Sleep -Milliseconds 800
+    Start-Sleep -Milliseconds 900
+    $foxmailDll = Get-FoxmailMapiDll
     Write-Host ''
     Write-Host 'Chen Assistant Foxmail helper installed.' -ForegroundColor Green
     Write-Host "Install directory: $InstallDir"
     Write-Host 'It will start automatically when you sign in to Windows.'
-    Write-Host 'Foxmail compose mode is enabled through Windows Simple MAPI.'
+    if ($foxmailDll) {
+        Write-Host "Direct Foxmail MAPI: $foxmailDll" -ForegroundColor Green
+    } else {
+        Write-Host 'Direct Foxmail MAPI was not found.' -ForegroundColor Yellow
+    }
     Write-Host ''
     Write-Host 'Return to Chen Assistant and refresh the page.'
     Read-Host 'Press Enter to close'
@@ -208,6 +305,7 @@ if (-not $BridgeMode) {
 }
 
 New-Item -ItemType Directory -Force -Path $MailDir | Out-Null
+$FoxmailMapiDll = Get-FoxmailMapiDll
 
 try {
     $listener = New-Object System.Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $Port)
@@ -381,8 +479,9 @@ try {
                 $json = ConvertTo-CompactJson @{
                     ok = $true
                     name = 'Chen Foxmail Helper'
-                    version = '0.3'
+                    version = '0.4'
                     compose = $true
+                    foxmail_direct = [bool]$FoxmailMapiDll
                 }
                 Write-Response $stream 200 $json $origin
                 continue
@@ -390,6 +489,7 @@ try {
 
             if ($req.Method -eq 'POST' -and $req.Path -eq '/compose') {
                 try {
+                    if (-not $FoxmailMapiDll) { throw 'Foxmail MAPI DLL not found' }
                     $payload = $req.Body | ConvertFrom-Json
                     foreach ($name in @('subject_b64', 'attachment_filename_b64', 'attachment_content_base64')) {
                         if (-not $payload.$name) { throw "missing $name" }
@@ -404,7 +504,11 @@ try {
                         '-ComposeRequest', "`"$requestFile`""
                     )
 
-                    $json = ConvertTo-CompactJson @{ ok = $true; mode = 'mapi'; queued = $true }
+                    $json = ConvertTo-CompactJson @{
+                        ok = $true
+                        mode = 'foxmail-direct-mapi'
+                        queued = $true
+                    }
                     Write-Response $stream 200 $json $origin
                 } catch {
                     $json = ConvertTo-CompactJson @{ ok = $false; error = 'compose failed' }
