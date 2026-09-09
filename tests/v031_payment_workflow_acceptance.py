@@ -38,20 +38,21 @@ def seed():
         ).lastrowid)
         ids = []
         for idx, amount in enumerate((100, 120), 1):
+            variable = idx == 1
             sid = int(conn.execute(
                 '''INSERT INTO services
                    (customer_id,service_type,holder_name,number,account,monthly_fee,fixed_fee,
                     payment_cycle,payment_interval_months,next_payment_period,active_from_period,
                     sort_order,source_row,payment_method)
                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-                (cid, '成员', f'成员{idx}', f'1380000000{idx}', f'A00{idx}', amount, 1,
+                (cid, '成员', f'成员{idx}', f'1380000000{idx}', f'A00{idx}', amount, 0 if variable else 1,
                  '1个月' if idx == 1 else '2个月', 1 if idx == 1 else 2,
                  '' if idx == 1 else period, period, idx * 10, idx, '微信'),
             ).lastrowid)
             ids.append(sid)
             conn.execute(
                 'INSERT INTO service_payment_rules(service_id,effective_period,mode,fixed_amount,created_at) VALUES(?,?,?,?,?)',
-                (sid, '1900-01', 'fixed', amount, now),
+                (sid, '1900-01', 'variable' if variable else 'fixed', 0 if variable else amount, now),
             )
     token, _, _ = create_session()
     return cid, ids, token
@@ -75,7 +76,7 @@ def accept_next_dialog(page):
 def main():
     cid, ids, token = seed()
     assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
-    two_month_sid = ids[1]
+    variable_sid, two_month_sid = ids
     period = current_period()
     proc = subprocess.Popen(
         [sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8136'],
@@ -98,7 +99,8 @@ def main():
             flow.wait_for(state='visible')
             labels = [x.strip() for x in flow.locator('[data-v031-flow-action]').all_inner_texts()]
             assert labels == ['1 金额核对', '2 已通知客户', '3 发起缴费', '4 完成缴费'], labels
-            assert page.locator('[data-v031-payment-image]').count() == 1
+            image_button = page.locator('[data-v031-payment-image]')
+            assert image_button.count() == 1
             assert page.locator('[data-v03-mail-template]').count() == 1
             assert page.locator('[data-v03-foxmail-draft]').count() == 1
 
@@ -107,7 +109,14 @@ def main():
             initiate = flow.locator('[data-v031-flow-action="initiate"]')
             paid = flow.locator('[data-v031-flow-action="paid"]')
 
-            # Fixed rows arrive confirmed, so the aggregate review step is immediately available.
+            # One variable row starts unconfirmed. This is the production regression:
+            # after the final amount is entered, “金额核对” must become clickable immediately.
+            assert page.locator('#pendingCount').inner_text().strip() == '1'
+            assert review.is_disabled()
+            variable_input = page.locator(f'[data-payment-row][data-service-id="{variable_sid}"] .quick-amount')
+            variable_input.fill('105')
+            variable_input.press('Enter')
+            page.wait_for_timeout(450)
             assert page.locator('#pendingCount').inner_text().strip() == '0'
             assert review.is_enabled()
             assert notify.is_disabled()
@@ -118,15 +127,33 @@ def main():
             page.wait_for_timeout(150)
             assert review.get_attribute('aria-pressed') == 'true'
             assert notify.is_enabled()
-            assert page.locator('[data-v031-payment-image]').is_enabled()
+            assert image_button.is_enabled()
 
             accept_next_dialog(page)
             notify.click()
             page.wait_for_timeout(150)
             assert notify.get_attribute('aria-pressed') == 'true'
             assert initiate.is_enabled()
-            # Customer disputes are expected after notification: amounts must remain editable.
-            assert not page.locator('.quick-amount').first.is_readonly()
+            assert not variable_input.is_readonly()
+
+            # Customer disputes the amount after receiving the WeChat image.
+            # Saving a changed amount must automatically invalidate review + notification.
+            variable_input.fill('110')
+            variable_input.press('Enter')
+            page.wait_for_timeout(650)
+            assert review.get_attribute('aria-pressed') == 'false'
+            assert notify.get_attribute('aria-pressed') == 'false'
+            assert initiate.get_attribute('aria-pressed') == 'false'
+            assert review.is_enabled()
+            assert notify.is_disabled()
+
+            # Reconfirm the corrected amount and notify again.
+            review.click()
+            page.wait_for_timeout(140)
+            accept_next_dialog(page)
+            notify.click()
+            page.wait_for_timeout(140)
+            assert notify.get_attribute('aria-pressed') == 'true'
 
             accept_next_dialog(page)
             initiate.click()
@@ -138,7 +165,7 @@ def main():
             paid.click()
             page.wait_for_timeout(220)
             assert paid.get_attribute('aria-pressed') == 'true'
-            assert page.locator('.quick-amount').first.is_readonly()
+            assert variable_input.is_readonly()
             with db() as conn:
                 next_period = conn.execute(
                     'SELECT next_payment_period FROM services WHERE id=?', (two_month_sid,)
@@ -151,14 +178,13 @@ def main():
             page.wait_for_timeout(220)
             assert paid.get_attribute('aria-pressed') == 'false'
             assert initiate.get_attribute('aria-pressed') == 'true'
-            assert not page.locator('.quick-amount').first.is_readonly()
+            assert not variable_input.is_readonly()
             with db() as conn:
                 restored = conn.execute(
                     'SELECT next_payment_period FROM services WHERE id=?', (two_month_sid,)
                 ).fetchone()['next_payment_period']
                 assert restored == period, restored
 
-            # Undo stage 3 and stage 2, returning safely to reviewed state.
             initiate.click()
             page.wait_for_timeout(140)
             assert initiate.get_attribute('aria-pressed') == 'false'
