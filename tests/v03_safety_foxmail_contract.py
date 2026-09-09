@@ -36,6 +36,9 @@ def main():
     assert "payment-mail-draft-v03" in foxmail_action
     assert "'/compose'" in foxmail_action and "method: 'POST'" in foxmail_action
     assert 'Windows助手版本较旧' in foxmail_action
+    assert 'verified_dispatch === true' in foxmail_action
+    assert 'data.verified !== true' in foxmail_action
+    assert 'Foxmail写邮件窗口已确认打开' in foxmail_action
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert '/static/v03_foxmail_action_fix.js?v=0306' in base
