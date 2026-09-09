@@ -41,6 +41,7 @@ jobs:
           node --check app/static/v031_workflow_actions.js
           node --check app/static/v031_workflow_runtime_fix.js
           node --check app/static/v031_workflow_dom_guard.js
+          node --check app/static/v031_windows_bootstrap.js
       - name: Check Python, routes, templates and assets
         run: |
           python -m compileall -q app
@@ -95,6 +96,7 @@ jobs:
               '/static/v03_payment_template.js','/static/v03_foxmail_action_fix.js','/static/v03_insert_order.js',
               '/static/v03_review_reset.js','/static/v031_payment_workflow.js','/static/v031_amount_rollback_fix.js',
               '/static/v031_workflow_actions.js','/static/v031_workflow_runtime_fix.js','/static/v031_workflow_dom_guard.js',
+              '/static/v031_windows_bootstrap.js',
               '/static/app.css','/static/v028.css','/static/layout-refinement.css','/static/v0212.css',
               '/static/workspace-refinement-v0212.css','/static/v03.css','/static/v03_business_mail.css',
               '/static/v03_payment_template.css','/static/v031_payment_workflow.css',
@@ -103,6 +105,8 @@ jobs:
               assert base.count(current)==1,current
           for retired in ('/static/v0212.js','/static/business-editor-hotfix.js'):
               assert retired not in base,retired
+          for downloadable in ('chen_foxmail_helper.ps1','chen_foxmail_bootstrap.ps1'):
+              assert (config.ROOT/'app'/'static'/downloadable).is_file(),downloadable
           print('static validation passed: v0.3.1 integrated workflow assets')
           PY
       - name: v0.3.1 contracts
