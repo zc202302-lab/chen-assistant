@@ -26,6 +26,43 @@
     return data;
   };
 
+  const applyBusinessRows = rows => {
+    Object.entries(rows || {}).forEach(([sid, payload]) => {
+      const card = root.querySelector(`[data-business-row][data-service-id="${CSS.escape(String(sid))}"]`);
+      if (!card) return;
+      const grid = card.querySelector('[data-business-attrs]');
+      if (grid) {
+        grid.innerHTML = '';
+        const attrs = payload.preview_attributes || [];
+        grid.style.setProperty('--business-visible-count', String(Math.max(1, attrs.length)));
+        attrs.forEach(attr => {
+          const box = document.createElement('div');
+          box.className = 'business-attribute';
+          box.dataset.attrKey = attr.key || '';
+          const shown = attr.value || '—';
+          box.title = `${attr.label || '属性'}：${shown} · 双击编辑`;
+          const small = document.createElement('small');
+          small.textContent = attr.label || '属性';
+          const strong = document.createElement('strong');
+          strong.textContent = shown;
+          box.append(small, strong);
+          grid.appendChild(box);
+        });
+      }
+      if (payload.due !== undefined) card.dataset.filterDue = payload.due ? '1' : '0';
+    });
+  };
+
+  /* ---------------- 客户级业务显示配置 ---------------- */
+  const syncCustomerBusinessDisplay = async () => {
+    if (!customerId) return;
+    try {
+      const data = await fetchJson(`/customers/${customerId}/business-columns-v0212`);
+      applyBusinessRows(data.rows || {});
+    } catch (_) {}
+  };
+  syncCustomerBusinessDisplay();
+
   /* ---------------- 业务总览：常用筛选 + 更多筛选 ---------------- */
   const filterRoot = root.querySelector('[data-business-filters]');
   if (filterRoot && !filterRoot.dataset.v03ReadableFilters) {
@@ -207,8 +244,6 @@
         return toast('请先为这个客户保存邮件主题');
       }
     }
-    // Browser downloads the RFC 5322 .eml draft. On Windows, associate .eml with
-    // Foxmail; opening the downloaded draft retains subject/body/TXT attachment.
     const a = document.createElement('a');
     a.href = `/customers/${customerId}/payment-mail-draft-v03`;
     a.download = '';
