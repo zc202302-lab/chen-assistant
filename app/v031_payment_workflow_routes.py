@@ -6,7 +6,14 @@ from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import JSONResponse
 
 from .db import db, now_iso
-from .payment_v02 import current_period
+from .payment_v02 import (
+    current_period,
+    service_active_in_period,
+    service_is_due,
+    ensure_payment_entry,
+    parse_money,
+)
+from .v023_routes import service_or_404, payment_json
 from .v025_routes import customer_or_404
 from .v026_routes import check_csrf
 from . import v0212_routes as core
@@ -233,6 +240,67 @@ def health_v031():
 @router.get('/customers/{customer_id}/payment-workflow-v031')
 def payment_workflow_v031(customer_id: int):
     return _response_state(customer_id)
+
+
+@router.post('/services/{service_id}/payment-current')
+def payment_save_v031(
+    request: Request,
+    service_id: int,
+    csrf: str = Form(...),
+    amount: str = Form(...),
+):
+    """Save an amount and invalidate downstream workflow state in the same transaction."""
+    check_csrf(request, csrf)
+    period = current_period()
+    value = parse_money(amount)
+    with db() as conn:
+        service = service_or_404(conn, service_id)
+        if not service_active_in_period(service, period) or not service_is_due(service):
+            return JSONResponse({'ok': False, 'error': '这项业务本月不在缴费范围内'}, status_code=400)
+
+        entry, rule = ensure_payment_entry(conn, service, period)
+        previous = float(entry['amount'] or 0)
+        amount_changed = abs(float(value) - previous) > 0.000001
+        run = None
+        had_downstream_state = False
+        if amount_changed:
+            run, _ = _run_v031(conn, service['customer_id'], period)
+            if run['paid']:
+                return JSONResponse(
+                    {'ok': False, 'error': '本月缴费已经完成，请先撤回“完成缴费”后再修改金额'},
+                    status_code=409,
+                )
+            had_downstream_state = bool(run['reviewed'] or run['notified'] or run['initiated'])
+
+        reference = entry['reference_amount']
+        if reference is None:
+            reference = previous
+        source = 'fixed' if rule['mode'] == 'fixed' else 'manual'
+        now = now_iso()
+        conn.execute(
+            '''UPDATE payment_entries
+               SET amount=?,reference_amount=?,source=?,confirmed=1,updated_at=? WHERE id=?''',
+            (value, reference, source, now, entry['id']),
+        )
+        conn.execute('UPDATE services SET monthly_fee=? WHERE id=?', (value, service_id))
+        if rule['mode'] == 'fixed':
+            conn.execute(
+                '''INSERT INTO service_payment_rules(service_id,effective_period,mode,fixed_amount,created_at)
+                   VALUES(?,?,?,?,?)
+                   ON CONFLICT(service_id,effective_period)
+                   DO UPDATE SET mode='fixed',fixed_amount=excluded.fixed_amount''',
+                (service_id, period, 'fixed', value, now),
+            )
+            conn.execute('UPDATE services SET fixed_fee=1 WHERE id=?', (service_id,))
+
+        if amount_changed and had_downstream_state:
+            _invalidate_after_amount_change(conn, service['customer_id'], period, run)
+
+        payload = payment_json(conn, service['customer_id'], period, service_id)
+        current_run, _ = _run_v031(conn, service['customer_id'], period)
+        payload['workflow_invalidated'] = bool(amount_changed and had_downstream_state)
+        payload['workflow_run'] = current_run
+        return JSONResponse(payload)
 
 
 @router.post('/customers/{customer_id}/payment-workflow-v031')
