@@ -50,7 +50,10 @@ def main():
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert '/static/v03_foxmail_action_fix.js?v=0311' in base
     assert '/static/v031_payment_workflow.js?v=0311' in base
-    assert '/static/v031_amount_rollback_fix.js?v=0311' in base
+    assert '/static/v031_amount_rollback_fix.js?v=0314' in base
+    assert '/static/v031_workflow_actions.js?v=0314' in base
+    assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
+    assert '/static/v031_workflow_dom_guard.js?v=0314' in base
 
     helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')
     assert 'BridgeMode' in helper and 'TcpListener' in helper
