@@ -90,13 +90,13 @@ def main():
             page = context.new_page()
             page.goto(f'http://127.0.0.1:8131/customers/{cid}', wait_until='networkidle')
 
-            # Regression from production screenshot: the three pills must never be blank.
-            flow = page.locator('[data-v03-payment-flow]')
+            # v0.3.1 four-stage workflow must be complete and readable.
+            flow = page.locator('[data-v031-payment-flow]')
             flow.wait_for(state='visible')
-            labels = [x.strip() for x in flow.locator('[data-v03-flow-action]').all_inner_texts()]
-            assert labels == ['1 金额核对', '2 通知客户', '3 完成缴费'], labels
+            labels = [x.strip() for x in flow.locator('[data-v031-flow-action]').all_inner_texts()]
+            assert labels == ['1 金额核对', '2 已通知客户', '3 发起缴费', '4 完成缴费'], labels
 
-            review = flow.locator('[data-v03-flow-action="review"]')
+            review = flow.locator('[data-v031-flow-action="review"]')
             review.click()
             page.wait_for_timeout(120)
             assert review.get_attribute('aria-pressed') == 'true'
@@ -104,7 +104,7 @@ def main():
             page.wait_for_timeout(120)
             assert review.get_attribute('aria-pressed') == 'false'
 
-            # Business editor exposes an editable payment-state select for a deferred service.
+            # Business editor still exposes an editable payment-state select for a deferred service.
             page.locator('[data-customer-tab="services"]').click()
             row = page.locator(f'[data-business-row][data-service-id="{deferred_sid}"]')
             row.locator('.business-attribute').first.dblclick()
@@ -131,7 +131,7 @@ def main():
             assert page.locator(f'[data-payment-row][data-service-id="{deferred_sid}"]').count() == 1
 
             browser.close()
-        print('v0.3 runtime fix browser acceptance passed (isolated test database)')
+        print('v0.3.1 runtime fix browser acceptance passed (isolated test database)')
     finally:
         proc.terminate()
         try:
