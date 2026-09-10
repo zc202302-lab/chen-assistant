@@ -1,1 +1,168 @@
-{% extends "base.html" %}{% block title %}新建客户{% endblock %}{% block content %}<section class="page-head"><h1>新建客户</h1><p>先快速建档，其他资料可以以后补。</p></section><section class="card"><form method="post" action="/customers/new" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}"><label>客户名称 *<input name="name" required></label><label>集团编码<input name="group_code"></label><label>税号<input name="tax_id"></label><label>客情概述<textarea name="relation_summary" rows="4"></textarea></label><button class="primary">创建客户</button></form></section>{% endblock %}
+{% extends "base.html" %}
+{% block title %}新建客户{% endblock %}
+{% block content %}
+<section class="page-head v032-create-head">
+  <div>
+    <p class="eyebrow">客户管理</p>
+    <h1>新建客户</h1>
+    <p>单个客户快速建档，或使用标准 Excel 一次导入多个集团及其业务。</p>
+  </div>
+</section>
+
+<nav class="v032-create-tabs" aria-label="新建方式">
+  <a href="/customers/new?mode=single" class="{% if mode != 'batch' %}active{% endif %}">单个新建</a>
+  <a href="/customers/new?mode=batch" class="{% if mode == 'batch' %}active{% endif %}">Excel批量导入</a>
+</nav>
+
+{% if error %}<div class="alert danger v032-alert">{{ error }}</div>{% endif %}
+{% if duplicate %}
+<div class="card v032-duplicate-card">
+  <div>
+    <strong>发现现有客户</strong>
+    <p>{{ duplicate.field }}与“{{ duplicate.name }}”重复，系统没有创建新客户。</p>
+  </div>
+  <a class="button secondary" href="/customers/{{ duplicate.id }}">打开现有客户</a>
+</div>
+{% endif %}
+
+{% if mode != 'batch' %}
+<section class="card v032-single-card">
+  <div class="v032-card-title">
+    <div>
+      <h2>单个新建</h2>
+      <p>只填写最必要的集团资料，创建后直接进入客户工作区继续录业务、联系人和优惠。</p>
+    </div>
+    <span class="badge ok">快速建档</span>
+  </div>
+  <form method="post" action="/customers/new" class="stack v032-single-form">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>集团名称 *<input name="name" required autocomplete="organization" placeholder="例如：淄博润泰物流有限公司"></label>
+    <div class="form-grid">
+      <label>集团编码<input name="group_code" autocomplete="off" placeholder="可留空"></label>
+      <label>税号<input name="tax_id" autocomplete="off" placeholder="可留空"></label>
+    </div>
+    <label>客情概述<textarea name="relation_summary" rows="4" placeholder="可留空，后续随时补充"></textarea></label>
+    <p class="hint">系统会在创建前检查集团编码、税号和集团名称，避免重复建档。</p>
+    <div class="button-row v032-form-actions">
+      <button class="primary" type="submit">创建并进入客户</button>
+      <a class="button ghost" href="/customers">取消</a>
+    </div>
+  </form>
+</section>
+{% else %}
+
+{% if success %}
+<div class="v032-success-panel">
+  <div class="v032-success-icon">✓</div>
+  <div>
+    <strong>批量导入完成</strong>
+    <p>新增 {{ success.customers }} 个集团、{{ success.services }} 条业务、{{ success.contacts }} 个联系人、{{ success.promotions }} 条优惠。</p>
+  </div>
+  <a class="button secondary" href="/customers">查看客户</a>
+</div>
+{% endif %}
+
+<section class="v032-batch-grid">
+  <article class="card v032-template-card">
+    <div class="v032-step-number">1</div>
+    <div class="v032-step-body">
+      <h2>下载标准模板</h2>
+      <p>正式模板使用多表结构：一张“集团”表管理集团，一张“业务”表管理号码和账号；联系人、优惠为可选表。</p>
+      <div class="v032-sheet-chips"><span>填写说明</span><span>集团</span><span>业务</span><span>联系人</span><span>优惠</span></div>
+      <a class="button primary" href="/customers/import-template-v032.xlsx">下载 Excel 模板</a>
+      <p class="hint">请不要修改 Sheet 名和第一行列名。集团编码、税号、号码、账号已按文本格式设计。</p>
+    </div>
+  </article>
+
+  <article class="card v032-upload-card">
+    <div class="v032-step-number">2</div>
+    <div class="v032-step-body">
+      <h2>上传并检查</h2>
+      <p>上传不会直接写数据库。系统会先检查关联关系、格式和重复客户，再给你预览。</p>
+      <form method="post" action="/customers/import-v032/preview" enctype="multipart/form-data" class="stack">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label class="v032-file-field">选择填写完成的 .xlsx 文件
+          <input type="file" name="excel_file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+        </label>
+        <button class="primary" type="submit">上传并检查</button>
+      </form>
+      <p class="hint">单个文件最大 10MB。v0.3.2 只接受标准 .xlsx 模板，不会解析宏。</p>
+    </div>
+  </article>
+</section>
+
+<section class="card v032-rule-card">
+  <div class="v032-card-title">
+    <div>
+      <h2>这套模板怎么组织数据</h2>
+      <p>Excel 里的 G001 / S001 只是临时关联编号，不会成为晨的助手里的正式字段。</p>
+    </div>
+    <span class="badge">v0.3.2</span>
+  </div>
+  <div class="v032-rule-flow">
+    <div><strong>集团 G001</strong><span>集团名称 / 编码 / 税号</span></div><b>→</b>
+    <div><strong>业务 S001、S002…</strong><span>通过 G001 归属集团</span></div><b>→</b>
+    <div><strong>优惠 / 联系人</strong><span>继续通过编号关联</span></div>
+  </div>
+  <p class="hint">批量新建只“新增”，不会覆盖现有客户；集团编码、税号或集团名称重复时会阻止整批导入。</p>
+</section>
+
+{% if preview %}
+<section class="card v032-preview-card" id="import-preview">
+  <div class="v032-preview-head">
+    <div><p class="eyebrow">导入预览</p><h2>{{ preview.filename }}</h2><p>系统尚未写入数据库。请先看检查结果，再决定是否确认导入。</p></div>
+    {% if not preview.errors %}<span class="badge ok">可以导入</span>{% else %}<span class="badge danger">需要修正</span>{% endif %}
+  </div>
+
+  <div class="v032-preview-metrics">
+    <div><strong>{{ preview.summary.groups or 0 }}</strong><span>集团</span></div>
+    <div><strong>{{ preview.summary.services or 0 }}</strong><span>业务</span></div>
+    <div><strong>{{ preview.summary.contacts or 0 }}</strong><span>联系人</span></div>
+    <div><strong>{{ preview.summary.promotions or 0 }}</strong><span>优惠</span></div>
+  </div>
+
+  {% if preview.errors %}
+  <div class="v032-issue-block danger">
+    <div class="v032-issue-title"><strong>发现 {{ preview.errors|length }} 个错误</strong><span>必须修正后重新上传</span></div>
+    <div class="v032-issue-list">
+      {% for item in preview.errors[:30] %}<div><b>{{ item.sheet }}{% if item.row %} · 第{{ item.row }}行{% endif %}</b><span>{{ item.message }}</span></div>{% endfor %}
+      {% if preview.errors|length > 30 %}<p class="hint">还有 {{ preview.errors|length - 30 }} 个错误未展开，请优先修正上面的结构性问题后重新上传。</p>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if preview.warnings %}
+  <div class="v032-issue-block warn">
+    <div class="v032-issue-title"><strong>{{ preview.warnings|length }} 个提醒</strong><span>不阻止导入，但建议确认</span></div>
+    <div class="v032-issue-list">
+      {% for item in preview.warnings[:20] %}<div><b>{{ item.sheet }}{% if item.row %} · 第{{ item.row }}行{% endif %}</b><span>{{ item.message }}</span></div>{% endfor %}
+      {% if preview.warnings|length > 20 %}<p class="hint">另有 {{ preview.warnings|length - 20 }} 条提醒未展开。</p>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if preview.group_preview %}
+  <div class="v032-group-table-wrap">
+    <table class="v032-group-table">
+      <thead><tr><th>导入编号</th><th>集团</th><th>集团编码</th><th>业务</th><th>联系人</th><th>优惠</th></tr></thead>
+      <tbody>
+      {% for group in preview.group_preview %}
+        <tr><td><code>{{ group.import_id }}</code></td><td><strong>{{ group.name }}</strong></td><td>{{ group.group_code or '—' }}</td><td>{{ group.service_count }}</td><td>{{ group.contact_count }}</td><td>{{ group.promotion_count }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if import_token and not preview.errors %}
+  <div class="v032-confirm-zone">
+    <div><strong>检查通过，等待你的最终确认</strong><p>点击后整批写入数据库。任何写入错误都会整批回滚，不会留下“导入一半”的客户。</p></div>
+    <form method="post" action="/customers/import-v032/confirm"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="import_token" value="{{ import_token }}"><button class="primary" type="submit">确认导入全部数据</button></form>
+  </div>
+  {% else %}
+  <div class="v032-confirm-zone blocked"><div><strong>当前不能导入</strong><p>请根据错误提示修改 Excel，然后重新上传检查。</p></div></div>
+  {% endif %}
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}
