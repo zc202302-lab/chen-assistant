@@ -45,7 +45,7 @@ def main():
     assert '/static/v031_workflow_actions.js?v=0316' in base
     assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
     assert '/static/v031_workflow_dom_guard.js?v=0314' in base
-    assert '/static/v033_payment_flow_patch.js?v=0330' in base
+    assert '/static/v033_payment_flow_patch.js?v=0331' in base
     assert base.index('/static/v033_payment_flow_patch.js') > base.index('/static/v031_workflow_runtime_fix.js')
 
     # v0.3.3 attachment transport must be native Simple MAPI. The attachment is
