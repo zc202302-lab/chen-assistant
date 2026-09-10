@@ -1,3 +1,5 @@
+import re
+
 from .legacy_main import app
 from .v02_routes import router as v02_router
 from .v021_routes import router as v021_router
@@ -84,6 +86,19 @@ for route in _ordered:
         _seen.add(path)
     _final.append(route)
 app.router.routes[:] = _final
+
+# FastAPI validates ``customer_id: int`` only after a route has matched. A plain
+# /customers/{customer_id} route can therefore capture the literal path
+# /customers/new and return a 422 int_parsing error. Keep the public path name
+# unchanged for compatibility, but constrain the active detail route at the
+# Starlette matching layer so only decimal customer IDs can ever match it.
+for _route in app.router.routes:
+    if (
+        getattr(_route, 'path', '') == '/customers/{customer_id}'
+        and getattr(getattr(_route, 'endpoint', None), '__module__', '') == 'app.v0212_routes'
+    ):
+        _route.path_regex = re.compile(r'^/customers/(?P<customer_id>[0-9]+)$')
+        break
 
 app.title = '晨的助手 v0.3.2'
 app.version = '0.3.2'
