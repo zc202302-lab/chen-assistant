@@ -48,8 +48,10 @@ jobs:
           python - <<'PY'
           from jinja2 import Environment, FileSystemLoader
           from app import config
+          from app.db import init_db
           from app.main import app
           from app.v032_customer_exchange_routes import _build_blank_template
+          init_db()
           assert app.version == '0.3.2'
           for path in ('/', '/customers/{customer_id}', '/health'):
               matches=[r for r in app.router.routes if getattr(r,'path','')==path]
