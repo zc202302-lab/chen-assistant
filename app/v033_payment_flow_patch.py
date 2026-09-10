@@ -13,7 +13,6 @@ from .v026_routes import check_csrf
 from . import v0212_routes as core
 from . import v031_payment_workflow_routes as workflow
 from .v03_mail_draft_routes import _build_eml, _clean_attachment_filename, _clean_header, _safe_filename
-from . import v03_routes as v03
 
 router = APIRouter()
 
@@ -123,10 +122,37 @@ def _require_template(template: dict) -> dict:
     return template
 
 
+def _current_payment_txt_content(conn, customer_id: int, period: str):
+    """Build the single authoritative TXT payload from the current row-review state."""
+    customer = customer_or_404(conn, customer_id)
+    items, stats = core.payment_snapshot_v0212(conn, customer_id, period)
+    if stats['pending']:
+        raise HTTPException(409, f"还有{stats['pending']}项金额未核对，不能生成正式缴费TXT")
+
+    missing_number = [
+        item for item in items
+        if float(item['payment']['amount'] or 0) > 0
+        and not (item['row']['number'] or '').strip()
+    ]
+    if missing_number:
+        raise HTTPException(409, '存在非0元缴费业务未填写号码，请先补充号码')
+
+    lines = []
+    for item in items:
+        amount = float(item['payment']['amount'] or 0)
+        number = (item['row']['number'] or '').strip()
+        if amount <= 0 or not number:
+            continue
+        lines.append(f'{number}|{format_fee(amount)}')
+
+    if not lines:
+        raise HTTPException(409, '当前客户没有可生成TXT的非0元缴费数据')
+    return customer, '\r\n'.join(lines), stats
+
+
 def _attachment_payload(conn, customer_id: int, period: str):
-    customer, txt_content, stats = v03._payment_txt_content(conn, customer_id, period)
-    if not txt_content.strip():
-        raise HTTPException(400, '当前客户没有可写入TXT的缴费数据')
+    # Attachment and manual TXT download MUST use exactly the same payload builder.
+    customer, txt_content, stats = _current_payment_txt_content(conn, customer_id, period)
     template = _require_template(_get_customer_template(conn, customer_id))
     return customer, txt_content, stats, template
 
@@ -179,31 +205,8 @@ def save_customer_payment_template_v033(
 def payment_txt_current_workflow_v033(customer_id: int):
     period = current_period()
     with db() as conn:
-        customer = customer_or_404(conn, customer_id)
-        items, stats = core.payment_snapshot_v0212(conn, customer_id, period)
-        if stats['pending']:
-            raise HTTPException(409, f"还有{stats['pending']}项金额未核对，不能生成正式缴费TXT")
+        customer, body, _ = _current_payment_txt_content(conn, customer_id, period)
 
-        missing_number = [
-            item for item in items
-            if float(item['payment']['amount'] or 0) > 0
-            and not (item['row']['number'] or '').strip()
-        ]
-        if missing_number:
-            raise HTTPException(409, '存在非0元缴费业务未填写号码，请先补充号码')
-
-        lines = []
-        for item in items:
-            amount = float(item['payment']['amount'] or 0)
-            number = (item['row']['number'] or '').strip()
-            if amount <= 0 or not number:
-                continue
-            lines.append(f'{number}|{format_fee(amount)}')
-
-    if not lines:
-        raise HTTPException(409, '当前客户没有可生成TXT的非0元缴费数据')
-
-    body = '\r\n'.join(lines)
     safe = ''.join(ch for ch in (customer['name'] or '') if ch not in '\\/:*?"<>|').strip() or '缴费'
     headers = {
         'Content-Disposition': f"attachment; filename=\"payment.txt\"; filename*=UTF-8''{quote(safe + '.txt')}",
