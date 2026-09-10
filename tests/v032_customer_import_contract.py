@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 
 import xlsxwriter
+from starlette.routing import Match
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -61,11 +62,28 @@ def write_fixture(path: Path):
 
 def test_routes_and_version():
     assert app.version == '0.3.2'
-    assert first_route('/customers/new', 'GET').endpoint.__module__ == 'app.v032_customer_import_routes'
+    new_get = first_route('/customers/new', 'GET')
+    assert new_get.endpoint.__module__ == 'app.v032_customer_import_routes'
     assert first_route('/customers/new', 'POST').endpoint.__module__ == 'app.v032_customer_import_routes'
     assert first_route('/customers/import-template-v032.xlsx', 'GET').endpoint.__module__ == 'app.v032_customer_import_routes'
     assert first_route('/customers/import-v032/preview', 'POST').endpoint.__module__ == 'app.v032_customer_import_routes'
     assert first_route('/customers/import-v032/confirm', 'POST').endpoint.__module__ == 'app.v032_customer_import_routes'
+
+    # Regression for the real production failure observed in v0.3.2:
+    # /customers/new must never be swallowed by /customers/{customer_id} and
+    # validated as an integer afterwards.
+    detail = first_route('/customers/{customer_id}', 'GET')
+    new_scope = {'type': 'http', 'path': '/customers/new', 'method': 'GET'}
+    id_scope = {'type': 'http', 'path': '/customers/123', 'method': 'GET'}
+    assert detail.matches(new_scope)[0] == Match.NONE
+    assert detail.matches(id_scope)[0] == Match.FULL
+    full_matches = [
+        route for route in app.router.routes
+        if hasattr(route, 'matches') and route.matches(new_scope)[0] == Match.FULL
+    ]
+    assert full_matches
+    assert full_matches[0] is new_get
+    assert full_matches[0].endpoint.__module__ == 'app.v032_customer_import_routes'
 
 
 def test_template_contract():
