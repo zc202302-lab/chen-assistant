@@ -45,7 +45,7 @@ def first_route(path, method=None):
 
 
 def test_route_ownership():
-    assert app.version == '0.3.1'
+    assert app.version == '0.3.2'
     assert first_route('/health', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
     assert first_route('/customers/{customer_id}').endpoint.__module__ == 'app.v0212_routes'
     assert first_route('/customers/{customer_id}/payment-workflow-v031', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
@@ -102,7 +102,7 @@ def test_ui_contracts():
     v031_js = (ROOT / 'app/static/v031_payment_workflow.js').read_text(encoding='utf-8')
     v031_routes = (ROOT / 'app/v031_payment_workflow_routes.py').read_text(encoding='utf-8')
 
-    assert 'v0.3.1' in base
+    assert 'v0.3.2' in base
     assert '/static/v03.js' in base and '/static/v03.css' in base
     assert '/static/v03_business_mail.js' in base and '/static/v03_business_mail.css' in base
     assert '/static/v031_payment_workflow.js' in base and '/static/v031_payment_workflow.css' in base
@@ -148,4 +148,4 @@ if __name__ == '__main__':
     test_v03_migration_is_safe_and_idempotent()
     test_schedule_regression()
     test_ui_contracts()
-    print('v0.3.1 contract checks passed (isolated test database)')
+    print('v0.3.2 contract checks passed (isolated test database)')
