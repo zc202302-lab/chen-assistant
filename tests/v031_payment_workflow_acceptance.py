@@ -117,7 +117,7 @@ def main():
 
             page.goto(f'http://127.0.0.1:8136/customers/{cid}', wait_until='networkidle')
 
-            assert 'v0.3.1' in page.locator('.brand').inner_text()
+            assert 'v0.3.2' in page.locator('.brand').inner_text()
             flow = page.locator('[data-v031-payment-flow]')
             flow.wait_for(state='visible')
             page.wait_for_timeout(1100)
@@ -239,7 +239,7 @@ def main():
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
 
             browser.close()
-        print('v0.3.1 integrated four-stage browser acceptance passed (isolated test database)')
+        print('v0.3.2 integrated four-stage browser acceptance passed (isolated test database)')
     finally:
         proc.terminate()
         try:
