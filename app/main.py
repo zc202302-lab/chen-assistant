@@ -30,6 +30,7 @@ from .v032_customer_import_routes import router as v032_customer_import_router
 from .v032_customer_exchange_routes import router as v032_customer_exchange_router
 from .v031_fixed_review_patch import router as v031_review_sync_router
 from . import v031_fixed_review_patch as _v031_fixed_review_patch  # noqa: F401
+from .v033_payment_flow_patch import router as v033_payment_flow_patch_router
 
 _legacy_routes = list(app.router.routes)
 
@@ -66,12 +67,13 @@ _v031_payment_workflow_routes = _include(v031_payment_workflow_router)
 _v031_review_sync_routes = _include(v031_review_sync_router)
 _v032_customer_import_routes = _include(v032_customer_import_router)
 _v032_customer_exchange_routes = _include(v032_customer_exchange_router)
+_v033_payment_flow_patch_routes = _include(v033_payment_flow_patch_router)
 
-# v0.3.2 owns customer creation/import/export. v0.3.1 continues to own the mature
-# four-stage payment workflow while the stable v0.2.12 customer workspace
-# remains the renderer. The v0.3.2 review-sync routes sit before the old amount
-# endpoints so row-level confirmation state stays authoritative.
+# v0.3.3 owns customer-scoped payment templates, the current TXT export, and
+# Foxmail compose payloads. v0.3.2 continues to own customer exchange, while
+# v0.3.1 row-level review semantics remain the payment state authority.
 _ordered = (
+    _v033_payment_flow_patch_routes +
     _v032_customer_exchange_routes + _v032_customer_import_routes + _v031_review_sync_routes +
     _v031_payment_workflow_routes + _v03_mail_draft_routes + _v031_runtime_routes +
     _v03_payment_routes + _v03_routes + _v0212_business_display_routes +
@@ -81,15 +83,25 @@ _ordered = (
     _v024_routes + _v023_routes + _v022_routes + _v021_routes + _v02_routes +
     _legacy_routes
 )
-_unique_paths = {'/', '/customers/{customer_id}', '/health', '/customers/{customer_id}/payment-run'}
+_unique_paths = {
+    '/',
+    '/customers/{customer_id}',
+    '/health',
+    '/customers/{customer_id}/payment-run',
+    '/customers/{customer_id}/payment.txt',
+    '/customers/{customer_id}/mail-template-v03',
+    '/customers/{customer_id}/payment-mail-compose-v031',
+    '/customers/{customer_id}/payment-mail-draft-v03',
+}
 _seen = set()
 _final = []
 for route in _ordered:
     path = getattr(route, 'path', None)
     if path in _unique_paths:
-        if path in _seen:
+        key = (path, tuple(sorted(getattr(route, 'methods', set()))))
+        if key in _seen:
             continue
-        _seen.add(path)
+        _seen.add(key)
     _final.append(route)
 app.router.routes[:] = _final
 
@@ -149,11 +161,30 @@ def _assert_payment_review_route_guard():
             raise RuntimeError(f'v0.3.2 缴费路由自检失败：{path} 未由行级核对逻辑接管')
 
 
+def _assert_payment_flow_v033_guard():
+    """Ensure current TXT/template/compose routes cannot fall back to legacy behavior."""
+    expected = {
+        ('GET', '/customers/{customer_id}/payment.txt'): 'payment_txt_current_workflow_v033',
+        ('GET', '/customers/{customer_id}/mail-template-v03'): 'get_customer_payment_template_v033',
+        ('POST', '/customers/{customer_id}/mail-template-v03'): 'save_customer_payment_template_v033',
+        ('GET', '/customers/{customer_id}/payment-mail-compose-v031'): 'payment_mail_compose_customer_scoped_v033',
+        ('GET', '/customers/{customer_id}/payment-mail-draft-v03'): 'payment_mail_draft_customer_scoped_v033',
+    }
+    for (method, path), endpoint_name in expected.items():
+        matches = [
+            route for route in app.router.routes
+            if getattr(route, 'path', '') == path and method in getattr(route, 'methods', set())
+        ]
+        if not matches or getattr(getattr(matches[0], 'endpoint', None), '__name__', '') != endpoint_name:
+            raise RuntimeError(f'v0.3.3 缴费路由自检失败：{method} {path} 未由当前实现接管')
+
+
 _assert_customer_new_route_guard()
 _assert_payment_review_route_guard()
+_assert_payment_flow_v033_guard()
 
-app.title = '晨的助手 v0.3.2'
-app.version = '0.3.2'
+app.title = '晨的助手 v0.3.3'
+app.version = '0.3.3'
 
 
 @app.middleware('http')

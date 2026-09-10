@@ -86,8 +86,20 @@ def wait_http(url):
     raise RuntimeError('server start failed')
 
 
-def accept_next_dialog(page):
-    page.once('dialog', lambda dialog: dialog.accept())
+def assert_no_dialog_while(page, action, wait_ms=350):
+    seen = []
+
+    def capture(dialog):
+        seen.append(dialog.message)
+        dialog.dismiss()
+
+    page.on('dialog', capture)
+    try:
+        action()
+        page.wait_for_timeout(wait_ms)
+    finally:
+        page.remove_listener('dialog', capture)
+    assert not seen, f'缴费流程不得弹出提示框，实际出现: {seen}'
 
 
 def wait_stage(page, action: str, pressed: bool):
@@ -133,8 +145,7 @@ def main():
             review = flow.locator('[data-v031-flow-action="review"]')
             assert initiate.is_enabled()
 
-            accept_next_dialog(page)
-            initiate.click()
+            assert_no_dialog_while(page, lambda: initiate.click())
             wait_stage(page, 'initiate', False)
             assert initiate.get_attribute('aria-pressed') == 'false'
             page.wait_for_function(
@@ -143,8 +154,7 @@ def main():
             )
             assert notify.is_enabled()
 
-            accept_next_dialog(page)
-            notify.click()
+            assert_no_dialog_while(page, lambda: notify.click())
             wait_stage(page, 'notify', False)
             assert notify.get_attribute('aria-pressed') == 'false'
             page.wait_for_function(
@@ -153,12 +163,12 @@ def main():
             )
             assert review.is_enabled()
 
-            review.click()
+            assert_no_dialog_while(page, lambda: review.click())
             wait_stage(page, 'review', False)
             assert review.get_attribute('aria-pressed') == 'false'
 
             browser.close()
-        print('v0.3.1 legacy-customer runtime ownership acceptance passed (isolated test database)')
+        print('v0.3.3 legacy-customer no-dialog workflow acceptance passed (isolated test database)')
     finally:
         proc.terminate()
         try:

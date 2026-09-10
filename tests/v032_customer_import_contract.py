@@ -61,7 +61,8 @@ def write_fixture(path: Path):
 
 
 def test_routes_and_version():
-    assert app.version == '0.3.2'
+    # Application is v0.3.3; the customer import/exchange file format remains v0.3.2.
+    assert app.version == '0.3.3'
     new_get = first_route('/customers/new', 'GET')
     assert new_get.endpoint.__module__ == 'app.v032_customer_import_routes'
     assert first_route('/customers/new', 'POST').endpoint.__module__ == 'app.v032_customer_import_routes'
@@ -176,7 +177,7 @@ def test_ui_contract():
     assert '/customers/export-v032.xlsx' in template
     assert 'v032-preview-metrics' in css
     assert '/static/v032_customer_import.css' in base
-    assert 'v0.3.2' in base
+    assert 'v0.3.3' in base
 
 
 if __name__ == '__main__':
@@ -185,4 +186,4 @@ if __name__ == '__main__':
     test_validation_commit_and_fixed_confirmation()
     test_confirm_is_atomic_when_duplicate_appears()
     test_ui_contract()
-    print('v0.3.2 customer creation/import compatibility contract passed (isolated database)')
+    print('v0.3.3 app + v0.3.2 customer creation/import compatibility contract passed (isolated database)')

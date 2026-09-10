@@ -95,7 +95,7 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8139'}])
             page = context.new_page()
             page.goto('http://127.0.0.1:8139/customers/new?mode=batch', wait_until='networkidle')
-            assert 'v0.3.2' in page.locator('.brand').inner_text()
+            assert 'v0.3.3' in page.locator('.brand').inner_text()
             expect(page.get_by_role('link', name='Excel批量导入/导出')).to_have_class('active')
             expect(page.get_by_role('link', name='下载最新 Excel 模板')).to_be_visible()
             expect(page.get_by_role('link', name='导出全部客户 Excel')).to_be_visible()
@@ -107,6 +107,7 @@ def main():
             template_reader = XlsmReader(template_download)
             assert len(template_reader.sheets) == 1 and template_reader.sheets[0][0] == '客户1'
             template_cells = template_reader.cells(template_reader.sheets[0][1])
+            # Exchange format remains v0.3.2 for backward compatibility.
             assert template_cells.get('A1') == '晨的助手客户档案 v0.3.2'
             assert '【业务/产品】' in template_cells.values()
 
@@ -151,7 +152,7 @@ def main():
                 assert conn.execute('SELECT COUNT(*) n FROM customers').fetchone()['n'] == 2
 
             browser.close()
-        print('v0.3.2 one-customer-per-sheet import/export browser acceptance passed (isolated database)')
+        print('v0.3.3 app + v0.3.2 one-customer-per-sheet import/export browser acceptance passed (isolated database)')
     finally:
         proc.terminate()
         try:

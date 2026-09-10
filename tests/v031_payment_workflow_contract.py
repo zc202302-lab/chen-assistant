@@ -58,6 +58,21 @@ def main():
     ):
         assert token in runtime_owner, token
 
+    # v0.3.3 keeps the runtime's two-step external-action state model, but the
+    # late-loaded patch removes all payment-stage alert/confirm dialogs and owns
+    # deterministic browser TXT downloading.
+    nonblocking = (ROOT / 'app' / 'static' / 'v033_payment_flow_patch.js').read_text(encoding='utf-8')
+    for token in (
+        'window.confirm = message =>', 'window.alert = message =>',
+        '确认缴费图片已经通过微信发送给客户',
+        '确认缴费邮件已经在Foxmail中发送给同事',
+        '确认同事已收到邮件，并且你已经完成本次实际支付',
+        '撤回“完成缴费”并恢复本次缴费前的周期状态',
+        '该客户已经发起缴费。修改金额后',
+        'URL.createObjectURL(blob)', 'download.download =', '缴费TXT已下载',
+    ):
+        assert token in nonblocking, token
+
     rollback = (ROOT / 'app' / 'static' / 'v031_amount_rollback_fix.js').read_text(encoding='utf-8')
     for token in (
         'payment-workflow-v031', 'syncAfterSavedAmount',
@@ -100,7 +115,7 @@ def main():
         assert token in routes, token
 
     from app.main import app  # noqa: E402
-    assert app.version == '0.3.2'
+    assert app.version == '0.3.3'
     for path, endpoint in (
         ('/services/{service_id}/payment-current', 'payment_save_preserve_reviews_v032'),
         ('/services/{service_id}/payment-review-toggle', 'payment_review_toggle_preserve_reviews_v032'),
@@ -114,20 +129,22 @@ def main():
         assert matches[0].endpoint.__name__ == endpoint
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-    assert 'v0.3.2' in base
+    assert 'v0.3.3' in base
     assert '/static/v031_workflow_actions.js?v=0316' in base
     assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
     assert '/static/v031_workflow_dom_guard.js?v=0314' in base
+    assert '/static/v033_payment_flow_patch.js?v=0331' in base
     assert '/static/v031_payment_workflow.css?v=0314' in base
     assert base.index('/static/v031_workflow_actions.js') > base.index('/static/v031_payment_workflow.js')
     assert base.index('/static/v031_workflow_runtime_fix.js') > base.index('/static/v031_workflow_actions.js')
     assert base.index('/static/v031_workflow_dom_guard.js') > base.index('/static/v031_workflow_runtime_fix.js')
+    assert base.index('/static/v033_payment_flow_patch.js') > base.index('/static/v031_workflow_dom_guard.js')
 
     css = (ROOT / 'app' / 'static' / 'v031_payment_workflow.css').read_text(encoding='utf-8')
     for token in ('.awaiting-confirm', '.current', '.done', '.v031-fixed-auto-confirmed'):
         assert token in css, token
 
-    print('v0.3.2 automatic review + row-preserving rollback contract passed')
+    print('v0.3.3 automatic review + fully nonblocking workflow + real TXT download contract passed')
 
 
 if __name__ == '__main__':
