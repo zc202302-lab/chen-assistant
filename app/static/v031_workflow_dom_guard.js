@@ -8,9 +8,9 @@
 
   // The older v0.3.1 script asks for confirmation before editing an amount after
   // stage 3. v0.3.2 deliberately makes amount rollback silent: the server saves
-  // the changed row, clears stages 1-3 and leaves every untouched row alone.
-  // Stop only propagation of quick-amount beforeinput events; do not cancel the
-  // browser's edit itself.
+  // the changed row, restores stage 4 when necessary, clears later workflow
+  // stages and leaves every untouched row alone. Stop propagation only; do not
+  // cancel the browser's edit itself.
   document.addEventListener('beforeinput', event => {
     const input = event.target.closest?.('.quick-amount');
     if (!input || !root.contains(input)) return;
@@ -21,8 +21,10 @@
     scheduled = false;
     const paid = flow.querySelector('[data-v031-flow-action="paid"]')?.getAttribute('aria-pressed') === 'true';
 
+    // Amounts stay editable in every stage. Editing after stage 4 is safe because
+    // the server restores the saved pre-payment schedule before rolling back.
     root.querySelectorAll('.quick-amount').forEach(input => {
-      if (input.readOnly !== paid) input.readOnly = paid;
+      if (input.readOnly) input.readOnly = false;
     });
 
     root.querySelectorAll('[data-payment-row]').forEach(row => {
@@ -59,7 +61,9 @@
       if (defer && defer.disabled !== paid) defer.disabled = paid;
     });
 
-    root.classList.toggle('v03-payment-locked', paid);
+    // Other controls may remain protected after completion, but the amount field
+    // itself is no longer visually or functionally locked.
+    root.classList.remove('v03-payment-locked');
   };
 
   const schedule = () => {
