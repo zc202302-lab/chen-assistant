@@ -1,4 +1,4 @@
-name: v0.3.1 validation
+name: v0.3.2 validation
 
 on:
   push:
@@ -49,7 +49,7 @@ jobs:
           from jinja2 import Environment, FileSystemLoader
           from app import config
           from app.main import app
-          assert app.version == '0.3.1'
+          assert app.version == '0.3.2'
           for path in ('/', '/customers/{customer_id}', '/health'):
               matches=[r for r in app.router.routes if getattr(r,'path','')==path]
               assert len(matches)==1,(path,len(matches))
@@ -58,6 +58,11 @@ jobs:
           health_route=next(r for r in app.router.routes if getattr(r,'path','')=='/health')
           assert health_route.endpoint.__module__=='app.v031_payment_workflow_routes'
           owned={
+              ('/customers/new','GET'):'app.v032_customer_import_routes',
+              ('/customers/new','POST'):'app.v032_customer_import_routes',
+              ('/customers/import-template-v032.xlsx','GET'):'app.v032_customer_import_routes',
+              ('/customers/import-v032/preview','POST'):'app.v032_customer_import_routes',
+              ('/customers/import-v032/confirm','POST'):'app.v032_customer_import_routes',
               ('/customers/{customer_id}/payment-workflow-v031','GET'):'app.v031_payment_workflow_routes',
               ('/customers/{customer_id}/payment-workflow-v031','POST'):'app.v031_payment_workflow_routes',
               ('/customers/{customer_id}/payment-mail-compose-v031','GET'):'app.v031_payment_workflow_routes',
@@ -99,7 +104,7 @@ jobs:
               '/static/v031_windows_bootstrap.js',
               '/static/app.css','/static/v028.css','/static/layout-refinement.css','/static/v0212.css',
               '/static/workspace-refinement-v0212.css','/static/v03.css','/static/v03_business_mail.css',
-              '/static/v03_payment_template.css','/static/v031_payment_workflow.css',
+              '/static/v03_payment_template.css','/static/v031_payment_workflow.css','/static/v032_customer_import.css',
           )
           for current in current_assets:
               assert base.count(current)==1,current
@@ -107,9 +112,9 @@ jobs:
               assert retired not in base,retired
           for downloadable in ('chen_foxmail_helper.ps1','chen_foxmail_bootstrap.ps1'):
               assert (config.ROOT/'app'/'static'/downloadable).is_file(),downloadable
-          print('static validation passed: v0.3.1 integrated workflow assets')
+          print('static validation passed: v0.3.2 customer import + v0.3.1 payment workflow')
           PY
-      - name: v0.3.1 contracts
+      - name: v0.3.2 contracts
         run: |
           python tests/v03_contract.py
           python tests/v03_runtime_fix_contract.py
@@ -118,13 +123,14 @@ jobs:
           python tests/v03_payment_template_contract.py
           python tests/v031_payment_workflow_contract.py
           python tests/v031_windows_bootstrap_contract.py
+          python tests/v032_customer_import_contract.py
       - name: Production experience regression
         run: python tests/production_experience_regression.py
       - name: Promotion render regression
         run: python tests/promotion_render_regression.py
       - name: Promotion bidirectional route regression
         run: python tests/promotion_rename_route_regression.py
-      - name: v0.3.1 browser acceptance
+      - name: v0.3.2 browser acceptance
         run: |
           python tests/v031_payment_workflow_acceptance.py
           python tests/v031_legacy_customer_acceptance.py
