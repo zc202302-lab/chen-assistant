@@ -45,21 +45,21 @@ def first_route(path, method=None):
 
 
 def test_route_ownership():
-    assert app.version == '0.3.2'
+    assert app.version == '0.3.3'
     assert first_route('/health', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
     assert first_route('/customers/{customer_id}').endpoint.__module__ == 'app.v0212_routes'
     assert first_route('/customers/{customer_id}/payment-workflow-v031', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
     assert first_route('/customers/{customer_id}/payment-workflow-v031', 'POST').endpoint.__module__ == 'app.v031_payment_workflow_routes'
-    assert first_route('/customers/{customer_id}/payment-mail-compose-v031', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
+    assert first_route('/customers/{customer_id}/payment-mail-compose-v031', 'GET').endpoint.__module__ == 'app.v033_payment_flow_patch'
     assert first_route('/customers/{customer_id}/payment-run', 'POST').endpoint.__module__ == 'app.v03_payment_routes'
     assert first_route('/customers/{customer_id}/payment-run-v03', 'GET').endpoint.__module__ == 'app.v03_routes'
     assert first_route('/customers/{customer_id}/payment-email-v03', 'POST').endpoint.__module__ == 'app.v03_routes'
     assert first_route('/services/{service_id}/status-v03', 'POST').endpoint.__module__ == 'app.v03_mail_draft_routes'
     assert first_route('/services/{service_id}/payment-status-v03', 'POST').endpoint.__module__ == 'app.v03_mail_draft_routes'
-    assert first_route('/customers/{customer_id}/mail-template-v03', 'GET').endpoint.__module__ == 'app.v03_mail_draft_routes'
-    assert first_route('/customers/{customer_id}/mail-template-v03', 'POST').endpoint.__module__ == 'app.v03_mail_draft_routes'
-    assert first_route('/customers/{customer_id}/payment-mail-draft-v03', 'GET').endpoint.__module__ == 'app.v03_mail_draft_routes'
-    assert first_route('/customers/{customer_id}/payment.txt', 'GET').endpoint.__module__ == 'app.v0212_routes'
+    assert first_route('/customers/{customer_id}/mail-template-v03', 'GET').endpoint.__module__ == 'app.v033_payment_flow_patch'
+    assert first_route('/customers/{customer_id}/mail-template-v03', 'POST').endpoint.__module__ == 'app.v033_payment_flow_patch'
+    assert first_route('/customers/{customer_id}/payment-mail-draft-v03', 'GET').endpoint.__module__ == 'app.v033_payment_flow_patch'
+    assert first_route('/customers/{customer_id}/payment.txt', 'GET').endpoint.__module__ == 'app.v033_payment_flow_patch'
     assert first_route('/customers/{customer_id}/business-columns-v0212', 'POST').endpoint.__module__ == 'app.v0212_business_display_routes'
 
 
@@ -101,11 +101,14 @@ def test_ui_contracts():
     local_mail_routes = (ROOT / 'app/v03_mail_draft_routes.py').read_text(encoding='utf-8')
     v031_js = (ROOT / 'app/static/v031_payment_workflow.js').read_text(encoding='utf-8')
     v031_routes = (ROOT / 'app/v031_payment_workflow_routes.py').read_text(encoding='utf-8')
+    v033_patch = (ROOT / 'app/v033_payment_flow_patch.py').read_text(encoding='utf-8')
+    v033_js = (ROOT / 'app/static/v033_payment_flow_patch.js').read_text(encoding='utf-8')
 
-    assert 'v0.3.2' in base
+    assert 'v0.3.3' in base
     assert '/static/v03.js' in base and '/static/v03.css' in base
     assert '/static/v03_business_mail.js' in base and '/static/v03_business_mail.css' in base
     assert '/static/v031_payment_workflow.js' in base and '/static/v031_payment_workflow.css' in base
+    assert '/static/v033_payment_flow_patch.js' in base
     assert '/static/v0212.js' not in base
     assert '/static/business-editor-hotfix.js' not in base
 
@@ -135,6 +138,13 @@ def test_ui_contracts():
     assert "msg['X-Unsent'] = '1'" in local_mail_routes
     assert 'business_display' in local_mail_routes
 
+    assert 'customer_scoped' in v033_patch
+    assert 'payment_txt_current_workflow_v033' in v033_patch
+    assert 'payment_mail_compose_customer_scoped_v033' in v033_patch
+    assert '当前客户缴费模板未填写' in v033_patch
+    assert 'window.confirm = message =>' in v033_js
+    assert 'window.alert = message =>' in v033_js
+
     assert 'bindFastBusinessSort' in drag
     assert "bindPointerSort(paymentList, '.drag-handle'" not in drag
     assert 'payment_run_service_snapshots_v03' in routes
@@ -148,4 +158,4 @@ if __name__ == '__main__':
     test_v03_migration_is_safe_and_idempotent()
     test_schedule_regression()
     test_ui_contracts()
-    print('v0.3.2 contract checks passed (isolated test database)')
+    print('v0.3.3 contract checks passed (isolated test database)')
