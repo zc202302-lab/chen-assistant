@@ -10,11 +10,13 @@
   const variableRows = () => rows().filter(row => row.dataset.mode === 'variable');
   let wholeReset = false;
   let lastReviewState = reviewButton.getAttribute('aria-pressed');
+  let explicitWholeResetRequested = false;
+  let explicitResetTimer = 0;
 
   const paintRow = (row, confirmed) => {
-    // Fixed fee rows normally arrive from the server already confirmed. A fixed
-    // amount that was manually changed is deliberately returned as confirmed=0
-    // and must stay pending until the user confirms that row once.
+    // Row-level confirmation from the server is authoritative. Fixed amounts are
+    // normally confirmed automatically, but a manually changed fixed amount is
+    // allowed to remain pending until that single row is confirmed again.
     const next = confirmed ? '1' : '0';
     if (row.dataset.confirmed !== next) row.dataset.confirmed = next;
     row.classList.toggle('is-confirmed', !!confirmed);
@@ -46,8 +48,7 @@
   };
 
   const detectPersistedWholeReset = () => {
-    wholeReset = variableRows().some(row => row.dataset.confirmed === '0');
-    root.classList.toggle('v03-whole-review-reset', wholeReset);
+    wholeReset = root.classList.contains('v03-whole-review-reset');
   };
 
   const syncResetCounters = () => {
@@ -88,27 +89,54 @@
 
   normalizeFromData();
   detectPersistedWholeReset();
-  syncResetCounters();
+  if (wholeReset) syncResetCounters();
+
+  // Distinguish an explicit "撤回金额核对" click from an automatic workflow
+  // rollback caused by editing one amount. The latter must NEVER clear untouched
+  // rows. Listen on document capture because the current workflow owner stops the
+  // event at the flow element before legacy listeners can see it.
+  document.addEventListener('click', event => {
+    const btn = event.target.closest?.('[data-v031-flow-action="review"], [data-v03-flow-action="review"]');
+    if (btn !== reviewButton) return;
+    clearTimeout(explicitResetTimer);
+    explicitWholeResetRequested = (
+      reviewButton.getAttribute('aria-pressed') === 'true' &&
+      variableRows().some(row => row.dataset.confirmed === '1')
+    );
+    explicitResetTimer = setTimeout(() => {
+      explicitWholeResetRequested = false;
+    }, 2000);
+  }, true);
 
   new MutationObserver(() => {
     const current = reviewButton.getAttribute('aria-pressed');
     if (current === lastReviewState) return;
 
     if (lastReviewState === 'true' && current === 'false') {
-      wholeReset = variableRows().length > 0;
-      root.classList.toggle('v03-whole-review-reset', wholeReset);
-      rows().forEach(row => {
-        const confirmed = row.dataset.mode === 'fixed'
-          ? row.dataset.confirmed === '1'
-          : false;
-        paintRow(row, confirmed);
-      });
-      syncResetCounters();
+      if (explicitWholeResetRequested) {
+        // The server's explicit whole-review withdrawal resets variable rows only.
+        // Mirror that known response immediately; fixed rows keep their own state.
+        wholeReset = variableRows().length > 0;
+        root.classList.toggle('v03-whole-review-reset', wholeReset);
+        variableRows().forEach(row => paintRow(row, false));
+        if (wholeReset) syncResetCounters();
+      } else {
+        // Automatic rollback after an amount edit is row-preserving. The amount
+        // save/review endpoint has already painted the changed row, so only
+        // normalize current authoritative data attributes and leave all others alone.
+        wholeReset = false;
+        root.classList.remove('v03-whole-review-reset');
+        normalizeFromData();
+      }
+      explicitWholeResetRequested = false;
+      clearTimeout(explicitResetTimer);
       refreshServerCounters();
     } else if (lastReviewState === 'false' && current === 'true') {
-      rows().forEach(row => paintRow(row, true));
+      explicitWholeResetRequested = false;
+      clearTimeout(explicitResetTimer);
       wholeReset = false;
       root.classList.remove('v03-whole-review-reset');
+      normalizeFromData();
       refreshServerCounters();
     }
     lastReviewState = current;
