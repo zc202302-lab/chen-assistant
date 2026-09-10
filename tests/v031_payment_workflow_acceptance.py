@@ -85,19 +85,6 @@ def assert_no_dialog_while(page, action, wait_ms=450):
     assert not seen, f'此操作必须无弹窗，实际出现: {seen}'
 
 
-def accept_one_dialog(page, action):
-    seen = []
-
-    def accept(dialog):
-        seen.append(dialog.message)
-        dialog.accept()
-
-    page.once('dialog', accept)
-    action()
-    page.wait_for_timeout(200)
-    assert seen, '完成缴费仍应保留一次明确确认'
-
-
 def main():
     cid, ids, token = seed()
     assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
@@ -114,7 +101,7 @@ def main():
 
         with sync_playwright() as p:
             browser = p.chromium.launch()
-            context = browser.new_context(viewport={'width': 1500, 'height': 1000})
+            context = browser.new_context(viewport={'width': 1500, 'height': 1000}, accept_downloads=True)
             context.grant_permissions(['clipboard-read', 'clipboard-write'], origin='http://127.0.0.1:8136')
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
             page = context.new_page()
@@ -149,6 +136,7 @@ def main():
             fixed_state = fixed_row.locator('[data-row-state]')
             variable_input = variable_row.locator('.quick-amount')
             fixed_input = fixed_row.locator('.quick-amount')
+            txt_button = page.locator('#paymentTxtButton')
 
             # Fixed row auto-confirms, variable row starts pending.
             assert fixed_row.get_attribute('data-confirmed') == '1'
@@ -161,6 +149,19 @@ def main():
             expect(page.locator('#pendingCount')).to_have_text('0', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             expect(notify).to_be_enabled(timeout=3000)
+
+            # The visible TXT action must create a real browser download, not merely
+            # navigate to/render text. Verify the downloaded file name and payload.
+            with page.expect_download(timeout=3000) as download_info:
+                assert_no_dialog_while(page, lambda: txt_button.click(), 120)
+            download = download_info.value
+            assert download.suggested_filename.lower().endswith('.txt'), download.suggested_filename
+            downloaded_path = download.path()
+            assert downloaded_path is not None
+            assert Path(downloaded_path).read_text(encoding='utf-8').splitlines() == [
+                '13800000001|100',
+                '13800000002|120',
+            ]
 
             # A changed amount invalidates only that row; the untouched row keeps
             # its confirmation and the workflow silently falls back to stage 1.
@@ -198,8 +199,8 @@ def main():
             expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
 
-            # Reconfirm and run through the flow once more, still with no notify/
-            # initiate popups, then use the retained final-payment confirmation.
+            # Reconfirm and run through all four stages once more. Every stage is
+            # non-blocking: there must be no confirm/alert dialog, including paid.
             variable_state.click()
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             assert_no_dialog_while(page, lambda: notify.click())
@@ -208,7 +209,7 @@ def main():
             assert_no_dialog_while(page, lambda: initiate.click(), 700)
             assert_no_dialog_while(page, lambda: initiate.click())
             expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=3000)
-            accept_one_dialog(page, lambda: paid.click())
+            assert_no_dialog_while(page, lambda: paid.click())
             expect(paid).to_have_attribute('aria-pressed', 'true', timeout=3000)
 
             with db() as conn:
@@ -235,7 +236,7 @@ def main():
 
             browser.close()
 
-        print('v0.3.3 automatic review + nonblocking workflow browser acceptance passed')
+        print('v0.3.3 real TXT download + fully nonblocking four-stage browser acceptance passed')
     finally:
         proc.terminate()
         try:
