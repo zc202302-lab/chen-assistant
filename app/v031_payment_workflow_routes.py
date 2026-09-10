@@ -5,6 +5,7 @@ import base64
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import JSONResponse
 
+from . import config
 from .db import db, now_iso
 from .payment_v02 import (
     current_period,
@@ -237,7 +238,7 @@ def _response_state(customer_id: int, extra: dict | None = None):
 
 @router.get('/health')
 def health_v031():
-    return {'ok': True, 'version': '0.3.2'}
+    return {'ok': True, 'version': config.APP_VERSION}
 
 
 @router.get('/customers/{customer_id}/payment-workflow-v031')
