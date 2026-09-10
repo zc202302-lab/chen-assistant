@@ -6,9 +6,10 @@ SERVICE="chen-assistant"
 APP_HTTP="http://172.19.0.1:8010"
 HEALTH_URL="$APP_HTTP/health"
 BACKUP_DIR="$APP_DIR/backups"
+EXPECTED_VERSION="0.3.3"
 
 cd "$APP_DIR"
-echo "===== 晨的助手 v0.3.2 一键更新 ====="
+echo "===== 晨的助手 v${EXPECTED_VERSION} 一键更新 ====="
 
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   echo "✗ 检测到服务器上的受 Git 管理文件有本地修改，已停止更新。"
@@ -46,20 +47,22 @@ git fetch origin main
 git merge --ff-only origin/main
 .venv/bin/pip install -q -r requirements.txt
 
-echo "===== 更新前代码检查 ====="
+echo "===== 更新后代码检查 ====="
 .venv/bin/python -m compileall -q app
 if command -v node >/dev/null 2>&1; then
-  for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js v031_windows_bootstrap.js; do
+  for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js v031_windows_bootstrap.js v033_payment_flow_patch.js; do
     node --check "app/static/$ASSET"
   done
 fi
 
-.venv/bin/python - <<'PY'
+.venv/bin/python - "$EXPECTED_VERSION" <<'PY'
 from jinja2 import Environment, FileSystemLoader
+import sys
 from app import config
 from app.main import app
-from app.v032_customer_import_routes import _build_template
+from app.v032_customer_exchange_routes import _build_blank_template
 
+expected = sys.argv[1]
 env=Environment(loader=FileSystemLoader(str(config.ROOT/'app'/'templates')))
 runtime_templates=('base.html','dashboard_v027.html','customer_workspace_v0211.html','account_detail.html','account_form.html','accounts.html','customer_form.html','login.html','search.html')
 for name in runtime_templates:
@@ -70,7 +73,7 @@ for name in runtime_templates:
     text=p.read_text(encoding='utf-8')
     assert 'type="date"' not in text and "type='date'" not in text, f'{name} 仍包含日期选择器'
 
-assert app.version=='0.3.2',f'预期 v0.3.2，实际 v{app.version}'
+assert app.version==expected,f'预期 v{expected}，实际 v{app.version}'
 for path in ('/','/customers/{customer_id}','/health'):
     matches=[r for r in app.router.routes if getattr(r,'path','')==path]
     assert len(matches)==1,f'{path} 路由数量异常：{len(matches)}'
@@ -82,19 +85,26 @@ assert getattr(health_route.endpoint,'__module__','')=='app.v031_payment_workflo
 owned={
     ('/customers/new','GET'):'app.v032_customer_import_routes',
     ('/customers/new','POST'):'app.v032_customer_import_routes',
-    ('/customers/import-template-v032.xlsx','GET'):'app.v032_customer_import_routes',
-    ('/customers/import-v032/preview','POST'):'app.v032_customer_import_routes',
-    ('/customers/import-v032/confirm','POST'):'app.v032_customer_import_routes',
+    ('/customers/import-template-v032-one-sheet.xlsx','GET'):'app.v032_customer_exchange_routes',
+    ('/customers/export-v032.xlsx','GET'):'app.v032_customer_exchange_routes',
+    ('/customers/import-v032-one-sheet/preview','POST'):'app.v032_customer_exchange_routes',
+    ('/customers/import-v032-one-sheet/confirm','POST'):'app.v032_customer_exchange_routes',
     ('/customers/{customer_id}/payment-workflow-v031','GET'):'app.v031_payment_workflow_routes',
     ('/customers/{customer_id}/payment-workflow-v031','POST'):'app.v031_payment_workflow_routes',
-    ('/customers/{customer_id}/payment-mail-compose-v031','GET'):'app.v031_payment_workflow_routes',
-    ('/services/{service_id}/payment-current','POST'):'app.v031_payment_workflow_routes',
+    ('/customers/{customer_id}/payment-mail-compose-v031','GET'):'app.v033_payment_flow_patch',
+    ('/services/{service_id}/payment-current','POST'):'app.v031_fixed_review_patch',
+    ('/services/{service_id}/payment-review-toggle','POST'):'app.v031_fixed_review_patch',
     ('/customers/{customer_id}/payment-run','POST'):'app.v03_payment_routes',
     ('/customers/{customer_id}/payment-run-v03','GET'):'app.v03_routes',
     ('/customers/{customer_id}/workflow-state-v03','GET'):'app.v031_runtime_routes',
-    ('/customers/{customer_id}/mail-template-v03','GET'):'app.v03_mail_draft_routes',
-    ('/customers/{customer_id}/mail-template-v03','POST'):'app.v03_mail_draft_routes',
-    ('/customers/{customer_id}/payment.txt','GET'):'app.v0212_routes',
+    ('/customers/{customer_id}/payment-email-v03','POST'):'app.v03_routes',
+    ('/customers/{customer_id}/mail-template-v03','GET'):'app.v033_payment_flow_patch',
+    ('/customers/{customer_id}/mail-template-v03','POST'):'app.v033_payment_flow_patch',
+    ('/customers/{customer_id}/payment-mail-compose-v03','GET'):'app.v03_mail_draft_routes',
+    ('/customers/{customer_id}/payment-mail-draft-v03','GET'):'app.v033_payment_flow_patch',
+    ('/services/{service_id}/status-v03','POST'):'app.v03_mail_draft_routes',
+    ('/services/{service_id}/payment-status-v03','POST'):'app.v03_mail_draft_routes',
+    ('/customers/{customer_id}/payment.txt','GET'):'app.v033_payment_flow_patch',
     ('/services/{service_id}/defer-v0212','POST'):'app.v0212_routes',
     ('/services/{service_id}/delete-v0212','POST'):'app.v0212_routes',
     ('/customers/{customer_id}/business-columns-v0212','POST'):'app.v0212_business_display_routes',
@@ -104,8 +114,17 @@ for (path,method),module in owned.items():
     assert matches,f'缺少核心路由：{path} {method}'
     assert getattr(matches[0].endpoint,'__module__','')==module,f'{path} 未由预期路由接管：{matches[0].endpoint.__module__}'
 
-template_bytes=_build_template()
-assert template_bytes[:2]==b'PK' and len(template_bytes)>5000,'v0.3.2 Excel模板生成异常'
+template_bytes=_build_blank_template()
+assert template_bytes[:2]==b'PK' and len(template_bytes)>5000,'v0.3.2 Excel交换模板生成异常'
+
+customer_form=(config.ROOT/'app'/'templates'/'customer_form.html').read_text(encoding='utf-8')
+for url in (
+    '/customers/import-template-v032-one-sheet.xlsx',
+    '/customers/export-v032.xlsx',
+    '/customers/import-v032-one-sheet/preview',
+    '/customers/import-v032-one-sheet/confirm',
+):
+    assert url in customer_form,f'客户导入导出页面缺少：{url}'
 
 base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
 current_assets=(
@@ -115,26 +134,26 @@ current_assets=(
     '/static/v03_foxmail_action_fix.js','/static/v03_insert_order.js','/static/v03_review_reset.js',
     '/static/v031_payment_workflow.js','/static/v031_amount_rollback_fix.js',
     '/static/v031_workflow_actions.js','/static/v031_workflow_runtime_fix.js','/static/v031_workflow_dom_guard.js',
-    '/static/v031_windows_bootstrap.js',
+    '/static/v031_windows_bootstrap.js','/static/v033_payment_flow_patch.js',
     '/static/app.css','/static/v028.css','/static/layout-refinement.css','/static/v0212.css',
     '/static/workspace-refinement-v0212.css','/static/v03.css','/static/v03_business_mail.css',
     '/static/v03_payment_template.css','/static/v031_payment_workflow.css','/static/v032_customer_import.css',
 )
 for current in current_assets:
     assert base.count(current)==1,f'{current} 必须且只能加载一次'
-for retired in ('/static/v0212.js','/static/business-editor-hotfix.js','/static/current.js','/static/v025.js','/static/v026.js','/static/v027.js'):
+for retired in ('/static/v0212.js','/static/business-editor-hotfix.js'):
     assert retired not in base,f'检测到已退役前端资源仍在运行：{retired}'
 for asset in (
     'app.js','v028.js','ui-drag.js','service-promotions.js','business-sync.js','v0211.js',
     'workspace-refinement-v0212.js','v03.js','v03_runtime_fix.js','v03_business_mail.js','v03_payment_template.js',
     'v03_foxmail_action_fix.js','v03_insert_order.js','v03_review_reset.js','v031_payment_workflow.js',
     'v031_amount_rollback_fix.js','v031_workflow_actions.js','v031_workflow_runtime_fix.js','v031_workflow_dom_guard.js',
-    'v031_windows_bootstrap.js',
+    'v031_windows_bootstrap.js','v033_payment_flow_patch.js',
     'app.css','v028.css','layout-refinement.css','v0212.css','workspace-refinement-v0212.css','v03.css','v03_business_mail.css',
     'v03_payment_template.css','v031_payment_workflow.css','v032_customer_import.css','chen_foxmail_helper.ps1','chen_foxmail_bootstrap.ps1',
 ):
     assert (config.ROOT/'app'/'static'/asset).is_file(),f'缺少 {asset}'
-print(f"✓ Python / 路由 / 模板 / v0.3.2 前端资源检查通过：v{app.version}")
+print(f"✓ Python / 路由 / 模板 / v0.3.3 前端资源检查通过：v{app.version}")
 PY
 
 echo "===== 数据库结构与现有缴费安全迁移 ====="
@@ -143,15 +162,17 @@ from app.db import init_db, db
 from app.v03_routes import _ensure_v03
 from app.v03_mail_draft_routes import _ensure_mail_templates
 from app.v031_payment_workflow_routes import ensure_v031
+from app.v033_payment_flow_patch import _ensure_customer_payment_template
 init_db()
 with db() as conn:
     _ensure_v03(conn)
     _ensure_mail_templates(conn)
     ensure_v031(conn)
+    _ensure_customer_payment_template(conn)
     repaired = conn.execute(
         "UPDATE payment_entries SET confirmed=1,source='fixed' WHERE source='fixed_review_reset'"
     ).rowcount
-print(f'✓ 数据库结构检查/迁移完成；固定金额自动确认修复 {repaired} 条')
+print(f'✓ 数据库结构检查/迁移完成；固定金额自动确认修复 {repaired} 条；客户独立缴费模板结构已确认')
 PY
 
 if [[ -d data ]]; then
@@ -196,17 +217,17 @@ systemctl restart "$SERVICE"
 sleep 3
 HEALTH_JSON="$(curl -fsS "$HEALTH_URL")"
 echo "$HEALTH_JSON"
-.venv/bin/python - "$HEALTH_JSON" <<'PY'
+.venv/bin/python - "$HEALTH_JSON" "$EXPECTED_VERSION" <<'PY'
 import json,sys
-p=json.loads(sys.argv[1])
+p=json.loads(sys.argv[1]); expected=sys.argv[2]
 if p.get('ok') is not True: raise SystemExit('健康检查返回 ok=false')
-if p.get('version')!='0.3.2': raise SystemExit(f"版本不匹配：{p.get('version')}")
+if p.get('version')!=expected: raise SystemExit(f"版本不匹配：预期 {expected}，实际 {p.get('version')}")
 print(f"✓ 服务版本：{p.get('version')}")
 PY
 
 echo "===== 已运行静态文件一致性检查 ====="
 REV="$(git rev-parse --short HEAD)"
-for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js v031_windows_bootstrap.js app.css v028.css layout-refinement.css v0212.css workspace-refinement-v0212.css v03.css v03_business_mail.css v03_payment_template.css v031_payment_workflow.css v032_customer_import.css chen_foxmail_helper.ps1 chen_foxmail_bootstrap.ps1; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js v031_windows_bootstrap.js v033_payment_flow_patch.js app.css v028.css layout-refinement.css v0212.css workspace-refinement-v0212.css v03.css v03_business_mail.css v03_payment_template.css v031_payment_workflow.css v032_customer_import.css chen_foxmail_helper.ps1 chen_foxmail_bootstrap.ps1; do
   LOCAL_FILE="app/static/$ASSET"; TMP_FILE="$(mktemp)"
   curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP_FILE"
   LOCAL_SHA="$(sha256sum "$LOCAL_FILE"|awk '{print $1}')"; SERVED_SHA="$(sha256sum "$TMP_FILE"|awk '{print $1}')"; rm -f "$TMP_FILE"
@@ -216,7 +237,7 @@ for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0
   echo "✓ $ASSET：正式服务与 Git 工作区一致"
 done
 
-for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js v031_windows_bootstrap.js chen_foxmail_helper.ps1 chen_foxmail_bootstrap.ps1; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js v031_windows_bootstrap.js v033_payment_flow_patch.js chen_foxmail_helper.ps1 chen_foxmail_bootstrap.ps1; do
   CACHE_HEADER="$(curl -fsSI "$APP_HTTP/static/$ASSET?deploy=$REV" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^Cache-Control:/{sub(/^[^:]*:[ ]*/,""); print; exit}')"
   case "$CACHE_HEADER" in
     *no-store*) echo "✓ $ASSET 禁止浏览器缓存旧控制代码" ;;
@@ -224,8 +245,9 @@ for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0
   esac
 done
 
-echo "✓ v0.3.2 服务健康检查通过"
-echo "✓ 客户批量导入模板已在部署前完成生成检查"
+echo "✓ v${EXPECTED_VERSION} 服务健康检查通过"
+echo "✓ v0.3.2 Excel 客户交换模板已在部署前完成生成检查"
+echo "✓ v0.3.3 缴费流程、客户独立邮件模板、TXT 下载前端资源已纳入部署检查"
 echo "✓ Windows 助手自动更新启动器继续纳入部署一致性检查"
 echo "更新后代码：$REV"
-echo "===== v0.3.2 更新完成 ====="
+echo "===== v${EXPECTED_VERSION} 更新完成 ====="
