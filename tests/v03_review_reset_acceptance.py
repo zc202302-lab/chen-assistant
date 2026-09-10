@@ -111,14 +111,13 @@ def main():
                 assert row.locator('[data-row-state]').is_disabled()
             assert page.locator('#pendingCount').inner_text().strip() == '0'
 
+            # All-fixed due rows are automatically reviewed. There is no variable
+            # row to reset, so clicking stage 1 is intentionally a no-op.
+            wait_review_state(page, True)
+            assert review.get_attribute('aria-pressed') == 'true'
             review.click()
             wait_review_state(page, True)
             assert review.get_attribute('aria-pressed') == 'true'
-
-            # Undoing stage 1 must NOT undo fixed amount confirmations.
-            review.click()
-            wait_review_state(page, False)
-            assert review.get_attribute('aria-pressed') == 'false'
             for i in range(2):
                 row = rows.nth(i)
                 assert row.get_attribute('data-confirmed') == '1'
@@ -137,7 +136,7 @@ def main():
                 assert all(int(row['confirmed']) == 1 for row in entries)
                 assert all(row['source'] != 'fixed_review_reset' for row in entries)
 
-            # Automatic confirmation survives reload and stage 1 remains immediately available.
+            # Automatic confirmation survives reload and stage 1 stays completed.
             page.reload(wait_until='networkidle')
             page.wait_for_timeout(1100)
             rows = page.locator('[data-payment-row]')
@@ -146,6 +145,8 @@ def main():
                 assert rows.nth(i).locator('[data-row-state]').inner_text().strip() == '✓'
             review = page.locator('[data-v031-flow-action="review"]')
             assert review.is_enabled()
+            wait_review_state(page, True)
+            assert review.get_attribute('aria-pressed') == 'true'
 
             review.click()
             wait_review_state(page, True)
@@ -154,7 +155,7 @@ def main():
                 assert rows.nth(i).get_attribute('data-confirmed') == '1'
 
             browser.close()
-        print('v0.3.1 fixed amount auto-confirm acceptance passed (isolated test database)')
+        print('v0.3.2 fixed amount auto-confirm acceptance passed (isolated test database)')
     finally:
         proc.terminate()
         try:
