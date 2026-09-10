@@ -16,7 +16,7 @@ def first_route(path, method=None):
 
 
 def main():
-    assert app.version == '0.3.1'
+    assert app.version == '0.3.2'
     assert first_route('/customers/{customer_id}/workflow-state-v03', 'GET').endpoint.__module__ == 'app.v031_runtime_routes'
     assert first_route('/services/{service_id}/payment-status-v03', 'POST').endpoint.__module__ == 'app.v03_mail_draft_routes'
     assert first_route('/customers/{customer_id}/payment-workflow-v031', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
@@ -38,7 +38,7 @@ def main():
     assert "deferred_until_period=''" in routes
     assert "mode != 'normal'" in routes
     assert "business_display._ordered_keys(conn, template, customer_id)" in scoped_routes
-    print('v0.3.1 runtime fix contract passed')
+    print('v0.3.2 runtime fix contract passed')
 
 
 if __name__ == '__main__':
