@@ -49,6 +49,7 @@ jobs:
           from jinja2 import Environment, FileSystemLoader
           from app import config
           from app.main import app
+          from app.v032_customer_exchange_routes import _build_blank_template
           assert app.version == '0.3.2'
           for path in ('/', '/customers/{customer_id}', '/health'):
               matches=[r for r in app.router.routes if getattr(r,'path','')==path]
@@ -60,9 +61,10 @@ jobs:
           owned={
               ('/customers/new','GET'):'app.v032_customer_import_routes',
               ('/customers/new','POST'):'app.v032_customer_import_routes',
-              ('/customers/import-template-v032.xlsx','GET'):'app.v032_customer_import_routes',
-              ('/customers/import-v032/preview','POST'):'app.v032_customer_import_routes',
-              ('/customers/import-v032/confirm','POST'):'app.v032_customer_import_routes',
+              ('/customers/import-template-v032-one-sheet.xlsx','GET'):'app.v032_customer_exchange_routes',
+              ('/customers/export-v032.xlsx','GET'):'app.v032_customer_exchange_routes',
+              ('/customers/import-v032-one-sheet/preview','POST'):'app.v032_customer_exchange_routes',
+              ('/customers/import-v032-one-sheet/confirm','POST'):'app.v032_customer_exchange_routes',
               ('/customers/{customer_id}/payment-workflow-v031','GET'):'app.v031_payment_workflow_routes',
               ('/customers/{customer_id}/payment-workflow-v031','POST'):'app.v031_payment_workflow_routes',
               ('/customers/{customer_id}/payment-mail-compose-v031','GET'):'app.v031_payment_workflow_routes',
@@ -85,6 +87,8 @@ jobs:
               matches=[r for r in app.router.routes if getattr(r,'path','')==path and method in getattr(r,'methods',set())]
               assert matches,(path,method)
               assert matches[0].endpoint.__module__==module,(path,matches[0].endpoint.__module__)
+          data=_build_blank_template()
+          assert data[:2]==b'PK' and len(data)>5000
           env=Environment(loader=FileSystemLoader(str(config.ROOT/'app'/'templates')))
           runtime_templates=('base.html','dashboard_v027.html','customer_workspace_v0211.html','account_detail.html','account_form.html','accounts.html','customer_form.html','login.html','search.html')
           for name in runtime_templates:
@@ -93,6 +97,11 @@ jobs:
               env.get_template(name)
               text=p.read_text(encoding='utf-8')
               assert 'type="date"' not in text and "type='date'" not in text,name
+          customer_form=(config.ROOT/'app'/'templates'/'customer_form.html').read_text(encoding='utf-8')
+          assert '/customers/import-template-v032-one-sheet.xlsx' in customer_form
+          assert '/customers/export-v032.xlsx' in customer_form
+          assert '/customers/import-v032-one-sheet/preview' in customer_form
+          assert '/customers/import-v032-one-sheet/confirm' in customer_form
           base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
           current_assets=(
               '/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js',
@@ -112,7 +121,7 @@ jobs:
               assert retired not in base,retired
           for downloadable in ('chen_foxmail_helper.ps1','chen_foxmail_bootstrap.ps1'):
               assert (config.ROOT/'app'/'static'/downloadable).is_file(),downloadable
-          print('static validation passed: v0.3.2 customer import + v0.3.1 payment workflow')
+          print('static validation passed: v0.3.2 one-sheet customer exchange + v0.3.1 payment workflow')
           PY
       - name: v0.3.2 contracts
         run: |
@@ -124,6 +133,7 @@ jobs:
           python tests/v031_payment_workflow_contract.py
           python tests/v031_windows_bootstrap_contract.py
           python tests/v032_customer_import_contract.py
+          python tests/v032_customer_exchange_contract.py
       - name: Production experience regression
         run: python tests/production_experience_regression.py
       - name: Promotion render regression
