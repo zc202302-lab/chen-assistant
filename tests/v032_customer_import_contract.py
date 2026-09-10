@@ -65,6 +65,8 @@ def test_routes_and_version():
     new_get = first_route('/customers/new', 'GET')
     assert new_get.endpoint.__module__ == 'app.v032_customer_import_routes'
     assert first_route('/customers/new', 'POST').endpoint.__module__ == 'app.v032_customer_import_routes'
+    # The original multi-table routes remain registered only as a compatibility
+    # layer. The visible v0.3.2 UI now uses the one-customer-per-sheet exchange.
     assert first_route('/customers/import-template-v032.xlsx', 'GET').endpoint.__module__ == 'app.v032_customer_import_routes'
     assert first_route('/customers/import-v032/preview', 'POST').endpoint.__module__ == 'app.v032_customer_import_routes'
     assert first_route('/customers/import-v032/confirm', 'POST').endpoint.__module__ == 'app.v032_customer_import_routes'
@@ -164,12 +166,14 @@ def test_ui_contract():
     template = (ROOT / 'app/templates/customer_form.html').read_text(encoding='utf-8')
     css = (ROOT / 'app/static/v032_customer_import.css').read_text(encoding='utf-8')
     base = (ROOT / 'app/templates/base.html').read_text(encoding='utf-8')
-    assert '单个新建' in template and 'Excel批量导入' in template
-    assert '下载 Excel 模板' in template
-    assert '上传并检查' in template and '确认导入全部数据' in template
-    assert '/customers/import-template-v032.xlsx' in template
-    assert '/customers/import-v032/preview' in template
-    assert '/customers/import-v032/confirm' in template
+    assert '单个新建' in template and 'Excel批量导入/导出' in template
+    assert '下载最新 Excel 模板' in template
+    assert '上传并检查' in template and '确认导入全部客户' in template
+    assert '导出全部客户 Excel' in template
+    assert '/customers/import-template-v032-one-sheet.xlsx' in template
+    assert '/customers/import-v032-one-sheet/preview' in template
+    assert '/customers/import-v032-one-sheet/confirm' in template
+    assert '/customers/export-v032.xlsx' in template
     assert 'v032-preview-metrics' in css
     assert '/static/v032_customer_import.css' in base
     assert 'v0.3.2' in base
@@ -181,4 +185,4 @@ if __name__ == '__main__':
     test_validation_commit_and_fixed_confirmation()
     test_confirm_is_atomic_when_duplicate_appears()
     test_ui_contract()
-    print('v0.3.2 customer creation/import contract passed (isolated database)')
+    print('v0.3.2 customer creation/import compatibility contract passed (isolated database)')
