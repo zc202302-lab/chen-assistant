@@ -52,8 +52,9 @@ def main():
         'prepareNotify', 'prepareInitiate', 'event.stopImmediatePropagation()',
         '确认缴费图片已经通过微信发送给客户', '确认缴费邮件已经在Foxmail中发送给同事',
         "root.querySelectorAll('[data-v031-payment-image],[data-v03-foxmail-draft]')",
-        '固定缴费金额自动确认', 'v031-auto-confirmed',
+        '金额刚刚修改，请重新确认这一条', 'row?.dataset.confirmed',
         'window.ChenPaymentWorkflowRuntimeV031', "refresh: () => loadState({quiet: true})",
+        "event.target.closest?.('[data-review-toggle]')",
     ):
         assert token in runtime_owner, token
 
@@ -62,7 +63,6 @@ def main():
         'payment-workflow-v031', 'syncAfterSavedAmount',
         "workbench.addEventListener('focusin'", "workbench.addEventListener('keyup'",
         "e.key !== 'Enter'", 'v031OriginalAmount', 'attempt < 6',
-        '原客户通知已失效', '重新发起缴费',
         'ChenPaymentWorkflowRuntimeV031', 'refreshWorkflowOwner',
     ):
         assert token in rollback, token
@@ -70,18 +70,23 @@ def main():
     assert 'MutationObserver' not in rollback
     assert 'btn.textContent' not in rollback, '金额回退辅助脚本不得直接改四步按钮'
 
-    fixed_patch = (ROOT / 'app' / 'v031_fixed_review_patch.py').read_text(encoding='utf-8')
+    patch = (ROOT / 'app' / 'v031_fixed_review_patch.py').read_text(encoding='utf-8')
     for token in (
-        "item['rule']['mode'] == 'fixed'", "item['rule']['mode'] != 'variable'",
-        "confirmed=1", "source='fixed_review_reset'", 'fixed_auto_confirmed',
+        'MANUAL_CHANGED_SOURCE', "confirmed = 0", "source = MANUAL_CHANGED_SOURCE",
+        '_review_snapshot', '_auto_review_run', '_rollback_completed_payment',
+        'payment_save_preserve_reviews_v032', 'payment_review_toggle_preserve_reviews_v032',
+        'core.payment_snapshot_v0212 = _review_snapshot',
+        'workflow._run_v031 = _auto_review_run',
         'workflow._paint_review_reset = _fixed_amount_review',
+        "reviewed_at='',notified_at='',initiated_at='',paid_at=''",
     ):
-        assert token in fixed_patch, token
+        assert token in patch, token
 
     guard = (ROOT / 'app' / 'static' / 'v031_workflow_dom_guard.js').read_text(encoding='utf-8')
     for token in (
-        'data-v031-flow-action="paid"', 'input.readOnly !== paid',
-        '固定缴费金额自动确认', 'v031-fixed-auto-confirmed',
+        'data-v031-flow-action="paid"', "document.addEventListener('beforeinput'",
+        'event.stopPropagation()', 'if (input.readOnly) input.readOnly = false',
+        '金额刚刚修改，请重新确认这一条', 'v031-fixed-auto-confirmed',
         "attributeFilter: ['readonly', 'disabled', 'data-confirmed']",
     ):
         assert token in guard, token
@@ -89,21 +94,24 @@ def main():
     routes = (ROOT / 'app' / 'v031_payment_workflow_routes.py').read_text(encoding='utf-8')
     for token in (
         'initiated_at', "action == 'initiate'", "action == 'invalidate'",
-        "@router.post('/services/{service_id}/payment-current')",
-        'workflow_invalidated', '_invalidate_after_amount_change',
-        '请先完成“发起缴费”', 'payment-mail-compose-v031', "'version': '0.3.2'",
+        '_invalidate_after_amount_change', '请先完成“发起缴费”',
+        'payment-mail-compose-v031', "'version': '0.3.2'",
     ):
         assert token in routes, token
 
     from app.main import app  # noqa: E402
     assert app.version == '0.3.2'
-    matches = [
-        r for r in app.router.routes
-        if getattr(r, 'path', '') == '/services/{service_id}/payment-current'
-        and 'POST' in getattr(r, 'methods', set())
-    ]
-    assert matches
-    assert matches[0].endpoint.__module__ == 'app.v031_payment_workflow_routes'
+    for path, endpoint in (
+        ('/services/{service_id}/payment-current', 'payment_save_preserve_reviews_v032'),
+        ('/services/{service_id}/payment-review-toggle', 'payment_review_toggle_preserve_reviews_v032'),
+    ):
+        matches = [
+            r for r in app.router.routes
+            if getattr(r, 'path', '') == path and 'POST' in getattr(r, 'methods', set())
+        ]
+        assert matches, path
+        assert matches[0].endpoint.__module__ == 'app.v031_fixed_review_patch'
+        assert matches[0].endpoint.__name__ == endpoint
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert 'v0.3.2' in base
@@ -119,7 +127,7 @@ def main():
     for token in ('.awaiting-confirm', '.current', '.done', '.v031-fixed-auto-confirmed'):
         assert token in css, token
 
-    print('v0.3.2 integrated payment workflow contract passed')
+    print('v0.3.2 automatic review + row-preserving rollback contract passed')
 
 
 if __name__ == '__main__':
