@@ -90,17 +90,19 @@ def main():
             page = context.new_page()
             page.goto(f'http://127.0.0.1:8131/customers/{cid}', wait_until='networkidle')
 
-            # v0.3.1 four-stage workflow must be complete and readable.
+            # v0.3.2 auto-completes stage 1 when every due row is already confirmed.
+            # This fixture has only fixed-fee due rows, so the workflow starts reviewed.
             flow = page.locator('[data-v031-payment-flow]')
             flow.wait_for(state='visible')
             labels = [x.strip() for x in flow.locator('[data-v031-flow-action]').all_inner_texts()]
-            assert labels == ['1 金额核对', '2 通知客户', '3 发起缴费', '4 完成缴费'], labels
+            assert labels == ['✓ 1 金额核对', '2 通知客户', '3 发起缴费', '4 完成缴费'], labels
 
             review = flow.locator('[data-v031-flow-action="review"]')
+            expect(review).to_have_attribute('aria-pressed', 'true', timeout=5000)
+            # All-fixed customers have no variable row to reset, so withdrawing
+            # stage 1 is intentionally a no-op and the automatic review stays complete.
             review.click()
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=5000)
-            review.click()
-            expect(review).to_have_attribute('aria-pressed', 'false', timeout=5000)
 
             # Business editor still exposes an editable payment-state select for a deferred service.
             page.locator('[data-customer-tab="services"]').click()
@@ -136,7 +138,7 @@ def main():
             assert page.locator(f'[data-payment-row][data-service-id="{deferred_sid}"]').count() == 1
 
             browser.close()
-        print('v0.3.1 runtime fix browser acceptance passed (isolated test database)')
+        print('v0.3.2 runtime fix browser acceptance passed (isolated test database)')
     finally:
         proc.terminate()
         try:
