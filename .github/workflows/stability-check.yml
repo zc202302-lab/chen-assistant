@@ -1,0 +1,23 @@
+name: stability gate
+
+on:
+  push:
+    branches: [main, v0.3-dev]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  stability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Compile application
+        run: python -m compileall -q app tests/stability_contract.py
+      - name: Version, health and SQLite stability contract
+        run: python tests/stability_contract.py
