@@ -28,6 +28,7 @@ from .v03_mail_draft_routes import router as v03_mail_draft_router
 from .v031_payment_workflow_routes import router as v031_payment_workflow_router
 from .v032_customer_import_routes import router as v032_customer_import_router
 from .v032_customer_exchange_routes import router as v032_customer_exchange_router
+from .v031_fixed_review_patch import router as v031_review_sync_router
 from . import v031_fixed_review_patch as _v031_fixed_review_patch  # noqa: F401
 
 _legacy_routes = list(app.router.routes)
@@ -62,20 +63,21 @@ _v03_payment_routes = _include(v03_payment_router)
 _v031_runtime_routes = _include(v031_runtime_router)
 _v03_mail_draft_routes = _include(v03_mail_draft_router)
 _v031_payment_workflow_routes = _include(v031_payment_workflow_router)
+_v031_review_sync_routes = _include(v031_review_sync_router)
 _v032_customer_import_routes = _include(v032_customer_import_router)
 _v032_customer_exchange_routes = _include(v032_customer_exchange_router)
 
 # v0.3.2 owns customer creation/import/export. v0.3.1 continues to own the mature
 # four-stage payment workflow while the stable v0.2.12 customer workspace
-# remains the renderer.
+# remains the renderer. The v0.3.2 review-sync routes sit before the old amount
+# endpoints so row-level confirmation state stays authoritative.
 _ordered = (
-    _v032_customer_exchange_routes + _v032_customer_import_routes + _v031_payment_workflow_routes +
-    _v03_mail_draft_routes + _v031_runtime_routes + _v03_payment_routes + _v03_routes +
-    _v0212_business_display_routes + _v0212_payment_routes + _v0212_routes +
-    _v0211_promotion_routes + _v0211_routes + _v029_routes + _v028_routes +
-    _v027_home_routes + _v027_routes +
-    _v026_home_routes + _v026_routes +
-    _v025_home_routes + _v025_routes +
+    _v032_customer_exchange_routes + _v032_customer_import_routes + _v031_review_sync_routes +
+    _v031_payment_workflow_routes + _v03_mail_draft_routes + _v031_runtime_routes +
+    _v03_payment_routes + _v03_routes + _v0212_business_display_routes +
+    _v0212_payment_routes + _v0212_routes + _v0211_promotion_routes + _v0211_routes +
+    _v029_routes + _v028_routes + _v027_home_routes + _v027_routes +
+    _v026_home_routes + _v026_routes + _v025_home_routes + _v025_routes +
     _v024_routes + _v023_routes + _v022_routes + _v021_routes + _v02_routes +
     _legacy_routes
 )
@@ -132,7 +134,23 @@ def _assert_customer_new_route_guard():
         raise RuntimeError('v0.3.2 路由自检失败：客户详情路由没有被限制为数字 customer_id')
 
 
+def _assert_payment_review_route_guard():
+    """Keep the row-preserving v0.3.2 amount/review endpoints ahead of legacy routes."""
+    expected = {
+        '/services/{service_id}/payment-current': 'payment_save_preserve_reviews_v032',
+        '/services/{service_id}/payment-review-toggle': 'payment_review_toggle_preserve_reviews_v032',
+    }
+    for path, endpoint_name in expected.items():
+        matches = [
+            route for route in app.router.routes
+            if getattr(route, 'path', '') == path and 'POST' in getattr(route, 'methods', set())
+        ]
+        if not matches or getattr(getattr(matches[0], 'endpoint', None), '__name__', '') != endpoint_name:
+            raise RuntimeError(f'v0.3.2 缴费路由自检失败：{path} 未由行级核对逻辑接管')
+
+
 _assert_customer_new_route_guard()
+_assert_payment_review_route_guard()
 
 app.title = '晨的助手 v0.3.2'
 app.version = '0.3.2'
