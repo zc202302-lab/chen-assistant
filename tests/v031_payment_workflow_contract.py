@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT))
 _TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v031-workflow-')
 os.environ['APP_DB_PATH'] = str(Path(_TMPDIR.name) / 'app.db')
 
+from app import config  # noqa: E402
 from app.db import db, init_db, now_iso  # noqa: E402
 from app.v031_payment_workflow_routes import ensure_v031  # noqa: E402
 
@@ -110,12 +111,12 @@ def main():
     for token in (
         'initiated_at', "action == 'initiate'", "action == 'invalidate'",
         '_invalidate_after_amount_change', '请先完成“发起缴费”',
-        'payment-mail-compose-v031', "'version': '0.3.2'",
+        'payment-mail-compose-v031', "'version': config.APP_VERSION",
     ):
         assert token in routes, token
 
     from app.main import app  # noqa: E402
-    assert app.version == '0.3.3'
+    assert app.version == config.APP_VERSION
     for path, endpoint in (
         ('/services/{service_id}/payment-current', 'payment_save_preserve_reviews_v032'),
         ('/services/{service_id}/payment-review-toggle', 'payment_review_toggle_preserve_reviews_v032'),
@@ -129,7 +130,7 @@ def main():
         assert matches[0].endpoint.__name__ == endpoint
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-    assert 'v0.3.3' in base
+    assert f'v{config.APP_VERSION}' in base
     assert '/static/v031_workflow_actions.js?v=0316' in base
     assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
     assert '/static/v031_workflow_dom_guard.js?v=0314' in base
