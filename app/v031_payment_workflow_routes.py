@@ -258,31 +258,56 @@ def payment_save_v031(
     value = parse_money(amount)
     with db() as conn:
         service = service_or_404(conn, service_id)
-        customer_id = int(service['customer_id'])
-        run, _ = _run_v031(conn, customer_id, period)
-        if run['paid']:
-            raise HTTPException(409, '请先撤回“完成缴费”后再修改金额')
-        payment = ensure_payment_entry(conn, service, period)
-        old_value = float(payment['amount'] or 0)
-        changed = abs(old_value - value) > 0.000001
-        if changed:
-            _invalidate_after_amount_change(conn, customer_id, period, run)
+        if not service_active_in_period(service, period) or not service_is_due(service):
+            return JSONResponse({'ok': False, 'error': '这项业务本月不在缴费范围内'}, status_code=400)
+
+        entry, rule = ensure_payment_entry(conn, service, period)
+        previous = float(entry['amount'] or 0)
+        amount_changed = abs(float(value) - previous) > 0.000001
+        run = None
+        had_downstream_state = False
+        if amount_changed:
+            run, _ = _run_v031(conn, service['customer_id'], period)
+            if run['paid']:
+                return JSONResponse(
+                    {'ok': False, 'error': '本月缴费已经完成，请先撤回“完成缴费”后再修改金额'},
+                    status_code=409,
+                )
+            had_downstream_state = bool(run['reviewed'] or run['notified'] or run['initiated'])
+
+        reference = entry['reference_amount']
+        if reference is None:
+            reference = previous
+        source = 'fixed' if rule['mode'] == 'fixed' else 'manual'
+        now = now_iso()
         conn.execute(
             '''UPDATE payment_entries
-               SET amount=?,source='manual',confirmed=1,updated_at=? WHERE id=?''',
-            (value, now_iso(), payment['id']),
+               SET amount=?,reference_amount=?,source=?,confirmed=1,updated_at=? WHERE id=?''',
+            (value, reference, source, now, entry['id']),
         )
-        row = conn.execute('SELECT * FROM payment_entries WHERE id=?', (payment['id'],)).fetchone()
-        response = payment_json(row)
-        new_run, stats = _run_v031(conn, customer_id, period)
-    response['workflow_invalidated'] = bool(changed and (run['reviewed'] or run['notified'] or run['initiated']))
-    response['run'] = new_run
-    response['stats'] = stats
-    return JSONResponse(response)
+        conn.execute('UPDATE services SET monthly_fee=? WHERE id=?', (value, service_id))
+        if rule['mode'] == 'fixed':
+            conn.execute(
+                '''INSERT INTO service_payment_rules(service_id,effective_period,mode,fixed_amount,created_at)
+                   VALUES(?,?,?,?,?)
+                   ON CONFLICT(service_id,effective_period)
+                   DO UPDATE SET mode='fixed',fixed_amount=excluded.fixed_amount''',
+                (service_id, period, 'fixed', value, now),
+            )
+            conn.execute('UPDATE services SET fixed_fee=1 WHERE id=?', (service_id,))
+
+        if amount_changed and had_downstream_state:
+            _invalidate_after_amount_change(conn, service['customer_id'], period, run)
+
+        payload = payment_json(conn, service['customer_id'], period, service_id)
+        current_run, _ = _run_v031(conn, service['customer_id'], period)
+        payload['workflow_invalidated'] = bool(amount_changed and had_downstream_state)
+        payload['workflow_run'] = current_run
+        return JSONResponse(payload)
 
 
 @router.post('/customers/{customer_id}/payment-workflow-v031')
-def payment_workflow_action_v031(
+def update_payment_workflow_v031(
     request: Request,
     customer_id: int,
     csrf: str = Form(...),
@@ -290,75 +315,78 @@ def payment_workflow_action_v031(
 ):
     check_csrf(request, csrf)
     period = current_period()
-    action = (action or '').strip().lower()
+
+    if action == 'paid':
+        # Keep the v0.3 snapshot/restore implementation as the single authority for
+        # advancing and reverting service payment periods.
+        with db() as conn:
+            run, _ = _run_v031(conn, customer_id, period)
+            if not run['paid'] and not run['initiated']:
+                raise HTTPException(400, '请先完成“发起缴费”')
+            if run['paid']:
+                n = conn.execute(
+                    'SELECT COUNT(*) n FROM payment_run_service_snapshots_v03 WHERE run_id=?',
+                    (run['id'],),
+                ).fetchone()['n']
+                if not n:
+                    raise HTTPException(
+                        409,
+                        '这条完成缴费记录来自旧版本，没有保存缴费前周期快照。为保护缴费周期，系统不允许自动撤回。',
+                    )
+        result = v03.set_payment_run_v03(
+            request=request,
+            customer_id=customer_id,
+            csrf=csrf,
+            action='paid',
+        )
+        if getattr(result, 'status_code', 200) >= 400:
+            return result
+        return _response_state(customer_id)
+
     extra = {}
     with db() as conn:
         customer_or_404(conn, customer_id)
         run, stats = _run_v031(conn, customer_id, period)
-        items, _ = core.payment_snapshot_v0212(conn, customer_id, period)
+        items, stats = core.payment_snapshot_v0212(conn, customer_id, period)
+
         if action == 'review':
-            extra.update(_paint_review_reset(conn, customer_id, period, run, items, stats) or {})
+            extra = _paint_review_reset(conn, customer_id, period, run, items, stats)
         elif action == 'notify':
             _set_notify(conn, customer_id, period, run, stats)
         elif action == 'initiate':
             _set_initiated(conn, customer_id, period, run)
-        elif action == 'paid':
-            # Reuse the mature v0.3 paid transition so payment snapshots, schedules,
-            # and reversible completion stay intact.
-            if run['paid']:
-                v03._apply_payment_action(conn, customer_id, period, 'paid')
-            else:
-                if not run['initiated']:
-                    raise HTTPException(400, '请先完成“发起缴费”')
-                v03._apply_payment_action(conn, customer_id, period, 'paid')
         elif action == 'invalidate':
             _invalidate_after_amount_change(conn, customer_id, period, run)
         else:
-            raise HTTPException(400, '不支持的缴费流程操作')
+            raise HTTPException(400, '状态操作无效')
+
     return _response_state(customer_id, extra)
 
 
 @router.get('/customers/{customer_id}/payment-mail-compose-v031')
 def payment_mail_compose_v031(customer_id: int):
-    """Prepare Foxmail compose data after customer notification, before initiation is confirmed."""
+    """Prepare Foxmail before stage 3 is confirmed; stage 2 is the prerequisite."""
     period = current_period()
     with db() as conn:
-        customer = customer_or_404(conn, customer_id)
-        run, stats = _run_v031(conn, customer_id, period)
-        if stats['pending']:
-            raise HTTPException(400, f"还有 {stats['pending']} 项金额未核对")
-        if not run['reviewed']:
-            raise HTTPException(400, '请先完成“金额核对”')
+        customer, txt_content, _ = v03._payment_txt_content(conn, customer_id, period)
+        run, _ = _run_v031(conn, customer_id, period)
         if not run['notified']:
-            raise HTTPException(400, '请先完成“通知客户”')
+            raise HTTPException(400, '请先完成“通知客户”，再调用Foxmail')
         template = _get_template(conn, customer_id)
         recipient = _recipient(conn)
-        subject = _clean_header(template['subject'] or '')
-        body = template['body'] or ''
-        attachment_filename = _attachment_filename(customer['name'], period, template['attachment_filename'])
-        items, _ = core.payment_snapshot_v0212(conn, customer_id, period)
-        lines = []
-        for item in items:
-            pe = item['payment']
-            amount = float(pe['amount'] or 0)
-            if amount <= 0:
-                continue
-            row = item['row']
-            ref = (row['number'] or row['account'] or '').strip()
-            if not ref:
-                continue
-            amount_text = str(int(amount)) if abs(amount - round(amount)) < 0.000001 else f'{amount:.2f}'.rstrip('0').rstrip('.')
-            lines.append(f'{ref}|{amount_text}')
-        content = ('\r\n'.join(lines) + ('\r\n' if lines else '')).encode('utf-8')
 
+    subject = _clean_header(template['subject'])
+    if not subject:
+        raise HTTPException(400, '请先在“缴费模板”中保存邮件主题')
+
+    customer_name = customer['name'] or '客户'
+    txt_name = _attachment_filename(template, customer_name, period)
     return JSONResponse({
         'ok': True,
-        'run': run,
         'recipient_b64': _b64_text(recipient),
         'subject_b64': _b64_text(subject),
-        'body_b64': _b64_text(body),
-        'attachment_filename_b64': _b64_text(attachment_filename),
-        'attachment_content_base64': base64.b64encode(content).decode('ascii'),
-        'attachment_size': len(content),
-        'line_count': len(lines),
+        'body_b64': _b64_text(template['body']),
+        'attachment_filename_b64': _b64_text(txt_name),
+        'attachment_content_base64': base64.b64encode(txt_content.encode('utf-8')).decode('ascii'),
+        'period': period,
     })
