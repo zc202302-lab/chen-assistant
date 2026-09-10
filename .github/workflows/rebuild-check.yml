@@ -132,6 +132,7 @@ jobs:
         run: python tests/promotion_rename_route_regression.py
       - name: v0.3.2 browser acceptance
         run: |
+          python tests/v032_customer_import_acceptance.py
           python tests/v031_payment_workflow_acceptance.py
           python tests/v031_legacy_customer_acceptance.py
           python tests/v03_runtime_fix_acceptance.py
