@@ -198,6 +198,46 @@ def _fixed_amount_review(conn, customer_id: int, period: str, run, items, stats)
     }
 
 
+def _rollback_completed_payment(conn, customer_id: int, period: str, run):
+    """Restore the pre-payment schedule before an amount edit rolls stage 4 back."""
+    run_id = int(run['id'])
+    snapshots = conn.execute(
+        '''SELECT * FROM payment_run_service_snapshots_v03
+           WHERE run_id=? ORDER BY service_id''',
+        (run_id,),
+    ).fetchall()
+    if not snapshots:
+        raise HTTPException(
+            409,
+            '这条完成缴费记录来自旧版本，没有保存缴费前周期快照；请不要直接修改金额。',
+        )
+
+    for snap in snapshots:
+        conn.execute(
+            'UPDATE services SET last_payment_date=?,next_payment_period=? WHERE id=?',
+            (snap['last_payment_date'], snap['next_payment_period'], snap['service_id']),
+        )
+        core._save_runtime(
+            conn,
+            int(snap['service_id']),
+            deferred_until_period=snap['deferred_until_period'],
+        )
+
+    conn.execute('DELETE FROM payment_run_service_snapshots_v03 WHERE run_id=?', (run_id,))
+    now = now_iso()
+    conn.execute(
+        '''UPDATE customer_payment_runs
+           SET reviewed_at='',notified_at='',initiated_at='',paid_at='',
+               emailed_at='',email_to='',email_subject='',updated_at=?
+           WHERE id=?''',
+        (now, run_id),
+    )
+    conn.execute(
+        'UPDATE customers SET payment_period=?,notified=0,completed=0,updated_at=? WHERE id=?',
+        (period, now, customer_id),
+    )
+
+
 @router.post('/services/{service_id}/payment-current')
 def payment_save_preserve_reviews_v032(
     request: Request,
@@ -207,9 +247,9 @@ def payment_save_preserve_reviews_v032(
 ):
     """Save one amount; only that changed row loses confirmation.
 
-    Any real amount change silently invalidates stages 1-3. Untouched payment
-    rows retain their confirmation state. Completed payments remain locked for
-    safety and must still be explicitly withdrawn before editing.
+    Any real amount change silently rolls the workflow back to amount review.
+    Untouched payment rows retain their confirmation state. If stage 4 was
+    completed, its saved schedule snapshot is restored automatically first.
     """
     check_csrf(request, csrf)
     period = current_period()
@@ -227,10 +267,7 @@ def payment_save_preserve_reviews_v032(
         if amount_changed:
             run, _ = workflow._run_v031(conn, service['customer_id'], period)
             if run['paid']:
-                return JSONResponse(
-                    {'ok': False, 'error': '本月缴费已经完成，请先撤回“完成缴费”后再修改金额'},
-                    status_code=409,
-                )
+                _rollback_completed_payment(conn, int(service['customer_id']), period, run)
 
         reference = entry['reference_amount']
         if reference is None:
@@ -261,7 +298,7 @@ def payment_save_preserve_reviews_v032(
             )
             conn.execute('UPDATE services SET fixed_fee=1 WHERE id=?', (service_id,))
 
-        if amount_changed:
+        if amount_changed and run and not run['paid']:
             workflow._invalidate_after_amount_change(conn, service['customer_id'], period, run)
 
         payload = _payment_payload(conn, service['customer_id'], period, service_id)
