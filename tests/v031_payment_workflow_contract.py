@@ -58,14 +58,18 @@ def main():
     ):
         assert token in runtime_owner, token
 
-    # v0.3.3 keeps the runtime's two-step external-action state model, but a final
-    # late-loaded shim removes blocking alert/confirm dialogs for notify/initiate.
+    # v0.3.3 keeps the runtime's two-step external-action state model, but the
+    # late-loaded patch removes all payment-stage alert/confirm dialogs and owns
+    # deterministic browser TXT downloading.
     nonblocking = (ROOT / 'app' / 'static' / 'v033_payment_flow_patch.js').read_text(encoding='utf-8')
     for token in (
         'window.confirm = message =>', 'window.alert = message =>',
         '确认缴费图片已经通过微信发送给客户',
         '确认缴费邮件已经在Foxmail中发送给同事',
+        '确认同事已收到邮件，并且你已经完成本次实际支付',
+        '撤回“完成缴费”并恢复本次缴费前的周期状态',
         '该客户已经发起缴费。修改金额后',
+        'URL.createObjectURL(blob)', 'download.download =', '缴费TXT已下载',
     ):
         assert token in nonblocking, token
 
@@ -129,7 +133,7 @@ def main():
     assert '/static/v031_workflow_actions.js?v=0316' in base
     assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
     assert '/static/v031_workflow_dom_guard.js?v=0314' in base
-    assert '/static/v033_payment_flow_patch.js?v=0330' in base
+    assert '/static/v033_payment_flow_patch.js?v=0331' in base
     assert '/static/v031_payment_workflow.css?v=0314' in base
     assert base.index('/static/v031_workflow_actions.js') > base.index('/static/v031_payment_workflow.js')
     assert base.index('/static/v031_workflow_runtime_fix.js') > base.index('/static/v031_workflow_actions.js')
@@ -140,7 +144,7 @@ def main():
     for token in ('.awaiting-confirm', '.current', '.done', '.v031-fixed-auto-confirmed'):
         assert token in css, token
 
-    print('v0.3.3 automatic review + silent row-preserving rollback contract passed')
+    print('v0.3.3 automatic review + fully nonblocking workflow + real TXT download contract passed')
 
 
 if __name__ == '__main__':
