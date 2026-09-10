@@ -26,35 +26,39 @@ os.environ.update({
 })
 
 from app.db import db, init_db  # noqa: E402
+from app.importer import XlsmReader  # noqa: E402
 from app.security import create_session  # noqa: E402
-from app.v032_customer_import_routes import (  # noqa: E402
-    CONTACT_HEADERS,
-    GROUP_HEADERS,
-    PROMO_HEADERS,
-    SERVICE_HEADERS,
-)
+from app.v028_routes import _template  # noqa: E402
+from app.v032_customer_exchange_routes import _write_customer_sheet  # noqa: E402
+
+
+def payload(name: str, code: str, number: str, amount: float, mode: str):
+    return {
+        'info': {
+            'name': name, 'group_code': code, 'tax_id': '', 'relation_summary': '浏览器验收', 'payment_enabled': '是',
+            'payment_display_attr_1': '类型', 'payment_display_attr_2': '姓名/属性',
+            'mail_subject': f'{name}缴费', 'mail_body': '请处理', 'attachment_filename': f'{name}.txt',
+            'employee_own': '', 'employee_share': '', 'leased_own': '', 'leased_other': '', 'other_status': '',
+        },
+        'entities': [], 'invoices': [],
+        'businesses': [[
+            'S001', '成员', '测试成员', number, '5338' + number[-6:], 1, '微信', '', '', '', '', '',
+            amount, mode, '', '启用', '', '', '', 10,
+        ]],
+        'contacts': [['关键联系人', '王经理', '财务', '13812340000']],
+        'promotions': [['S001', '浏览器测试优惠', '2026-01-01', '2026-12-31', 60, 'active', '']],
+        'tasks': [['浏览器测试待办', '2026-09-30', '', '否']],
+        'visits': [['2026-09-01', '拜访', '正常', '继续跟进']],
+        'rules': [], 'payments': [], 'runs': [],
+    }
 
 
 def make_fixture(path: Path):
+    with db() as conn:
+        template = _template(conn)
     workbook = xlsxwriter.Workbook(str(path))
-    group = workbook.add_worksheet('集团')
-    group.write_row(0, 0, GROUP_HEADERS)
-    group.write_row(1, 0, ['G001', '浏览器导入集团甲', 'BATCH-001', '9137001001', '浏览器验收', '是'])
-    group.write_row(2, 0, ['G002', '浏览器导入集团乙', 'BATCH-002', '9137001002', '', '是'])
-
-    service = workbook.add_worksheet('业务')
-    service.write_row(0, 0, SERVICE_HEADERS)
-    service.write_row(1, 0, ['S001', 'G001', '成员', '测试成员', '15812340001', '533812340001', 40, '固定', '每月', '', '微信', '', '', '', '固定金额'])
-    service.write_row(2, 0, ['S002', 'G001', '宽带', '后勤', '', '533812340002', 560, '变动', '每月', '', '转账', '', '', '', '变动金额'])
-    service.write_row(3, 0, ['S003', 'G002', '专线', '', '', 'LINE-10001', 1200, '固定', '12个月', '2027-09', '', '', '', '2026-09-01', ''])
-
-    contact = workbook.add_worksheet('联系人')
-    contact.write_row(0, 0, CONTACT_HEADERS)
-    contact.write_row(1, 0, ['G001', '关键联系人', '王经理', '财务', '13812340000'])
-
-    promo = workbook.add_worksheet('优惠')
-    promo.write_row(0, 0, PROMO_HEADERS)
-    promo.write_row(1, 0, ['S001', '浏览器测试优惠', '2026-01-01', '2026-12-31', 60, ''])
+    _write_customer_sheet(workbook, workbook.add_worksheet('客户甲'), template, payload('浏览器导入客户甲', 'BATCH-001', '15812340001', 40, '固定'))
+    _write_customer_sheet(workbook, workbook.add_worksheet('客户乙'), template, payload('浏览器导入客户乙', 'BATCH-002', '15812340002', 560, '变动'))
     workbook.close()
 
 
@@ -72,7 +76,7 @@ def wait_http(url: str):
 def main():
     init_db()
     token, _, _ = create_session()
-    fixture = TEST_DIR / 'batch.xlsx'
+    fixture = TEST_DIR / 'batch-one-sheet.xlsx'
     make_fixture(fixture)
     assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
 
@@ -92,58 +96,62 @@ def main():
             page = context.new_page()
             page.goto('http://127.0.0.1:8139/customers/new?mode=batch', wait_until='networkidle')
             assert 'v0.3.2' in page.locator('.brand').inner_text()
-            expect(page.get_by_role('link', name='Excel批量导入')).to_have_class('active')
-            expect(page.get_by_role('link', name='下载 Excel 模板')).to_be_visible()
+            expect(page.get_by_role('link', name='Excel批量导入/导出')).to_have_class('active')
+            expect(page.get_by_role('link', name='下载最新 Excel 模板')).to_be_visible()
+            expect(page.get_by_role('link', name='导出全部客户 Excel')).to_be_visible()
 
             with page.expect_download(timeout=5000) as download_info:
-                page.get_by_role('link', name='下载 Excel 模板').click()
-            download = download_info.value
-            downloaded = TEST_DIR / 'downloaded-template.xlsx'
-            download.save_as(str(downloaded))
-            assert downloaded.read_bytes()[:2] == b'PK'
+                page.get_by_role('link', name='下载最新 Excel 模板').click()
+            template_download = TEST_DIR / 'downloaded-template.xlsx'
+            download_info.value.save_as(str(template_download))
+            template_reader = XlsmReader(template_download)
+            assert len(template_reader.sheets) == 1 and template_reader.sheets[0][0] == '客户1'
+            template_cells = template_reader.cells(template_reader.sheets[0][1])
+            assert template_cells.get('A1') == '晨的助手客户档案 v0.3.2'
+            assert '【业务/产品】' in template_cells.values()
 
             page.locator('input[name="excel_file"]').set_input_files(str(fixture))
             page.get_by_role('button', name='上传并检查').click()
-            expect(page.get_by_text('检查通过，等待你的最终确认')).to_be_visible(timeout=5000)
-            metrics = page.locator('.v032-preview-metrics')
-            expect(metrics).to_contain_text('2')
-            expect(metrics).to_contain_text('3')
-            expect(page.get_by_text('浏览器导入集团甲')).to_be_visible()
-            expect(page.get_by_text('浏览器导入集团乙')).to_be_visible()
+            expect(page.get_by_text('检查通过，等待最终确认')).to_be_visible(timeout=5000)
+            expect(page.get_by_text('浏览器导入客户甲')).to_be_visible()
+            expect(page.get_by_text('浏览器导入客户乙')).to_be_visible()
 
-            page.get_by_role('button', name='确认导入全部数据').click()
+            page.get_by_role('button', name='确认导入全部客户').click()
             expect(page.get_by_text('批量导入完成')).to_be_visible(timeout=5000)
-            expect(page.locator('.v032-success-panel')).to_contain_text('新增 2 个集团、3 条业务、1 个联系人、1 条优惠')
+            expect(page.locator('.v032-success-panel')).to_contain_text('新增 2 个客户、2 条业务、2 个联系人、2 条优惠')
 
             with db() as conn:
                 assert conn.execute('SELECT COUNT(*) n FROM customers').fetchone()['n'] == 2
-                assert conn.execute('SELECT COUNT(*) n FROM services').fetchone()['n'] == 3
-                fixed = conn.execute(
-                    '''SELECT pe.confirmed,pe.source,r.mode,r.fixed_amount
-                       FROM services s JOIN payment_entries pe ON pe.service_id=s.id
-                       JOIN service_payment_rules r ON r.service_id=s.id
-                       WHERE s.number='15812340001' LIMIT 1'''
-                ).fetchone()
-                assert fixed['confirmed'] == 1 and fixed['source'] == 'fixed' and fixed['mode'] == 'fixed'
-                variable = conn.execute(
-                    '''SELECT pe.confirmed,r.mode FROM services s
-                       JOIN payment_entries pe ON pe.service_id=s.id
-                       JOIN service_payment_rules r ON r.service_id=s.id
-                       WHERE s.account='533812340002' LIMIT 1'''
-                ).fetchone()
-                assert variable['confirmed'] == 0 and variable['mode'] == 'variable'
+                assert conn.execute('SELECT COUNT(*) n FROM services').fetchone()['n'] == 2
+                fixed = conn.execute("SELECT pe.confirmed,pe.source FROM services s JOIN payment_entries pe ON pe.service_id=s.id WHERE s.number='15812340001' LIMIT 1").fetchone()
+                variable = conn.execute("SELECT pe.confirmed,pe.source FROM services s JOIN payment_entries pe ON pe.service_id=s.id WHERE s.number='15812340002' LIMIT 1").fetchone()
+                assert fixed['confirmed'] == 1 and fixed['source'] == 'fixed'
+                assert variable['confirmed'] == 0
 
-            # Re-uploading the same batch must be stopped before a second write.
+            with page.expect_download(timeout=8000) as export_info:
+                page.get_by_role('link', name='导出全部客户 Excel').click()
+            exported = TEST_DIR / 'all-customers.xlsx'
+            export_info.value.save_as(str(exported))
+            exported_reader = XlsmReader(exported)
+            assert {name for name, _ in exported_reader.sheets} == {'浏览器导入客户甲', '浏览器导入客户乙'}
+            all_values = []
+            for _, sheet_path in exported_reader.sheets:
+                all_values.extend(exported_reader.cells(sheet_path).values())
+            assert '浏览器测试待办' in all_values
+            assert '继续跟进' in all_values
+            assert '浏览器测试优惠' in all_values
+
+            # Re-uploading the same clients must be stopped before any second write.
             page.locator('input[name="excel_file"]').set_input_files(str(fixture))
             page.get_by_role('button', name='上传并检查').click()
             expect(page.get_by_text('需要修正')).to_be_visible(timeout=5000)
             expect(page.locator('.v032-issue-block.danger')).to_contain_text('已存在')
-            assert page.get_by_role('button', name='确认导入全部数据').count() == 0
+            assert page.get_by_role('button', name='确认导入全部客户').count() == 0
             with db() as conn:
                 assert conn.execute('SELECT COUNT(*) n FROM customers').fetchone()['n'] == 2
 
             browser.close()
-        print('v0.3.2 customer batch import browser acceptance passed (isolated test database)')
+        print('v0.3.2 one-customer-per-sheet import/export browser acceptance passed (isolated database)')
     finally:
         proc.terminate()
         try:
