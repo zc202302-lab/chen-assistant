@@ -1,5 +1,7 @@
 import re
 
+from starlette.routing import Match
+
 from .legacy_main import app
 from .v02_routes import router as v02_router
 from .v021_routes import router as v021_router
@@ -99,6 +101,36 @@ for _route in app.router.routes:
     ):
         _route.path_regex = re.compile(r'^/customers/(?P<customer_id>[0-9]+)$')
         break
+
+
+def _assert_customer_new_route_guard():
+    """Abort startup/deploy validation if /customers/new can regress to customer_id parsing."""
+    new_scope = {'type': 'http', 'path': '/customers/new', 'method': 'GET'}
+    id_scope = {'type': 'http', 'path': '/customers/123', 'method': 'GET'}
+    full_new = [
+        route for route in app.router.routes
+        if hasattr(route, 'matches') and route.matches(new_scope)[0] == Match.FULL
+    ]
+    if not full_new:
+        raise RuntimeError('v0.3.2 路由自检失败：/customers/new 没有可用 GET 路由')
+    owner = getattr(getattr(full_new[0], 'endpoint', None), '__module__', '')
+    if getattr(full_new[0], 'path', '') != '/customers/new' or owner != 'app.v032_customer_import_routes':
+        raise RuntimeError(
+            'v0.3.2 路由自检失败：/customers/new 被其他客户路由抢占，已停止启动'
+        )
+    detail = next(
+        (
+            route for route in app.router.routes
+            if getattr(route, 'path', '') == '/customers/{customer_id}'
+            and getattr(getattr(route, 'endpoint', None), '__module__', '') == 'app.v0212_routes'
+        ),
+        None,
+    )
+    if detail is None or detail.matches(new_scope)[0] != Match.NONE or detail.matches(id_scope)[0] != Match.FULL:
+        raise RuntimeError('v0.3.2 路由自检失败：客户详情路由没有被限制为数字 customer_id')
+
+
+_assert_customer_new_route_guard()
 
 app.title = '晨的助手 v0.3.2'
 app.version = '0.3.2'
