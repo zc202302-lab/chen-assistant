@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from .db import now_iso
+from .db import db, now_iso
 from .payment_v02 import (
     current_period,
     ensure_payment_entry,
@@ -19,17 +19,19 @@ from . import v031_payment_workflow_routes as workflow
 
 router = APIRouter()
 _base_run_v031 = workflow._run_v031
+_base_snapshot_v0212 = core.payment_snapshot_v0212
 MANUAL_CHANGED_SOURCE = 'manual_changed'
 
 
-def _review_snapshot(conn, customer_id: int, period: str):
-    """Return the payment snapshot using the user's row-level review semantics.
+def _review_snapshot(conn, customer_id: int, period: str | None = None):
+    """Return the payment snapshot using row-level review semantics.
 
     Fixed amounts are normally automatic confirmations. A fixed amount that the
     user has just edited is the one exception: that changed row remains pending
     until the user confirms it once. All untouched rows keep their own state.
     """
-    items, stats = core.payment_snapshot_v0212(conn, customer_id, period)
+    period = period or current_period()
+    items, stats = _base_snapshot_v0212(conn, customer_id, period)
 
     repair_ids = [
         int(item['payment']['id'])
@@ -48,7 +50,7 @@ def _review_snapshot(conn, customer_id: int, period: str):
                 WHERE id IN ({placeholders})""",
             (now_iso(), *repair_ids),
         )
-        items, stats = core.payment_snapshot_v0212(conn, customer_id, period)
+        items, stats = _base_snapshot_v0212(conn, customer_id, period)
 
     pending = sum(1 for item in items if not bool(item['payment']['confirmed']))
     required = sum(
@@ -97,9 +99,8 @@ def _auto_review_run(conn, customer_id: int, period: str | None = None):
 
     elif pending > 0 and not run['paid'] and (run['reviewed'] or run['notified'] or run['initiated']):
         # Once any amount becomes pending, every communication step based on the
-        # old total is stale. Payment-entry confirmation states themselves are
-        # deliberately untouched here; only the changed row is made pending by
-        # the amount-save endpoint.
+        # old total is stale. Payment-entry confirmations are deliberately not
+        # reset here; only the row whose amount changed is made pending by save.
         now = now_iso()
         conn.execute(
             """UPDATE customer_payment_runs
@@ -214,7 +215,7 @@ def payment_save_preserve_reviews_v032(
     period = current_period()
     value = parse_money(amount)
 
-    with workflow.db() as conn:
+    with db() as conn:
         service = service_or_404(conn, service_id)
         if not service_active_in_period(service, period) or not service_is_due(service):
             return JSONResponse({'ok': False, 'error': '这项业务本月不在缴费范围内'}, status_code=400)
@@ -280,7 +281,7 @@ def payment_review_toggle_preserve_reviews_v032(
     """Confirm the changed row without disturbing any other row."""
     check_csrf(request, csrf)
     period = current_period()
-    with workflow.db() as conn:
+    with db() as conn:
         service = service_or_404(conn, service_id)
         if not service_active_in_period(service, period) or not service_is_due(service):
             return JSONResponse({'ok': False, 'error': '该业务本月无需缴费'}, status_code=400)
@@ -289,14 +290,9 @@ def payment_review_toggle_preserve_reviews_v032(
         if rule['mode'] == 'fixed':
             if bool(pe['confirmed']):
                 new_confirmed = 1
-            elif (pe['source'] or '') == MANUAL_CHANGED_SOURCE:
-                new_confirmed = 1
-                conn.execute(
-                    "UPDATE payment_entries SET confirmed=1,source='fixed',updated_at=? WHERE id=?",
-                    (now_iso(), pe['id']),
-                )
             else:
-                # Legacy fixed rows are automatic confirmations.
+                # A manually changed fixed amount needs exactly one explicit
+                # reconfirmation. Legacy fixed rows are repaired the same way.
                 new_confirmed = 1
                 conn.execute(
                     "UPDATE payment_entries SET confirmed=1,source='fixed',updated_at=? WHERE id=?",
@@ -316,6 +312,7 @@ def payment_review_toggle_preserve_reviews_v032(
         return JSONResponse(payload)
 
 
-# Public workflow endpoints resolve these module globals at request time.
+# Public payment rendering and workflow state use the same row-level truth.
+core.payment_snapshot_v0212 = _review_snapshot
 workflow._run_v031 = _auto_review_run
 workflow._paint_review_reset = _fixed_amount_review
