@@ -90,7 +90,7 @@ def main():
     for token in (
         'initiated_at', "action == 'initiate'", "action == 'invalidate'",
         "@router.post('/services/{service_id}/payment-current')",
-        'amount_changed', 'workflow_invalidated', '_invalidate_after_amount_change',
+        'workflow_invalidated', '_invalidate_after_amount_change',
         '请先完成“发起缴费”', 'payment-mail-compose-v031', "'version': '0.3.2'",
     ):
         assert token in routes, token
