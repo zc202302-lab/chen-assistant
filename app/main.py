@@ -2,6 +2,7 @@ import re
 
 from starlette.routing import Match
 
+from . import config
 from .legacy_main import app
 from .v02_routes import router as v02_router
 from .v021_routes import router as v021_router
@@ -183,8 +184,8 @@ _assert_customer_new_route_guard()
 _assert_payment_review_route_guard()
 _assert_payment_flow_v033_guard()
 
-app.title = '晨的助手 v0.3.3'
-app.version = '0.3.3'
+app.title = f'晨的助手 v{config.APP_VERSION}'
+app.version = config.APP_VERSION
 
 
 @app.middleware('http')
