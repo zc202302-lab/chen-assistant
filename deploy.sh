@@ -8,7 +8,7 @@ HEALTH_URL="$APP_HTTP/health"
 BACKUP_DIR="$APP_DIR/backups"
 
 cd "$APP_DIR"
-echo "===== 晨的助手 v0.3.1 一键更新 ====="
+echo "===== 晨的助手 v0.3.2 一键更新 ====="
 
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   echo "✗ 检测到服务器上的受 Git 管理文件有本地修改，已停止更新。"
@@ -58,6 +58,7 @@ fi
 from jinja2 import Environment, FileSystemLoader
 from app import config
 from app.main import app
+from app.v032_customer_import_routes import _build_template
 
 env=Environment(loader=FileSystemLoader(str(config.ROOT/'app'/'templates')))
 runtime_templates=('base.html','dashboard_v027.html','customer_workspace_v0211.html','account_detail.html','account_form.html','accounts.html','customer_form.html','login.html','search.html')
@@ -69,16 +70,21 @@ for name in runtime_templates:
     text=p.read_text(encoding='utf-8')
     assert 'type="date"' not in text and "type='date'" not in text, f'{name} 仍包含日期选择器'
 
-assert app.version=='0.3.1',f'预期 v0.3.1，实际 v{app.version}'
+assert app.version=='0.3.2',f'预期 v0.3.2，实际 v{app.version}'
 for path in ('/','/customers/{customer_id}','/health'):
     matches=[r for r in app.router.routes if getattr(r,'path','')==path]
     assert len(matches)==1,f'{path} 路由数量异常：{len(matches)}'
 customer_route=next(r for r in app.router.routes if getattr(r,'path','')=='/customers/{customer_id}')
 assert getattr(customer_route.endpoint,'__module__','')=='app.v0212_routes','客户工作区渲染路由异常'
 health_route=next(r for r in app.router.routes if getattr(r,'path','')=='/health')
-assert getattr(health_route.endpoint,'__module__','')=='app.v031_payment_workflow_routes','v0.3.1 健康检查路由异常'
+assert getattr(health_route.endpoint,'__module__','')=='app.v031_payment_workflow_routes','健康检查路由异常'
 
 owned={
+    ('/customers/new','GET'):'app.v032_customer_import_routes',
+    ('/customers/new','POST'):'app.v032_customer_import_routes',
+    ('/customers/import-template-v032.xlsx','GET'):'app.v032_customer_import_routes',
+    ('/customers/import-v032/preview','POST'):'app.v032_customer_import_routes',
+    ('/customers/import-v032/confirm','POST'):'app.v032_customer_import_routes',
     ('/customers/{customer_id}/payment-workflow-v031','GET'):'app.v031_payment_workflow_routes',
     ('/customers/{customer_id}/payment-workflow-v031','POST'):'app.v031_payment_workflow_routes',
     ('/customers/{customer_id}/payment-mail-compose-v031','GET'):'app.v031_payment_workflow_routes',
@@ -95,8 +101,11 @@ owned={
 }
 for (path,method),module in owned.items():
     matches=[r for r in app.router.routes if getattr(r,'path','')==path and method in getattr(r,'methods',set())]
-    assert matches,f'缺少 v0.3.1 核心路由：{path} {method}'
+    assert matches,f'缺少核心路由：{path} {method}'
     assert getattr(matches[0].endpoint,'__module__','')==module,f'{path} 未由预期路由接管：{matches[0].endpoint.__module__}'
+
+template_bytes=_build_template()
+assert template_bytes[:2]==b'PK' and len(template_bytes)>5000,'v0.3.2 Excel模板生成异常'
 
 base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
 current_assets=(
@@ -109,7 +118,7 @@ current_assets=(
     '/static/v031_windows_bootstrap.js',
     '/static/app.css','/static/v028.css','/static/layout-refinement.css','/static/v0212.css',
     '/static/workspace-refinement-v0212.css','/static/v03.css','/static/v03_business_mail.css',
-    '/static/v03_payment_template.css','/static/v031_payment_workflow.css',
+    '/static/v03_payment_template.css','/static/v031_payment_workflow.css','/static/v032_customer_import.css',
 )
 for current in current_assets:
     assert base.count(current)==1,f'{current} 必须且只能加载一次'
@@ -122,13 +131,13 @@ for asset in (
     'v031_amount_rollback_fix.js','v031_workflow_actions.js','v031_workflow_runtime_fix.js','v031_workflow_dom_guard.js',
     'v031_windows_bootstrap.js',
     'app.css','v028.css','layout-refinement.css','v0212.css','workspace-refinement-v0212.css','v03.css','v03_business_mail.css',
-    'v03_payment_template.css','v031_payment_workflow.css','chen_foxmail_helper.ps1','chen_foxmail_bootstrap.ps1',
+    'v03_payment_template.css','v031_payment_workflow.css','v032_customer_import.css','chen_foxmail_helper.ps1','chen_foxmail_bootstrap.ps1',
 ):
     assert (config.ROOT/'app'/'static'/asset).is_file(),f'缺少 {asset}'
-print(f"✓ Python / 路由 / 模板 / v0.3.1 前端资源检查通过：v{app.version}")
+print(f"✓ Python / 路由 / 模板 / v0.3.2 前端资源检查通过：v{app.version}")
 PY
 
-echo "===== 数据库结构与 v0.3.1 安全迁移 ====="
+echo "===== 数据库结构与现有缴费安全迁移 ====="
 .venv/bin/python - <<'PY'
 from app.db import init_db, db
 from app.v03_routes import _ensure_v03
@@ -142,7 +151,7 @@ with db() as conn:
     repaired = conn.execute(
         "UPDATE payment_entries SET confirmed=1,source='fixed' WHERE source='fixed_review_reset'"
     ).rowcount
-print(f'✓ v0.3.1 数据库结构检查/迁移完成；固定金额自动确认修复 {repaired} 条')
+print(f'✓ 数据库结构检查/迁移完成；固定金额自动确认修复 {repaired} 条')
 PY
 
 if [[ -d data ]]; then
@@ -191,13 +200,13 @@ echo "$HEALTH_JSON"
 import json,sys
 p=json.loads(sys.argv[1])
 if p.get('ok') is not True: raise SystemExit('健康检查返回 ok=false')
-if p.get('version')!='0.3.1': raise SystemExit(f"版本不匹配：{p.get('version')}")
+if p.get('version')!='0.3.2': raise SystemExit(f"版本不匹配：{p.get('version')}")
 print(f"✓ 服务版本：{p.get('version')}")
 PY
 
 echo "===== 已运行静态文件一致性检查 ====="
 REV="$(git rev-parse --short HEAD)"
-for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js v031_windows_bootstrap.js app.css v028.css layout-refinement.css v0212.css workspace-refinement-v0212.css v03.css v03_business_mail.css v03_payment_template.css v031_payment_workflow.css chen_foxmail_helper.ps1 chen_foxmail_bootstrap.ps1; do
+for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0211.js workspace-refinement-v0212.js v03.js v03_runtime_fix.js v03_business_mail.js v03_payment_template.js v03_foxmail_action_fix.js v03_insert_order.js v03_review_reset.js v031_payment_workflow.js v031_amount_rollback_fix.js v031_workflow_actions.js v031_workflow_runtime_fix.js v031_workflow_dom_guard.js v031_windows_bootstrap.js app.css v028.css layout-refinement.css v0212.css workspace-refinement-v0212.css v03.css v03_business_mail.css v03_payment_template.css v031_payment_workflow.css v032_customer_import.css chen_foxmail_helper.ps1 chen_foxmail_bootstrap.ps1; do
   LOCAL_FILE="app/static/$ASSET"; TMP_FILE="$(mktemp)"
   curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP_FILE"
   LOCAL_SHA="$(sha256sum "$LOCAL_FILE"|awk '{print $1}')"; SERVED_SHA="$(sha256sum "$TMP_FILE"|awk '{print $1}')"; rm -f "$TMP_FILE"
@@ -215,7 +224,8 @@ for ASSET in app.js v028.js ui-drag.js service-promotions.js business-sync.js v0
   esac
 done
 
-echo "✓ v0.3.1 服务健康检查通过"
-echo "✓ Windows 助手自动更新启动器已纳入部署一致性检查"
+echo "✓ v0.3.2 服务健康检查通过"
+echo "✓ 客户批量导入模板已在部署前完成生成检查"
+echo "✓ Windows 助手自动更新启动器继续纳入部署一致性检查"
 echo "更新后代码：$REV"
-echo "===== v0.3.1 更新完成 ====="
+echo "===== v0.3.2 更新完成 ====="
