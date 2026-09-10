@@ -4,9 +4,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
-    # Any v0.3/v0.3.1 browser acceptance that starts the app or seeds data must opt into
-    # an isolated APP_DB_PATH. This guards against ever repeating a production
-    # deployment accidentally deleting data/app.db.
+    # Browser acceptance tests must always use isolated data stores.
     acceptance_files = sorted((ROOT / 'tests').glob('v03*_acceptance.py'))
     assert acceptance_files, '未发现 v0.3 浏览器验收脚本'
     for path in acceptance_files:
@@ -19,96 +17,83 @@ def main():
     assert 'APP_DB_PATH' in config
     assert 'DB_PATH = Path(_db_override)' in config
 
-    js = (ROOT / 'app' / 'static' / 'v03_business_mail.js').read_text(encoding='utf-8')
-    assert "FOXMAIL_BRIDGE = 'http://127.0.0.1:18763'" in js
-    assert 'openWithLocalFoxmail' in js
-    assert 'downloadBlob' in js
-    assert '未检测到 Windows 助手' in js
-    assert '/static/chen_foxmail_helper.ps1' in js
-    assert "fd.append('recipient'" in js
+    actions = (ROOT / 'app' / 'static' / 'v031_workflow_actions.js').read_text(encoding='utf-8')
+    assert "FOXMAIL_BRIDGE = 'http://127.0.0.1:18763'" in actions
+    assert 'payment-mail-compose-v031' in actions
+    assert "bridgeFetch('/compose'" in actions
+    assert 'data.verified !== true' in actions
+    assert 'attachment_filename_b64' in actions
+    assert 'attachment_content_base64' in actions
 
-    foxmail_action = (ROOT / 'app' / 'static' / 'v03_foxmail_action_fix.js').read_text(encoding='utf-8')
-    assert "FOXMAIL_BRIDGE = 'http://127.0.0.1:18763'" in foxmail_action
-    assert "button.disabled = false" in foxmail_action
-    assert '当前客户本月缴费流程尚未完成' in foxmail_action
-    assert '正在准备邮件' in foxmail_action
-    assert "payment-mail-compose-v03" in foxmail_action
-    assert "'/compose'" in foxmail_action and "method: 'POST'" in foxmail_action
-    assert 'verified_dispatch === true' in foxmail_action
-    assert 'data.verified !== true' in foxmail_action
-    assert 'Foxmail写邮件窗口已确认打开' in foxmail_action
-    assert '本次不会自动下载.eml' in foxmail_action
-    assert '本次未自动下载.eml' in foxmail_action
-    assert 'downloadEmlFallback' not in foxmail_action
-    assert 'payment-mail-draft-v03' not in foxmail_action
-
-    v031 = (ROOT / 'app' / 'static' / 'v031_payment_workflow.js').read_text(encoding='utf-8')
-    assert 'payment-mail-compose-v031' in v031
-    assert '发送邮件后回到这里点击“发起缴费”' in v031
-    assert "FOXMAIL_BRIDGE = 'http://127.0.0.1:18763'" in v031
+    patch_js = (ROOT / 'app' / 'static' / 'v033_payment_flow_patch.js').read_text(encoding='utf-8')
+    assert 'window.confirm = message =>' in patch_js
+    assert 'window.alert = message =>' in patch_js
+    assert '确认缴费图片已经通过微信发送给客户' in patch_js
+    assert '确认缴费邮件已经在Foxmail中发送给同事' in patch_js
+    assert '该客户已经发起缴费。修改金额后' in patch_js
+    assert '未填写时只提示' in patch_js
+    assert '不与其他客户共用' in patch_js
+    assert '必填，不自动生成' in patch_js
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-    assert '/static/v03_foxmail_action_fix.js?v=0311' in base
-    assert '/static/v031_payment_workflow.js?v=0311' in base
-    assert '/static/v031_amount_rollback_fix.js?v=0314' in base
     assert '/static/v031_workflow_actions.js?v=0316' in base
     assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
     assert '/static/v031_workflow_dom_guard.js?v=0314' in base
+    assert '/static/v033_payment_flow_patch.js?v=0330' in base
+    assert base.index('/static/v033_payment_flow_patch.js') > base.index('/static/v031_workflow_runtime_fix.js')
 
+    # v0.3.3 attachment transport must be native Simple MAPI. The attachment is
+    # part of the compose request itself; clipboard/SendKeys attachment injection
+    # is explicitly forbidden because it can report success while Foxmail has no
+    # attachment.
     helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')
     assert 'BridgeMode' in helper and 'TcpListener' in helper
     assert 'ComposeRequest' in helper and 'Invoke-FoxmailCompose' in helper
-    assert 'Get-FoxmailExe' in helper
-    assert 'Build-MailtoUri' in helper and "'mailto:'" in helper
-    assert 'Clipboard]::SetFileDropList' in helper
-    assert 'Clipboard]::ContainsFileDropList' in helper
-    assert 'Clipboard]::GetFileDropList' in helper
-    assert "SendWait('^v')" in helper
-    assert 'ForceForeground' in helper and 'IsForeground' in helper
-    assert 'AttachThreadInput' in helper and 'GetForegroundWindow' in helper
-    assert 'Focus-ComposeWindow' in helper and 'Set-AttachmentClipboard' in helper
+    assert 'Get-FoxmailMapiDll' in helper
+    assert 'ChenFoxmailMapi' in helper
+    assert 'MapiFileDesc' in helper
+    assert 'MAPISendMail' in helper
+    assert 'fileCount = 1' in helper
+    assert 'files = filePtr' in helper
+    assert 'pathName = attachmentPath' in helper
+    assert 'fileName = attachmentName' in helper
+    assert "mode = 'foxmail-direct-mapi'" in helper
+    assert 'verified = $true' in helper
+    assert 'verified_dispatch = $true' in helper
+    assert "version = '0.5'" in helper
     assert "Path -eq '/compose'" in helper
-    assert "version = '0.8'" in helper and 'compose = $true' in helper
-    assert "compose_mode = 'mailto-clipboard'" in helper
-    assert 'foxmail_direct' in helper and 'verified_dispatch' in helper
-    assert 'attachment_filename_exact = $true' in helper
-    assert 'attachment_focus_verified = $true' in helper
-    assert 'clipboard_verified = $true' in helper
-    assert 'WaitForExit(18000)' in helper
-    assert '$composeDir = Join-Path $MailDir $prefix' in helper
-    assert '$attachmentPath = Join-Path $composeDir $attachmentName' in helper
-    assert "($prefix + '-' + $attachmentName)" not in helper
-    assert "'-STA'" in helper
     assert "AllowedRootDomain = 'ziboxiaozhushou.cn'" in helper
     assert 'Access-Control-Allow-Private-Network: true' in helper
-    assert 'Start-Process -FilePath $path' in helper
-    assert 'Get-CimInstance Win32_Process' in helper
-    assert 'Startup' in helper
+    assert "SendWait('^v')" not in helper
+    assert 'Clipboard]::SetFileDropList' not in helper
+    assert 'Build-MailtoUri' not in helper
 
-    bridge = (ROOT / 'windows' / 'foxmail_bridge.ps1').read_text(encoding='utf-8')
-    installer = (ROOT / 'windows' / 'install_foxmail_bridge.ps1').read_text(encoding='utf-8')
-    assert 'IPAddress]::Loopback' in bridge or 'IPAddress]::IsLoopback' in bridge
-    assert "AllowedRootDomain = 'ziboxiaozhushou.cn'" in bridge
-    assert 'Access-Control-Allow-Private-Network: true' in bridge
-    assert "Path -eq '/open'" in bridge
-    assert '[IO.File]::WriteAllBytes' in bridge and 'Start-Process' in bridge
-    assert 'Startup' in installer and 'foxmail_bridge.ps1' in installer
-
-    mail_routes = (ROOT / 'app' / 'v03_mail_draft_routes.py').read_text(encoding='utf-8')
-    assert "RECIPIENT_META_KEY = 'payment_mail_recipient_v03'" in mail_routes
-    assert '_save_recipient' in mail_routes
-    assert "recipient: str = Form('')" in mail_routes
-    assert "payment-mail-compose-v03" in mail_routes
-    assert 'attachment_content_base64' in mail_routes
+    # Server-side compose data must come from the customer-scoped v0.3.3 patch,
+    # with no global recipient/default filename fallback.
+    mail_patch = (ROOT / 'app' / 'v033_payment_flow_patch.py').read_text(encoding='utf-8')
+    assert 'customer_mail_templates_v03' in mail_patch
+    assert 'recipient TEXT NOT NULL' in mail_patch
+    assert "'customer_scoped': True" in mail_patch
+    assert "'attachment_required': True" in mail_patch
+    assert 'attachment_content_base64' in mail_patch
+    assert '当前客户缴费模板未填写' in mail_patch
+    assert 'TXT附件文件名' in mail_patch
+    assert 'RECIPIENT_META_KEY' not in mail_patch
 
     main_py = (ROOT / 'app' / 'main.py').read_text(encoding='utf-8')
     assert "connect-src 'self' http://127.0.0.1:18763 http://localhost:18763" in main_py
     assert "('.js', '.css', '.ps1')" in main_py
+    assert '_assert_payment_flow_v033_guard' in main_py
+
+    bootstrap = (ROOT / 'app' / 'static' / 'chen_foxmail_bootstrap.ps1').read_text(encoding='utf-8')
+    assert 'UpdateIntervalMinutes = 30' in bootstrap
+    assert 'chen_foxmail_helper.ps1' in bootstrap
+    assert "Path -eq '/compose'" in bootstrap
 
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
     assert 'tests/v03_' not in deploy, '生产 deploy.sh 不得执行 v0.3 测试脚本'
 
-    print('v0.3.1 safety/Foxmail contract passed')
+    print('v0.3.3 safety/Foxmail native-attachment contract passed')
 
 
 if __name__ == '__main__':
