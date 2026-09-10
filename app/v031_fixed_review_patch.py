@@ -6,7 +6,8 @@ from fastapi.responses import JSONResponse
 from .db import db, now_iso
 from .payment_v02 import (
     current_period,
-    ensure_payment_entry,
+    effective_payment_rule,
+    ensure_payment_entry as _base_ensure_payment_entry,
     parse_money,
     service_active_in_period,
     service_is_due,
@@ -21,6 +22,19 @@ router = APIRouter()
 _base_run_v031 = workflow._run_v031
 _base_snapshot_v0212 = core.payment_snapshot_v0212
 MANUAL_CHANGED_SOURCE = 'manual_changed'
+
+
+def _ensure_payment_entry_review_aware(conn, service, period: str):
+    """Do not let legacy fixed-fee auto-confirm erase a deliberate changed-row review."""
+    existing = conn.execute(
+        'SELECT * FROM payment_entries WHERE service_id=? AND period=?',
+        (service['id'], period),
+    ).fetchone()
+    if existing and (existing['source'] or '') == MANUAL_CHANGED_SOURCE and not bool(existing['confirmed']):
+        rule = effective_payment_rule(conn, service['id'], period, service)
+        if rule['mode'] == 'fixed':
+            return existing, rule
+    return _base_ensure_payment_entry(conn, service, period)
 
 
 def _review_snapshot(conn, customer_id: int, period: str | None = None):
@@ -257,10 +271,14 @@ def payment_save_preserve_reviews_v032(
 
     with db() as conn:
         service = service_or_404(conn, service_id)
-        if not service_active_in_period(service, period) or not service_is_due(service):
+        existing_current = conn.execute(
+            'SELECT id FROM payment_entries WHERE service_id=? AND period=?',
+            (service_id, period),
+        ).fetchone()
+        if not service_active_in_period(service, period) or (not service_is_due(service) and not existing_current):
             return JSONResponse({'ok': False, 'error': '这项业务本月不在缴费范围内'}, status_code=400)
 
-        entry, rule = ensure_payment_entry(conn, service, period)
+        entry, rule = _ensure_payment_entry_review_aware(conn, service, period)
         previous = float(entry['amount'] or 0)
         amount_changed = abs(float(value) - previous) > 0.000001
         run = None
@@ -320,10 +338,14 @@ def payment_review_toggle_preserve_reviews_v032(
     period = current_period()
     with db() as conn:
         service = service_or_404(conn, service_id)
-        if not service_active_in_period(service, period) or not service_is_due(service):
+        existing_current = conn.execute(
+            'SELECT id FROM payment_entries WHERE service_id=? AND period=?',
+            (service_id, period),
+        ).fetchone()
+        if not service_active_in_period(service, period) or (not service_is_due(service) and not existing_current):
             return JSONResponse({'ok': False, 'error': '该业务本月无需缴费'}, status_code=400)
 
-        pe, rule = ensure_payment_entry(conn, service, period)
+        pe, rule = _ensure_payment_entry_review_aware(conn, service, period)
         if rule['mode'] == 'fixed':
             if bool(pe['confirmed']):
                 new_confirmed = 1
@@ -349,6 +371,9 @@ def payment_review_toggle_preserve_reviews_v032(
         return JSONResponse(payload)
 
 
+# The stable v0.2.12 snapshot looks up this imported helper at runtime. Rebind it
+# so a deliberately changed fixed row survives snapshot refresh until confirmed.
+core.ensure_payment_entry = _ensure_payment_entry_review_aware
 # Public payment rendering and workflow state use the same row-level truth.
 core.payment_snapshot_v0212 = _review_snapshot
 workflow._run_v031 = _auto_review_run
