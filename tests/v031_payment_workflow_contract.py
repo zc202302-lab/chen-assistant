@@ -91,11 +91,12 @@ def main():
         'initiated_at', "action == 'initiate'", "action == 'invalidate'",
         "@router.post('/services/{service_id}/payment-current')",
         'amount_changed', 'workflow_invalidated', '_invalidate_after_amount_change',
-        '请先完成“发起缴费”', 'payment-mail-compose-v031', "'version': '0.3.1'",
+        '请先完成“发起缴费”', 'payment-mail-compose-v031', "'version': '0.3.2'",
     ):
         assert token in routes, token
 
     from app.main import app  # noqa: E402
+    assert app.version == '0.3.2'
     matches = [
         r for r in app.router.routes
         if getattr(r, 'path', '') == '/services/{service_id}/payment-current'
@@ -105,7 +106,7 @@ def main():
     assert matches[0].endpoint.__module__ == 'app.v031_payment_workflow_routes'
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-    assert 'v0.3.1' in base
+    assert 'v0.3.2' in base
     assert '/static/v031_workflow_actions.js?v=0316' in base
     assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
     assert '/static/v031_workflow_dom_guard.js?v=0314' in base
@@ -118,7 +119,7 @@ def main():
     for token in ('.awaiting-confirm', '.current', '.done', '.v031-fixed-auto-confirmed'):
         assert token in css, token
 
-    print('v0.3.1 integrated workflow contract passed')
+    print('v0.3.2 integrated payment workflow contract passed')
 
 
 if __name__ == '__main__':
