@@ -50,23 +50,32 @@
   const setPaidLock = () => {
     const locked = !!state?.paid;
     root.querySelectorAll('.quick-amount,[data-review-toggle],[data-fixed-toggle],[data-defer-payment-v0212]').forEach(control => {
-      const fixedReview = control.matches('[data-review-toggle]') && control.closest('[data-payment-row]')?.dataset.mode === 'fixed';
+      const row = control.closest('[data-payment-row]');
+      const fixedReview = control.matches('[data-review-toggle]') && row?.dataset.mode === 'fixed';
+      const confirmed = row?.dataset.confirmed === '1';
       if (control.matches('.quick-amount')) {
         control.readOnly = locked;
       } else if (fixedReview) {
-        control.disabled = true;
-        control.title = '固定缴费金额自动确认，无需人工核对';
-        control.textContent = '✓';
-        control.classList.add('confirmed', 'v031-auto-confirmed');
-        control.classList.remove('pending');
+        // Fixed rows are normally automatic confirmations. If the amount itself
+        // was edited, the server marks exactly that row unconfirmed until the
+        // user clicks it once; do not overwrite that pending state here.
+        control.disabled = locked || confirmed;
+        control.title = confirmed
+          ? '固定缴费金额自动确认，无需人工核对'
+          : '金额刚刚修改，请重新确认这一条';
+        control.textContent = confirmed ? '✓' : '○';
+        control.classList.toggle('confirmed', confirmed);
+        control.classList.toggle('pending', !confirmed);
+        control.classList.toggle('v031-auto-confirmed', confirmed);
       } else {
         control.disabled = locked;
       }
     });
     root.querySelectorAll('[data-payment-row][data-mode="fixed"]').forEach(row => {
-      row.dataset.confirmed = '1';
-      row.classList.add('is-confirmed', 'v031-fixed-auto-confirmed');
-      row.classList.remove('is-pending');
+      const confirmed = row.dataset.confirmed === '1';
+      row.classList.toggle('is-confirmed', confirmed);
+      row.classList.toggle('is-pending', !confirmed);
+      row.classList.toggle('v031-fixed-auto-confirmed', confirmed);
     });
     root.classList.toggle('v03-payment-locked', locked);
   };
@@ -117,7 +126,7 @@
       ));
 
       if (action === 'review') {
-        btn.title = done ? '点击撤回金额核对；固定金额仍保持自动已确认' : '确认所有变动金额已核对';
+        btn.title = done ? '当前所有应缴金额均已核对' : `还有 ${state.pending || 0} 项金额待确认`;
       } else if (action === 'notify') {
         btn.title = done
           ? '点击撤回客户通知状态'
@@ -285,6 +294,14 @@
   workbench.addEventListener('keyup', event => {
     const input = event.target.closest?.('.quick-amount');
     if (!input || event.key !== 'Enter') return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => loadState({quiet: true}), 260);
+  }, true);
+
+  // Row confirmation can now auto-complete stage 1. Refresh the workflow after
+  // the row-level POST finishes so the top workflow reflects that immediately.
+  workbench.addEventListener('click', event => {
+    if (!event.target.closest?.('[data-review-toggle]')) return;
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => loadState({quiet: true}), 260);
   }, true);
