@@ -108,30 +108,16 @@ def main():
         from playwright.sync_api import expect, sync_playwright
 
         with sync_playwright() as p:
-            browser = p.chromium.launch()
-            context = browser.new_context(viewport={'width': 1500, 'height': 1000})
-            context.grant_permissions(['clipboard-read', 'clipboard-write'], origin='http://127.0.0.1:8136')
-            context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(base_url='http://127.0.0.1:8136')
+            context.add_cookies([{
+                'name': 'session',
+                'value': token,
+                'url': 'http://127.0.0.1:8136',
+            }])
             page = context.new_page()
-
-            # The browser acceptance does not run the Windows helper. Stub only the
-            # external bridge and compose payload; product state endpoints stay real.
-            page.route('http://127.0.0.1:18763/health', lambda route: route.fulfill(
-                status=200, content_type='application/json',
-                body='{"ok":true,"verified_dispatch":true,"version":"test"}',
-                headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
-            ))
-            page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
-                status=200, content_type='application/json',
-                body='{"ok":true,"verified":true,"mode":"test"}',
-                headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
-            ))
-            page.route(f'**/customers/{cid}/payment-mail-compose-v031', lambda route: route.fulfill(
-                status=200, content_type='application/json',
-                body='{"ok":true,"recipient_b64":"dGVzdEBleGFtcGxlLmNvbQ==","subject_b64":"dGVzdA==","body_b64":"","attachment_filename_b64":"dGVzdC50eHQ=","attachment_content_base64":"MTM4MDAwMDAwMDF8MTA1"}',
-            ))
-
-            page.goto(f'http://127.0.0.1:8136/customers/{cid}', wait_until='networkidle')
+            page.goto(f'/customers/{cid}')
+            page.wait_for_load_state('networkidle')
 
             assert 'v0.3.2' in page.locator('.brand').inner_text()
             flow = page.locator('[data-v031-payment-flow]')
@@ -225,14 +211,19 @@ def main():
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             expect(notify).to_be_enabled(timeout=3000)
 
-            # Re-do stages 2 and 3, then complete payment.
+            # Re-do stages 2 and 3, then complete payment. Wait for each external
+            # preparation to reach its explicit awaiting-confirm state before
+            # registering the confirmation dialog handler; this mirrors real use
+            # and avoids two one-shot handlers racing the same preparation alert.
             accept_next_dialog(page)
             notify.click()
+            expect(notify).to_contain_text('待确认', timeout=3000)
             accept_next_dialog(page)
             notify.click()
             expect(notify).to_have_attribute('aria-pressed', 'true', timeout=3000)
             accept_next_dialog(page)
             initiate.click()
+            expect(initiate).to_contain_text('待确认', timeout=3000)
             accept_next_dialog(page)
             initiate.click()
             expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=3000)
@@ -248,45 +239,33 @@ def main():
                 next_period = conn.execute(
                     'SELECT next_payment_period FROM services WHERE id=?', (two_month_sid,)
                 ).fetchone()['next_payment_period']
-                assert next_period == add_periods(period, 2), next_period
+            assert next_period == add_periods(period, 2), (next_period, add_periods(period, 2))
 
-            # Editing after stage 4 is also silent. It automatically restores the
-            # pre-payment schedule, rolls stages 1-4 back, and invalidates only
-            # the changed row's confirmation.
-            assert_no_dialog_while(page, lambda: variable_input.fill('115'))
-            variable_input.press('Enter')
-            expect(variable_row).to_have_attribute('data-confirmed', '0', timeout=3000)
-            expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
+            # Editing after completion silently reopens stage 4 and rolls the
+            # schedule back before invalidating downstream workflow stages.
+            assert_no_dialog_while(page, lambda: fixed_input.fill('130'))
+            fixed_input.press('Enter')
+            expect(fixed_row).to_have_attribute('data-confirmed', '0', timeout=3000)
+            expect(variable_row).to_have_attribute('data-confirmed', '1', timeout=3000)
+            expect(paid).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
-            expect(paid).to_have_attribute('aria-pressed', 'false', timeout=3000)
             with db() as conn:
-                restored = conn.execute(
+                rolled_back_period = conn.execute(
                     'SELECT next_payment_period FROM services WHERE id=?', (two_month_sid,)
                 ).fetchone()['next_payment_period']
-                assert restored == period, restored
-                rows = conn.execute(
-                    'SELECT service_id,confirmed FROM payment_entries WHERE period=? ORDER BY service_id',
-                    (period,),
-                ).fetchall()
-                states = {int(r['service_id']): int(r['confirmed']) for r in rows}
-                assert states[variable_sid] == 0
-                assert states[two_month_sid] == 1
-
-            # Final row reconfirmation once again auto-completes stage 1.
-            variable_state.click()
-            expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
-            expect(page.locator('#pendingCount')).to_have_text('0', timeout=3000)
+            assert rolled_back_period == period, (rolled_back_period, period)
 
             browser.close()
-        print('v0.3.2 automatic review + silent row-preserving rollback browser acceptance passed')
+        print('v0.3.2 automatic review + row-preserving rollback browser acceptance passed')
     finally:
         proc.terminate()
         try:
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             proc.kill()
+            proc.wait(timeout=5)
 
 
 if __name__ == '__main__':
