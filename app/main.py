@@ -27,6 +27,7 @@ from .v031_runtime_routes import router as v031_runtime_router
 from .v03_mail_draft_routes import router as v03_mail_draft_router
 from .v031_payment_workflow_routes import router as v031_payment_workflow_router
 from .v032_customer_import_routes import router as v032_customer_import_router
+from .v032_customer_exchange_routes import router as v032_customer_exchange_router
 from . import v031_fixed_review_patch as _v031_fixed_review_patch  # noqa: F401
 
 _legacy_routes = list(app.router.routes)
@@ -62,12 +63,13 @@ _v031_runtime_routes = _include(v031_runtime_router)
 _v03_mail_draft_routes = _include(v03_mail_draft_router)
 _v031_payment_workflow_routes = _include(v031_payment_workflow_router)
 _v032_customer_import_routes = _include(v032_customer_import_router)
+_v032_customer_exchange_routes = _include(v032_customer_exchange_router)
 
-# v0.3.2 owns customer creation/import. v0.3.1 continues to own the mature
+# v0.3.2 owns customer creation/import/export. v0.3.1 continues to own the mature
 # four-stage payment workflow while the stable v0.2.12 customer workspace
 # remains the renderer.
 _ordered = (
-    _v032_customer_import_routes + _v031_payment_workflow_routes +
+    _v032_customer_exchange_routes + _v032_customer_import_routes + _v031_payment_workflow_routes +
     _v03_mail_draft_routes + _v031_runtime_routes + _v03_payment_routes + _v03_routes +
     _v0212_business_display_routes + _v0212_payment_routes + _v0212_routes +
     _v0211_promotion_routes + _v0211_routes + _v029_routes + _v028_routes +
