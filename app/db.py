@@ -185,11 +185,21 @@ CREATE INDEX IF NOT EXISTS idx_promotions_expiry ON promotions(expiry_date);
 
 
 def connect():
+    """Open one short-lived SQLite connection with production-safe lock handling.
+
+    WAL allows readers and a writer to coexist, but bursts of browser requests can
+    still briefly contend for the single SQLite write lock.  A generous timeout
+    turns those normal short races into waiting instead of intermittent
+    ``database is locked`` failures.  ``synchronous=NORMAL`` is the SQLite-recommended
+    WAL durability/performance balance; foreign keys remain enforced per connection.
+    """
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA foreign_keys=ON')
+    conn.execute('PRAGMA busy_timeout=30000')
     conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA synchronous=NORMAL')
     return conn
 
 
