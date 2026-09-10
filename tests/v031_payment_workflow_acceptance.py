@@ -77,6 +77,22 @@ def readonly(locator):
     return bool(locator.evaluate('el => el.readOnly'))
 
 
+def assert_no_dialog_while(page, action):
+    seen = []
+
+    def capture(dialog):
+        seen.append(dialog.message)
+        dialog.dismiss()
+
+    page.on('dialog', capture)
+    try:
+        action()
+        page.wait_for_timeout(350)
+    finally:
+        page.remove_listener('dialog', capture)
+    assert not seen, f'amount editing must be silent, got dialog: {seen}'
+
+
 def main():
     cid, ids, token = seed()
     assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
@@ -124,7 +140,6 @@ def main():
             labels = [x.strip() for x in flow.locator('[data-v031-flow-action]').all_inner_texts()]
             assert labels == ['1 金额核对', '2 通知客户', '3 发起缴费', '4 完成缴费'], labels
 
-            # Standalone action buttons are retired; actions now live inside stages 2 and 3.
             image_button = page.locator('[data-v031-payment-image]')
             foxmail_button = page.locator('[data-v03-foxmail-draft]')
             assert image_button.count() == 1 and image_button.is_hidden()
@@ -135,111 +150,137 @@ def main():
             notify = flow.locator('[data-v031-flow-action="notify"]')
             initiate = flow.locator('[data-v031-flow-action="initiate"]')
             paid = flow.locator('[data-v031-flow-action="paid"]')
-
-            # Fixed amount is auto-confirmed and not manually toggleable.
+            variable_row = page.locator(f'[data-payment-row][data-service-id="{variable_sid}"]')
             fixed_row = page.locator(f'[data-payment-row][data-service-id="{two_month_sid}"]')
-            assert fixed_row.get_attribute('data-confirmed') == '1'
-            assert fixed_row.locator('[data-row-state]').inner_text().strip() == '✓'
-            assert fixed_row.locator('[data-row-state]').is_disabled()
+            variable_state = variable_row.locator('[data-row-state]')
+            fixed_state = fixed_row.locator('[data-row-state]')
+            variable_input = variable_row.locator('.quick-amount')
+            fixed_input = fixed_row.locator('.quick-amount')
 
-            # One variable row starts unconfirmed; entering it enables stage 1.
+            # Fixed rows start automatic; one variable row starts pending.
+            assert fixed_row.get_attribute('data-confirmed') == '1'
+            assert fixed_state.inner_text().strip() == '✓'
+            assert fixed_state.is_disabled()
+            assert variable_row.get_attribute('data-confirmed') == '0'
             assert page.locator('#pendingCount').inner_text().strip() == '1'
-            assert review.is_disabled()
-            variable_input = page.locator(f'[data-payment-row][data-service-id="{variable_sid}"] .quick-amount')
-            variable_input.fill('105')
-            variable_input.press('Enter')
-            page.wait_for_timeout(450)
-            assert page.locator('#pendingCount').inner_text().strip() == '0'
-            expect(review).to_be_enabled(timeout=3000)
+            assert review.get_attribute('aria-pressed') == 'false'
 
-            review.click()
+            # Confirming the last pending row automatically completes stage 1.
+            variable_state.click()
+            expect(page.locator('#pendingCount')).to_have_text('0', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             expect(notify).to_be_enabled(timeout=3000)
 
-            # Stage 2 first click only prepares/copies image; it must NOT complete the stage.
-            accept_next_dialog(page)
-            notify.click()
-            expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
-            expect(notify).to_contain_text('待确认', timeout=3000)
-            assert 'awaiting-confirm' in (notify.get_attribute('class') or '')
-            assert initiate.is_disabled()
-
-            # Second click is the explicit human confirmation that WeChat send happened.
-            accept_next_dialog(page)
-            notify.click()
-            expect(notify).to_have_attribute('aria-pressed', 'true', timeout=3000)
-            expect(initiate).to_be_enabled(timeout=3000)
-            assert not readonly(variable_input)
-
-            # Customer disputes the amount after receiving the WeChat image.
-            variable_input.fill('110')
-            variable_input.press('Enter')
+            # Editing a fixed amount invalidates only that row, despite fixed rows
+            # normally being automatic confirmations.
+            fixed_input.fill('125')
+            fixed_input.press('Enter')
+            expect(fixed_row).to_have_attribute('data-confirmed', '0', timeout=3000)
+            expect(variable_row).to_have_attribute('data-confirmed', '1', timeout=3000)
+            expect(fixed_state).to_have_text('○', timeout=3000)
+            expect(fixed_state).to_be_enabled(timeout=3000)
+            expect(page.locator('#pendingCount')).to_have_text('1', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
-            expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
-            expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
-            assert fixed_row.get_attribute('data-confirmed') == '1'
-            assert fixed_row.locator('[data-row-state]').inner_text().strip() == '✓'
-
-            # Reconfirm corrected amount and perform stage 2 again. Wait for the
-            # authoritative workflow POST to finish instead of assuming 160 ms is enough.
-            expect(review).to_be_enabled(timeout=3000)
-            review.click()
+            fixed_state.click()
+            expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             expect(notify).to_be_enabled(timeout=3000)
+
+            # Stage 2: first click prepares image; second confirms the real WeChat send.
             accept_next_dialog(page)
             notify.click()
             expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(notify).to_contain_text('待确认', timeout=3000)
+            assert initiate.is_disabled()
             accept_next_dialog(page)
             notify.click()
             expect(notify).to_have_attribute('aria-pressed', 'true', timeout=3000)
             expect(initiate).to_be_enabled(timeout=3000)
 
-            # Stage 3 first click opens Foxmail but still stays incomplete.
+            # Stage 3: first opens Foxmail; second confirms the real email send.
             accept_next_dialog(page)
             initiate.click()
             expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(initiate).to_contain_text('待确认', timeout=3000)
-            assert paid.is_disabled()
-
-            # User returns after actually sending the email and confirms it.
             accept_next_dialog(page)
             initiate.click()
             expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=3000)
             expect(paid).to_be_enabled(timeout=3000)
 
+            # Editing after initiation is silent. Only the changed row becomes
+            # pending; every untouched row keeps its confirmation.
+            assert_no_dialog_while(page, lambda: variable_input.fill('110'))
+            variable_input.press('Enter')
+            expect(variable_row).to_have_attribute('data-confirmed', '0', timeout=3000)
+            expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
+            expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(page.locator('#pendingCount')).to_have_text('1', timeout=3000)
+
+            # Reconfirm just that row; stage 1 completes automatically again.
+            variable_state.click()
+            expect(variable_row).to_have_attribute('data-confirmed', '1', timeout=3000)
+            expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
+            expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(notify).to_be_enabled(timeout=3000)
+
+            # Re-do stages 2 and 3, then complete payment.
+            accept_next_dialog(page)
+            notify.click()
+            accept_next_dialog(page)
+            notify.click()
+            expect(notify).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            accept_next_dialog(page)
+            initiate.click()
+            accept_next_dialog(page)
+            initiate.click()
+            expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=3000)
             accept_next_dialog(page)
             paid.click()
             expect(paid).to_have_attribute('aria-pressed', 'true', timeout=3000)
-            expect(variable_input).to_have_attribute('readonly', '', timeout=3000)
+
+            # Amounts remain editable even after stage 4. The two-month schedule
+            # has advanced at payment completion.
+            expect(variable_input).not_to_have_attribute('readonly', '', timeout=3000)
+            assert not readonly(variable_input)
             with db() as conn:
                 next_period = conn.execute(
                     'SELECT next_payment_period FROM services WHERE id=?', (two_month_sid,)
                 ).fetchone()['next_payment_period']
                 assert next_period == add_periods(period, 2), next_period
 
-            # Undo final completion: payment cycle restores, stage 3 remains completed.
-            accept_next_dialog(page)
-            paid.click()
+            # Editing after stage 4 is also silent. It automatically restores the
+            # pre-payment schedule, rolls stages 1-4 back, and invalidates only
+            # the changed row's confirmation.
+            assert_no_dialog_while(page, lambda: variable_input.fill('115'))
+            variable_input.press('Enter')
+            expect(variable_row).to_have_attribute('data-confirmed', '0', timeout=3000)
+            expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
+            expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(paid).to_have_attribute('aria-pressed', 'false', timeout=3000)
-            expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=3000)
-            expect(variable_input).not_to_have_attribute('readonly', '', timeout=3000)
             with db() as conn:
                 restored = conn.execute(
                     'SELECT next_payment_period FROM services WHERE id=?', (two_month_sid,)
                 ).fetchone()['next_payment_period']
                 assert restored == period, restored
+                rows = conn.execute(
+                    'SELECT service_id,confirmed FROM payment_entries WHERE period=? ORDER BY service_id',
+                    (period,),
+                ).fetchall()
+                states = {int(r['service_id']): int(r['confirmed']) for r in rows}
+                assert states[variable_sid] == 0
+                assert states[two_month_sid] == 1
 
-            accept_next_dialog(page)
-            initiate.click()
-            expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
-            accept_next_dialog(page)
-            notify.click()
-            expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            # Final row reconfirmation once again auto-completes stage 1.
+            variable_state.click()
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(page.locator('#pendingCount')).to_have_text('0', timeout=3000)
 
             browser.close()
-        print('v0.3.2 integrated four-stage browser acceptance passed (isolated test database)')
+        print('v0.3.2 automatic review + silent row-preserving rollback browser acceptance passed')
     finally:
         proc.terminate()
         try:
