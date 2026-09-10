@@ -30,7 +30,13 @@ def main():
     assert 'window.alert = message =>' in patch_js
     assert '确认缴费图片已经通过微信发送给客户' in patch_js
     assert '确认缴费邮件已经在Foxmail中发送给同事' in patch_js
+    assert '确认同事已收到邮件，并且你已经完成本次实际支付' in patch_js
+    assert '撤回“完成缴费”并恢复本次缴费前的周期状态' in patch_js
     assert '该客户已经发起缴费。修改金额后' in patch_js
+    assert 'URL.createObjectURL(blob)' in patch_js
+    assert 'download.download =' in patch_js
+    assert 'Content-Disposition' in patch_js
+    assert '缴费TXT已下载' in patch_js
     assert '未填写时只提示' in patch_js
     assert '不与其他客户共用' in patch_js
     assert '必填，不自动生成' in patch_js
@@ -95,7 +101,7 @@ def main():
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
     assert 'tests/v03_' not in deploy, '生产 deploy.sh 不得执行 v0.3 测试脚本'
 
-    print('v0.3.3 safety/Foxmail native-attachment contract passed')
+    print('v0.3.3 safety/Foxmail native-attachment + real-TXT-download contract passed')
 
 
 if __name__ == '__main__':
