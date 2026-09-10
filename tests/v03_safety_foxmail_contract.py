@@ -21,7 +21,7 @@ def main():
     assert "FOXMAIL_BRIDGE = 'http://127.0.0.1:18763'" in actions
     assert 'payment-mail-compose-v031' in actions
     assert "bridgeFetch('/compose'" in actions
-    assert 'data.verified !== true' in actions
+    assert 'result.verified !== true' in actions
     assert 'attachment_filename_b64' in actions
     assert 'attachment_content_base64' in actions
 
@@ -79,6 +79,8 @@ def main():
     assert '当前客户缴费模板未填写' in mail_patch
     assert 'TXT附件文件名' in mail_patch
     assert 'RECIPIENT_META_KEY' not in mail_patch
+    assert '_current_payment_txt_content' in mail_patch
+    assert 'v03._payment_txt_content' not in mail_patch
 
     main_py = (ROOT / 'app' / 'main.py').read_text(encoding='utf-8')
     assert "connect-src 'self' http://127.0.0.1:18763 http://localhost:18763" in main_py
