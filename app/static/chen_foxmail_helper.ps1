@@ -39,11 +39,18 @@ function Safe-EmlName([string]$Name) {
 }
 
 function Get-FoxmailMapiDll {
-    foreach ($view in @([Microsoft.Win32.RegistryView]::Registry32, [Microsoft.Win32.RegistryView]::Registry64)) {
+    $views = @(
+        [Microsoft.Win32.RegistryView]::Registry32,
+        [Microsoft.Win32.RegistryView]::Registry64
+    )
+    foreach ($view in $views) {
         $base = $null
         $key = $null
         try {
-            $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $view)
+            $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
+                [Microsoft.Win32.RegistryHive]::LocalMachine,
+                $view
+            )
             $key = $base.OpenSubKey('SOFTWARE\Clients\Mail\Foxmail')
             if ($null -ne $key) {
                 $value = [string]$key.GetValue('DLLPath', '')
@@ -61,69 +68,47 @@ function Get-FoxmailMapiDll {
     return ''
 }
 
-function Get-FoxmailExe {
-    foreach ($view in @([Microsoft.Win32.RegistryView]::Registry32, [Microsoft.Win32.RegistryView]::Registry64)) {
-        $base = $null
-        $key = $null
-        try {
-            $base = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $view)
-            $key = $base.OpenSubKey('SOFTWARE\Clients\Mail\Foxmail\shell\open\command')
-            if ($null -ne $key) {
-                $command = [string]$key.GetValue('', '')
-                if ($command) {
-                    $match = [regex]::Match($command, '^\s*"([^"]+Foxmail\.exe)"', 'IgnoreCase')
-                    if (-not $match.Success) { $match = [regex]::Match($command, '^\s*([^\s]+Foxmail\.exe)', 'IgnoreCase') }
-                    if ($match.Success -and (Test-Path -LiteralPath $match.Groups[1].Value)) {
-                        return $match.Groups[1].Value
-                    }
-                }
-            }
-        } catch {
-        } finally {
-            if ($null -ne $key) { $key.Close() }
-            if ($null -ne $base) { $base.Close() }
-        }
+function Get-MapiErrorText([int]$Code) {
+    switch ($Code) {
+        0 { return 'success' }
+        1 { return 'user aborted' }
+        2 { return 'general MAPI failure' }
+        3 { return 'MAPI logon failed' }
+        4 { return 'disk full' }
+        5 { return 'insufficient memory' }
+        6 { return 'access denied' }
+        8 { return 'too many sessions' }
+        9 { return 'too many files' }
+        10 { return 'too many recipients' }
+        11 { return 'attachment not found' }
+        12 { return 'attachment could not be opened' }
+        13 { return 'unknown recipient' }
+        14 { return 'bad recipient type' }
+        17 { return 'message text too large' }
+        18 { return 'invalid session' }
+        19 { return 'message type not supported' }
+        20 { return 'ambiguous recipient' }
+        22 { return 'network failure' }
+        24 { return 'invalid recipients' }
+        25 { return 'MAPI operation not supported' }
+        90 { return 'helper exception' }
+        default { return "MAPI error $Code" }
     }
-
-    $mapi = Get-FoxmailMapiDll
-    if ($mapi) {
-        $dir = Split-Path -Parent $mapi
-        for ($i = 0; $i -lt 3 -and $dir; $i++) {
-            $candidate = Join-Path $dir 'Foxmail.exe'
-            if (Test-Path -LiteralPath $candidate) { return $candidate }
-            $parent = Split-Path -Parent $dir
-            if ($parent -eq $dir) { break }
-            $dir = $parent
-        }
-    }
-    return ''
 }
 
-function Ensure-WindowTools {
-    if ('ChenFoxmailWindowTools' -as [type]) { return }
-    Add-Type -ReferencedAssemblies 'System.Windows.Forms' -TypeDefinition @'
+function Ensure-WindowProbeType {
+    if ('ChenFoxmailWindowProbe' -as [type]) { return }
+    Add-Type -TypeDefinition @'
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 
-public static class ChenFoxmailWindowTools
+public static class ChenFoxmailWindowProbe
 {
-    public class WindowInfo
-    {
-        public long Handle;
-        public int ProcessId;
-        public string Title;
-    }
-
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     [DllImport("user32.dll")]
     private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
-
-    [DllImport("user32.dll")]
-    public static extern bool IsWindow(IntPtr hWnd);
 
     [DllImport("user32.dll")]
     private static extern bool IsWindowVisible(IntPtr hWnd);
@@ -131,151 +116,30 @@ public static class ChenFoxmailWindowTools
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int maxCount);
-
-    [DllImport("user32.dll")]
-    public static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    public static extern bool BringWindowToTop(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr SetActiveWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr SetFocus(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
-
-    [DllImport("kernel32.dll")]
-    private static extern uint GetCurrentThreadId();
-
-    public static bool IsForeground(IntPtr hWnd)
+    public static int CountVisibleForPids(int[] processIds)
     {
-        return hWnd != IntPtr.Zero && GetForegroundWindow() == hWnd;
-    }
-
-    public static bool ForceForeground(IntPtr hWnd)
-    {
-        if (hWnd == IntPtr.Zero || !IsWindow(hWnd)) return false;
-        ShowWindow(hWnd, 9);
-
-        IntPtr foreground = GetForegroundWindow();
-        uint ignored;
-        uint foregroundThread = foreground == IntPtr.Zero ? 0 : GetWindowThreadProcessId(foreground, out ignored);
-        uint targetPid;
-        uint targetThread = GetWindowThreadProcessId(hWnd, out targetPid);
-        uint currentThread = GetCurrentThreadId();
-        bool attachedCurrent = false;
-        bool attachedForeground = false;
-
-        try
-        {
-            if (currentThread != targetThread)
-                attachedCurrent = AttachThreadInput(currentThread, targetThread, true);
-            if (foregroundThread != 0 && foregroundThread != targetThread && foregroundThread != currentThread)
-                attachedForeground = AttachThreadInput(foregroundThread, targetThread, true);
-
-            BringWindowToTop(hWnd);
-            SetActiveWindow(hWnd);
-            SetForegroundWindow(hWnd);
-            SetFocus(hWnd);
-        }
-        finally
-        {
-            if (attachedForeground)
-                AttachThreadInput(foregroundThread, targetThread, false);
-            if (attachedCurrent)
-                AttachThreadInput(currentThread, targetThread, false);
-        }
-
-        return GetForegroundWindow() == hWnd;
-    }
-
-    public static WindowInfo[] GetFoxmailWindows()
-    {
-        var foxIds = new HashSet<int>();
-        foreach (var p in Process.GetProcessesByName("Foxmail")) foxIds.Add(p.Id);
-        var result = new List<WindowInfo>();
+        if (processIds == null || processIds.Length == 0) return 0;
+        var ids = new HashSet<int>(processIds);
+        int count = 0;
         EnumWindows(delegate(IntPtr hWnd, IntPtr lParam)
         {
             if (!IsWindowVisible(hWnd)) return true;
             uint pid;
             GetWindowThreadProcessId(hWnd, out pid);
-            if (!foxIds.Contains((int)pid)) return true;
-            var sb = new StringBuilder(512);
-            GetWindowText(hWnd, sb, sb.Capacity);
-            result.Add(new WindowInfo { Handle = hWnd.ToInt64(), ProcessId = (int)pid, Title = sb.ToString() });
+            if (ids.Contains((int)pid)) count++;
             return true;
         }, IntPtr.Zero);
-        return result.ToArray();
+        return count;
     }
 }
 '@
 }
 
-function Get-FoxmailWindows {
-    Ensure-WindowTools
-    return @([ChenFoxmailWindowTools]::GetFoxmailWindows())
-}
-
-function Build-MailtoUri([string]$Recipient, [string]$Subject, [string]$Body) {
-    $recipientPart = [Uri]::EscapeDataString($Recipient)
-    $parts = New-Object 'System.Collections.Generic.List[string]'
-    if ($Subject) { $parts.Add('subject=' + [Uri]::EscapeDataString($Subject)) }
-    if ($Body) {
-        $htmlBody = $Body.Replace("`r`n", '<br>').Replace("`n", '<br>').Replace("`r", '<br>')
-        $parts.Add('body=' + [Uri]::EscapeDataString($htmlBody))
-    }
-    $query = if ($parts.Count -gt 0) { '?' + ($parts -join '&') } else { '' }
-    return 'mailto:' + $recipientPart + $query
-}
-
-function Set-AttachmentClipboard([string]$AttachmentPath) {
-    Add-Type -AssemblyName System.Windows.Forms
-    $files = New-Object System.Collections.Specialized.StringCollection
-    [void]$files.Add($AttachmentPath)
-
-    for ($attempt = 0; $attempt -lt 6; $attempt++) {
-        try {
-            [System.Windows.Forms.Clipboard]::SetFileDropList($files)
-            Start-Sleep -Milliseconds 120
-            if ([System.Windows.Forms.Clipboard]::ContainsFileDropList()) {
-                $readBack = [System.Windows.Forms.Clipboard]::GetFileDropList()
-                if ($readBack -and $readBack.Contains($AttachmentPath)) { return $true }
-            }
-        } catch {
-        }
-        Start-Sleep -Milliseconds 180
-    }
-    return $false
-}
-
-function Focus-ComposeWindow($ComposeWindow) {
-    Ensure-WindowTools
-    $hwnd = [IntPtr]::new([long]$ComposeWindow.Handle)
-    $stableForeground = 0
-
-    for ($attempt = 0; $attempt -lt 14; $attempt++) {
-        if (-not [ChenFoxmailWindowTools]::IsWindow($hwnd)) { return $false }
-        [void][ChenFoxmailWindowTools]::ForceForeground($hwnd)
-        Start-Sleep -Milliseconds 180
-        if ([ChenFoxmailWindowTools]::IsForeground($hwnd)) {
-            $stableForeground += 1
-            if ($stableForeground -ge 3) { return $true }
-        } else {
-            $stableForeground = 0
-        }
-    }
-    return $false
+function Get-FoxmailVisibleWindowCount {
+    Ensure-WindowProbeType
+    $ids = @(Get-Process -Name Foxmail -ErrorAction SilentlyContinue | ForEach-Object { [int]$_.Id })
+    if ($ids.Count -eq 0) { return 0 }
+    return [ChenFoxmailWindowProbe]::CountVisibleForPids([int[]]$ids)
 }
 
 function Invoke-FoxmailCompose([string]$RequestPath) {
@@ -285,84 +149,200 @@ function Invoke-FoxmailCompose([string]$RequestPath) {
     $body = Decode-B64Text ([string]$payload.body_b64)
     $attachmentName = Safe-AttachmentName (Decode-B64Text ([string]$payload.attachment_filename_b64))
     $attachmentBytes = [Convert]::FromBase64String([string]$payload.attachment_content_base64)
-    if ($attachmentBytes.Length -lt 1) { return 94 }
-
-    $foxmailExe = Get-FoxmailExe
-    if (-not $foxmailExe) { return 93 }
+    if ($attachmentBytes.Length -lt 1) { throw 'empty attachment payload' }
 
     New-Item -ItemType Directory -Force -Path $MailDir | Out-Null
     $prefix = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
-    $composeDir = Join-Path $MailDir $prefix
-    New-Item -ItemType Directory -Force -Path $composeDir | Out-Null
-    $attachmentPath = Join-Path $composeDir $attachmentName
+    $attachmentPath = Join-Path $MailDir ($prefix + '-' + $attachmentName)
     [IO.File]::WriteAllBytes($attachmentPath, $attachmentBytes)
 
-    $before = @{}
-    foreach ($w in (Get-FoxmailWindows)) { $before[[string]$w.Handle] = $true }
+    $foxmailDll = Get-FoxmailMapiDll
+    if (-not $foxmailDll) { throw 'Foxmail MAPI DLL not found' }
 
-    $mailto = Build-MailtoUri $recipient $subject $body
-    Start-Process -FilePath $foxmailExe -ArgumentList @($mailto) | Out-Null
+    if (-not ('ChenFoxmailMapi' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
 
-    $composeWindow = $null
-    $deadline = (Get-Date).AddSeconds(8)
-    while ((Get-Date) -lt $deadline -and $null -eq $composeWindow) {
-        Start-Sleep -Milliseconds 250
-        foreach ($w in (Get-FoxmailWindows)) {
-            if (-not $before.ContainsKey([string]$w.Handle)) {
-                $composeWindow = $w
-                break
-            }
-        }
+public static class ChenFoxmailMapi
+{
+    private const int MAPI_LOGON_UI = 0x00000001;
+    private const int MAPI_NEW_SESSION = 0x00000002;
+    private const int MAPI_DIALOG = 0x00000008;
+    private const int MAPI_TO = 1;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    private struct MapiMessage
+    {
+        public uint reserved;
+        [MarshalAs(UnmanagedType.LPStr)] public string subject;
+        [MarshalAs(UnmanagedType.LPStr)] public string noteText;
+        [MarshalAs(UnmanagedType.LPStr)] public string messageType;
+        [MarshalAs(UnmanagedType.LPStr)] public string dateReceived;
+        [MarshalAs(UnmanagedType.LPStr)] public string conversationID;
+        public uint flags;
+        public IntPtr originator;
+        public uint recipCount;
+        public IntPtr recips;
+        public uint fileCount;
+        public IntPtr files;
     }
 
-    if ($null -eq $composeWindow) { return 91 }
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    private struct MapiRecipDesc
+    {
+        public uint reserved;
+        public uint recipClass;
+        [MarshalAs(UnmanagedType.LPStr)] public string name;
+        [MarshalAs(UnmanagedType.LPStr)] public string address;
+        public uint eIDSize;
+        public IntPtr entryID;
+    }
 
-    try {
-        Add-Type -AssemblyName System.Windows.Forms
-        Add-Type -AssemblyName System.Drawing
-        Ensure-WindowTools
-        $hwnd = [IntPtr]::new([long]$composeWindow.Handle)
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    private struct MapiFileDesc
+    {
+        public uint reserved;
+        public uint flags;
+        public uint position;
+        [MarshalAs(UnmanagedType.LPStr)] public string pathName;
+        [MarshalAs(UnmanagedType.LPStr)] public string fileName;
+        public IntPtr fileType;
+    }
 
-        Start-Sleep -Milliseconds 850
-        if (-not [ChenFoxmailWindowTools]::IsWindow($hwnd)) { return 91 }
-        if (-not (Focus-ComposeWindow $composeWindow)) { return 96 }
-        if (-not (Set-AttachmentClipboard $attachmentPath)) { return 97 }
+    [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+    private delegate int MapiSendMailDelegate(
+        IntPtr session,
+        IntPtr uiParam,
+        ref MapiMessage message,
+        int flags,
+        int reserved
+    );
 
-        [void][ChenFoxmailWindowTools]::ForceForeground($hwnd)
-        Start-Sleep -Milliseconds 320
-        if (-not [ChenFoxmailWindowTools]::IsForeground($hwnd)) {
-            if (-not (Focus-ComposeWindow $composeWindow)) { return 96 }
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr LoadLibrary(string fileName);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
+    private static extern IntPtr GetProcAddress(IntPtr module, string procName);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool FreeLibrary(IntPtr module);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool SetDllDirectory(string pathName);
+
+    public static int Compose(
+        string mapiDllPath,
+        string recipient,
+        string subject,
+        string body,
+        string attachmentPath,
+        string attachmentName)
+    {
+        IntPtr module = IntPtr.Zero;
+        IntPtr recipPtr = IntPtr.Zero;
+        IntPtr filePtr = IntPtr.Zero;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(mapiDllPath) || !File.Exists(mapiDllPath))
+                throw new InvalidOperationException("Foxmail MAPI DLL is missing.");
+
+            var dllDir = Path.GetDirectoryName(mapiDllPath);
+            if (!string.IsNullOrWhiteSpace(dllDir)) SetDllDirectory(dllDir);
+            module = LoadLibrary(mapiDllPath);
+            if (module == IntPtr.Zero)
+                throw new InvalidOperationException("Cannot load Foxmail MAPI DLL. Win32=" + Marshal.GetLastWin32Error());
+
+            IntPtr proc = GetProcAddress(module, "MAPISendMail");
+            if (proc == IntPtr.Zero) proc = GetProcAddress(module, "MAPISendMail@20");
+            if (proc == IntPtr.Zero)
+                throw new InvalidOperationException("Foxmail MAPISendMail export was not found.");
+
+            var send = (MapiSendMailDelegate)Marshal.GetDelegateForFunctionPointer(
+                proc,
+                typeof(MapiSendMailDelegate)
+            );
+
+            var msg = new MapiMessage
+            {
+                subject = subject ?? string.Empty,
+                noteText = body ?? string.Empty,
+                recipCount = 0,
+                recips = IntPtr.Zero,
+                fileCount = 0,
+                files = IntPtr.Zero
+            };
+
+            if (!string.IsNullOrWhiteSpace(recipient))
+            {
+                var recip = new MapiRecipDesc
+                {
+                    recipClass = MAPI_TO,
+                    name = recipient,
+                    address = recipient.IndexOf(':') >= 0 ? recipient : "SMTP:" + recipient
+                };
+                recipPtr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(MapiRecipDesc)));
+                Marshal.StructureToPtr(recip, recipPtr, false);
+                msg.recipCount = 1;
+                msg.recips = recipPtr;
+            }
+
+            if (!string.IsNullOrWhiteSpace(attachmentPath) && File.Exists(attachmentPath))
+            {
+                var file = new MapiFileDesc
+                {
+                    position = unchecked((uint)-1),
+                    pathName = attachmentPath,
+                    fileName = attachmentName
+                };
+                filePtr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(MapiFileDesc)));
+                Marshal.StructureToPtr(file, filePtr, false);
+                msg.fileCount = 1;
+                msg.files = filePtr;
+            }
+
+            int flags = MAPI_LOGON_UI | MAPI_NEW_SESSION | MAPI_DIALOG;
+            return send(IntPtr.Zero, IntPtr.Zero, ref msg, flags, 0);
         }
-
-        Start-Sleep -Milliseconds 280
-        [System.Windows.Forms.SendKeys]::SendWait('^v')
-        Start-Sleep -Milliseconds 1100
-        return 0
-    } catch {
-        return 92
+        finally
+        {
+            if (recipPtr != IntPtr.Zero)
+            {
+                Marshal.DestroyStructure(recipPtr, typeof(MapiRecipDesc));
+                Marshal.FreeHGlobal(recipPtr);
+            }
+            if (filePtr != IntPtr.Zero)
+            {
+                Marshal.DestroyStructure(filePtr, typeof(MapiFileDesc));
+                Marshal.FreeHGlobal(filePtr);
+            }
+            if (module != IntPtr.Zero) FreeLibrary(module);
+            SetDllDirectory(null);
+        }
     }
 }
-
-function Get-ComposeErrorText([int]$Code) {
-    switch ($Code) {
-        0 { return 'success' }
-        91 { return 'Foxmail compose window was not detected after mailto launch' }
-        92 { return 'Foxmail compose window opened but TXT attachment paste failed' }
-        93 { return 'Foxmail.exe was not found' }
-        94 { return 'TXT attachment payload was empty' }
-        95 { return 'compose helper timed out' }
-        96 { return 'Foxmail compose window could not be focused reliably' }
-        97 { return 'TXT attachment clipboard could not be prepared reliably' }
-        default { return "Foxmail helper error $Code" }
+'@
     }
+
+    return [ChenFoxmailMapi]::Compose(
+        $foxmailDll,
+        $recipient,
+        $subject,
+        $body,
+        $attachmentPath,
+        $attachmentName
+    )
 }
 
 if ($ComposeRequest) {
     try {
         $result = [int](Invoke-FoxmailCompose $ComposeRequest)
+        if ($result -eq 0) { exit 0 }
+        if ($result -lt 1 -or $result -gt 89) { exit 89 }
         exit $result
     } catch {
-        exit 99
+        exit 90
     }
 }
 
@@ -375,7 +355,9 @@ if (-not $BridgeMode) {
             $_.CommandLine -like '*chen_foxmail_helper.ps1*' -and
             $_.CommandLine -like '*-BridgeMode*'
         } |
-        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        ForEach-Object {
+            Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+        }
     Start-Sleep -Milliseconds 350
 
     Copy-Item -Force $PSCommandPath $InstalledScript
@@ -385,27 +367,27 @@ if (-not $BridgeMode) {
     $Shell = New-Object -ComObject WScript.Shell
     $Shortcut = $Shell.CreateShortcut($ShortcutPath)
     $Shortcut.TargetPath = 'powershell.exe'
-    $Shortcut.Arguments = "-NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$InstalledScript`" -BridgeMode"
+    $Shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$InstalledScript`" -BridgeMode"
     $Shortcut.WorkingDirectory = $InstallDir
     $Shortcut.Description = 'Chen Assistant Foxmail local helper'
     $Shortcut.Save()
 
     Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -ArgumentList @(
-        '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', "`"$InstalledScript`"", '-BridgeMode'
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$InstalledScript`"", '-BridgeMode'
     )
 
     Start-Sleep -Milliseconds 900
-    $foxmailExe = Get-FoxmailExe
+    $foxmailDll = Get-FoxmailMapiDll
     Write-Host ''
     Write-Host 'Chen Assistant Foxmail helper installed.' -ForegroundColor Green
     Write-Host "Install directory: $InstallDir"
     Write-Host 'It will start automatically when you sign in to Windows.'
-    if ($foxmailExe) {
-        Write-Host "Direct Foxmail compose: $foxmailExe" -ForegroundColor Green
+    if ($foxmailDll) {
+        Write-Host "Direct Foxmail MAPI: $foxmailDll" -ForegroundColor Green
     } else {
-        Write-Host 'Foxmail.exe was not found.' -ForegroundColor Yellow
+        Write-Host 'Direct Foxmail MAPI was not found.' -ForegroundColor Yellow
     }
-    Write-Host 'Compose mode: Foxmail mailto + verified-focus TXT clipboard attachment'
+    Write-Host 'Compose dispatch verification: enabled'
     Write-Host ''
     Write-Host 'Return to Chen Assistant and refresh the page.'
     Read-Host 'Press Enter to close'
@@ -413,7 +395,7 @@ if (-not $BridgeMode) {
 }
 
 New-Item -ItemType Directory -Force -Path $MailDir | Out-Null
-$FoxmailExe = Get-FoxmailExe
+$FoxmailMapiDll = Get-FoxmailMapiDll
 
 try {
     $listener = New-Object System.Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $Port)
@@ -473,7 +455,9 @@ function Write-Response {
     $headerText = ($headers -join "`r`n") + "`r`n`r`n"
     $headerBytes = [Text.Encoding]::ASCII.GetBytes($headerText)
     $Stream.Write($headerBytes, 0, $headerBytes.Length)
-    if ($bodyBytes.Length -gt 0) { $Stream.Write($bodyBytes, 0, $bodyBytes.Length) }
+    if ($bodyBytes.Length -gt 0) {
+        $Stream.Write($bodyBytes, 0, $bodyBytes.Length)
+    }
     $Stream.Flush()
 }
 
@@ -481,6 +465,7 @@ function Read-Request([System.Net.Sockets.NetworkStream]$Stream) {
     $reader = New-Object IO.StreamReader($Stream, [Text.Encoding]::ASCII, $false, 4096, $true)
     $requestLine = $reader.ReadLine()
     if (-not $requestLine) { return $null }
+
     $parts = $requestLine.Split(' ')
     if ($parts.Length -lt 2) { return $null }
 
@@ -490,14 +475,25 @@ function Read-Request([System.Net.Sockets.NetworkStream]$Stream) {
         if ($null -eq $line -or $line -eq '') { break }
         $colon = $line.IndexOf(':')
         if ($colon -gt 0) {
-            $headers[$line.Substring(0, $colon).Trim().ToLowerInvariant()] = $line.Substring($colon + 1).Trim()
+            $key = $line.Substring(0, $colon).Trim().ToLowerInvariant()
+            $value = $line.Substring($colon + 1).Trim()
+            $headers[$key] = $value
         }
     }
 
     $length = 0
-    if ($headers.ContainsKey('content-length')) { [void][int]::TryParse($headers['content-length'], [ref]$length) }
+    if ($headers.ContainsKey('content-length')) {
+        [void][int]::TryParse($headers['content-length'], [ref]$length)
+    }
+
     if ($length -gt 12000000) {
-        return @{ Method = $parts[0].ToUpperInvariant(); Path = $parts[1]; Headers = $headers; TooLarge = $true; Body = '' }
+        return @{
+            Method = $parts[0].ToUpperInvariant()
+            Path = $parts[1]
+            Headers = $headers
+            TooLarge = $true
+            Body = ''
+        }
     }
 
     $body = ''
@@ -511,84 +507,125 @@ function Read-Request([System.Net.Sockets.NetworkStream]$Stream) {
         }
         $body = New-Object string($chars, 0, $offset)
     }
-    return @{ Method = $parts[0].ToUpperInvariant(); Path = $parts[1]; Headers = $headers; TooLarge = $false; Body = $body }
+
+    return @{
+        Method = $parts[0].ToUpperInvariant()
+        Path = $parts[1]
+        Headers = $headers
+        TooLarge = $false
+        Body = $body
+    }
 }
 
-Get-ChildItem -Path $MailDir -Force -ErrorAction SilentlyContinue |
+Get-ChildItem -Path $MailDir -File -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-7) } |
-    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -Force -ErrorAction SilentlyContinue
 
 try {
     while ($true) {
         $client = $listener.AcceptTcpClient()
         try {
             if (-not [Net.IPAddress]::IsLoopback($client.Client.RemoteEndPoint.Address)) { continue }
+
             $stream = $client.GetStream()
             $req = Read-Request $stream
-            if ($null -eq $req) { Write-Response $stream 400 (ConvertTo-CompactJson @{ ok = $false }); continue }
+            if ($null -eq $req) {
+                Write-Response $stream 400 (ConvertTo-CompactJson @{ ok = $false })
+                continue
+            }
 
             $origin = ''
             if ($req.Headers.ContainsKey('origin')) { $origin = $req.Headers['origin'] }
-            if (-not (Test-AllowedOrigin $origin)) { Write-Response $stream 403 (ConvertTo-CompactJson @{ ok = $false; error = 'origin denied' }); continue }
-            if ($req.TooLarge) { Write-Response $stream 413 (ConvertTo-CompactJson @{ ok = $false; error = 'payload too large' }) $origin; continue }
-            if ($req.Method -eq 'OPTIONS') { Write-Response $stream 204 '' $origin; continue }
+
+            if (-not (Test-AllowedOrigin $origin)) {
+                Write-Response $stream 403 (ConvertTo-CompactJson @{ ok = $false; error = 'origin denied' })
+                continue
+            }
+
+            if ($req.TooLarge) {
+                Write-Response $stream 413 (ConvertTo-CompactJson @{ ok = $false; error = 'payload too large' }) $origin
+                continue
+            }
+
+            if ($req.Method -eq 'OPTIONS') {
+                Write-Response $stream 204 '' $origin
+                continue
+            }
 
             if ($req.Method -eq 'GET' -and $req.Path -eq '/health') {
                 Write-Response $stream 200 (ConvertTo-CompactJson @{
                     ok = $true
                     name = 'Chen Foxmail Helper'
-                    version = '0.8'
+                    version = '0.5'
                     compose = $true
-                    foxmail_direct = [bool]$FoxmailExe
+                    foxmail_direct = [bool]$FoxmailMapiDll
                     verified_dispatch = $true
-                    compose_mode = 'mailto-clipboard'
-                    attachment_filename_exact = $true
-                    attachment_focus_verified = $true
-                    clipboard_verified = $true
                 }) $origin
                 continue
             }
 
             if ($req.Method -eq 'POST' -and $req.Path -eq '/compose') {
                 try {
-                    if (-not $FoxmailExe) { throw 'Foxmail.exe was not found' }
+                    if (-not $FoxmailMapiDll) { throw 'Foxmail MAPI DLL not found' }
                     $payload = $req.Body | ConvertFrom-Json
                     foreach ($name in @('subject_b64', 'attachment_filename_b64', 'attachment_content_base64')) {
                         if (-not $payload.$name) { throw "missing $name" }
                     }
+
                     $requestFile = Join-Path $MailDir ((Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '-compose.json')
                     [IO.File]::WriteAllText($requestFile, $req.Body, [Text.Encoding]::UTF8)
+                    $beforeWindows = Get-FoxmailVisibleWindowCount
 
-                    $process = Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -PassThru -ArgumentList @(
-                        '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', "`"$InstalledScript`"",
+                    $composePowerShell = Join-Path $env:WINDIR 'SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
+                    if (-not (Test-Path $composePowerShell)) { $composePowerShell = 'powershell.exe' }
+                    $process = Start-Process -FilePath $composePowerShell -WindowStyle Hidden -PassThru -ArgumentList @(
+                        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$InstalledScript`"",
                         '-ComposeRequest', "`"$requestFile`""
                     )
-                    if (-not $process.WaitForExit(18000)) {
-                        try { $process.Kill() } catch {}
-                        $code = 95
-                    } else {
-                        $code = [int]$process.ExitCode
-                    }
 
-                    if ($code -eq 0) {
+                    $exitedQuickly = $process.WaitForExit(1800)
+                    if (-not $exitedQuickly) {
                         Write-Response $stream 200 (ConvertTo-CompactJson @{
                             ok = $true
+                            mode = 'foxmail-direct-mapi'
                             verified = $true
-                            mode = 'foxmail-mailto-clipboard'
-                            state = 'compose-opened-focused-and-attachment-pasted'
-                            attachment_filename_exact = $true
-                            attachment_focus_verified = $true
-                            clipboard_verified = $true
+                            state = 'dialog-active'
+                        }) $origin
+                        continue
+                    }
+
+                    $exitCode = [int]$process.ExitCode
+                    if ($exitCode -ne 0) {
+                        $errorText = Get-MapiErrorText $exitCode
+                        Write-Response $stream 500 (ConvertTo-CompactJson @{
+                            ok = $false
+                            error = "Foxmail MAPI failed: $errorText (code $exitCode)"
+                            code = $exitCode
+                        }) $origin
+                        continue
+                    }
+
+                    Start-Sleep -Milliseconds 700
+                    $afterWindows = Get-FoxmailVisibleWindowCount
+                    if ($afterWindows -gt $beforeWindows) {
+                        Write-Response $stream 200 (ConvertTo-CompactJson @{
+                            ok = $true
+                            mode = 'foxmail-direct-mapi'
+                            verified = $true
+                            state = 'new-window-detected'
                         }) $origin
                     } else {
                         Write-Response $stream 500 (ConvertTo-CompactJson @{
                             ok = $false
-                            error = (Get-ComposeErrorText $code)
-                            code = $code
+                            error = 'Foxmail MAPI returned success but no compose window was detected'
+                            code = 0
                         }) $origin
                     }
                 } catch {
-                    Write-Response $stream 500 (ConvertTo-CompactJson @{ ok = $false; error = $_.Exception.Message }) $origin
+                    Write-Response $stream 500 (ConvertTo-CompactJson @{
+                        ok = $false
+                        error = $_.Exception.Message
+                    }) $origin
                 }
                 continue
             }
@@ -596,15 +633,21 @@ try {
             if ($req.Method -eq 'POST' -and $req.Path -eq '/open') {
                 try {
                     $payload = $req.Body | ConvertFrom-Json
-                    $fileName = Safe-EmlName (Decode-B64Text ([string]$payload.filename_b64))
+                    $decodedName = Decode-B64Text ([string]$payload.filename_b64)
+                    $fileName = Safe-EmlName $decodedName
                     $mailBytes = [Convert]::FromBase64String([string]$payload.content_base64)
                     if ($mailBytes.Length -lt 20) { throw 'empty mail payload' }
-                    $path = Join-Path $MailDir ((Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '-' + $fileName)
+
+                    $prefix = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
+                    $path = Join-Path $MailDir ($prefix + '-' + $fileName)
                     [IO.File]::WriteAllBytes($path, $mailBytes)
                     Start-Process -FilePath $path
                     Write-Response $stream 200 (ConvertTo-CompactJson @{ ok = $true; mode = 'eml' }) $origin
                 } catch {
-                    Write-Response $stream 500 (ConvertTo-CompactJson @{ ok = $false; error = $_.Exception.Message }) $origin
+                    Write-Response $stream 500 (ConvertTo-CompactJson @{
+                        ok = $false
+                        error = $_.Exception.Message
+                    }) $origin
                 }
                 continue
             }
