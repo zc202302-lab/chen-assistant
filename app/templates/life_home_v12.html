@@ -3,7 +3,7 @@
   <header class="v10-page-head"><div><span class="v10-kicker">生活</span><h1>生活空间</h1><p>v1.2 先把菜谱和烹饪工具做好。</p></div></header>
   <div class="v12-life-grid">
     <a class="v12-life-card" href="/life/recipes"><span>菜谱</span><strong>{{ recipe_count }}</strong><small>按“糖醋排骨”标准模板导入</small></a>
-    <a class="v12-life-card" href="/life/tools"><span>烹饪工具</span><strong>4</strong><small>用盐、调味、料汁、重量尺寸</small></a>
+    <a class="v12-life-card" href="/life/tools"><span>烹饪工具</span><strong>5</strong><small>用盐、技法调味、料汁、含盐换算、重量尺寸</small></a>
   </div>
   <section class="v10-section"><div class="v10-section-head"><div><h2>标准菜谱</h2><p>步骤保留 Excel 原始文本。</p></div><a href="/life/recipes">查看全部</a></div>
     <div class="v10-list-card">{% for r in recent %}<a class="v10-row" href="/life/recipes/{{ r.id }}"><div><strong>{{ r.name }}</strong><small>{{ r.category }}</small></div><span>›</span></a>{% endfor %}</div>
