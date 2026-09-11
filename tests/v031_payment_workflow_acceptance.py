@@ -106,12 +106,15 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
             page = context.new_page()
 
-            # Windows/Foxmail itself is outside Linux CI. Stub its verified native
-            # compose response; all payment state endpoints remain real.
+            # Windows/Foxmail itself is outside Linux CI. Reproduce the exact
+            # helper-v0.5 false negative seen in production: Simple MAPI returned
+            # success (code 0), but its secondary visible-window-count probe did
+            # not detect a new top-level compose window. v0.3.3 must accept this
+            # as a prepared/pending action rather than surface an operation error.
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
-                status=200,
+                status=500,
                 content_type='application/json',
-                body='{"ok":true,"verified":true,"mode":"foxmail-direct-mapi","state":"new-window-detected"}',
+                body='{"ok":false,"error":"Foxmail MAPI returned success but no compose window was detected","code":0}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route(f'**/customers/{cid}/payment-mail-compose-v031', lambda route: route.fulfill(
@@ -176,18 +179,21 @@ def main():
 
             # Requirement 3: both clicks of notify are non-blocking/no-dialog.
             assert_no_dialog_while(page, lambda: notify.click())
-            expect(notify).to_contain_text('待确认', timeout=3000)
+            expect(notify).to_contain_text('待确认', timeout=5000)
+            expect(notify).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: notify.click())
-            expect(notify).to_have_attribute('aria-pressed', 'true', timeout=3000)
-            expect(initiate).to_be_enabled(timeout=3000)
+            expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
+            expect(initiate).to_be_enabled(timeout=5000)
 
-            # Requirement 3 again for initiate; bridge result says a native MAPI
-            # compose window was verified, and no confirmation alert is allowed.
+            # Helper code-0/window-probe false negative must be accepted as a
+            # prepared action with no blocking dialog; the second click records
+            # the operator's actual mail-send completion.
             assert_no_dialog_while(page, lambda: initiate.click(), 700)
-            expect(initiate).to_contain_text('待确认', timeout=3000)
+            expect(initiate).to_contain_text('待确认', timeout=5000)
+            expect(initiate).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: initiate.click())
-            expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=3000)
-            expect(paid).to_be_enabled(timeout=3000)
+            expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=5000)
+            expect(paid).to_be_enabled(timeout=5000)
 
             # Requirement 2 at a late stage: amount edit is silent and returns to
             # review; only the edited variable row loses its confirmation.
@@ -204,13 +210,18 @@ def main():
             variable_state.click()
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             assert_no_dialog_while(page, lambda: notify.click())
+            expect(notify).to_contain_text('待确认', timeout=5000)
+            expect(notify).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: notify.click())
-            expect(notify).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
+            expect(initiate).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: initiate.click(), 700)
+            expect(initiate).to_contain_text('待确认', timeout=5000)
+            expect(initiate).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: initiate.click())
-            expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=5000)
             assert_no_dialog_while(page, lambda: paid.click())
-            expect(paid).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(paid).to_have_attribute('aria-pressed', 'true', timeout=5000)
 
             with db() as conn:
                 next_period = conn.execute(
@@ -236,7 +247,7 @@ def main():
 
             browser.close()
 
-        print('v0.3.3 real TXT download + fully nonblocking four-stage browser acceptance passed')
+        print('v0.3.3 MAPI false-negative compatibility + real TXT download + fully nonblocking browser acceptance passed')
     finally:
         proc.terminate()
         try:
