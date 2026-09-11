@@ -33,6 +33,7 @@ from .v031_fixed_review_patch import router as v031_review_sync_router
 from . import v031_fixed_review_patch as _v031_fixed_review_patch  # noqa: F401
 from .v033_payment_flow_patch import router as v033_payment_flow_patch_router
 from .v10_routes import router as v10_router, ensure_v10_schema
+from .v101_workspace_routes import router as v101_workspace_router
 
 _legacy_routes = list(app.router.routes)
 
@@ -71,10 +72,15 @@ _v032_customer_import_routes = _include(v032_customer_import_router)
 _v032_customer_exchange_routes = _include(v032_customer_exchange_router)
 _v033_payment_flow_patch_routes = _include(v033_payment_flow_patch_router)
 _v10_routes = _include(v10_router)
+_v101_workspace_routes = _include(v101_workspace_router)
 
-# v1.0 owns the global home/search and life workspace. The mature work routes
-# continue to own customer/payment behavior exactly as before.
+# v1.0 adds a global shell and the life workspace, but the mature work workspace
+# must remain behaviorally independent. v1.0.1 therefore restores the original
+# work dashboard/search at /work and /search, while cross-space search lives at
+# /global-search. Customer/payment/business/promotion routes keep their existing
+# owners exactly as before.
 _ordered = (
+    _v101_workspace_routes +
     _v10_routes +
     _v033_payment_flow_patch_routes +
     _v032_customer_exchange_routes + _v032_customer_import_routes + _v031_review_sync_routes +
@@ -88,7 +94,9 @@ _ordered = (
 )
 _unique_paths = {
     '/',
+    '/work',
     '/search',
+    '/global-search',
     '/customers/{customer_id}',
     '/health',
     '/customers/{customer_id}/payment-run',
@@ -163,19 +171,27 @@ def _assert_payment_flow_v033_guard():
 
 
 def _assert_v10_route_guard():
-    expected = {
+    v10_expected = {
         ('GET', '/'): 'home_v10',
-        ('GET', '/search'): 'global_search_v10',
-        ('GET', '/work'): 'work_home_v10',
         ('GET', '/life'): 'life_home_v10',
         ('GET', '/life/recipes'): 'recipe_list_v10',
         ('GET', '/life/records'): 'cook_records_v10',
         ('GET', '/life/knowledge'): 'knowledge_list_v10',
     }
-    for (method, path), endpoint_name in expected.items():
+    for (method, path), endpoint_name in v10_expected.items():
         matches = [r for r in app.router.routes if getattr(r, 'path', '') == path and method in getattr(r, 'methods', set())]
         if not matches or getattr(matches[0].endpoint, '__module__', '') != 'app.v10_routes' or getattr(matches[0].endpoint, '__name__', '') != endpoint_name:
             raise RuntimeError(f'v1.0 路由自检失败：{method} {path} 未由 v1.0 接管')
+
+    workspace_expected = {
+        ('GET', '/work'): 'work_home_v101',
+        ('GET', '/search'): 'work_search_v101',
+        ('GET', '/global-search'): 'global_search_v101',
+    }
+    for (method, path), endpoint_name in workspace_expected.items():
+        matches = [r for r in app.router.routes if getattr(r, 'path', '') == path and method in getattr(r, 'methods', set())]
+        if not matches or getattr(matches[0].endpoint, '__module__', '') != 'app.v101_workspace_routes' or getattr(matches[0].endpoint, '__name__', '') != endpoint_name:
+            raise RuntimeError(f'v1.0 工作空间隔离自检失败：{method} {path}')
 
 
 _assert_customer_new_route_guard()
