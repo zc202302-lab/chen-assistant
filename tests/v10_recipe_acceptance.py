@@ -26,6 +26,8 @@ os.environ.update({
 from app.db import db, init_db  # noqa: E402
 from app.security import create_session  # noqa: E402
 from app.v10_routes import ensure_v10_schema  # noqa: E402
+from app.v101_recipe_template_data import TEMPLATE_IMPORT_MARKER, TEMPLATE_SHEET_NAMES  # noqa: E402
+from app.v101_recipe_template_patch import ensure_v101_recipe_templates  # noqa: E402
 
 
 def wait_http(url: str):
@@ -40,13 +42,23 @@ def wait_http(url: str):
 
 
 def main():
-    init_db(); ensure_v10_schema()
+    init_db(); ensure_v10_schema(); ensure_v101_recipe_templates()
     token, _, _ = create_session()
     with db() as conn:
-        recipe = conn.execute("SELECT * FROM recipes WHERE name='糖醋排骨'").fetchone()
-        almond = conn.execute("SELECT * FROM recipes WHERE name='杏鲍菇'").fetchone()
-        assert recipe and almond
-        sugar_id = int(recipe['id']); mushroom_id = int(almond['id'])
+        template_rows = conn.execute(
+            '''SELECT r.id,r.name,r.current_version_id FROM recipes r
+               WHERE r.name IN (%s) ORDER BY r.name''' % ','.join('?' * len(TEMPLATE_SHEET_NAMES)),
+            TEMPLATE_SHEET_NAMES,
+        ).fetchall()
+        assert len(template_rows) == 18, [r['name'] for r in template_rows]
+        recipe_ids = {r['name']: int(r['id']) for r in template_rows}
+        sugar_id = recipe_ids['糖醋排骨']
+        fish_id = recipe_ids['红烧鲈鱼']
+        sugar = conn.execute('SELECT * FROM recipes WHERE id=?', (sugar_id,)).fetchone()
+        imported = conn.execute('SELECT * FROM recipe_versions WHERE id=?', (sugar['current_version_id'],)).fetchone()
+        assert imported['change_summary'].startswith(TEMPLATE_IMPORT_MARKER)
+        imported_version_no = int(imported['version_no'])
+        assert imported_version_no == 2
 
     proc = subprocess.Popen(
         [sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8140'],
@@ -66,74 +78,81 @@ def main():
             expect(page.get_by_text('工作空间', exact=True)).to_be_visible()
             expect(page.get_by_text('生活空间', exact=True)).to_be_visible()
 
+            # Every worksheet that matches the 糖醋排骨 standard template was imported.
+            page.goto('http://127.0.0.1:8140/life/recipes', wait_until='networkidle')
+            for name in TEMPLATE_SHEET_NAMES:
+                expect(page.get_by_text(name, exact=True).first).to_be_visible()
+
+            # Recipe detail uses the current Excel-standard version, preserves the
+            # original step text and no longer exposes the cooking-mode workflow.
             page.goto(f'http://127.0.0.1:8140/life/recipes/{sugar_id}', wait_until='networkidle')
             expect(page.get_by_role('heading', name='糖醋排骨')).to_be_visible()
-            expect(page.get_by_text('当前标准 V1')).to_be_visible()
+            expect(page.get_by_text(f'当前标准 V{imported_version_no}')).to_be_visible()
+            expect(page.get_by_text('打印 A4', exact=True)).to_be_visible()
+            expect(page.get_by_text('开始做饭', exact=True)).to_have_count(0)
+            expect(page.get_by_text('沿用 Excel 原始文本', exact=True)).to_be_visible()
+            step1 = page.locator('.v10-step-action').first
+            raw = step1.text_content() or ''
+            assert raw == (
+                '1.排骨：500g\n'
+                '2.焯水：冷水下锅，葱段，姜片，料酒，开锅后2分钟捞出，凉水洗去浮沫\n'
+                '3.擦干：尽可能擦干水分，晾干'
+            ), repr(raw)
+            expect(page.get_by_text('3.火不要大，容易糊锅', exact=True)).to_be_visible()
+
+            # Standard-grid scaling remains available: 2.5 salt at 500g -> 5 at 1000g.
             salt = page.locator('.v10-ingredient').filter(has_text='盐').first
             expect(salt.locator('[data-scaled]')).to_have_text('2.5')
             page.locator('#v10TargetAmount').fill('1000')
             expect(salt.locator('[data-scaled]')).to_have_text('5')
 
-            # Fixed ingredients must not scale with main weight.
-            page.goto(f'http://127.0.0.1:8140/life/recipes/{mushroom_id}', wait_until='networkidle')
-            garlic = page.locator('.v10-ingredient').filter(has_text='大蒜').first
-            expect(garlic.locator('[data-scaled]')).to_have_text('3')
-            page.locator('#v10TargetAmount').fill('720')
-            expect(garlic.locator('[data-scaled]')).to_have_text('3')
+            # Another imported worksheet must also keep its original prose rather
+            # than AI-normalized heat/time/judgement fields.
+            page.goto(f'http://127.0.0.1:8140/life/recipes/{fish_id}', wait_until='networkidle')
+            expect(page.get_by_role('heading', name='红烧鲈鱼')).to_be_visible()
+            expect(page.locator('.v10-step-action').first).to_contain_text('鲈鱼：一条540g')
+            expect(page.get_by_text('1.擦干有助于腌肉', exact=False)).to_be_visible()
+            expect(page.get_by_text('开始做饭', exact=True)).to_have_count(0)
 
-            # Editing a standard creates V2; it never overwrites V1.
+            # Direct POST to the historical cook-start endpoint is also disabled,
+            # so old bookmarks/forms cannot create new cook sessions.
+            response = context.request.post(
+                f'http://127.0.0.1:8140/life/recipes/{sugar_id}/cook/start',
+                max_redirects=0,
+            )
+            assert response.status == 303, response.status
+            assert response.headers.get('location') == f'/life/recipes/{sugar_id}'
+
+            # Editing the standard still creates a new version and never overwrites
+            # the exact Excel-imported version.
             page.goto(f'http://127.0.0.1:8140/life/recipes/{sugar_id}/edit', wait_until='networkidle')
+            expect(page.get_by_text('沿用 Excel 的“步骤 / 方法 / 原理”原始文本，不强制拆成火力、时间等字段。', exact=True)).to_be_visible()
+            expect(page.locator('input[name="step_heat"][type="hidden"]').first).to_have_count(1)
+            next_no = imported_version_no + 1
             page.locator('input[name="change_summary"]').fill('白醋由15g验证到18g')
             vinegar_row = page.locator('.v10-edit-row').filter(has=page.locator('input[name="ingredient_name"][value="6度白醋"]')).first
             vinegar_row.locator('input[name="ingredient_amount"]').fill('18')
-            page.get_by_role('button', name=re.compile('保存为 V2')).click()
+            page.get_by_role('button', name=re.compile(fr'保存为 V{next_no}')).click()
             page.wait_for_url(f'**/life/recipes/{sugar_id}')
-            expect(page.get_by_text('当前标准 V2')).to_be_visible()
-            page.goto(f'http://127.0.0.1:8140/life/recipes/{sugar_id}/versions', wait_until='networkidle')
-            expect(page.get_by_role('heading', name=re.compile('V2'))).to_be_visible()
-            expect(page.get_by_role('heading', name=re.compile('V1'))).to_be_visible()
+            expect(page.get_by_text(f'当前标准 V{next_no}')).to_be_visible()
+            expect(page.get_by_text('开始做饭', exact=True)).to_have_count(0)
 
-            # Start a real cook session at 600g and record a one-off adjustment.
-            # V2 stores 18g vinegar per 500g standard, so this 600g cook should
-            # correctly show 21.6g as the session standard before using 24g.
-            page.goto(f'http://127.0.0.1:8140/life/recipes/{sugar_id}', wait_until='networkidle')
-            page.locator('#v10TargetAmount').fill('600')
-            page.get_by_role('button', name='开始做饭').click()
-            page.wait_for_url('**/life/cook/*')
-            expect(page.get_by_text('1 / 5')).to_be_visible()
-            option = page.locator('select[name="ingredient_id"] option').filter(has_text='6度白醋').first
-            expect(option).to_contain_text('21.6g')
-            vinegar_value = option.get_attribute('value')
-            assert vinegar_value
-            page.locator('select[name="ingredient_id"]').select_option(vinegar_value)
-            page.locator('input[name="actual_value"]').fill('24')
-            page.locator('input[name="note"]').fill('这次想加强酸味')
-            page.get_by_role('button', name='记录调整').click()
-            page.wait_for_load_state('networkidle')
-            adjustment_list = page.locator('.v10-adjust-list')
-            expect(adjustment_list).to_contain_text('6度白醋')
-            expect(adjustment_list).to_contain_text('21.6g → 24g')
+            # Print every imported template recipe in print media. The A4 sheet
+            # must not overflow its fixed one-page printable box, and Chromium must
+            # generate exactly one PDF page for each recipe.
+            page.emulate_media(media='print')
+            for name in TEMPLATE_SHEET_NAMES:
+                recipe_id = recipe_ids[name]
+                page.goto(f'http://127.0.0.1:8140/life/recipes/{recipe_id}/print', wait_until='networkidle')
+                expect(page.get_by_role('heading', name=name)).to_be_visible()
+                sheet = page.locator('.recipe-print-sheet')
+                dims = sheet.evaluate('el => ({scroll: el.scrollHeight, client: el.clientHeight})')
+                assert dims['scroll'] <= dims['client'] + 2, (name, dims)
+                pdf = page.pdf(print_background=True, prefer_css_page_size=True)
+                page_count = len(re.findall(rb'/Type\s*/Page(?!s)\b', pdf))
+                assert page_count == 1, (name, page_count, len(pdf))
+            page.emulate_media(media='screen')
 
-            for _ in range(4):
-                page.get_by_role('button', name=re.compile('完成，下一步')).click()
-                page.wait_for_load_state('networkidle')
-            page.get_by_role('button', name='完成制作').click()
-            page.wait_for_url('**/complete')
-            page.locator('input[name="rating"]').fill('9')
-            page.locator('textarea[name="notes"]').fill('酸味更清楚，整体成功')
-            page.locator('textarea[name="next_change"]').fill('再验证一次白醋提高后的效果')
-            page.get_by_role('button', name='保存制作记录').click()
-            page.wait_for_url('**/life/records/*')
-            expect(page.get_by_text('9/10')).to_be_visible()
-            diff_row = page.locator('.v10-diff-row').filter(has_text='6度白醋').first
-            expect(diff_row).to_contain_text('21.6g')
-            expect(diff_row).to_contain_text('24g')
-
-            # Only explicitly selected adjustments are promoted to a new standard.
-            page.locator('input[name="adjustment_id"]').check()
-            page.get_by_role('button', name='创建新的标准版本').click()
-            page.wait_for_url(f'**/life/recipes/{sugar_id}*')
-            expect(page.get_by_text('当前标准 V3')).to_be_visible()
             browser.close()
 
     finally:
@@ -142,19 +161,17 @@ def main():
         except subprocess.TimeoutExpired: proc.kill()
 
     with db() as conn:
-        recipe = conn.execute('SELECT * FROM recipes WHERE id=?', (sugar_id,)).fetchone()
+        sugar = conn.execute('SELECT * FROM recipes WHERE id=?', (sugar_id,)).fetchone()
         versions = conn.execute('SELECT * FROM recipe_versions WHERE recipe_id=? ORDER BY version_no', (sugar_id,)).fetchall()
-        assert [v['version_no'] for v in versions] == [1, 2, 3]
-        amounts = []
-        for v in versions:
-            row = conn.execute("SELECT amount FROM recipe_ingredients WHERE version_id=? AND name='6度白醋'", (v['id'],)).fetchone()
-            amounts.append(round(float(row['amount']), 4))
-        # V1 preserved at 15; V2 manual standard at 18; 24g used at 600g is
-        # normalized back to 20g at the 500g standard when promoted to V3.
-        assert amounts == [15.0, 18.0, 20.0], amounts
-        assert recipe['current_version_id'] == versions[-1]['id']
-        assert conn.execute("SELECT COUNT(*) n FROM cook_sessions WHERE recipe_id=? AND status='completed'", (sugar_id,)).fetchone()['n'] == 1
-    print('v1.0 browser acceptance passed: scale -> cook -> record -> promote -> immutable history')
+        assert len(versions) == 3 and versions[-1]['version_no'] == 3, [v['version_no'] for v in versions]
+        imported = next(v for v in versions if v['change_summary'].startswith(TEMPLATE_IMPORT_MARKER))
+        old_vinegar = conn.execute("SELECT amount FROM recipe_ingredients WHERE version_id=? AND name='6度白醋'", (imported['id'],)).fetchone()['amount']
+        new_vinegar = conn.execute("SELECT amount FROM recipe_ingredients WHERE version_id=? AND name='6度白醋'", (versions[-1]['id'],)).fetchone()['amount']
+        assert float(old_vinegar) == 15.0
+        assert float(new_vinegar) == 18.0
+        assert sugar['current_version_id'] == versions[-1]['id']
+        assert conn.execute('SELECT COUNT(*) n FROM cook_sessions').fetchone()['n'] == 0
+    print('v1.0 browser acceptance passed: Excel template import -> original text -> no cook mode -> one-page A4 print')
 
 
 if __name__ == '__main__':
