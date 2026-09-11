@@ -94,12 +94,15 @@ def main():
             expect(page.get_by_role('heading', name=re.compile('V1'))).to_be_visible()
 
             # Start a real cook session at 600g and record a one-off adjustment.
+            # V2 stores 18g vinegar per 500g standard, so this 600g cook should
+            # correctly show 21.6g as the session standard before using 24g.
             page.goto(f'http://127.0.0.1:8140/life/recipes/{sugar_id}', wait_until='networkidle')
             page.locator('#v10TargetAmount').fill('600')
             page.get_by_role('button', name='开始做饭').click()
             page.wait_for_url('**/life/cook/*')
             expect(page.get_by_text('1 / 5')).to_be_visible()
             option = page.locator('select[name="ingredient_id"] option').filter(has_text='6度白醋').first
+            expect(option).to_contain_text('21.6g')
             vinegar_value = option.get_attribute('value')
             assert vinegar_value
             page.locator('select[name="ingredient_id"]').select_option(vinegar_value)
@@ -107,8 +110,9 @@ def main():
             page.locator('input[name="note"]').fill('这次想加强酸味')
             page.get_by_role('button', name='记录调整').click()
             page.wait_for_load_state('networkidle')
-            expect(page.get_by_text('18', exact=False)).to_be_visible()
-            expect(page.get_by_text('24', exact=False)).to_be_visible()
+            adjustment_list = page.locator('.v10-adjust-list')
+            expect(adjustment_list).to_contain_text('6度白醋')
+            expect(adjustment_list).to_contain_text('21.6g → 24g')
 
             for _ in range(4):
                 page.get_by_role('button', name=re.compile('完成，下一步')).click()
@@ -121,7 +125,7 @@ def main():
             page.get_by_role('button', name='保存制作记录').click()
             page.wait_for_url('**/life/records/*')
             expect(page.get_by_text('9/10')).to_be_visible()
-            expect(page.get_by_text('18g')).to_be_visible()
+            expect(page.get_by_text('21.6g')).to_be_visible()
             expect(page.get_by_text('24g')).to_be_visible()
 
             # Only explicitly selected adjustments are promoted to a new standard.
