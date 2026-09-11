@@ -67,12 +67,23 @@ def main():
         assert float(old_vinegar) == 15
 
     base = (ROOT / 'app/templates/base.html').read_text(encoding='utf-8')
-    for token in ('v1.0', 'href="/work"', 'href="/life"', '/static/v10.css?v=1000', '/static/v10.js?v=1000'):
+    for token in (
+        'v1.0', 'href="/work"', 'href="/life"', '/static/v10.css?v=1000', '/static/v10.js?v=1000',
+        'data-global-back', 'data-back-fallback="{{ _back_fallback }}"', '/static/global-back.css?v=1000',
+        '/static/global-back.js?v=1000', 'aria-label="返回上一页"',
+    ):
         assert token in base, token
+    back_js = (ROOT / 'app/static/global-back.js').read_text(encoding='utf-8')
+    assert 'window.history.back()' in back_js
+    assert 'window.location.assign(fallback)' in back_js
+    assert 'document.referrer' in back_js and 'window.location.origin' in back_js
+    back_css = (ROOT / 'app/static/global-back.css').read_text(encoding='utf-8')
+    assert '.global-back' in back_css and '.topbar-left' in back_css
+
     js = (ROOT / 'app/static/v10.js').read_text(encoding='utf-8')
     assert "mode === 'proportional'" in js
     assert 'data-add-ingredient' in js and 'data-add-step' in js
-    print('v1.0 work/life + evolving recipe standard contract passed')
+    print('v1.0 work/life + evolving recipe standard + global back contract passed')
 
 
 if __name__ == '__main__':

@@ -42,6 +42,13 @@ def nav_labels(page):
     return [text.strip() for text in page.locator('.bottom-nav .nav-item span').all_inner_texts()]
 
 
+def assert_back(page, fallback: str):
+    back = page.locator('[data-global-back]')
+    expect(back).to_be_visible()
+    expect(back).to_have_attribute('aria-label', '返回上一页')
+    expect(back).to_have_attribute('data-back-fallback', fallback)
+
+
 def main():
     init_db(); ensure_v10_schema()
     token, _, _ = create_session()
@@ -52,6 +59,7 @@ def main():
     )
     try:
         wait_http('http://127.0.0.1:8141/health')
+        global expect
         from playwright.sync_api import expect, sync_playwright
 
         with sync_playwright() as p:
@@ -65,6 +73,7 @@ def main():
             assert nav_labels(page) == ['首页', '工作', '生活', '搜索']
             expect(page.get_by_text('工作空间', exact=True)).to_be_visible()
             expect(page.get_by_text('生活空间', exact=True)).to_be_visible()
+            assert_back(page, '/')
 
             # Work must render the mature pre-v1.0 dashboard, including the
             # payment/promotion entry tabs the user already relies on.
@@ -76,6 +85,7 @@ def main():
             ]
             expect(page.locator('.brand')).to_have_attribute('href', '/work')
             expect(page.locator('.search-link')).to_have_attribute('href', '/search')
+            assert_back(page, '/')
 
             # Original work search keeps its original scope and page.
             page.goto('http://127.0.0.1:8141/search', wait_until='networkidle')
@@ -84,21 +94,33 @@ def main():
                 'placeholder', '客户名 / 集团编码 / 税号 / 号码 / 账号 / 网站账户'
             )
             expect(page.get_by_text('菜谱', exact=True)).to_have_count(0)
+            assert_back(page, '/work')
+
+            # Customer list is part of the mature work space and receives the same global arrow.
+            page.goto('http://127.0.0.1:8141/customers', wait_until='networkidle')
+            assert nav_labels(page) == ['首页', '客户', '产品', '账户']
+            assert_back(page, '/work')
 
             # Cross-space search exists separately and does not replace work search.
             page.goto('http://127.0.0.1:8141/global-search', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '工作', '生活', '搜索']
             expect(page.get_by_role('heading', name='搜索整个晨的助手')).to_be_visible()
             expect(page.locator('form.v10-search')).to_have_attribute('action', '/global-search')
+            assert_back(page, '/')
 
             # Life has its own navigation and cannot overwrite the work shell.
             page.goto('http://127.0.0.1:8141/life', wait_until='networkidle')
             assert nav_labels(page) == ['生活', '菜谱', '记录', '知识']
             expect(page.locator('.brand')).to_have_attribute('href', '/life')
+            assert_back(page, '/')
+
+            page.goto('http://127.0.0.1:8141/life/recipes', wait_until='networkidle')
+            assert nav_labels(page) == ['生活', '菜谱', '记录', '知识']
+            assert_back(page, '/life')
 
             browser.close()
 
-        print('v1.0 independent work/life workspace browser acceptance passed')
+        print('v1.0 independent work/life workspace + global back browser acceptance passed')
     finally:
         proc.terminate()
         try:

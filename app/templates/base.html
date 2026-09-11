@@ -21,14 +21,24 @@
   <link rel="stylesheet" href="/static/v031_payment_workflow.css?v=0314">
   <link rel="stylesheet" href="/static/v032_customer_import.css?v=0320">
   <link rel="stylesheet" href="/static/v10.css?v=1000">
+  <link rel="stylesheet" href="/static/global-back.css?v=1000">
   <title>{% block title %}晨的助手{% endblock %}</title>
 </head>
 <body>
 {% set _path = request.url.path %}
 {% set _is_work = _path == '/work' or _path == '/search' or _path.startswith('/customers') or _path.startswith('/products') or _path.startswith('/accounts') %}
 {% set _is_life = _path.startswith('/life') %}
+{% set _back_fallback = '/' %}
+{% if _is_work and _path != '/work' %}
+  {% set _back_fallback = '/work' %}
+{% elif _is_life and _path != '/life' %}
+  {% set _back_fallback = '/life' %}
+{% endif %}
 <header class="topbar">
-  <a class="brand" href="{% if _is_work %}/work{% elif _is_life %}/life{% else %}/{% endif %}">晨的助手 <span>v1.0</span></a>
+  <div class="topbar-left">
+    <button class="global-back" type="button" data-global-back data-back-fallback="{{ _back_fallback }}" aria-label="返回上一页" title="返回上一页">←</button>
+    <a class="brand" href="{% if _is_work %}/work{% elif _is_life %}/life{% else %}/{% endif %}">晨的助手 <span>v1.0</span></a>
+  </div>
   <a class="search-link" href="{% if _is_work %}/search{% else %}/global-search{% endif %}" aria-label="搜索">⌕</a>
 </header>
 <main class="page">{% block content %}{% endblock %}</main>
@@ -76,5 +86,6 @@
 <script src="/static/v031_windows_bootstrap.js?v=0317" defer></script>
 <script src="/static/v033_payment_flow_patch.js?v=0331" defer></script>
 <script src="/static/v10.js?v=1000" defer></script>
+<script src="/static/global-back.js?v=1000" defer></script>
 </body>
 </html>
