@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block title %}{{ recipe.name }} · 菜谱{% endblock %}{% block content %}
+<section class="v12-shell v12-recipe-detail">
+  <header class="v12-recipe-head"><div><span class="v10-kicker">标准菜谱 · V{{ version.version_no }}</span><h1>{{ recipe.name }}</h1><p>{{ recipe.description }}</p></div><div class="v12-head-actions"><a class="v10-secondary" href="/life/recipes/{{ recipe.id }}/versions">历史版本</a><a class="v10-secondary" href="/life/recipes/{{ recipe.id }}/edit">编辑标准</a><a class="v10-primary" href="/life/recipes/{{ recipe.id }}/print?amount={{ target_amount }}">打印 A4</a></div></header>
+
+  <section class="v10-section v12-scale-card"><div><div class="v10-eyebrow">本次换算</div><h2>主材基准 {{ version.base_amount }}{{ version.base_unit }}</h2><p>沿用 Excel 标准配方的按比例换算逻辑。</p></div><form method="get"><label>本次主材重量<input name="amount" type="number" min="0.01" step="0.01" value="{{ target_amount }}"></label><button class="v10-primary">重新计算</button></form></section>
+
+  <div class="v12-recipe-grid">
+    <section class="v10-section"><div class="v10-section-head"><div><h2>标准配方</h2><p>当前按 {{ target_amount }}{{ version.base_unit }} 换算</p></div></div>
+      {% for group, items in ingredient_groups.items() %}<div class="v12-ingredient-group"><h3>{{ group }}</h3>{% for item in items %}<div class="v12-ingredient-row"><span>{{ item.name }}</span><strong>{% if item.amount %}{{ item.amount }}{% else %}按原文{% endif %}</strong></div>{% endfor %}</div>{% endfor %}
+    </section>
+    <section class="v10-section"><div class="v10-section-head"><div><h2>制作步骤</h2><p>以下文字直接沿用 Excel 原始文本，不重新改写。</p></div></div>
+      <div class="v12-original-steps">{% for step in steps %}<article class="v12-step"><h3>{{ step.step_no }}. {{ step.title }}</h3>{% if step.action %}<div class="v12-step-text">{{ step.action }}</div>{% else %}<div class="v12-step-empty">原表未填写</div>{% endif %}{% if step.principle %}<aside><b>原理 / 备注</b><div>{{ step.principle }}</div></aside>{% endif %}</article>{% endfor %}</div>
+    </section>
+  </div>
+</section>
+{% endblock %}
