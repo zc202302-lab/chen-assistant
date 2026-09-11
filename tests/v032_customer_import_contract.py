@@ -61,20 +61,18 @@ def write_fixture(path: Path):
 
 
 def test_routes_and_version():
-    # Application is v0.3.3; the customer import/exchange file format remains v0.3.2.
-    assert app.version == '0.3.3'
+    # Application shell is v1.0; the customer import/exchange file format remains v0.3.2.
+    assert app.version == '1.0'
     new_get = first_route('/customers/new', 'GET')
     assert new_get.endpoint.__module__ == 'app.v032_customer_import_routes'
     assert first_route('/customers/new', 'POST').endpoint.__module__ == 'app.v032_customer_import_routes'
     # The original multi-table routes remain registered only as a compatibility
-    # layer. The visible v0.3.2 UI now uses the one-customer-per-sheet exchange.
+    # layer. The visible customer UI continues to use the one-customer-per-sheet exchange.
     assert first_route('/customers/import-template-v032.xlsx', 'GET').endpoint.__module__ == 'app.v032_customer_import_routes'
     assert first_route('/customers/import-v032/preview', 'POST').endpoint.__module__ == 'app.v032_customer_import_routes'
     assert first_route('/customers/import-v032/confirm', 'POST').endpoint.__module__ == 'app.v032_customer_import_routes'
 
-    # Regression for the real production failure observed in v0.3.2:
-    # /customers/new must never be swallowed by /customers/{customer_id} and
-    # validated as an integer afterwards.
+    # /customers/new must never be swallowed by /customers/{customer_id}.
     detail = first_route('/customers/{customer_id}', 'GET')
     new_scope = {'type': 'http', 'path': '/customers/new', 'method': 'GET'}
     id_scope = {'type': 'http', 'path': '/customers/123', 'method': 'GET'}
@@ -177,7 +175,7 @@ def test_ui_contract():
     assert '/customers/export-v032.xlsx' in template
     assert 'v032-preview-metrics' in css
     assert '/static/v032_customer_import.css' in base
-    assert 'v0.3.3' in base
+    assert 'v1.0' in base
 
 
 if __name__ == '__main__':
@@ -186,4 +184,4 @@ if __name__ == '__main__':
     test_validation_commit_and_fixed_confirmation()
     test_confirm_is_atomic_when_duplicate_appears()
     test_ui_contract()
-    print('v0.3.3 app + v0.3.2 customer creation/import compatibility contract passed (isolated database)')
+    print('v1.0 app + v0.3.2 customer creation/import compatibility contract passed (isolated database)')
