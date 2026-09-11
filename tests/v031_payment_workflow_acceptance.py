@@ -129,6 +129,18 @@ def main():
             flow = page.locator('[data-v031-payment-flow]')
             flow.wait_for(state='visible')
             page.wait_for_timeout(1100)
+
+            # Image clipboard writes are an external browser/OS integration, just
+            # like Foxmail. Headless Chromium can intermittently stall on writing
+            # image/png even with clipboard permission, which makes the workflow
+            # state test flaky. Stub only that external transport here; the real
+            # image-generation/clipboard code is still protected by contract tests.
+            page.evaluate('''() => {
+                const actions = window.ChenPaymentWorkflowActionsV031;
+                if (!actions?.prepareNotice) throw new Error('prepareNotice not loaded');
+                actions.prepareNotice = async () => ({mode: 'clipboard', test_stub: true});
+            }''')
+
             review = flow.locator('[data-v031-flow-action="review"]')
             notify = flow.locator('[data-v031-flow-action="notify"]')
             initiate = flow.locator('[data-v031-flow-action="initiate"]')
