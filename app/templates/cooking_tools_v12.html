@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% block title %}烹饪工具 · 晨的助手{% endblock %}{% block content %}
+<section class="v12-shell" data-v12-tools>
+  <header class="v10-page-head"><div><span class="v10-kicker">生活 / 烹饪工具</span><h1>基础知识 · 计算工具</h1><p>把原《基础知识》Sheet 的公式和规则保留下来，作为可输入、可计算的工具。</p></div></header>
+
+  <section class="v12-tool-card" id="salt-tool"><div class="v12-tool-head"><div><h2>用盐计算器</h2><p>主材 → 挂粉/挂糊修正 → 汤汁 → 理论总盐 → 调味品含盐 → 三分口 → 最终补盐。</p></div></div>
+    <div class="v12-tool-grid"><label>烹饪方式<select id="v12SaltMethod"><option value="收汁">收汁</option><option value="快炒">快炒</option><option value="炖汤">炖汤</option><option value="清汤">清汤</option><option value="主食">主食</option></select></label><label>主材重量(g)<input id="v12SaltWeight" type="number" value="350" min="0"></label><label>挂粉/挂糊<select id="v12Coating"><option value="0">不挂</option><option value="1">挂粉</option><option value="2">挂糊</option></select></label></div>
+    <details open><summary>已使用的含盐调味品</summary><div class="v12-seasoning-inputs">{% for n in ['生抽','老抽','料酒','郫县豆瓣酱','番茄酱','味极鲜','豆瓣酱','牛排酱'] %}<label>{{ n }}(g)<input type="number" min="0" step="0.1" value="0" data-v12-seasoning="{{ n }}"></label>{% endfor %}</div></details>
+    <div class="v12-result-grid"><div><small>修正后重量</small><strong data-v12-out="adjusted">-</strong></div><div><small>汤汁量</small><strong data-v12-out="soup">-</strong></div><div><small>理论总盐</small><strong data-v12-out="total">-</strong></div><div><small>调味品含盐</small><strong data-v12-out="seasoning">-</strong></div><div><small>三分口盐</small><strong data-v12-out="base">-</strong></div><div class="v12-result-main"><small>最终补盐</small><strong data-v12-out="add">-</strong></div></div>
+  </section>
+
+  <section class="v12-tool-card" id="sauce-tool"><div class="v12-tool-head"><div><h2>料汁比例计算器</h2><p>沿用基础知识 Sheet 中“500g标准配方 → 按主材重量同比例换算”的逻辑。</p></div></div>
+    <div class="v12-tool-grid"><label>主材重量(g)<input id="v12SauceWeight" type="number" value="500" min="0"></label><label>料汁<select id="v12SauceType"><option value="糖醋汁（大）">糖醋汁（大）</option><option value="糖醋汁（中）">糖醋汁（中）</option><option value="糖醋汁（小）">糖醋汁（小）</option><option value="红烧汁">红烧汁</option><option value="宫保汁">宫保汁</option><option value="蒲烧汁">蒲烧汁</option><option value="腌肉">腌肉</option></select></label></div><div class="v12-sauce-results" data-v12-sauce-results></div>
+  </section>
+
+  <section class="v12-tool-card"><div class="v12-tool-head"><div><h2>调味品含盐换算</h2><p>输入调味品重量，按原 Sheet 的钠/盐换算公式计算。</p></div></div><div class="v12-salt-table" data-v12-salt-table></div></section>
+
+  <section class="v12-tool-card"><div class="v12-tool-head"><div><h2>重量与尺寸速查</h2><p>原 Sheet 的手感、尺寸和食材重量参考。</p></div></div><div class="v12-reference-grid"><div><b>食指指甲宽</b><span>1cm</span></div><div><b>中指前端宽</b><span>1.5cm</span></div><div><b>拇指前端宽</b><span>2cm</span></div><div><b>拇指第一关节</b><span>3cm</span></div><div><b>小指一二关节</b><span>4cm</span></div><div><b>中指一二关节</b><span>5cm</span></div><div><b>拇指长度</b><span>6cm</span></div><div><b>食指长度 / 手掌宽</b><span>8cm</span></div><div><b>手掌长度</b><span>20cm</span></div><div><b>盐三指捏</b><span>约0.5g</span></div><div><b>大葱（2cm粗）</b><span>约3g/cm</span></div><div><b>花椒三指捏</b><span>约1g</span></div><div><b>大蒜</b><span>约5g/粒</span></div><div><b>鸡爪</b><span>约50g</span></div><div><b>翅中</b><span>约30g</span></div><div><b>琵琶腿（去骨）</b><span>约90g</span></div><div><b>大虾</b><span>完整约30g / 虾仁约18g</span></div></div></section>
+</section>
+{% endblock %}
