@@ -4,6 +4,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from app import config  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -16,7 +17,7 @@ def first_route(path, method=None):
 
 
 def main():
-    assert app.version == '0.3.3'
+    assert app.version == config.APP_VERSION == '1.0'
     assert first_route('/customers/{customer_id}/workflow-state-v03', 'GET').endpoint.__module__ == 'app.v031_runtime_routes'
     assert first_route('/services/{service_id}/payment-status-v03', 'POST').endpoint.__module__ == 'app.v03_mail_draft_routes'
     assert first_route('/customers/{customer_id}/payment-workflow-v031', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
@@ -34,9 +35,9 @@ def main():
     assert base.count('/static/v031_payment_workflow.js') == 1
     assert base.count('/static/v031_workflow_runtime_fix.js') == 1
     assert base.count('/static/v033_payment_flow_patch.js') == 1
+    assert base.count('/static/v10.js') == 1
 
-    # The v0.3 runtime compatibility layer must no longer own or fetch workflow
-    # state. It only keeps the still-needed business-editor schedule controls.
+    # Mature work/payment compatibility remains unchanged under the v1.0 shell.
     assert 'workflow-state-v03' not in js
     assert 'payment-run-v03' not in js
     assert 'data-v03-flow-action' not in js
@@ -45,7 +46,6 @@ def main():
     assert '恢复正常缴费周期' in js
     assert 'payment-status-v03' in js
 
-    # The current four-stage controller is the sole workflow renderer/action owner.
     assert '已通知客户' in v031_js and '发起缴费' in v031_js
     assert 'window.ChenPaymentWorkflowRuntimeV031' in owner
     assert 'payment-workflow-v031' in owner
@@ -55,7 +55,7 @@ def main():
     assert "mode != 'normal'" in routes
     assert "business_display._ordered_keys(conn, template, customer_id)" in scoped_routes
     assert 'payment_txt_current_workflow_v033' in payment_patch
-    print('v0.3.3 single workflow owner + business runtime contract passed')
+    print('v1.0 shell + mature payment/business runtime compatibility contract passed')
 
 
 if __name__ == '__main__':

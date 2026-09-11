@@ -1,8 +1,8 @@
-name: v0.3.3 validation
+name: v1.0 validation
 
 on:
   push:
-    branches: [main, v0.3-dev]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -18,117 +18,51 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - name: Install Python dependencies
         run: pip install -r requirements.txt playwright httpx
+
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
+
       - name: Check JavaScript syntax
         run: |
-          node --check app/static/app.js
-          node --check app/static/v028.js
-          node --check app/static/ui-drag.js
-          node --check app/static/service-promotions.js
-          node --check app/static/business-sync.js
-          node --check app/static/v0211.js
-          node --check app/static/workspace-refinement-v0212.js
-          node --check app/static/v03.js
-          node --check app/static/v03_runtime_fix.js
-          node --check app/static/v03_business_mail.js
-          node --check app/static/v03_payment_template.js
-          node --check app/static/v03_foxmail_action_fix.js
-          node --check app/static/v03_insert_order.js
-          node --check app/static/v03_review_reset.js
-          node --check app/static/v031_payment_workflow.js
-          node --check app/static/v031_amount_rollback_fix.js
-          node --check app/static/v031_workflow_actions.js
-          node --check app/static/v031_workflow_runtime_fix.js
-          node --check app/static/v031_workflow_dom_guard.js
-          node --check app/static/v031_windows_bootstrap.js
-          node --check app/static/v033_payment_flow_patch.js
-      - name: Check Python, routes, templates and assets
+          for asset in \
+            app/static/app.js \
+            app/static/v028.js \
+            app/static/ui-drag.js \
+            app/static/service-promotions.js \
+            app/static/business-sync.js \
+            app/static/v0211.js \
+            app/static/workspace-refinement-v0212.js \
+            app/static/v03.js \
+            app/static/v03_runtime_fix.js \
+            app/static/v03_business_mail.js \
+            app/static/v03_payment_template.js \
+            app/static/v03_foxmail_action_fix.js \
+            app/static/v03_insert_order.js \
+            app/static/v03_review_reset.js \
+            app/static/v031_payment_workflow.js \
+            app/static/v031_amount_rollback_fix.js \
+            app/static/v031_workflow_actions.js \
+            app/static/v031_workflow_runtime_fix.js \
+            app/static/v031_workflow_dom_guard.js \
+            app/static/v031_windows_bootstrap.js \
+            app/static/v033_payment_flow_patch.js \
+            app/static/v10.js
+          do
+            node --check "$asset"
+          done
+
+      - name: Compile Python
+        run: python -m compileall -q app tests
+
+      - name: v1.0 architecture and recipe contracts
         run: |
-          python -m compileall -q app
-          python - <<'PY'
-          from jinja2 import Environment, FileSystemLoader
-          from app import config
-          from app.db import init_db
-          from app.main import app
-          from app.v032_customer_exchange_routes import _build_blank_template
-          init_db()
-          assert app.version == '0.3.3'
-          for path in ('/', '/customers/{customer_id}', '/health'):
-              matches=[r for r in app.router.routes if getattr(r,'path','')==path]
-              assert len(matches)==1,(path,len(matches))
-          customer_route=next(r for r in app.router.routes if getattr(r,'path','')=='/customers/{customer_id}')
-          assert customer_route.endpoint.__module__=='app.v0212_routes'
-          health_route=next(r for r in app.router.routes if getattr(r,'path','')=='/health')
-          assert health_route.endpoint.__module__=='app.v031_payment_workflow_routes'
-          owned={
-              ('/customers/new','GET'):'app.v032_customer_import_routes',
-              ('/customers/new','POST'):'app.v032_customer_import_routes',
-              ('/customers/import-template-v032-one-sheet.xlsx','GET'):'app.v032_customer_exchange_routes',
-              ('/customers/export-v032.xlsx','GET'):'app.v032_customer_exchange_routes',
-              ('/customers/import-v032-one-sheet/preview','POST'):'app.v032_customer_exchange_routes',
-              ('/customers/import-v032-one-sheet/confirm','POST'):'app.v032_customer_exchange_routes',
-              ('/customers/{customer_id}/payment-workflow-v031','GET'):'app.v031_payment_workflow_routes',
-              ('/customers/{customer_id}/payment-workflow-v031','POST'):'app.v031_payment_workflow_routes',
-              ('/customers/{customer_id}/payment-mail-compose-v031','GET'):'app.v033_payment_flow_patch',
-              ('/customers/{customer_id}/payment-run','POST'):'app.v03_payment_routes',
-              ('/customers/{customer_id}/payment-run-v03','GET'):'app.v03_routes',
-              ('/customers/{customer_id}/workflow-state-v03','GET'):'app.v031_runtime_routes',
-              ('/customers/{customer_id}/payment-email-v03','POST'):'app.v03_routes',
-              ('/customers/{customer_id}/mail-template-v03','GET'):'app.v033_payment_flow_patch',
-              ('/customers/{customer_id}/mail-template-v03','POST'):'app.v033_payment_flow_patch',
-              ('/customers/{customer_id}/payment-mail-compose-v03','GET'):'app.v03_mail_draft_routes',
-              ('/customers/{customer_id}/payment-mail-draft-v03','GET'):'app.v033_payment_flow_patch',
-              ('/services/{service_id}/status-v03','POST'):'app.v03_mail_draft_routes',
-              ('/services/{service_id}/payment-status-v03','POST'):'app.v03_mail_draft_routes',
-              ('/customers/{customer_id}/payment.txt','GET'):'app.v033_payment_flow_patch',
-              ('/services/{service_id}/defer-v0212','POST'):'app.v0212_routes',
-              ('/services/{service_id}/delete-v0212','POST'):'app.v0212_routes',
-              ('/customers/{customer_id}/business-columns-v0212','POST'):'app.v0212_business_display_routes',
-          }
-          for (path,method),module in owned.items():
-              matches=[r for r in app.router.routes if getattr(r,'path','')==path and method in getattr(r,'methods',set())]
-              assert matches,(path,method)
-              assert matches[0].endpoint.__module__==module,(path,matches[0].endpoint.__module__)
-          data=_build_blank_template()
-          assert data[:2]==b'PK' and len(data)>5000
-          env=Environment(loader=FileSystemLoader(str(config.ROOT/'app'/'templates')))
-          runtime_templates=('base.html','dashboard_v027.html','customer_workspace_v0211.html','account_detail.html','account_form.html','accounts.html','customer_form.html','login.html','search.html')
-          for name in runtime_templates:
-              p=config.ROOT/'app'/'templates'/name
-              if not p.exists(): continue
-              env.get_template(name)
-              text=p.read_text(encoding='utf-8')
-              assert 'type="date"' not in text and "type='date'" not in text,name
-          customer_form=(config.ROOT/'app'/'templates'/'customer_form.html').read_text(encoding='utf-8')
-          assert '/customers/import-template-v032-one-sheet.xlsx' in customer_form
-          assert '/customers/export-v032.xlsx' in customer_form
-          assert '/customers/import-v032-one-sheet/preview' in customer_form
-          assert '/customers/import-v032-one-sheet/confirm' in customer_form
-          base=(config.ROOT/'app'/'templates'/'base.html').read_text(encoding='utf-8')
-          current_assets=(
-              '/static/app.js','/static/v028.js','/static/ui-drag.js','/static/service-promotions.js',
-              '/static/business-sync.js','/static/v0211.js','/static/workspace-refinement-v0212.js',
-              '/static/v03.js','/static/v03_runtime_fix.js','/static/v03_business_mail.js',
-              '/static/v03_payment_template.js','/static/v03_foxmail_action_fix.js','/static/v03_insert_order.js',
-              '/static/v03_review_reset.js','/static/v031_payment_workflow.js','/static/v031_amount_rollback_fix.js',
-              '/static/v031_workflow_actions.js','/static/v031_workflow_runtime_fix.js','/static/v031_workflow_dom_guard.js',
-              '/static/v031_windows_bootstrap.js','/static/v033_payment_flow_patch.js',
-              '/static/app.css','/static/v028.css','/static/layout-refinement.css','/static/v0212.css',
-              '/static/workspace-refinement-v0212.css','/static/v03.css','/static/v03_business_mail.css',
-              '/static/v03_payment_template.css','/static/v031_payment_workflow.css','/static/v032_customer_import.css',
-          )
-          for current in current_assets:
-              assert base.count(current)==1,current
-          for retired in ('/static/v0212.js','/static/business-editor-hotfix.js'):
-              assert retired not in base,retired
-          for downloadable in ('chen_foxmail_helper.ps1','chen_foxmail_bootstrap.ps1'):
-              assert (config.ROOT/'app'/'static'/downloadable).is_file(),downloadable
-          print('static validation passed: v0.3.3 payment fixes + v0.3.2 customer exchange')
-          PY
-      - name: v0.3.3 contracts
+          python tests/stability_contract.py
+          python tests/v10_contract.py
+
+      - name: Legacy work-system compatibility contracts
         run: |
           python tests/v03_contract.py
           python tests/v03_runtime_fix_contract.py
@@ -139,13 +73,17 @@ jobs:
           python tests/v031_windows_bootstrap_contract.py
           python tests/v032_customer_import_contract.py
           python tests/v032_customer_exchange_contract.py
-      - name: Production experience regression
-        run: python tests/production_experience_regression.py
-      - name: Promotion render regression
-        run: python tests/promotion_render_regression.py
-      - name: Promotion bidirectional route regression
-        run: python tests/promotion_rename_route_regression.py
-      - name: v0.3.3 browser acceptance
+
+      - name: Production regressions
+        run: |
+          python tests/production_experience_regression.py
+          python tests/promotion_render_regression.py
+          python tests/promotion_rename_route_regression.py
+
+      - name: v1.0 recipe browser acceptance
+        run: python tests/v10_recipe_acceptance.py
+
+      - name: Legacy work-system browser acceptance
         run: |
           python tests/v032_customer_import_acceptance.py
           python tests/v031_payment_workflow_acceptance.py

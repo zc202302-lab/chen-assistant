@@ -109,8 +109,8 @@ def main():
             # Windows/Foxmail itself is outside Linux CI. Reproduce the exact
             # helper-v0.5 false negative seen in production: Simple MAPI returned
             # success (code 0), but its secondary visible-window-count probe did
-            # not detect a new top-level compose window. v0.3.3 must accept this
-            # as a prepared/pending action rather than surface an operation error.
+            # not detect a new top-level compose window. The mature payment core
+            # running inside v1.0 must accept this as a prepared/pending action.
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
                 status=500,
                 content_type='application/json',
@@ -124,7 +124,7 @@ def main():
             ))
 
             page.goto(f'http://127.0.0.1:8136/customers/{cid}', wait_until='networkidle')
-            assert 'v0.3.3' in page.locator('.brand').inner_text()
+            assert 'v1.0' in page.locator('.brand').inner_text()
 
             flow = page.locator('[data-v031-payment-flow]')
             flow.wait_for(state='visible')
@@ -141,20 +141,16 @@ def main():
             fixed_input = fixed_row.locator('.quick-amount')
             txt_button = page.locator('#paymentTxtButton')
 
-            # Fixed row auto-confirms, variable row starts pending.
             assert fixed_row.get_attribute('data-confirmed') == '1'
             assert variable_row.get_attribute('data-confirmed') == '0'
             expect(page.locator('#pendingCount')).to_have_text('1')
             expect(review).to_have_attribute('aria-pressed', 'false')
 
-            # Requirement 1: once every row is confirmed, stage 1 activates by itself.
             variable_state.click()
             expect(page.locator('#pendingCount')).to_have_text('0', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             expect(notify).to_be_enabled(timeout=3000)
 
-            # The visible TXT action must create a real browser download, not merely
-            # navigate to/render text. Verify the downloaded file name and payload.
             with page.expect_download(timeout=3000) as download_info:
                 assert_no_dialog_while(page, lambda: txt_button.click(), 120)
             download = download_info.value
@@ -166,8 +162,6 @@ def main():
                 '13800000002|120',
             ]
 
-            # A changed amount invalidates only that row; the untouched row keeps
-            # its confirmation and the workflow silently falls back to stage 1.
             assert_no_dialog_while(page, lambda: fixed_input.fill('125'))
             fixed_input.press('Enter')
             expect(fixed_row).to_have_attribute('data-confirmed', '0', timeout=3000)
@@ -177,7 +171,6 @@ def main():
             fixed_state.click()
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
 
-            # Requirement 3: both clicks of notify are non-blocking/no-dialog.
             assert_no_dialog_while(page, lambda: notify.click())
             expect(notify).to_contain_text('待确认', timeout=5000)
             expect(notify).to_be_enabled(timeout=5000)
@@ -185,9 +178,6 @@ def main():
             expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
             expect(initiate).to_be_enabled(timeout=5000)
 
-            # Helper code-0/window-probe false negative must be accepted as a
-            # prepared action with no blocking dialog; the second click records
-            # the operator's actual mail-send completion.
             assert_no_dialog_while(page, lambda: initiate.click(), 700)
             expect(initiate).to_contain_text('待确认', timeout=5000)
             expect(initiate).to_be_enabled(timeout=5000)
@@ -195,8 +185,6 @@ def main():
             expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=5000)
             expect(paid).to_be_enabled(timeout=5000)
 
-            # Requirement 2 at a late stage: amount edit is silent and returns to
-            # review; only the edited variable row loses its confirmation.
             assert_no_dialog_while(page, lambda: variable_input.fill('110'))
             variable_input.press('Enter')
             expect(variable_row).to_have_attribute('data-confirmed', '0', timeout=3000)
@@ -205,8 +193,6 @@ def main():
             expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
 
-            # Reconfirm and run through all four stages once more. Every stage is
-            # non-blocking: there must be no confirm/alert dialog, including paid.
             variable_state.click()
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             assert_no_dialog_while(page, lambda: notify.click())
@@ -229,8 +215,6 @@ def main():
                 ).fetchone()['next_payment_period']
                 assert next_period == add_periods(period, 2), next_period
 
-            # Even after final completion an amount remains editable. Changing it
-            # restores the pre-payment schedule and rolls all later stages back.
             assert_no_dialog_while(page, lambda: variable_input.fill('115'))
             variable_input.press('Enter')
             expect(variable_row).to_have_attribute('data-confirmed', '0', timeout=3000)
@@ -247,7 +231,7 @@ def main():
 
             browser.close()
 
-        print('v0.3.3 MAPI false-negative compatibility + real TXT download + fully nonblocking browser acceptance passed')
+        print('v1.0 shell + mature payment MAPI/TXT/nonblocking browser acceptance passed')
     finally:
         proc.terminate()
         try:
