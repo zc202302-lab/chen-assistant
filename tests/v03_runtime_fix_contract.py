@@ -17,7 +17,7 @@ def first_route(path, method=None):
 
 
 def main():
-    assert app.version == config.APP_VERSION == '1.0'
+    assert app.version == config.APP_VERSION
     assert first_route('/customers/{customer_id}/workflow-state-v03', 'GET').endpoint.__module__ == 'app.v031_runtime_routes'
     assert first_route('/services/{service_id}/payment-status-v03', 'POST').endpoint.__module__ == 'app.v03_mail_draft_routes'
     assert first_route('/customers/{customer_id}/payment-workflow-v031', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
@@ -37,7 +37,7 @@ def main():
     assert base.count('/static/v033_payment_flow_patch.js') == 1
     assert base.count('/static/v10.js') == 1
 
-    # Mature work/payment compatibility remains unchanged under the v1.0 shell.
+    # Mature work/payment compatibility remains unchanged under the current app shell.
     assert 'workflow-state-v03' not in js
     assert 'payment-run-v03' not in js
     assert 'data-v03-flow-action' not in js
@@ -55,7 +55,7 @@ def main():
     assert "mode != 'normal'" in routes
     assert "business_display._ordered_keys(conn, template, customer_id)" in scoped_routes
     assert 'payment_txt_current_workflow_v033' in payment_patch
-    print('v1.0 shell + mature payment/business runtime compatibility contract passed')
+    print('current app shell + mature payment/business runtime compatibility contract passed')
 
 
 if __name__ == '__main__':
