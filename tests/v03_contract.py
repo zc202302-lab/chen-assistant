@@ -6,7 +6,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 # Database-mutating contract checks must never run against production data/app.db.
-# Patch app.db's module-level paths before importing app.main or route helpers.
 import app.db as db_module  # noqa: E402
 
 _TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v03-contract-')
@@ -15,6 +14,7 @@ TEST_DB = TEST_DATA_DIR / 'app.db'
 db_module.DATA_DIR = TEST_DATA_DIR
 db_module.DB_PATH = TEST_DB
 
+from app import config  # noqa: E402
 from app.db import db, init_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.v03_routes import _ensure_v03  # noqa: E402
@@ -45,7 +45,9 @@ def first_route(path, method=None):
 
 
 def test_route_ownership():
-    assert app.version == '0.3.3'
+    assert app.version == config.APP_VERSION == '1.0'
+    assert first_route('/').endpoint.__module__ == 'app.v10_routes'
+    assert first_route('/search').endpoint.__module__ == 'app.v10_routes'
     assert first_route('/health', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
     assert first_route('/customers/{customer_id}').endpoint.__module__ == 'app.v0212_routes'
     assert first_route('/customers/{customer_id}/payment-workflow-v031', 'GET').endpoint.__module__ == 'app.v031_payment_workflow_routes'
@@ -104,7 +106,8 @@ def test_ui_contracts():
     v033_patch = (ROOT / 'app/v033_payment_flow_patch.py').read_text(encoding='utf-8')
     v033_js = (ROOT / 'app/static/v033_payment_flow_patch.js').read_text(encoding='utf-8')
 
-    assert 'v0.3.3' in base
+    assert 'v1.0' in base
+    assert '/static/v10.js' in base and '/static/v10.css' in base
     assert '/static/v03.js' in base and '/static/v03.css' in base
     assert '/static/v03_business_mail.js' in base and '/static/v03_business_mail.css' in base
     assert '/static/v031_payment_workflow.js' in base and '/static/v031_payment_workflow.css' in base
@@ -158,4 +161,4 @@ if __name__ == '__main__':
     test_v03_migration_is_safe_and_idempotent()
     test_schedule_regression()
     test_ui_contracts()
-    print('v0.3.3 contract checks passed (isolated test database)')
+    print('v1.0 application + mature v0.3 work-core compatibility contract passed')
