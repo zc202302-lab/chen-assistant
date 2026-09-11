@@ -55,4 +55,23 @@
     });
     renumberSteps();
   }
+
+  document.querySelector('.brand span')?.replaceChildren('v1.2');
+  if (!document.querySelector('link[href*="/static/v12.css"]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet'; link.href = '/static/v12.css?v=1200';
+    document.head.appendChild(link);
+  }
+  if (location.pathname.startsWith('/life')) {
+    const nav = document.querySelector('.bottom-nav');
+    if (nav) {
+      nav.innerHTML = '<a href="/life" class="nav-item">⌂<span>生活</span></a><a href="/life/recipes" class="nav-item">▤<span>菜谱</span></a><a href="/life/tools" class="nav-item">⌗<span>工具</span></a>';
+      nav.style.gridTemplateColumns = 'repeat(3,1fr)';
+    }
+  }
+  if (!document.querySelector('script[src*="/static/v12.js"]')) {
+    const script = document.createElement('script');
+    script.src = '/static/v12.js?v=1200';
+    document.body.appendChild(script);
+  }
 })();
