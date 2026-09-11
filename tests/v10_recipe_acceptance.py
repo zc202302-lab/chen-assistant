@@ -125,8 +125,9 @@ def main():
             page.get_by_role('button', name='保存制作记录').click()
             page.wait_for_url('**/life/records/*')
             expect(page.get_by_text('9/10')).to_be_visible()
-            expect(page.get_by_text('21.6g')).to_be_visible()
-            expect(page.get_by_text('24g')).to_be_visible()
+            diff_row = page.locator('.v10-diff-row').filter(has_text='6度白醋').first
+            expect(diff_row).to_contain_text('21.6g')
+            expect(diff_row).to_contain_text('24g')
 
             # Only explicitly selected adjustments are promoted to a new standard.
             page.locator('input[name="adjustment_id"]').check()
