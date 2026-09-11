@@ -85,6 +85,21 @@ def assert_no_dialog_while(page, action, wait_ms=450):
     assert not seen, f'此操作必须无弹窗，实际出现: {seen}'
 
 
+def stub_notice_transport(page):
+    """Replace only the OS/browser clipboard transport used by stage 2.
+
+    Other runtime scripts can refresh payment state asynchronously. Re-applying
+    the stub immediately before each prepare click makes the state-machine test
+    independent of Linux headless clipboard timing without touching production
+    payment behavior.
+    """
+    page.evaluate('''() => {
+        const actions = window.ChenPaymentWorkflowActionsV031;
+        if (!actions?.prepareNotice) throw new Error('prepareNotice not loaded');
+        actions.prepareNotice = async () => ({mode: 'clipboard', test_stub: true});
+    }''')
+
+
 def main():
     cid, ids, token = seed()
     assert TEST_DB.resolve() != (ROOT / 'data' / 'app.db').resolve()
@@ -135,11 +150,7 @@ def main():
             # image/png even with clipboard permission, which makes the workflow
             # state test flaky. Stub only that external transport here; the real
             # image-generation/clipboard code is still protected by contract tests.
-            page.evaluate('''() => {
-                const actions = window.ChenPaymentWorkflowActionsV031;
-                if (!actions?.prepareNotice) throw new Error('prepareNotice not loaded');
-                actions.prepareNotice = async () => ({mode: 'clipboard', test_stub: true});
-            }''')
+            stub_notice_transport(page)
 
             review = flow.locator('[data-v031-flow-action="review"]')
             notify = flow.locator('[data-v031-flow-action="notify"]')
@@ -183,8 +194,13 @@ def main():
             fixed_state.click()
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
 
+            # Re-apply the test-only external transport stub immediately before
+            # preparing notice. Also wait for the button itself to be actionable;
+            # payment-state refreshes can briefly overlap this point in Chromium.
+            stub_notice_transport(page)
+            expect(notify).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: notify.click())
-            expect(notify).to_contain_text('待确认', timeout=5000)
+            expect(notify).to_contain_text('待确认', timeout=8000)
             expect(notify).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: notify.click())
             expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
@@ -207,8 +223,10 @@ def main():
 
             variable_state.click()
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            stub_notice_transport(page)
+            expect(notify).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: notify.click())
-            expect(notify).to_contain_text('待确认', timeout=5000)
+            expect(notify).to_contain_text('待确认', timeout=8000)
             expect(notify).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: notify.click())
             expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
