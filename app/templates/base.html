@@ -20,19 +20,20 @@
   <link rel="stylesheet" href="/static/v03_payment_template.css?v=0311">
   <link rel="stylesheet" href="/static/v031_payment_workflow.css?v=0314">
   <link rel="stylesheet" href="/static/v032_customer_import.css?v=0320">
+  <link rel="stylesheet" href="/static/v10.css?v=1000">
   <title>{% block title %}晨的助手{% endblock %}</title>
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="/">晨的助手 <span>v0.3.3</span></a>
+  <a class="brand" href="/">晨的助手 <span>v1.0</span></a>
   <a class="search-link" href="/search" aria-label="搜索">⌕</a>
 </header>
 <main class="page">{% block content %}{% endblock %}</main>
 <nav class="bottom-nav" aria-label="主导航">
   <a href="/" class="nav-item">⌂<span>首页</span></a>
-  <a href="/customers" class="nav-item">◎<span>客户</span></a>
-  <a href="/products" class="nav-item">▦<span>产品</span></a>
-  <a href="/accounts" class="nav-item">⌘<span>账户</span></a>
+  <a href="/work" class="nav-item">▣<span>工作</span></a>
+  <a href="/life" class="nav-item">◇<span>生活</span></a>
+  <a href="/search" class="nav-item">⌕<span>搜索</span></a>
 </nav>
 <script src="/static/app.js?v=0311" defer></script>
 <script src="/static/v028.js?v=0311" defer></script>
@@ -55,5 +56,6 @@
 <script src="/static/v031_workflow_dom_guard.js?v=0314" defer></script>
 <script src="/static/v031_windows_bootstrap.js?v=0317" defer></script>
 <script src="/static/v033_payment_flow_patch.js?v=0331" defer></script>
+<script src="/static/v10.js?v=1000" defer></script>
 </body>
 </html>
