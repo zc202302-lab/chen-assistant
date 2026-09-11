@@ -25,24 +25,37 @@ def main():
     base = (ROOT / 'app/templates/base.html').read_text(encoding='utf-8')
     js = (ROOT / 'app/static/v03_runtime_fix.js').read_text(encoding='utf-8')
     v031_js = (ROOT / 'app/static/v031_payment_workflow.js').read_text(encoding='utf-8')
+    owner = (ROOT / 'app/static/v031_workflow_runtime_fix.js').read_text(encoding='utf-8')
     routes = (ROOT / 'app/v031_runtime_routes.py').read_text(encoding='utf-8')
     scoped_routes = (ROOT / 'app/v03_mail_draft_routes.py').read_text(encoding='utf-8')
     payment_patch = (ROOT / 'app/v033_payment_flow_patch.py').read_text(encoding='utf-8')
 
     assert base.count('/static/v03_runtime_fix.js') == 1
     assert base.count('/static/v031_payment_workflow.js') == 1
+    assert base.count('/static/v031_workflow_runtime_fix.js') == 1
     assert base.count('/static/v033_payment_flow_patch.js') == 1
-    assert '金额核对' in js and '通知客户' in js and '完成缴费' in js
-    assert '已通知客户' in v031_js and '发起缴费' in v031_js
-    assert 'workflow-state-v03' in js
+
+    # The v0.3 runtime compatibility layer must no longer own or fetch workflow
+    # state. It only keeps the still-needed business-editor schedule controls.
+    assert 'workflow-state-v03' not in js
+    assert 'payment-run-v03' not in js
+    assert 'data-v03-flow-action' not in js
+    assert 'flowState' not in js
     assert 'data-v031-payment-mode' in js
     assert '恢复正常缴费周期' in js
     assert 'payment-status-v03' in js
+
+    # The current four-stage controller is the sole workflow renderer/action owner.
+    assert '已通知客户' in v031_js and '发起缴费' in v031_js
+    assert 'window.ChenPaymentWorkflowRuntimeV031' in owner
+    assert 'payment-workflow-v031' in owner
+    assert 'data-v031-flow-action' in owner
+
     assert "deferred_until_period=''" in routes
     assert "mode != 'normal'" in routes
     assert "business_display._ordered_keys(conn, template, customer_id)" in scoped_routes
     assert 'payment_txt_current_workflow_v033' in payment_patch
-    print('v0.3.3 runtime fix contract passed')
+    print('v0.3.3 single workflow owner + business runtime contract passed')
 
 
 if __name__ == '__main__':
