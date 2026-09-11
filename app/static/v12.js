@@ -21,6 +21,7 @@
     '豆瓣酱': {mode: 'unset', sodium: 0},
     '牛排酱': {mode: 'percent', sodium: 2},
   };
+  const saltPerGramSoy = 1 / 1.15 / 15 * 2.5;
   const saltFrom = (name, weight) => {
     const r = seasoningRules[name];
     if (!r || r.mode === 'unset') return 0;
@@ -48,6 +49,29 @@
     saltOutput('adjusted', adjusted); saltOutput('soup', soup); saltOutput('total', total);
     saltOutput('seasoning', seasoning); saltOutput('base', base); saltOutput('add', add);
     refreshSaltTable();
+  };
+
+  const techniqueRatios = {
+    '红烧': {soy: .7, light: .6, dark: .1, salt: .3},
+    '宫保': {soy: .4, light: .6, dark: -.2, salt: .6},
+    '清炒': {soy: .3, light: .6, dark: -.3, salt: .7},
+    '糖醋': {soy: .2, light: .2, dark: 0, salt: .8},
+  };
+  const refreshTechnique = () => {
+    const total = n(document.getElementById('v12TechniqueSalt')?.value);
+    const type = document.getElementById('v12TechniqueType')?.value || '红烧';
+    const ratio = techniqueRatios[type];
+    const box = root.querySelector('[data-v12-technique-results]');
+    const note = root.querySelector('[data-v12-technique-note]');
+    if (!box || !ratio) return;
+    const rows = [
+      ['酱油总量', ratio.soy, total * ratio.soy / saltPerGramSoy],
+      ['生抽', ratio.light, total * ratio.light / saltPerGramSoy],
+      ['老抽', ratio.dark, total * ratio.dark / saltPerGramSoy],
+      ['食盐', ratio.salt, total * ratio.salt],
+    ];
+    box.innerHTML = rows.map(([name, r, grams]) => `<div><span>${name} · ${(r * 100).toFixed(0)}%</span><strong>${fmt(grams)} g</strong></div>`).join('');
+    if (note) note.textContent = ratio.dark < 0 ? '注意：原《基础知识》Sheet 在该技法中给出了负的老抽比例。v1.2 按原公式如实显示，没有擅自修正。' : '';
   };
 
   const sauceRecipes = {
@@ -78,11 +102,13 @@
 
   root.addEventListener('input', (e) => {
     if (e.target.closest('#salt-tool')) refreshSalt();
+    if (e.target.closest('#technique-tool')) refreshTechnique();
     if (e.target.closest('#sauce-tool')) refreshSauce();
   });
   root.addEventListener('change', (e) => {
     if (e.target.closest('#salt-tool')) refreshSalt();
+    if (e.target.closest('#technique-tool')) refreshTechnique();
     if (e.target.closest('#sauce-tool')) refreshSauce();
   });
-  refreshSalt(); refreshSauce();
+  refreshSalt(); refreshTechnique(); refreshSauce();
 })();
