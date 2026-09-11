@@ -24,17 +24,36 @@
   <title>{% block title %}晨的助手{% endblock %}</title>
 </head>
 <body>
+{% set _path = request.url.path %}
+{% set _is_work = _path == '/work' or _path == '/search' or _path.startswith('/customers') or _path.startswith('/products') or _path.startswith('/accounts') %}
+{% set _is_life = _path.startswith('/life') %}
 <header class="topbar">
-  <a class="brand" href="/">晨的助手 <span>v1.0</span></a>
-  <a class="search-link" href="/search" aria-label="搜索">⌕</a>
+  <a class="brand" href="{% if _is_work %}/work{% elif _is_life %}/life{% else %}/{% endif %}">晨的助手 <span>v1.0</span></a>
+  <a class="search-link" href="{% if _is_work %}/search{% else %}/global-search{% endif %}" aria-label="搜索">⌕</a>
 </header>
 <main class="page">{% block content %}{% endblock %}</main>
+{% if _is_work %}
+<nav class="bottom-nav" aria-label="工作导航">
+  <a href="/work" class="nav-item">⌂<span>首页</span></a>
+  <a href="/customers" class="nav-item">◎<span>客户</span></a>
+  <a href="/products" class="nav-item">▦<span>产品</span></a>
+  <a href="/accounts" class="nav-item">⌘<span>账户</span></a>
+</nav>
+{% elif _is_life %}
+<nav class="bottom-nav" aria-label="生活导航">
+  <a href="/life" class="nav-item">⌂<span>生活</span></a>
+  <a href="/life/recipes" class="nav-item">▤<span>菜谱</span></a>
+  <a href="/life/records" class="nav-item">◷<span>记录</span></a>
+  <a href="/life/knowledge" class="nav-item">◇<span>知识</span></a>
+</nav>
+{% else %}
 <nav class="bottom-nav" aria-label="主导航">
   <a href="/" class="nav-item">⌂<span>首页</span></a>
   <a href="/work" class="nav-item">▣<span>工作</span></a>
   <a href="/life" class="nav-item">◇<span>生活</span></a>
-  <a href="/search" class="nav-item">⌕<span>搜索</span></a>
+  <a href="/global-search" class="nav-item">⌕<span>搜索</span></a>
 </nav>
+{% endif %}
 <script src="/static/app.js?v=0311" defer></script>
 <script src="/static/v028.js?v=0311" defer></script>
 <script src="/static/ui-drag.js?v=0311" defer></script>
