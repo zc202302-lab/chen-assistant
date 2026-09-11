@@ -6,8 +6,15 @@ from fastapi.responses import HTMLResponse
 from .legacy_main import global_search as legacy_work_search
 from .v027_home import dashboard_v027
 from .v10_routes import global_search_v10
+from .v101_recipe_template_patch import ensure_v101_recipe_templates, router as recipe_template_router
 
 router = APIRouter()
+router.include_router(recipe_template_router)
+
+
+@router.on_event('startup')
+def startup_recipe_template_import_v101():
+    ensure_v101_recipe_templates()
 
 
 @router.get('/work', response_class=HTMLResponse)
