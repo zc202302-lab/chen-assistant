@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block title %}菜谱 · 晨的助手{% endblock %}{% block content %}
+<section class="v12-shell">
+  <header class="v10-page-head"><div><span class="v10-kicker">生活 / 菜谱</span><h1>标准菜谱</h1><p>仅显示与“糖醋排骨”同结构的 Excel 标准模板菜谱。</p></div></header>
+  <form class="v10-filter" method="get" action="/life/recipes"><input name="q" value="{{ q }}" placeholder="搜索菜名"><select name="category"><option value="">全部分类</option>{% for c in categories %}<option value="{{ c }}" {% if c==category %}selected{% endif %}>{{ c }}</option>{% endfor %}</select><button>筛选</button></form>
+  <div class="v10-recipe-list">{% for r in recipes %}<a class="v10-recipe-line" href="/life/recipes/{{ r.id }}"><div><strong>{{ r.name }}</strong><span class="v10-pill">{{ r.category }}</span><small>当前标准 V{{ r.version_no }}</small></div><div class="v10-recipe-meta"><em>Excel标准模板</em><span>›</span></div></a>{% else %}<div class="v10-empty">没有符合条件的菜谱</div>{% endfor %}</div>
+</section>
+{% endblock %}
