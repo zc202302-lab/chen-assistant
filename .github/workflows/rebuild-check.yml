@@ -83,6 +83,9 @@ jobs:
       - name: v1.0 recipe browser acceptance
         run: python tests/v10_recipe_acceptance.py
 
+      - name: v1.0 workspace isolation acceptance
+        run: python tests/v10_workspace_isolation_acceptance.py
+
       - name: Legacy work-system browser acceptance
         run: |
           python tests/v032_customer_import_acceptance.py
