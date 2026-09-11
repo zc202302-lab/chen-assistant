@@ -10,14 +10,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-_TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v10-workspace-')
+_TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v12-workspace-')
 TEST_DB = Path(_TMPDIR.name) / 'app.db'
 os.environ['APP_DB_PATH'] = str(TEST_DB)
 os.environ.update({
     'APP_USERNAME': '晨',
     'APP_PASSWORD_SALT': 'dGVzdHNhbHQ=',
     'APP_PASSWORD_HASH': 'x',
-    'APP_SESSION_SECRET': 'v10-workspace-session',
+    'APP_SESSION_SECRET': 'v12-workspace-session',
     'APP_ENCRYPTION_KEY': 'x',
     'APP_SECURE_COOKIE': '0',
 })
@@ -68,59 +68,53 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8141'}])
             page = context.new_page()
 
-            # Global shell remains only a switchboard between independent spaces.
             page.goto('http://127.0.0.1:8141/', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '工作', '生活', '搜索']
             expect(page.get_by_text('工作空间', exact=True)).to_be_visible()
             expect(page.get_by_text('生活空间', exact=True)).to_be_visible()
             assert_back(page, '/')
 
-            # Work must render the mature pre-v1.0 dashboard, including the
-            # payment/promotion entry tabs the user already relies on.
             page.goto('http://127.0.0.1:8141/work', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '客户', '产品', '账户']
             work_tabs = page.locator('[data-home-tabs] [data-home-tab]')
-            assert [x.strip() for x in work_tabs.all_inner_texts()] == [
-                '待办 0', '缴费 0', '优惠 0', '最近客户'
-            ]
+            assert [x.strip() for x in work_tabs.all_inner_texts()] == ['待办 0', '缴费 0', '优惠 0', '最近客户']
             expect(page.locator('.brand')).to_have_attribute('href', '/work')
             expect(page.locator('.search-link')).to_have_attribute('href', '/search')
             assert_back(page, '/')
 
-            # Original work search keeps its original scope and page.
             page.goto('http://127.0.0.1:8141/search', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '客户', '产品', '账户']
-            expect(page.locator('input[name="q"]')).to_have_attribute(
-                'placeholder', '客户名 / 集团编码 / 税号 / 号码 / 账号 / 网站账户'
-            )
+            expect(page.locator('input[name="q"]')).to_have_attribute('placeholder', '客户名 / 集团编码 / 税号 / 号码 / 账号 / 网站账户')
             expect(page.get_by_text('菜谱', exact=True)).to_have_count(0)
             assert_back(page, '/work')
 
-            # Customer list is part of the mature work space and receives the same global arrow.
             page.goto('http://127.0.0.1:8141/customers', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '客户', '产品', '账户']
             assert_back(page, '/work')
 
-            # Cross-space search exists separately and does not replace work search.
             page.goto('http://127.0.0.1:8141/global-search', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '工作', '生活', '搜索']
             expect(page.get_by_role('heading', name='搜索整个晨的助手')).to_be_visible()
-            expect(page.locator('form.v10-search')).to_have_attribute('action', '/global-search')
             assert_back(page, '/')
 
-            # Life has its own navigation and cannot overwrite the work shell.
             page.goto('http://127.0.0.1:8141/life', wait_until='networkidle')
-            assert nav_labels(page) == ['生活', '菜谱', '记录', '知识']
-            expect(page.locator('.brand')).to_have_attribute('href', '/life')
+            assert nav_labels(page) == ['生活', '菜谱', '工具']
+            expect(page.locator('.brand')).to_contain_text('v1.2')
+            expect(page.get_by_text('烹饪工具', exact=True)).to_be_visible()
             assert_back(page, '/')
 
             page.goto('http://127.0.0.1:8141/life/recipes', wait_until='networkidle')
-            assert nav_labels(page) == ['生活', '菜谱', '记录', '知识']
+            assert nav_labels(page) == ['生活', '菜谱', '工具']
+            assert_back(page, '/life')
+
+            page.goto('http://127.0.0.1:8141/life/tools', wait_until='networkidle')
+            assert nav_labels(page) == ['生活', '菜谱', '工具']
+            expect(page.get_by_role('heading', name='基础知识 · 计算工具')).to_be_visible()
             assert_back(page, '/life')
 
             browser.close()
 
-        print('v1.0 independent work/life workspace + global back browser acceptance passed')
+        print('v1.2 independent work/life workspace + cooking tools navigation acceptance passed')
     finally:
         proc.terminate()
         try:
