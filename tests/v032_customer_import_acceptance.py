@@ -95,7 +95,7 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8139'}])
             page = context.new_page()
             page.goto('http://127.0.0.1:8139/customers/new?mode=batch', wait_until='networkidle')
-            assert 'v0.3.3' in page.locator('.brand').inner_text()
+            assert 'v1.0' in page.locator('.brand').inner_text()
             expect(page.get_by_role('link', name='Excel批量导入/导出')).to_have_class('active')
             expect(page.get_by_role('link', name='下载最新 Excel 模板')).to_be_visible()
             expect(page.get_by_role('link', name='导出全部客户 Excel')).to_be_visible()
@@ -152,7 +152,7 @@ def main():
                 assert conn.execute('SELECT COUNT(*) n FROM customers').fetchone()['n'] == 2
 
             browser.close()
-        print('v0.3.3 app + v0.3.2 one-customer-per-sheet import/export browser acceptance passed (isolated database)')
+        print('v1.0 app + v0.3.2 one-customer-per-sheet import/export browser acceptance passed (isolated database)')
     finally:
         proc.terminate()
         try:
