@@ -1,4 +1,4 @@
-name: v1.0 validation
+name: v1.2 validation
 
 on:
   push:
@@ -49,7 +49,9 @@ jobs:
             app/static/v031_workflow_dom_guard.js \
             app/static/v031_windows_bootstrap.js \
             app/static/v033_payment_flow_patch.js \
-            app/static/v10.js
+            app/static/v10.js \
+            app/static/v12.js \
+            app/static/recipe-print-v101.js
           do
             node --check "$asset"
           done
@@ -57,10 +59,10 @@ jobs:
       - name: Compile Python
         run: python -m compileall -q app tests
 
-      - name: v1.0 architecture and recipe contracts
+      - name: v1.2 architecture and recipe tools contracts
         run: |
           python tests/stability_contract.py
-          python tests/v10_contract.py
+          python tests/v12_contract.py
 
       - name: Legacy work-system compatibility contracts
         run: |
@@ -80,10 +82,10 @@ jobs:
           python tests/promotion_render_regression.py
           python tests/promotion_rename_route_regression.py
 
-      - name: v1.0 recipe browser acceptance
-        run: python tests/v10_recipe_acceptance.py
+      - name: v1.2 recipe tools browser acceptance
+        run: python tests/v12_recipe_tools_acceptance.py
 
-      - name: v1.0 workspace isolation acceptance
+      - name: v1.2 workspace isolation acceptance
         run: python tests/v10_workspace_isolation_acceptance.py
 
       - name: Legacy work-system browser acceptance
