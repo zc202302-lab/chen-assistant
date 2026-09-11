@@ -41,6 +41,16 @@ def main():
     assert '不与其他客户共用' in patch_js
     assert '必填，不自动生成' in patch_js
 
+    # Helper v0.5 may report HTTP 500 after a successful MAPI code-0 dispatch if
+    # its secondary visible-window-count heuristic cannot see a new top-level
+    # Foxmail window. Only that exact false-negative may be converted to an
+    # accepted/pending state; real MAPI failures must still propagate.
+    assert 'Foxmail MAPI returned success but no compose window was detected' in patch_js
+    assert 'ChenFoxmailMapiAcceptedWindowUnverified' in patch_js
+    assert "state: 'mapi-accepted-window-unverified'" in patch_js
+    assert 'throw err;' in patch_js
+    assert 'Foxmail已接收写信请求；请检查写信窗口和TXT附件' in patch_js
+
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert '/static/v031_workflow_actions.js?v=0316' in base
     assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
@@ -101,7 +111,7 @@ def main():
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
     assert 'tests/v03_' not in deploy, '生产 deploy.sh 不得执行 v0.3 测试脚本'
 
-    print('v0.3.3 safety/Foxmail native-attachment + real-TXT-download contract passed')
+    print('v0.3.3 safety/Foxmail native-attachment + MAPI false-negative compatibility + real-TXT-download contract passed')
 
 
 if __name__ == '__main__':
