@@ -50,7 +50,12 @@
       text.includes('Foxmail写邮件窗口已打开，并已带入收件人、主题、正文和TXT附件')
     ) {
       if (text.includes('Foxmail写邮件窗口')) {
-        toast('Foxmail已打开；发送后再次点击“发起缴费”即可确认');
+        if (window.ChenFoxmailMapiAcceptedWindowUnverified) {
+          window.ChenFoxmailMapiAcceptedWindowUnverified = false;
+          toast('Foxmail已接收写信请求；请检查写信窗口和TXT附件');
+        } else {
+          toast('Foxmail已打开；发送后再次点击“发起缴费”即可确认');
+        }
       } else {
         toast('缴费图片已准备；发送后再次点击“通知客户”即可确认');
       }
@@ -58,6 +63,36 @@
     }
     return nativeAlert(message);
   };
+
+  // Foxmail Simple MAPI returning code 0 means Foxmail accepted the compose
+  // request, including the MapiFileDesc attachment. Helper v0.5 additionally
+  // compared the number of visible Foxmail windows before/after dispatch. Foxmail
+  // can reuse an existing top-level window or create UI asynchronously, so that
+  // secondary heuristic can produce a false failure even after MAPI succeeded.
+  // Treat only this exact code-0 false-negative as accepted; every real MAPI error
+  // still propagates normally. The workflow remains in "待确认" until the operator
+  // actually sends the message and clicks stage 3 again.
+  const actions = window.ChenPaymentWorkflowActionsV031;
+  if (actions?.prepareInitiate && !actions.prepareInitiate.__v033MapiCompat) {
+    const originalPrepareInitiate = actions.prepareInitiate.bind(actions);
+    const wrappedPrepareInitiate = async (...args) => {
+      try {
+        return await originalPrepareInitiate(...args);
+      } catch (err) {
+        const message = String(err?.message || '');
+        if (message.includes('Foxmail MAPI returned success but no compose window was detected')) {
+          window.ChenFoxmailMapiAcceptedWindowUnverified = true;
+          return {
+            mode: 'foxmail-direct-mapi',
+            state: 'mapi-accepted-window-unverified',
+          };
+        }
+        throw err;
+      }
+    };
+    wrappedPrepareInitiate.__v033MapiCompat = true;
+    actions.prepareInitiate = wrappedPrepareInitiate;
+  }
 
   // Force a real browser download for the payment TXT. A plain navigation to
   // /payment.txt can be rendered as text by some browser/proxy combinations;
