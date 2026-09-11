@@ -78,15 +78,12 @@ def main():
             expect(page.get_by_text('工作空间', exact=True)).to_be_visible()
             expect(page.get_by_text('生活空间', exact=True)).to_be_visible()
 
-            # Every worksheet that matches the 糖醋排骨 standard template was imported.
             page.goto('http://127.0.0.1:8140/life/recipes', wait_until='networkidle')
             for name in TEMPLATE_SHEET_NAMES:
                 expect(page.get_by_text(name, exact=True).first).to_be_visible()
 
-            # Recipe detail uses the current Excel-standard version, preserves the
-            # original step text and no longer exposes the cooking-mode workflow.
             page.goto(f'http://127.0.0.1:8140/life/recipes/{sugar_id}', wait_until='networkidle')
-            expect(page.get_by_role('heading', name='糖醋排骨')).to_be_visible()
+            expect(page.get_by_role('heading', name='糖醋排骨', exact=True)).to_be_visible()
             expect(page.get_by_text(f'当前标准 V{imported_version_no}')).to_be_visible()
             expect(page.get_by_text('打印 A4', exact=True)).to_be_visible()
             expect(page.get_by_text('开始做饭', exact=True)).to_have_count(0)
@@ -100,22 +97,17 @@ def main():
             ), repr(raw)
             expect(page.get_by_text('3.火不要大，容易糊锅', exact=True)).to_be_visible()
 
-            # Standard-grid scaling remains available: 2.5 salt at 500g -> 5 at 1000g.
             salt = page.locator('.v10-ingredient').filter(has_text='盐').first
             expect(salt.locator('[data-scaled]')).to_have_text('2.5')
             page.locator('#v10TargetAmount').fill('1000')
             expect(salt.locator('[data-scaled]')).to_have_text('5')
 
-            # Another imported worksheet must also keep its original prose rather
-            # than AI-normalized heat/time/judgement fields.
             page.goto(f'http://127.0.0.1:8140/life/recipes/{fish_id}', wait_until='networkidle')
-            expect(page.get_by_role('heading', name='红烧鲈鱼')).to_be_visible()
+            expect(page.get_by_role('heading', name='红烧鲈鱼', exact=True)).to_be_visible()
             expect(page.locator('.v10-step-action').first).to_contain_text('鲈鱼：一条540g')
             expect(page.get_by_text('1.擦干有助于腌肉', exact=False)).to_be_visible()
             expect(page.get_by_text('开始做饭', exact=True)).to_have_count(0)
 
-            # Direct POST to the historical cook-start endpoint is also disabled,
-            # so old bookmarks/forms cannot create new cook sessions.
             response = context.request.post(
                 f'http://127.0.0.1:8140/life/recipes/{sugar_id}/cook/start',
                 max_redirects=0,
@@ -123,8 +115,6 @@ def main():
             assert response.status == 303, response.status
             assert response.headers.get('location') == f'/life/recipes/{sugar_id}'
 
-            # Editing the standard still creates a new version and never overwrites
-            # the exact Excel-imported version.
             page.goto(f'http://127.0.0.1:8140/life/recipes/{sugar_id}/edit', wait_until='networkidle')
             expect(page.get_by_text('沿用 Excel 的“步骤 / 方法 / 原理”原始文本，不强制拆成火力、时间等字段。', exact=True)).to_be_visible()
             expect(page.locator('input[name="step_heat"][type="hidden"]').first).to_have_count(1)
@@ -137,14 +127,11 @@ def main():
             expect(page.get_by_text(f'当前标准 V{next_no}')).to_be_visible()
             expect(page.get_by_text('开始做饭', exact=True)).to_have_count(0)
 
-            # Print every imported template recipe in print media. The A4 sheet
-            # must not overflow its fixed one-page printable box, and Chromium must
-            # generate exactly one PDF page for each recipe.
             page.emulate_media(media='print')
             for name in TEMPLATE_SHEET_NAMES:
                 recipe_id = recipe_ids[name]
                 page.goto(f'http://127.0.0.1:8140/life/recipes/{recipe_id}/print', wait_until='networkidle')
-                expect(page.get_by_role('heading', name=name)).to_be_visible()
+                expect(page.get_by_role('heading', name=name, exact=True)).to_be_visible()
                 sheet = page.locator('.recipe-print-sheet')
                 dims = sheet.evaluate('el => ({scroll: el.scrollHeight, client: el.clientHeight})')
                 assert dims['scroll'] <= dims['client'] + 2, (name, dims)
