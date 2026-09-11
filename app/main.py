@@ -75,10 +75,10 @@ _v10_routes = _include(v10_router)
 _v101_workspace_routes = _include(v101_workspace_router)
 
 # v1.0 adds a global shell and the life workspace, but the mature work workspace
-# must remain behaviorally independent. v1.0.1 therefore restores the original
-# work dashboard/search at /work and /search, while cross-space search lives at
-# /global-search. Customer/payment/business/promotion routes keep their existing
-# owners exactly as before.
+# must remain behaviorally independent. The compatibility layer restores the
+# original work dashboard/search at /work and /search, while cross-space search
+# lives at /global-search. Customer/payment/business/promotion routes keep their
+# existing owners exactly as before.
 _ordered = (
     _v101_workspace_routes +
     _v10_routes +
@@ -117,11 +117,6 @@ for route in _ordered:
     _final.append(route)
 app.router.routes[:] = _final
 
-# FastAPI validates ``customer_id: int`` only after a route has matched. A plain
-# /customers/{customer_id} route can therefore capture the literal path
-# /customers/new and return a 422 int_parsing error. Keep the public path name
-# unchanged for compatibility, but constrain the active detail route at the
-# Starlette matching layer so only decimal customer IDs can ever match it.
 for _route in app.router.routes:
     if (
         getattr(_route, 'path', '') == '/customers/{customer_id}'
@@ -184,13 +179,13 @@ def _assert_v10_route_guard():
             raise RuntimeError(f'v1.0 路由自检失败：{method} {path} 未由 v1.0 接管')
 
     workspace_expected = {
-        ('GET', '/work'): 'work_home_v101',
-        ('GET', '/search'): 'work_search_v101',
-        ('GET', '/global-search'): 'global_search_v101',
+        ('GET', '/work'): ('work_home_v101', 'app.v10_routes'),
+        ('GET', '/search'): ('work_search_v101', 'app.v10_routes'),
+        ('GET', '/global-search'): ('global_search_v101', 'app.v101_workspace_routes'),
     }
-    for (method, path), endpoint_name in workspace_expected.items():
+    for (method, path), (endpoint_name, module_name) in workspace_expected.items():
         matches = [r for r in app.router.routes if getattr(r, 'path', '') == path and method in getattr(r, 'methods', set())]
-        if not matches or getattr(matches[0].endpoint, '__module__', '') != 'app.v101_workspace_routes' or getattr(matches[0].endpoint, '__name__', '') != endpoint_name:
+        if not matches or getattr(matches[0].endpoint, '__module__', '') != module_name or getattr(matches[0].endpoint, '__name__', '') != endpoint_name:
             raise RuntimeError(f'v1.0 工作空间隔离自检失败：{method} {path}')
 
 
