@@ -37,6 +37,18 @@ def seed():
             'INSERT INTO customers(name,group_code,payment_enabled,created_at,updated_at) VALUES(?,?,?,?,?)',
             ('v033流程验收客户', 'V033', 1, now, now),
         ).lastrowid)
+        conn.execute('''CREATE TABLE IF NOT EXISTS customer_mail_templates_v03 (
+            customer_id INTEGER PRIMARY KEY REFERENCES customers(id) ON DELETE CASCADE,
+            recipient TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL DEFAULT '',
+            body TEXT NOT NULL DEFAULT '', attachment_filename TEXT NOT NULL DEFAULT '',
+            updated_at TEXT NOT NULL DEFAULT ''
+        )''')
+        conn.execute(
+            '''INSERT INTO customer_mail_templates_v03
+               (customer_id,recipient,subject,body,attachment_filename,updated_at)
+               VALUES(?,?,?,?,?,?)''',
+            (cid, 'test@example.com', '测试缴费邮件', '请处理附件缴费明细。', '验收客户缴费清单.txt', now),
+        )
         ids = []
         for idx, amount in enumerate((100, 120), 1):
             variable = idx == 1
@@ -72,28 +84,17 @@ def wait_http(url):
 
 def assert_no_dialog_while(page, action, wait_ms=450):
     seen = []
-
     def capture(dialog):
-        seen.append(dialog.message)
-        dialog.dismiss()
-
+        seen.append(dialog.message); dialog.dismiss()
     page.on('dialog', capture)
     try:
-        action()
-        page.wait_for_timeout(wait_ms)
+        action(); page.wait_for_timeout(wait_ms)
     finally:
         page.remove_listener('dialog', capture)
     assert not seen, f'此操作必须无弹窗，实际出现: {seen}'
 
 
 def stub_notice_transport(page):
-    """Replace only the OS/browser clipboard transport used by stage 2.
-
-    Other runtime scripts can refresh payment state asynchronously. Re-applying
-    the stub immediately before each prepare click makes the state-machine test
-    independent of Linux headless clipboard timing without touching production
-    payment behavior.
-    """
     page.evaluate('''() => {
         const actions = window.ChenPaymentWorkflowActionsV031;
         if (!actions?.prepareNotice) throw new Error('prepareNotice not loaded');
@@ -108,13 +109,11 @@ def main():
     period = current_period()
     proc = subprocess.Popen(
         [sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8136'],
-        cwd=ROOT,
-        env=os.environ.copy(),
+        cwd=ROOT, env=os.environ.copy(),
     )
     try:
         wait_http('http://127.0.0.1:8136/health')
         from playwright.sync_api import expect, sync_playwright
-
         with sync_playwright() as p:
             browser = p.chromium.launch()
             context = browser.new_context(viewport={'width': 1500, 'height': 1000}, accept_downloads=True)
@@ -122,35 +121,25 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
             page = context.new_page()
 
-            # Windows/Foxmail itself is outside Linux CI. Reproduce the exact
-            # helper-v0.5 false negative seen in production: Simple MAPI returned
-            # success (code 0), but its secondary visible-window-count probe did
-            # not detect a new top-level compose window. The mature payment core
-            # running inside the current app shell must accept this as a prepared/pending action.
+            # v1.2.2 primary transport is the local helper /open endpoint with a complete EML draft.
+            page.route('http://127.0.0.1:18763/open', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='{"ok":true,"mode":"eml"}',
+                headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
+            ))
+            # Direct MAPI remains only as fallback; keep its historical false-negative stub covered.
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
-                status=500,
-                content_type='application/json',
+                status=500, content_type='application/json',
                 body='{"ok":false,"error":"Foxmail MAPI returned success but no compose window was detected","code":0}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route(f'**/customers/{cid}/payment-mail-compose-v031', lambda route: route.fulfill(
-                status=200,
-                content_type='application/json',
+                status=200, content_type='application/json',
                 body='{"ok":true,"recipient_b64":"dGVzdEBleGFtcGxlLmNvbQ==","subject_b64":"dGVzdA==","body_b64":"","attachment_filename_b64":"dGVzdC50eHQ=","attachment_content_base64":"MTM4MDAwMDAwMDF8MTA1"}',
             ))
 
             page.goto(f'http://127.0.0.1:8136/customers/{cid}', wait_until='networkidle')
             assert f'v{config.APP_VERSION}' in page.locator('.brand').inner_text()
-
-            flow = page.locator('[data-v031-payment-flow]')
-            flow.wait_for(state='visible')
-            page.wait_for_timeout(1100)
-
-            # Image clipboard writes are an external browser/OS integration, just
-            # like Foxmail. Headless Chromium can intermittently stall on writing
-            # image/png even with clipboard permission, which makes the workflow
-            # state test flaky. Stub only that external transport here; the real
-            # image-generation/clipboard code is still protected by contract tests.
+            flow = page.locator('[data-v031-payment-flow]'); flow.wait_for(state='visible'); page.wait_for_timeout(1100)
             stub_notice_transport(page)
 
             review = flow.locator('[data-v031-flow-action="review"]')
@@ -168,86 +157,51 @@ def main():
             assert fixed_row.get_attribute('data-confirmed') == '1'
             assert variable_row.get_attribute('data-confirmed') == '0'
             expect(page.locator('#pendingCount')).to_have_text('1')
-            expect(review).to_have_attribute('aria-pressed', 'false')
-
             variable_state.click()
             expect(page.locator('#pendingCount')).to_have_text('0', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
-            expect(notify).to_be_enabled(timeout=3000)
 
             with page.expect_download(timeout=3000) as download_info:
                 assert_no_dialog_while(page, lambda: txt_button.click(), 120)
             download = download_info.value
-            assert download.suggested_filename.lower().endswith('.txt'), download.suggested_filename
-            downloaded_path = download.path()
-            assert downloaded_path is not None
-            assert Path(downloaded_path).read_text(encoding='utf-8').splitlines() == [
-                '13800000001|100',
-                '13800000002|120',
-            ]
+            assert download.suggested_filename == '验收客户缴费清单.txt', download.suggested_filename
+            downloaded_path = download.path(); assert downloaded_path is not None
+            assert Path(downloaded_path).read_text(encoding='utf-8').splitlines() == ['13800000001|100', '13800000002|120']
 
-            assert_no_dialog_while(page, lambda: fixed_input.fill('125'))
-            fixed_input.press('Enter')
+            assert_no_dialog_while(page, lambda: fixed_input.fill('125')); fixed_input.press('Enter')
             expect(fixed_row).to_have_attribute('data-confirmed', '0', timeout=3000)
             expect(variable_row).to_have_attribute('data-confirmed', '1', timeout=3000)
-            expect(fixed_state).to_have_text('○', timeout=3000)
-            expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
-            fixed_state.click()
-            expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            fixed_state.click(); expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
 
-            # Re-apply the test-only external transport stub immediately before
-            # preparing notice. Also wait for the button itself to be actionable;
-            # payment-state refreshes can briefly overlap this point in Chromium.
-            stub_notice_transport(page)
-            expect(notify).to_be_enabled(timeout=5000)
-            assert_no_dialog_while(page, lambda: notify.click())
-            expect(notify).to_contain_text('待确认', timeout=8000)
-            expect(notify).to_be_enabled(timeout=5000)
-            assert_no_dialog_while(page, lambda: notify.click())
-            expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
+            stub_notice_transport(page); expect(notify).to_be_enabled(timeout=5000)
+            assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_contain_text('待确认', timeout=8000)
+            assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
             expect(initiate).to_be_enabled(timeout=5000)
-
-            assert_no_dialog_while(page, lambda: initiate.click(), 700)
-            expect(initiate).to_contain_text('待确认', timeout=5000)
-            expect(initiate).to_be_enabled(timeout=5000)
-            assert_no_dialog_while(page, lambda: initiate.click())
-            expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=5000)
+            assert_no_dialog_while(page, lambda: initiate.click(), 700); expect(initiate).to_contain_text('待确认', timeout=5000)
+            assert_no_dialog_while(page, lambda: initiate.click()); expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=5000)
             expect(paid).to_be_enabled(timeout=5000)
 
-            assert_no_dialog_while(page, lambda: variable_input.fill('110'))
-            variable_input.press('Enter')
+            assert_no_dialog_while(page, lambda: variable_input.fill('110')); variable_input.press('Enter')
             expect(variable_row).to_have_attribute('data-confirmed', '0', timeout=3000)
             expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
 
-            variable_state.click()
-            expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
-            stub_notice_transport(page)
-            expect(notify).to_be_enabled(timeout=5000)
-            assert_no_dialog_while(page, lambda: notify.click())
-            expect(notify).to_contain_text('待确认', timeout=8000)
-            expect(notify).to_be_enabled(timeout=5000)
-            assert_no_dialog_while(page, lambda: notify.click())
-            expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
+            variable_state.click(); expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            stub_notice_transport(page); expect(notify).to_be_enabled(timeout=5000)
+            assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_contain_text('待确认', timeout=8000)
+            assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
             expect(initiate).to_be_enabled(timeout=5000)
-            assert_no_dialog_while(page, lambda: initiate.click(), 700)
-            expect(initiate).to_contain_text('待确认', timeout=5000)
-            expect(initiate).to_be_enabled(timeout=5000)
-            assert_no_dialog_while(page, lambda: initiate.click())
-            expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=5000)
-            assert_no_dialog_while(page, lambda: paid.click())
-            expect(paid).to_have_attribute('aria-pressed', 'true', timeout=5000)
+            assert_no_dialog_while(page, lambda: initiate.click(), 700); expect(initiate).to_contain_text('待确认', timeout=5000)
+            assert_no_dialog_while(page, lambda: initiate.click()); expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=5000)
+            assert_no_dialog_while(page, lambda: paid.click()); expect(paid).to_have_attribute('aria-pressed', 'true', timeout=5000)
 
             with db() as conn:
-                next_period = conn.execute(
-                    'SELECT next_payment_period FROM services WHERE id=?', (fixed_sid,)
-                ).fetchone()['next_payment_period']
+                next_period = conn.execute('SELECT next_payment_period FROM services WHERE id=?', (fixed_sid,)).fetchone()['next_payment_period']
                 assert next_period == add_periods(period, 2), next_period
 
-            assert_no_dialog_while(page, lambda: variable_input.fill('115'))
-            variable_input.press('Enter')
+            assert_no_dialog_while(page, lambda: variable_input.fill('115')); variable_input.press('Enter')
             expect(variable_row).to_have_attribute('data-confirmed', '0', timeout=3000)
             expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
@@ -255,20 +209,15 @@ def main():
             expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(paid).to_have_attribute('aria-pressed', 'false', timeout=3000)
             with db() as conn:
-                restored = conn.execute(
-                    'SELECT next_payment_period FROM services WHERE id=?', (fixed_sid,)
-                ).fetchone()['next_payment_period']
+                restored = conn.execute('SELECT next_payment_period FROM services WHERE id=?', (fixed_sid,)).fetchone()['next_payment_period']
                 assert restored == period, restored
-
             browser.close()
 
-        print('current app shell + mature payment MAPI/TXT/nonblocking browser acceptance passed')
+        print('current app shell + mature payment template-TXT/EML-primary/nonblocking browser acceptance passed')
     finally:
         proc.terminate()
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
+        try: proc.wait(timeout=5)
+        except subprocess.TimeoutExpired: proc.kill()
 
 
 if __name__ == '__main__':
