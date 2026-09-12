@@ -37,7 +37,7 @@
 <header class="topbar">
   <div class="topbar-left">
     <button class="global-back" type="button" data-global-back data-back-fallback="{{ _back_fallback }}" aria-label="返回上一页" title="返回上一页">←</button>
-    <a class="brand" href="{% if _is_work %}/work{% elif _is_life %}/life{% else %}/{% endif %}">晨的助手 <span>v1.0</span></a>
+    <a class="brand" href="{% if _is_work %}/work{% elif _is_life %}/life{% else %}/{% endif %}">晨的助手 <span>v1.2</span></a>
   </div>
   <a class="search-link" href="{% if _is_work %}/search{% else %}/global-search{% endif %}" aria-label="搜索">⌕</a>
 </header>
@@ -54,7 +54,7 @@
   <a href="/life" class="nav-item">⌂<span>生活</span></a>
   <a href="/life/recipes" class="nav-item">▤<span>菜谱</span></a>
   <a href="/life/records" class="nav-item">◷<span>记录</span></a>
-  <a href="/life/knowledge" class="nav-item">◇<span>知识</span></a>
+  <a href="/life/tools" class="nav-item">◇<span>工具</span></a>
 </nav>
 {% else %}
 <nav class="bottom-nav" aria-label="主导航">
@@ -64,28 +64,30 @@
   <a href="/global-search" class="nav-item">⌕<span>搜索</span></a>
 </nav>
 {% endif %}
-<script src="/static/app.js?v=0311" defer></script>
-<script src="/static/v028.js?v=0311" defer></script>
-<script src="/static/ui-drag.js?v=0311" defer></script>
-<script src="/static/service-promotions.js?v=0311" defer></script>
-<script src="/static/business-sync.js?v=0311" defer></script>
-<script src="/static/v0211.js?v=0311" defer></script>
-<script src="/static/workspace-refinement-v0212.js?v=0311" defer></script>
-<script src="/static/v03.js?v=0311" defer></script>
-<script src="/static/v03_runtime_fix.js?v=0311" defer></script>
-<script src="/static/v03_business_mail.js?v=0311" defer></script>
-<script src="/static/v03_payment_template.js?v=0311" defer></script>
-<script src="/static/v03_foxmail_action_fix.js?v=0311" defer></script>
-<script src="/static/v03_insert_order.js?v=0311" defer></script>
-<script src="/static/v031_payment_workflow.js?v=0311" defer></script>
-<script src="/static/v03_review_reset.js?v=0314" defer></script>
-<script src="/static/v031_amount_rollback_fix.js?v=0314" defer></script>
-<script src="/static/v031_workflow_actions.js?v=0316" defer></script>
-<script src="/static/v031_workflow_runtime_fix.js?v=0314" defer></script>
-<script src="/static/v031_workflow_dom_guard.js?v=0314" defer></script>
-<script src="/static/v031_windows_bootstrap.js?v=0317" defer></script>
-<script src="/static/v033_payment_flow_patch.js?v=0331" defer></script>
-<script src="/static/v10.js?v=1000" defer></script>
-<script src="/static/global-back.js?v=1000" defer></script>
+<script src="/static/app.js?v=0320"></script>
+<script src="/static/v028.js?v=0311"></script>
+<script src="/static/ui-drag.js?v=0311"></script>
+<script src="/static/service-promotions.js?v=0311"></script>
+<script src="/static/business-sync.js?v=0311"></script>
+<script src="/static/v0211.js?v=0311"></script>
+<script src="/static/workspace-refinement-v0212.js?v=0311"></script>
+<script src="/static/v03.js?v=0311"></script>
+<script src="/static/v03_runtime_fix.js?v=0311"></script>
+<script src="/static/v03_business_mail.js?v=0311"></script>
+<script src="/static/v03_payment_template.js?v=0311"></script>
+<script src="/static/v03_foxmail_action_fix.js?v=0311"></script>
+<script src="/static/v03_insert_order.js?v=0311"></script>
+<script src="/static/v03_review_reset.js?v=0311"></script>
+<script src="/static/v031_payment_workflow.js?v=0314"></script>
+<script src="/static/v031_amount_rollback_fix.js?v=0314"></script>
+<script src="/static/v031_workflow_actions.js?v=0316"></script>
+<script src="/static/v031_workflow_runtime_fix.js?v=0314"></script>
+<script src="/static/v031_workflow_dom_guard.js?v=0314"></script>
+<script src="/static/v031_windows_bootstrap.js?v=0314"></script>
+<script src="/static/v033_payment_flow_patch.js?v=0331"></script>
+<script src="/static/v10.js?v=1000"></script>
+<script src="/static/global-back.js?v=1000"></script>
+<script src="/static/v12.js?v=1200"></script>
+{% block scripts %}{% endblock %}
 </body>
 </html>
