@@ -121,15 +121,11 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
             page = context.new_page()
 
-            # v1.2.2 primary transport is the local helper /open endpoint with a complete EML draft.
-            page.route('http://127.0.0.1:18763/open', lambda route: route.fulfill(
-                status=200, content_type='application/json', body='{"ok":true,"mode":"eml"}',
-                headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
-            ))
-            # Direct MAPI remains only as fallback; keep its historical false-negative stub covered.
+            # Windows/Foxmail itself is outside Linux CI. Simulate the v0.6 helper's
+            # only accepted success state: a real compose window was detected.
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
-                status=500, content_type='application/json',
-                body='{"ok":false,"error":"Foxmail MAPI returned success but no compose window was detected","code":0}',
+                status=200, content_type='application/json',
+                body='{"ok":true,"mode":"foxmail-direct-mapi","state":"compose-window-detected","code":0}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route(f'**/customers/{cid}/payment-mail-compose-v031', lambda route: route.fulfill(
@@ -213,7 +209,7 @@ def main():
                 assert restored == period, restored
             browser.close()
 
-        print('current app shell + mature payment template-TXT/EML-primary/nonblocking browser acceptance passed')
+        print('current app shell + mature payment template-TXT/verified-compose/nonblocking browser acceptance passed')
     finally:
         proc.terminate()
         try: proc.wait(timeout=5)
