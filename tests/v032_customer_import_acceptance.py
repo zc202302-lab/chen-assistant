@@ -25,6 +25,7 @@ os.environ.update({
     'APP_SECURE_COOKIE': '0',
 })
 
+from app import config  # noqa: E402
 from app.db import db, init_db  # noqa: E402
 from app.importer import XlsmReader  # noqa: E402
 from app.security import create_session  # noqa: E402
@@ -95,7 +96,7 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8139'}])
             page = context.new_page()
             page.goto('http://127.0.0.1:8139/customers/new?mode=batch', wait_until='networkidle')
-            assert 'v1.0' in page.locator('.brand').inner_text()
+            assert f'v{config.APP_VERSION}' in page.locator('.brand').inner_text()
             expect(page.get_by_role('link', name='Excel批量导入/导出')).to_have_class('active')
             expect(page.get_by_role('link', name='下载最新 Excel 模板')).to_be_visible()
             expect(page.get_by_role('link', name='导出全部客户 Excel')).to_be_visible()
@@ -152,7 +153,7 @@ def main():
                 assert conn.execute('SELECT COUNT(*) n FROM customers').fetchone()['n'] == 2
 
             browser.close()
-        print('v1.0 app + v0.3.2 one-customer-per-sheet import/export browser acceptance passed (isolated database)')
+        print('current app shell + v0.3.2 one-customer-per-sheet import/export browser acceptance passed (isolated database)')
     finally:
         proc.terminate()
         try:

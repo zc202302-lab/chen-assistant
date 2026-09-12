@@ -15,6 +15,7 @@ _TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v032-import-')
 TEST_DIR = Path(_TMPDIR.name)
 os.environ['APP_DB_PATH'] = str(TEST_DIR / 'app.db')
 
+from app import config  # noqa: E402
 from app.db import db, init_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.v032_customer_import_routes import (  # noqa: E402
@@ -61,8 +62,9 @@ def write_fixture(path: Path):
 
 
 def test_routes_and_version():
-    # Application shell is v1.0; the customer import/exchange file format remains v0.3.2.
-    assert app.version == '1.0'
+    # The application shell may evolve independently; the customer import/exchange
+    # file format and mature v0.3.2 work routes remain unchanged.
+    assert app.version == config.APP_VERSION
     new_get = first_route('/customers/new', 'GET')
     assert new_get.endpoint.__module__ == 'app.v032_customer_import_routes'
     assert first_route('/customers/new', 'POST').endpoint.__module__ == 'app.v032_customer_import_routes'
@@ -175,7 +177,7 @@ def test_ui_contract():
     assert '/customers/export-v032.xlsx' in template
     assert 'v032-preview-metrics' in css
     assert '/static/v032_customer_import.css' in base
-    assert 'v1.0' in base
+    assert f'v{config.APP_VERSION}' in base
 
 
 if __name__ == '__main__':
@@ -184,4 +186,4 @@ if __name__ == '__main__':
     test_validation_commit_and_fixed_confirmation()
     test_confirm_is_atomic_when_duplicate_appears()
     test_ui_contract()
-    print('v1.0 app + v0.3.2 customer creation/import compatibility contract passed (isolated database)')
+    print('current app shell + v0.3.2 customer creation/import compatibility contract passed (isolated database)')
