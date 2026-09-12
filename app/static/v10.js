@@ -56,7 +56,7 @@
     renumberSteps();
   }
 
-  document.querySelector('.brand span')?.replaceChildren('v1.2');
+  document.querySelector('.brand span')?.replaceChildren('v1.2.1');
   if (!document.querySelector('link[href*="/static/v12.css"]')) {
     const link = document.createElement('link');
     link.rel = 'stylesheet'; link.href = '/static/v12.css?v=1200';
