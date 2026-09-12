@@ -9,6 +9,7 @@ def main():
     for token in (
         "https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_helper_v06.ps1",
         'Update-Helper', 'Start-Watchdog', 'Start-Bridge', 'Get-WatchProcesses',
+        'Get-BridgePowerShell', 'SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe',
         'UpdateIntervalMinutes = 30', 'WatchIntervalSeconds = 20',
         'Invoke-WebRequest', 'Get-FileHash', 'Parser]::ParseFile',
         "chen_foxmail_helper.download.ps1", "chen_foxmail_helper.new.ps1",
