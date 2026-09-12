@@ -1,0 +1,1 @@
+Foxmail helper v0.6 verifies a real compose window before success.
