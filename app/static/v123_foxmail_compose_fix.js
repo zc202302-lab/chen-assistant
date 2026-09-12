@@ -6,7 +6,6 @@
   const customerId = root.dataset.customerId || '';
   if (!customerId) return;
 
-  const fallback = actions.prepareInitiate.bind(actions);
   const bridge = 'http://127.0.0.1:18763';
 
   const responseError = async response => {
@@ -18,7 +17,7 @@
     return (await response.text().catch(() => '')).trim() || `请求失败（${response.status}）`;
   };
 
-  const openWithDirectMapi = async () => {
+  const openWithVerifiedMapi = async () => {
     const compose = await fetch(`/customers/${customerId}/payment-mail-compose-v031`, {
       credentials: 'same-origin',
       cache: 'no-store',
@@ -30,7 +29,7 @@
     if (!payload?.ok) throw new Error(payload?.error || '无法生成缴费邮件');
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12000);
+    const timer = setTimeout(() => controller.abort(), 18000);
     let response;
     try {
       response = await fetch(`${bridge}/compose`, {
@@ -43,42 +42,28 @@
         body: JSON.stringify(payload),
       });
     } catch (err) {
-      if (err?.name === 'AbortError') throw new Error('Windows 邮箱助手响应超时');
-      throw new Error('无法连接 Windows 邮箱助手');
+      if (err?.name === 'AbortError') throw new Error('Windows 邮箱助手响应超时，请重新安装最新版 Windows 助手');
+      throw new Error('无法连接 Windows 邮箱助手，请重新安装最新版 Windows 助手');
     } finally {
       clearTimeout(timer);
     }
 
     const result = await response.json().catch(() => ({}));
-    const message = String(result?.error || '');
-
-    // Foxmail has historically reused an existing top-level window.  The helper's
-    // old window-count probe could therefore report a false negative even when
-    // MAPISendMail returned code 0 and the compose request was accepted.
-    if (result?.ok === true || (result?.code === 0 && message.includes('MAPI returned success but no compose window was detected'))) {
-      return {
-        mode: 'foxmail-direct-mapi',
-        state: result?.ok === true ? (result.state || 'mapi-accepted') : 'mapi-accepted-window-unverified',
-      };
-    }
-
-    throw new Error(message || `Foxmail MAPI 调用失败（${response.status}）`);
-  };
-
-  const directMapiPrimary = async () => {
-    try {
-      return await openWithDirectMapi();
-    } catch (mapiError) {
-      // Keep the complete EML route only as a last-resort fallback. Foxmail may
-      // display EML as a message viewer, so it must never be the normal path.
-      try {
-        return {...(await fallback()), fallback: 'eml'};
-      } catch (fallbackError) {
-        throw new Error(`邮箱启动失败：${mapiError.message}；备用方式也失败：${fallbackError.message}`);
+    if (!response.ok || result?.ok !== true || result?.state !== 'compose-window-detected') {
+      const message = String(result?.error || '');
+      if (result?.code === 0 || message.includes('no compose window')) {
+        throw new Error('Foxmail 没有真正打开写信窗口。请更新 Windows 助手后重试。');
       }
+      throw new Error(message || `Foxmail 写信窗口启动失败（${response.status}）`);
     }
+
+    return {
+      mode: result.mode || 'foxmail-direct-mapi',
+      state: 'compose-window-detected',
+    };
   };
 
-  directMapiPrimary.__v123DirectMapiPrimary = true;
-  actions.prepareInitiate = directMapiPrimary;
+  const verifiedPrimary = async () => openWithVerifiedMapi();
+  verifiedPrimary.__v123DirectMapiPrimary = true;
+  actions.prepareInitiate = verifiedPrimary;
 })();
