@@ -4,7 +4,6 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
-    # Browser acceptance tests must always use isolated data stores.
     acceptance_files = sorted((ROOT / 'tests').glob('v03*_acceptance.py'))
     assert acceptance_files, '未发现 v0.3 浏览器验收脚本'
     for path in acceptance_files:
@@ -37,19 +36,22 @@ def main():
     assert 'download.download =' in patch_js
     assert 'Content-Disposition' in patch_js
     assert '缴费TXT已下载' in patch_js
-    assert '未填写时只提示' in patch_js
+    assert 'TXT文件名只取这里保存的值' in patch_js
     assert '不与其他客户共用' in patch_js
-    assert '必填，不自动生成' in patch_js
+    assert '生成TXT和邮件附件都只使用此名称；必填' in patch_js
 
-    # Helper v0.5 may report HTTP 500 after a successful MAPI code-0 dispatch if
-    # its secondary visible-window-count heuristic cannot see a new top-level
-    # Foxmail window. Only that exact false-negative may be converted to an
-    # accepted/pending state; real MAPI failures must still propagate.
+    # v1.2.2 primary path: complete RFC822 draft -> local helper /open -> Windows Shell.
+    # Simple MAPI is retained only as fallback, removing window-count detection from
+    # the normal operator path while preserving compatibility on broken .eml associations.
+    assert 'payment-mail-draft-v03' in patch_js
+    assert "`${bridge}/open`" in patch_js
+    assert 'fallbackMapi' in patch_js
+    assert "fallback: 'direct-mapi'" in patch_js
+    assert '__v122StableMailLaunch' in patch_js
+    assert "brand.href = '/'" in patch_js
     assert 'Foxmail MAPI returned success but no compose window was detected' in patch_js
-    assert 'ChenFoxmailMapiAcceptedWindowUnverified' in patch_js
     assert "state: 'mapi-accepted-window-unverified'" in patch_js
     assert 'throw err;' in patch_js
-    assert 'Foxmail已接收写信请求；请检查写信窗口和TXT附件' in patch_js
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert '/static/v031_workflow_actions.js?v=0316' in base
@@ -58,10 +60,6 @@ def main():
     assert '/static/v033_payment_flow_patch.js?v=0331' in base
     assert base.index('/static/v033_payment_flow_patch.js') > base.index('/static/v031_workflow_runtime_fix.js')
 
-    # v0.3.3 attachment transport must be native Simple MAPI. The attachment is
-    # part of the compose request itself; clipboard/SendKeys attachment injection
-    # is explicitly forbidden because it can report success while Foxmail has no
-    # attachment.
     helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')
     assert 'BridgeMode' in helper and 'TcpListener' in helper
     assert 'ComposeRequest' in helper and 'Invoke-FoxmailCompose' in helper
@@ -78,14 +76,13 @@ def main():
     assert 'verified_dispatch = $true' in helper
     assert "version = '0.5'" in helper
     assert "Path -eq '/compose'" in helper
+    assert "Path -eq '/open'" in helper
     assert "AllowedRootDomain = 'ziboxiaozhushou.cn'" in helper
     assert 'Access-Control-Allow-Private-Network: true' in helper
     assert "SendWait('^v')" not in helper
     assert 'Clipboard]::SetFileDropList' not in helper
     assert 'Build-MailtoUri' not in helper
 
-    # Server-side compose data must come from the customer-scoped v0.3.3 patch,
-    # with no global recipient/default filename fallback.
     mail_patch = (ROOT / 'app' / 'v033_payment_flow_patch.py').read_text(encoding='utf-8')
     assert 'customer_mail_templates_v03' in mail_patch
     assert 'recipient TEXT NOT NULL' in mail_patch
@@ -94,6 +91,9 @@ def main():
     assert 'attachment_content_base64' in mail_patch
     assert '当前客户缴费模板未填写' in mail_patch
     assert 'TXT附件文件名' in mail_patch
+    assert '_require_attachment_filename' in mail_patch
+    assert "quote(filename)" in mail_patch
+    assert "safe + '.txt'" not in mail_patch
     assert 'RECIPIENT_META_KEY' not in mail_patch
     assert '_current_payment_txt_content' in mail_patch
     assert 'v03._payment_txt_content' not in mail_patch
@@ -111,7 +111,7 @@ def main():
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
     assert 'tests/v03_' not in deploy, '生产 deploy.sh 不得执行 v0.3 测试脚本'
 
-    print('v0.3.3 safety/Foxmail native-attachment + MAPI false-negative compatibility + real-TXT-download contract passed')
+    print('payment safety contract passed: template TXT filename + EML primary launch + MAPI fallback + global brand home')
 
 
 if __name__ == '__main__':

@@ -53,13 +53,7 @@ def _get_customer_template(conn, customer_id: int) -> dict:
         (customer_id,),
     ).fetchone()
     if not row:
-        return {
-            'recipient': '',
-            'subject': '',
-            'body': '',
-            'attachment_filename': '',
-            'updated_at': '',
-        }
+        return {'recipient': '', 'subject': '', 'body': '', 'attachment_filename': '', 'updated_at': ''}
     return {
         'recipient': row['recipient'] or '',
         'subject': row['subject'] or '',
@@ -69,23 +63,14 @@ def _get_customer_template(conn, customer_id: int) -> dict:
     }
 
 
-def _save_customer_template(
-    conn,
-    customer_id: int,
-    recipient: str,
-    subject: str,
-    body: str,
-    attachment_filename: str,
-) -> dict:
+def _save_customer_template(conn, customer_id: int, recipient: str, subject: str, body: str, attachment_filename: str) -> dict:
     recipient = _clean_recipient(recipient)
     subject = _clean_header(subject)
     attachment_filename = _clean_attachment_filename(attachment_filename)
-
     if len(subject) > 300:
         raise HTTPException(400, '邮件主题不能超过300个字符')
     if len(body or '') > 10000:
         raise HTTPException(400, '邮件正文不能超过10000个字符')
-
     now = now_iso()
     _ensure_customer_payment_template(conn)
     conn.execute(
@@ -100,58 +85,48 @@ def _save_customer_template(
              updated_at=excluded.updated_at""",
         (customer_id, recipient, subject, body or '', attachment_filename, now),
     )
-    return {
-        'recipient': recipient,
-        'subject': subject,
-        'body': body or '',
-        'attachment_filename': attachment_filename,
-        'updated_at': now,
-    }
+    return {'recipient': recipient, 'subject': subject, 'body': body or '', 'attachment_filename': attachment_filename, 'updated_at': now}
+
+
+def _require_attachment_filename(template: dict) -> str:
+    filename = _clean_attachment_filename(template.get('attachment_filename') or '')
+    if not filename:
+        raise HTTPException(400, '当前客户缴费模板未填写：TXT附件文件名。请先填写并保存缴费模板。')
+    return filename
 
 
 def _require_template(template: dict) -> dict:
     missing = []
-    if not (template.get('recipient') or '').strip():
-        missing.append('收件人')
-    if not (template.get('subject') or '').strip():
-        missing.append('邮件主题')
-    if not (template.get('attachment_filename') or '').strip():
-        missing.append('TXT附件文件名')
+    if not (template.get('recipient') or '').strip(): missing.append('收件人')
+    if not (template.get('subject') or '').strip(): missing.append('邮件主题')
+    if not (template.get('attachment_filename') or '').strip(): missing.append('TXT附件文件名')
     if missing:
         raise HTTPException(400, '当前客户缴费模板未填写：' + '、'.join(missing))
-    return template
+    result = dict(template)
+    result['attachment_filename'] = _require_attachment_filename(result)
+    return result
 
 
 def _current_payment_txt_content(conn, customer_id: int, period: str):
-    """Build the single authoritative TXT payload from the current row-review state."""
     customer = customer_or_404(conn, customer_id)
     items, stats = core.payment_snapshot_v0212(conn, customer_id, period)
     if stats['pending']:
         raise HTTPException(409, f"还有{stats['pending']}项金额未核对，不能生成正式缴费TXT")
-
-    missing_number = [
-        item for item in items
-        if float(item['payment']['amount'] or 0) > 0
-        and not (item['row']['number'] or '').strip()
-    ]
+    missing_number = [item for item in items if float(item['payment']['amount'] or 0) > 0 and not (item['row']['number'] or '').strip()]
     if missing_number:
         raise HTTPException(409, '存在非0元缴费业务未填写号码，请先补充号码')
-
     lines = []
     for item in items:
         amount = float(item['payment']['amount'] or 0)
         number = (item['row']['number'] or '').strip()
-        if amount <= 0 or not number:
-            continue
-        lines.append(f'{number}|{format_fee(amount)}')
-
+        if amount > 0 and number:
+            lines.append(f'{number}|{format_fee(amount)}')
     if not lines:
         raise HTTPException(409, '当前客户没有可生成TXT的非0元缴费数据')
     return customer, '\r\n'.join(lines), stats
 
 
 def _attachment_payload(conn, customer_id: int, period: str):
-    # Attachment and manual TXT download MUST use exactly the same payload builder.
     customer, txt_content, stats = _current_payment_txt_content(conn, customer_id, period)
     template = _require_template(_get_customer_template(conn, customer_id))
     return customer, txt_content, stats, template
@@ -162,54 +137,26 @@ def get_customer_payment_template_v033(customer_id: int):
     with db() as conn:
         customer_or_404(conn, customer_id)
         template = _get_customer_template(conn, customer_id)
-    return JSONResponse({
-        'ok': True,
-        'template': template,
-        'recipient': template['recipient'],
-        'recipient_configured': bool(template['recipient']),
-        'customer_scoped': True,
-    })
+    return JSONResponse({'ok': True, 'template': template, 'recipient': template['recipient'], 'recipient_configured': bool(template['recipient']), 'customer_scoped': True})
 
 
 @router.post('/customers/{customer_id}/mail-template-v03')
-def save_customer_payment_template_v033(
-    request: Request,
-    customer_id: int,
-    csrf: str = Form(...),
-    subject: str = Form(''),
-    body: str = Form(''),
-    recipient: str = Form(''),
-    attachment_filename: str = Form(''),
-):
+def save_customer_payment_template_v033(request: Request, customer_id: int, csrf: str = Form(...), subject: str = Form(''), body: str = Form(''), recipient: str = Form(''), attachment_filename: str = Form('')):
     check_csrf(request, csrf)
     with db() as conn:
         customer_or_404(conn, customer_id)
-        template = _save_customer_template(
-            conn,
-            customer_id,
-            recipient,
-            subject,
-            body,
-            attachment_filename,
-        )
-    return JSONResponse({
-        'ok': True,
-        'template': template,
-        'recipient': template['recipient'],
-        'recipient_configured': bool(template['recipient']),
-        'customer_scoped': True,
-    })
+        template = _save_customer_template(conn, customer_id, recipient, subject, body, attachment_filename)
+    return JSONResponse({'ok': True, 'template': template, 'recipient': template['recipient'], 'recipient_configured': bool(template['recipient']), 'customer_scoped': True})
 
 
 @router.get('/customers/{customer_id}/payment.txt')
 def payment_txt_current_workflow_v033(customer_id: int):
     period = current_period()
     with db() as conn:
-        customer, body, _ = _current_payment_txt_content(conn, customer_id, period)
-
-    safe = ''.join(ch for ch in (customer['name'] or '') if ch not in '\\/:*?"<>|').strip() or '缴费'
+        _, body, _ = _current_payment_txt_content(conn, customer_id, period)
+        filename = _require_attachment_filename(_get_customer_template(conn, customer_id))
     headers = {
-        'Content-Disposition': f"attachment; filename=\"payment.txt\"; filename*=UTF-8''{quote(safe + '.txt')}",
+        'Content-Disposition': f"attachment; filename=\"payment.txt\"; filename*=UTF-8''{quote(filename)}",
         'Cache-Control': 'no-store, max-age=0',
     }
     return PlainTextResponse(body, media_type='text/plain; charset=utf-8', headers=headers)
@@ -221,9 +168,8 @@ def payment_mail_compose_customer_scoped_v033(customer_id: int):
     with db() as conn:
         run, _ = workflow._run_v031(conn, customer_id, period)
         if not run['notified']:
-            raise HTTPException(400, '请先完成“通知客户”，再调用Foxmail')
-        customer, txt_content, _, template = _attachment_payload(conn, customer_id, period)
-
+            raise HTTPException(400, '请先完成“通知客户”，再调用邮箱')
+        _, txt_content, _, template = _attachment_payload(conn, customer_id, period)
     return JSONResponse({
         'ok': True,
         'recipient_b64': base64.b64encode(template['recipient'].encode('utf-8')).decode('ascii'),
@@ -231,9 +177,7 @@ def payment_mail_compose_customer_scoped_v033(customer_id: int):
         'body_b64': base64.b64encode(template['body'].encode('utf-8')).decode('ascii'),
         'attachment_filename_b64': base64.b64encode(template['attachment_filename'].encode('utf-8')).decode('ascii'),
         'attachment_content_base64': base64.b64encode(txt_content.encode('utf-8')).decode('ascii'),
-        'period': period,
-        'customer_scoped': True,
-        'attachment_required': True,
+        'period': period, 'customer_scoped': True, 'attachment_required': True,
     })
 
 
@@ -241,18 +185,16 @@ def payment_mail_compose_customer_scoped_v033(customer_id: int):
 def payment_mail_draft_customer_scoped_v033(customer_id: int):
     period = current_period()
     with db() as conn:
+        run, _ = workflow._run_v031(conn, customer_id, period)
+        if not run['notified']:
+            raise HTTPException(400, '请先完成“通知客户”，再调用邮箱')
         customer, txt_content, _, template = _attachment_payload(conn, customer_id, period)
-
     eml = _build_eml(
-        customer_name=customer['name'] or '客户',
-        period=period,
-        subject=template['subject'],
-        body=template['body'],
-        txt_content=txt_content,
-        recipient=template['recipient'],
-        txt_filename=template['attachment_filename'],
+        customer_name=customer['name'] or '客户', period=period,
+        subject=template['subject'], body=template['body'], txt_content=txt_content,
+        recipient=template['recipient'], txt_filename=template['attachment_filename'],
     )
-    filename = f"{_safe_filename(customer['name'] or '客户')}_{period}_Foxmail.eml"
+    filename = f"{_safe_filename(customer['name'] or '客户')}_{period}_缴费邮件.eml"
     headers = {
         'Content-Disposition': f"attachment; filename=payment.eml; filename*=UTF-8''{quote(filename)}",
         'Cache-Control': 'no-store, max-age=0',
