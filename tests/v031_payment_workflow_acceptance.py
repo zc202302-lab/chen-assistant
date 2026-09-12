@@ -22,6 +22,7 @@ os.environ.update({
     'APP_SECURE_COOKIE': '0',
 })
 
+from app import config  # noqa: E402
 from app.db import db, init_db, now_iso  # noqa: E402
 from app.payment_v02 import add_periods, current_period  # noqa: E402
 from app.security import create_session  # noqa: E402
@@ -125,7 +126,7 @@ def main():
             # helper-v0.5 false negative seen in production: Simple MAPI returned
             # success (code 0), but its secondary visible-window-count probe did
             # not detect a new top-level compose window. The mature payment core
-            # running inside v1.0 must accept this as a prepared/pending action.
+            # running inside the current app shell must accept this as a prepared/pending action.
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
                 status=500,
                 content_type='application/json',
@@ -139,7 +140,7 @@ def main():
             ))
 
             page.goto(f'http://127.0.0.1:8136/customers/{cid}', wait_until='networkidle')
-            assert 'v1.0' in page.locator('.brand').inner_text()
+            assert f'v{config.APP_VERSION}' in page.locator('.brand').inner_text()
 
             flow = page.locator('[data-v031-payment-flow]')
             flow.wait_for(state='visible')
@@ -261,7 +262,7 @@ def main():
 
             browser.close()
 
-        print('v1.0 shell + mature payment MAPI/TXT/nonblocking browser acceptance passed')
+        print('current app shell + mature payment MAPI/TXT/nonblocking browser acceptance passed')
     finally:
         proc.terminate()
         try:
