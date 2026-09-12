@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="/static/v031_payment_workflow.css?v=0314">
   <link rel="stylesheet" href="/static/v032_customer_import.css?v=0320">
   <link rel="stylesheet" href="/static/v10.css?v=1000">
+  <link rel="stylesheet" href="/static/work-home-polish-v121.css?v=1210">
   <link rel="stylesheet" href="/static/global-back.css?v=1000">
   <title>{% block title %}晨的助手{% endblock %}</title>
 </head>
@@ -37,7 +38,7 @@
 <header class="topbar">
   <div class="topbar-left">
     <button class="global-back" type="button" data-global-back data-back-fallback="{{ _back_fallback }}" aria-label="返回上一页" title="返回上一页">←</button>
-    <a class="brand" href="{% if _is_work %}/work{% elif _is_life %}/life{% else %}/{% endif %}">晨的助手 <span>v1.2</span></a>
+    <a class="brand" href="{% if _is_work %}/work{% elif _is_life %}/life{% else %}/{% endif %}">晨的助手 <span>v1.2.1</span></a>
   </div>
   <a class="search-link" href="{% if _is_work %}/search{% else %}/global-search{% endif %}" aria-label="搜索">⌕</a>
 </header>
