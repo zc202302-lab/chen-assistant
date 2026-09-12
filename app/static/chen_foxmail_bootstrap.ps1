@@ -27,10 +27,18 @@ function Stop-Bridge {
     foreach ($proc in (Get-BridgeProcesses)) { Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue }
     Start-Sleep -Milliseconds 350
 }
+function Get-BridgePowerShell {
+    # Foxmail's registered Simple MAPI DLL is commonly 32-bit. Running the local
+    # bridge under SysWOW64 PowerShell keeps the process architecture compatible.
+    $wow64 = Join-Path $env:WINDIR 'SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
+    if (Test-Path -LiteralPath $wow64) { return $wow64 }
+    return 'powershell.exe'
+}
 function Start-Bridge {
     if (-not (Test-Path -LiteralPath $HelperPath)) { return $false }
     if ((Get-BridgeProcesses).Count -gt 0) { return $true }
-    Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -ArgumentList @(
+    $bridgePowerShell = Get-BridgePowerShell
+    Start-Process -FilePath $bridgePowerShell -WindowStyle Hidden -ArgumentList @(
         '-NoProfile','-STA','-ExecutionPolicy','Bypass','-File',"`"$HelperPath`"",'-BridgeMode'
     )
     Start-Sleep -Milliseconds 900
@@ -91,6 +99,7 @@ if(-not $Watch){
     Write-Host "Install directory: $InstallDir"
     Write-Host ('Latest helper downloaded: '+$(if($updated){'yes'}else{'already current or network unavailable'}))
     Write-Host ('Helper running: '+$(if($started){'yes'}else{'no'}))
+    Write-Host ('Bridge PowerShell: '+(Get-BridgePowerShell))
     Write-Host 'Foxmail compose-window verification: enabled.'
     Write-Host '';Write-Host 'Return to Chen Assistant and refresh the page.';Read-Host 'Press Enter to close';exit 0
 }
