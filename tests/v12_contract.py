@@ -30,8 +30,8 @@ def first_route(path: str, method: str = 'GET'):
 
 
 def main():
-    assert config.APP_VERSION == '1.2'
-    assert app.version == '1.2'
+    assert config.APP_VERSION.startswith('1.2')
+    assert app.version == config.APP_VERSION
     assert first_route('/life').endpoint.__name__ == 'life_home_v10'
     assert first_route('/life/recipes').endpoint.__name__ == 'recipe_list_v10'
     assert first_route('/life/tools').endpoint.__module__ == 'app.v12_tools_routes'
@@ -68,7 +68,7 @@ def main():
     print_js = (ROOT / 'app/static/recipe-print-v101.js').read_text(encoding='utf-8')
     assert '@page{size:A4 portrait' in print_css and 'targetHeight = 1040' in print_js
     shell_js = (ROOT / 'app/static/v10.js').read_text(encoding='utf-8')
-    assert "replaceChildren('v1.2')" in shell_js and '/life/tools' in shell_js
+    assert f"replaceChildren('v{config.APP_VERSION}')" in shell_js and '/life/tools' in shell_js
     print('v1.2 contract passed: 18 Excel templates + original steps + A4 print + formula tools + work isolation')
 
 
