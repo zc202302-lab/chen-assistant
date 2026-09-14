@@ -90,7 +90,7 @@ def main():
     )
     try:
         wait_http('http://127.0.0.1:8133/health')
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import expect, sync_playwright
 
         with sync_playwright() as p:
             browser = p.chromium.launch()
@@ -111,12 +111,11 @@ def main():
                 assert row.locator('[data-row-state]').is_disabled()
             assert page.locator('#pendingCount').inner_text().strip() == '0'
 
-            # All-fixed due rows are automatically reviewed. There is no variable
-            # row to reset, so clicking stage 1 is intentionally a no-op.
+            # All-fixed due rows are automatically confirmed. v1.2.5 derives stage 1
+            # directly from those row states, so it is status-only and not clickable.
             wait_review_state(page, True)
-            assert review.get_attribute('aria-pressed') == 'true'
-            review.click()
-            wait_review_state(page, True)
+            expect(review).to_be_disabled(timeout=5000)
+            expect(review).to_have_attribute('aria-disabled', 'true', timeout=5000)
             assert review.get_attribute('aria-pressed') == 'true'
             for i in range(2):
                 row = rows.nth(i)
@@ -136,7 +135,7 @@ def main():
                 assert all(int(row['confirmed']) == 1 for row in entries)
                 assert all(row['source'] != 'fixed_review_reset' for row in entries)
 
-            # Automatic confirmation survives reload and stage 1 stays completed.
+            # Automatic confirmation survives reload and derived stage 1 stays complete.
             page.reload(wait_until='networkidle')
             page.wait_for_timeout(1100)
             rows = page.locator('[data-payment-row]')
@@ -144,18 +143,15 @@ def main():
                 assert rows.nth(i).get_attribute('data-confirmed') == '1'
                 assert rows.nth(i).locator('[data-row-state]').inner_text().strip() == '✓'
             review = page.locator('[data-v031-flow-action="review"]')
-            assert review.is_enabled()
             wait_review_state(page, True)
-            assert review.get_attribute('aria-pressed') == 'true'
-
-            review.click()
-            wait_review_state(page, True)
+            expect(review).to_be_disabled(timeout=5000)
+            expect(review).to_have_attribute('aria-disabled', 'true', timeout=5000)
             assert review.get_attribute('aria-pressed') == 'true'
             for i in range(2):
                 assert rows.nth(i).get_attribute('data-confirmed') == '1'
 
             browser.close()
-        print('v0.3.2 fixed amount auto-confirm acceptance passed (isolated test database)')
+        print('v0.3.2 fixed amount auto-confirm acceptance passed with derived review stage (isolated test database)')
     finally:
         proc.terminate()
         try:
