@@ -98,6 +98,9 @@ jobs:
       - name: v1.2.6 workflow rollback acceptance
         run: python tests/v126_payment_workflow_rollback_acceptance.py
 
+      - name: v1.2.7 stale-UI server-first rollback acceptance
+        run: python tests/v127_server_first_rollback_acceptance.py
+
       - name: Legacy work-system browser acceptance
         run: |
           python tests/v032_customer_import_acceptance.py
