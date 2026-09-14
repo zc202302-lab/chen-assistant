@@ -1,1 +1,0 @@
-Stage 1 payment review is derived only from row confirmation truth. Standalone work-table filter bars are replaced by header-row search/filter controls.
