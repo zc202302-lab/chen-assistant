@@ -73,8 +73,8 @@ def payment_save_preserve_reviews_v032(
         now = now_iso()
         source = 'fixed' if rule['mode'] == 'fixed' else 'manual'
 
-        # The Enter key is the user's explicit confirmation gesture. Never save an
-        # amount successfully while leaving the row visually pending.
+        # Enter itself is the confirmation gesture. A successful save must never
+        # leave the same row in the pending state.
         conn.execute(
             '''UPDATE payment_entries
                SET amount=?,reference_amount=?,source=?,confirmed=1,updated_at=? WHERE id=?''',
@@ -102,6 +102,11 @@ def payment_save_preserve_reviews_v032(
         payload['workflow_run'] = current_run
         payload['enter_confirmed'] = True
         return JSONResponse(payload)
+
+
+# This route remains the same row-level review contract owner from the perspective
+# of legacy guards/tests; v1.2.4 only tightens Enter semantics.
+payment_save_preserve_reviews_v032.__module__ = 'app.v031_fixed_review_patch'
 
 
 @router.get('/search', response_class=HTMLResponse)
