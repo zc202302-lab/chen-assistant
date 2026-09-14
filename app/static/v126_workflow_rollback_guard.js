@@ -8,21 +8,13 @@
 
   const toast = msg => {
     if (window.ChenToast) return window.ChenToast(msg);
-    let el = document.querySelector('.app-toast');
-    if (!el) {
-      el = document.createElement('div');
-      el.className = 'app-toast';
-      document.body.appendChild(el);
-    }
-    el.textContent = msg;
-    requestAnimationFrame(() => el.classList.add('show'));
-    setTimeout(() => el.classList.remove('show'), 4200);
+    console.info(msg);
   };
 
   const fetchJson = async (url, options = {}) => {
-    const response = await fetch(url, {credentials: 'same-origin', cache: 'no-store', ...options});
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data.ok === false) throw new Error(data.detail || data.error || `请求失败（${response.status}）`);
+    const r = await fetch(url, {credentials: 'same-origin', cache: 'no-store', ...options});
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || data.ok === false) throw new Error(data.detail || data.error || `请求失败（${r.status}）`);
     return data;
   };
 
@@ -33,8 +25,11 @@
     return fetchJson(`/customers/${customerId}/payment-workflow-v031`, {method: 'POST', body: fd});
   };
 
-  const refresh = async () => {
-    await window.ChenPaymentWorkflowRuntimeV031?.refresh?.();
+  const isDone = (action, run) => {
+    if (action === 'notify') return !!run.notified;
+    if (action === 'initiate') return !!run.initiated;
+    if (action === 'paid') return !!run.paid;
+    return false;
   };
 
   const blockedReason = (action, run) => {
@@ -43,55 +38,56 @@
     return '';
   };
 
-  const isDone = (action, run) => {
-    if (action === 'notify') return !!run.notified;
-    if (action === 'initiate') return !!run.initiated;
-    if (action === 'paid') return !!run.paid;
-    return false;
-  };
-
-  // Capture at document level, before all historical flow listeners. Completed
-  // stages use the server as the source of truth so a stale client-side state can
-  // never turn a rollback click into a prepare/forward action.
+  // Every click is intercepted BEFORE historical listeners run. We then read the
+  // authoritative server state. If the stage is done, this click means rollback.
+  // If it is not done, refresh the legacy runtime and replay the click once.
   document.addEventListener('click', async event => {
     const btn = event.target.closest?.('[data-v031-flow-action]');
     if (!btn || !flow.contains(btn)) return;
     const action = btn.dataset.v031FlowAction || '';
     if (!['notify', 'initiate', 'paid'].includes(action)) return;
-    if (btn.getAttribute('aria-pressed') !== 'true') return;
+
+    if (btn.dataset.v127Replay === '1') return;
 
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (flow.dataset.v126RollbackBusy === '1') return;
-    flow.dataset.v126RollbackBusy = '1';
+    if (flow.dataset.v127Busy === '1') return;
+    flow.dataset.v127Busy = '1';
 
     try {
       const snapshot = await fetchJson(`/customers/${customerId}/payment-workflow-v031`);
       const run = snapshot.run || {};
-      if (!isDone(action, run)) {
-        await refresh();
-        return;
-      }
-      const reason = blockedReason(action, run);
-      if (reason) {
-        toast(reason);
-        await refresh();
+
+      if (isDone(action, run)) {
+        const reason = blockedReason(action, run);
+        if (reason) {
+          toast(reason);
+          await window.ChenPaymentWorkflowRuntimeV031?.refresh?.();
+          return;
+        }
+        await postAction(action);
+        await window.ChenPaymentWorkflowRuntimeV031?.refresh?.();
+        toast(action === 'notify'
+          ? '已撤回“通知客户”'
+          : action === 'initiate'
+            ? '已撤回“发起缴费”'
+            : '已撤回“完成缴费”并恢复缴费周期');
         return;
       }
 
-      await postAction(action);
-      await refresh();
-      const message = action === 'notify'
-        ? '已撤回“通知客户”；金额核对保持有效'
-        : action === 'initiate'
-          ? '已撤回“发起缴费”；通知客户保持有效'
-          : '已撤回“完成缴费”并恢复缴费周期';
-      toast(message);
+      // Forward path: first synchronize the old runtime closure with server truth,
+      // then replay exactly one click so the mature two-step external action flow
+      // (prepare -> confirm) remains unchanged.
+      await window.ChenPaymentWorkflowRuntimeV031?.refresh?.();
+      btn.dataset.v127Replay = '1';
+      btn.click();
+      delete btn.dataset.v127Replay;
     } catch (err) {
-      toast(`流程回退失败：${err.message || '未知错误'}`);
-      try { await refresh(); } catch (_) {}
+      toast(`缴费流程状态同步失败：${err.message || '未知错误'}`);
+      try { await window.ChenPaymentWorkflowRuntimeV031?.refresh?.(); } catch (_) {}
     } finally {
-      delete flow.dataset.v126RollbackBusy;
+      delete flow.dataset.v127Busy;
+      delete btn.dataset.v127Replay;
     }
   }, true);
 })();
