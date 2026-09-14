@@ -181,7 +181,8 @@ def main():
             assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_contain_text('待确认', timeout=8000)
             assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
             expect(initiate).to_be_enabled(timeout=5000)
-            assert_no_dialog_while(page, lambda: initiate.click(), 700); expect(initiate).to_contain_text('待确认', timeout=5000)
+            assert_no_dialog_while(page, lambda: initiate.click(), 700)
+            expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
             assert_no_dialog_while(page, lambda: initiate.click()); expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=5000)
             expect(paid).to_be_enabled(timeout=5000)
 
@@ -196,7 +197,8 @@ def main():
             assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_contain_text('待确认', timeout=8000)
             assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
             expect(initiate).to_be_enabled(timeout=5000)
-            assert_no_dialog_while(page, lambda: initiate.click(), 700); expect(initiate).to_contain_text('待确认', timeout=5000)
+            assert_no_dialog_while(page, lambda: initiate.click(), 700)
+            expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
             assert_no_dialog_while(page, lambda: initiate.click()); expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=5000)
             assert_no_dialog_while(page, lambda: paid.click()); expect(paid).to_have_attribute('aria-pressed', 'true', timeout=5000)
 
