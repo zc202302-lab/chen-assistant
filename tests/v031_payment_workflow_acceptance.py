@@ -121,7 +121,6 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
             page = context.new_page()
 
-            # Local helper transport is stubbed because Linux CI cannot open real Foxmail.
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
                 status=200, content_type='application/json', body='{"ok":true,"mode":"mapi","verified":true}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
@@ -161,13 +160,14 @@ def main():
             downloaded_path = download.path(); assert downloaded_path is not None
             assert Path(downloaded_path).read_text(encoding='utf-8').splitlines() == ['13800000001|100', '13800000002|120']
 
-            # v1.2.4: Enter itself confirms the row. A changed amount invalidates the
-            # whole-run approval, so only the top-level review step needs reconfirming.
+            # v1.2.4: Enter confirms the edited row immediately. When all rows are
+            # confirmed, the mature workflow also keeps/repairs the top-level review
+            # state automatically. Downstream communication/payment states must still
+            # be invalidated after any real amount change.
             assert_no_dialog_while(page, lambda: fixed_input.fill('125')); fixed_input.press('Enter')
             expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
             expect(variable_row).to_have_attribute('data-confirmed', '1', timeout=3000)
-            expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
-            assert_no_dialog_while(page, lambda: review.click()); expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
 
             stub_notice_transport(page); expect(notify).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_contain_text('待确认', timeout=8000)
@@ -180,11 +180,10 @@ def main():
             assert_no_dialog_while(page, lambda: variable_input.fill('110')); variable_input.press('Enter')
             expect(variable_row).to_have_attribute('data-confirmed', '1', timeout=3000)
             expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
-            expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
 
-            assert_no_dialog_while(page, lambda: review.click()); expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             stub_notice_transport(page); expect(notify).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_contain_text('待确认', timeout=8000)
             assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
@@ -200,7 +199,7 @@ def main():
             assert_no_dialog_while(page, lambda: variable_input.fill('115')); variable_input.press('Enter')
             expect(variable_row).to_have_attribute('data-confirmed', '1', timeout=3000)
             expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
-            expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(paid).to_have_attribute('aria-pressed', 'false', timeout=3000)
