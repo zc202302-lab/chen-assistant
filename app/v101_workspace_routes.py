@@ -8,8 +8,12 @@ from .v027_home import dashboard_v027
 from .v10_routes import global_search_v10
 from .v101_recipe_template_patch import ensure_v101_recipe_templates, router as recipe_template_router
 from .v12_tools_routes import router as v12_tools_router
+from .v124_work_patch import router as v124_work_patch_router
 
 router = APIRouter()
+# v1.2.4 work fixes must be registered before historical compatibility routes so
+# duplicate /search and payment-current paths resolve to the patched behavior.
+router.include_router(v124_work_patch_router)
 router.include_router(recipe_template_router)
 router.include_router(v12_tools_router)
 
@@ -27,7 +31,7 @@ def work_home_v101(request: Request, home: str = 'tasks'):
 
 @router.get('/search', response_class=HTMLResponse)
 def work_search_v101(request: Request, q: str = ''):
-    """Keep the original work-only search at its historical /search path."""
+    """Historical fallback; v1.2.4's route is registered before this one."""
     return legacy_work_search(request, q)
 
 

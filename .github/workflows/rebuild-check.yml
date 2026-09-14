@@ -51,6 +51,7 @@ jobs:
             app/static/v033_payment_flow_patch.js \
             app/static/v10.js \
             app/static/v12.js \
+            app/static/v124_work_tables.js \
             app/static/recipe-print-v101.js
           do
             node --check "$asset"
@@ -87,6 +88,9 @@ jobs:
 
       - name: v1.2 workspace isolation acceptance
         run: python tests/v10_workspace_isolation_acceptance.py
+
+      - name: v1.2.4 payment/search/table acceptance
+        run: python tests/v124_payment_search_acceptance.py
 
       - name: Legacy work-system browser acceptance
         run: |
