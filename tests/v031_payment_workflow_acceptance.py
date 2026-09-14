@@ -130,7 +130,7 @@ def main():
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
-                status=200, content_type='application/json', body='{"ok":true,"mode":"mapi","verified":true}',
+                status=200, content_type='application/json', body='{"ok":true,"mode":"mapi","verified":true,"state":"compose-window-detected"}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route(f'**/customers/{cid}/payment-mail-compose-v031', lambda route: route.fulfill(
