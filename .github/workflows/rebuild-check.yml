@@ -65,6 +65,7 @@ jobs:
         run: |
           python tests/stability_contract.py
           python tests/v12_contract.py
+          python tests/v125_contract.py
 
       - name: Legacy work-system compatibility contracts
         run: |
