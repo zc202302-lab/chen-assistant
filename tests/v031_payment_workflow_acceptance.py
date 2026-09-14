@@ -121,10 +121,15 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
             page = context.new_page()
 
-            # Stub both the current stable .eml Shell route and the historical MAPI
-            # fallback. CI has no Windows helper, so an unhandled localhost /open
-            # request can otherwise wait for a network timeout and make this unrelated
-            # browser regression flaky.
+            # Stub the current stable .eml Shell route and historical MAPI fallback.
+            # CI has no Windows helper; the first initiate click must nevertheless
+            # complete its prepare phase so the second click can confirm stage 3.
+            page.route(f'**/customers/{cid}/payment-mail-draft-v03', lambda route: route.fulfill(
+                status=200,
+                content_type='message/rfc822',
+                body='From: test@example.com\r\nTo: test@example.com\r\nSubject: test\r\n\r\nbody',
+                headers={'Content-Disposition': 'attachment; filename="payment.eml"'},
+            ))
             page.route('http://127.0.0.1:18763/open', lambda route: route.fulfill(
                 status=200, content_type='application/json', body='{"ok":true,"mode":"eml-shell"}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
