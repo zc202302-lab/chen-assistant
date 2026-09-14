@@ -35,7 +35,13 @@
         else if (filter === 'confirmed') stateMatch = row.dataset.confirmed === '1';
         else if (filter === 'variable') stateMatch = row.dataset.mode === 'variable';
         else if (filter === 'fixed') stateMatch = row.dataset.mode === 'fixed';
-        row.hidden = !(textMatch && stateMatch);
+        const show = textMatch && stateMatch;
+        row.hidden = !show;
+        // Historical payment CSS explicitly declares the row as a grid. Some browser
+        // combinations therefore keep a [hidden] row visually laid out. Inline display
+        // is the final visibility owner for v1.2.4 filtering and cannot be overridden
+        // by that legacy selector.
+        row.style.display = show ? '' : 'none';
       });
     };
     search.addEventListener('input', apply);
