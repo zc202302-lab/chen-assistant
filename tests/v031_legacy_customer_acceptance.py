@@ -143,8 +143,10 @@ def main():
             initiate = flow.locator('[data-v031-flow-action="initiate"]')
             notify = flow.locator('[data-v031-flow-action="notify"]')
             review = flow.locator('[data-v031-flow-action="review"]')
+            row_review = page.locator('[data-review-toggle]').first
             assert initiate.is_enabled()
 
+            # Historical downstream states can still be rolled back without dialogs.
             assert_no_dialog_while(page, lambda: initiate.click())
             wait_stage(page, 'initiate', False)
             assert initiate.get_attribute('aria-pressed') == 'false'
@@ -157,18 +159,33 @@ def main():
             assert_no_dialog_while(page, lambda: notify.click())
             wait_stage(page, 'notify', False)
             assert notify.get_attribute('aria-pressed') == 'false'
+
+            # v1.2.5: stage 1 is no longer a manual toggle. Because the sole payment
+            # row is still confirmed, amount review stays automatically completed.
+            wait_stage(page, 'review', True)
+            assert review.is_disabled()
+            assert review.get_attribute('aria-disabled') == 'true'
+
+            # Making the row unconfirmed immediately invalidates stage 1; confirming
+            # it again immediately restores stage 1 without clicking the stage button.
+            assert_no_dialog_while(page, lambda: row_review.click())
             page.wait_for_function(
-                "() => !document.querySelector('[data-v031-flow-action=\"review\"]')?.disabled",
+                "() => document.querySelector('[data-payment-row]')?.dataset.confirmed === '0'",
                 timeout=5000,
             )
-            assert review.is_enabled()
-
-            assert_no_dialog_while(page, lambda: review.click())
             wait_stage(page, 'review', False)
-            assert review.get_attribute('aria-pressed') == 'false'
+            assert review.is_disabled()
+
+            assert_no_dialog_while(page, lambda: row_review.click())
+            page.wait_for_function(
+                "() => document.querySelector('[data-payment-row]')?.dataset.confirmed === '1'",
+                timeout=5000,
+            )
+            wait_stage(page, 'review', True)
+            assert review.is_disabled()
 
             browser.close()
-        print('v0.3.3 legacy-customer no-dialog workflow acceptance passed (isolated test database)')
+        print('v0.3.3 legacy-customer no-dialog workflow acceptance passed with derived review state')
     finally:
         proc.terminate()
         try:
