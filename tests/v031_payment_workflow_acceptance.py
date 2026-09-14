@@ -121,6 +121,14 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
             page = context.new_page()
 
+            # Stub both the current stable .eml Shell route and the historical MAPI
+            # fallback. CI has no Windows helper, so an unhandled localhost /open
+            # request can otherwise wait for a network timeout and make this unrelated
+            # browser regression flaky.
+            page.route('http://127.0.0.1:18763/open', lambda route: route.fulfill(
+                status=200, content_type='application/json', body='{"ok":true,"mode":"eml-shell"}',
+                headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
+            ))
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
                 status=200, content_type='application/json', body='{"ok":true,"mode":"mapi","verified":true}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
