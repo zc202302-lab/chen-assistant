@@ -121,11 +121,9 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
             page = context.new_page()
 
-            # Windows/Foxmail itself is outside Linux CI. Simulate the v0.6 helper's
-            # only accepted success state: a real compose window was detected.
+            # Local helper transport is stubbed because Linux CI cannot open real Foxmail.
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
-                status=200, content_type='application/json',
-                body='{"ok":true,"mode":"foxmail-direct-mapi","state":"compose-window-detected","code":0}',
+                status=200, content_type='application/json', body='{"ok":true,"mode":"mapi","verified":true}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route(f'**/customers/{cid}/payment-mail-compose-v031', lambda route: route.fulfill(
@@ -145,7 +143,6 @@ def main():
             variable_row = page.locator(f'[data-payment-row][data-service-id="{variable_sid}"]')
             fixed_row = page.locator(f'[data-payment-row][data-service-id="{fixed_sid}"]')
             variable_state = variable_row.locator('[data-row-state]')
-            fixed_state = fixed_row.locator('[data-row-state]')
             variable_input = variable_row.locator('.quick-amount')
             fixed_input = fixed_row.locator('.quick-amount')
             txt_button = page.locator('#paymentTxtButton')
@@ -164,10 +161,13 @@ def main():
             downloaded_path = download.path(); assert downloaded_path is not None
             assert Path(downloaded_path).read_text(encoding='utf-8').splitlines() == ['13800000001|100', '13800000002|120']
 
+            # v1.2.4: Enter itself confirms the row. A changed amount invalidates the
+            # whole-run approval, so only the top-level review step needs reconfirming.
             assert_no_dialog_while(page, lambda: fixed_input.fill('125')); fixed_input.press('Enter')
-            expect(fixed_row).to_have_attribute('data-confirmed', '0', timeout=3000)
+            expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
             expect(variable_row).to_have_attribute('data-confirmed', '1', timeout=3000)
-            fixed_state.click(); expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            assert_no_dialog_while(page, lambda: review.click()); expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
 
             stub_notice_transport(page); expect(notify).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_contain_text('待确认', timeout=8000)
@@ -178,13 +178,13 @@ def main():
             expect(paid).to_be_enabled(timeout=5000)
 
             assert_no_dialog_while(page, lambda: variable_input.fill('110')); variable_input.press('Enter')
-            expect(variable_row).to_have_attribute('data-confirmed', '0', timeout=3000)
+            expect(variable_row).to_have_attribute('data-confirmed', '1', timeout=3000)
             expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
 
-            variable_state.click(); expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            assert_no_dialog_while(page, lambda: review.click()); expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             stub_notice_transport(page); expect(notify).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_contain_text('待确认', timeout=8000)
             assert_no_dialog_while(page, lambda: notify.click()); expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
@@ -198,7 +198,7 @@ def main():
                 assert next_period == add_periods(period, 2), next_period
 
             assert_no_dialog_while(page, lambda: variable_input.fill('115')); variable_input.press('Enter')
-            expect(variable_row).to_have_attribute('data-confirmed', '0', timeout=3000)
+            expect(variable_row).to_have_attribute('data-confirmed', '1', timeout=3000)
             expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(notify).to_have_attribute('aria-pressed', 'false', timeout=3000)
@@ -209,7 +209,7 @@ def main():
                 assert restored == period, restored
             browser.close()
 
-        print('current app shell + mature payment template-TXT/verified-compose/nonblocking browser acceptance passed')
+        print('current app shell + mature payment template-TXT/Enter-confirm/nonblocking browser acceptance passed')
     finally:
         proc.terminate()
         try: proc.wait(timeout=5)
