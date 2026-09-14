@@ -73,8 +73,6 @@ def payment_save_preserve_reviews_v032(
         now = now_iso()
         source = 'fixed' if rule['mode'] == 'fixed' else 'manual'
 
-        # Enter itself is the confirmation gesture. A successful save must never
-        # leave the same row in the pending state.
         conn.execute(
             '''UPDATE payment_entries
                SET amount=?,reference_amount=?,source=?,confirmed=1,updated_at=? WHERE id=?''',
@@ -104,9 +102,11 @@ def payment_save_preserve_reviews_v032(
         return JSONResponse(payload)
 
 
-# This route remains the same row-level review contract owner from the perspective
-# of legacy guards/tests; v1.2.4 only tightens Enter semantics.
 payment_save_preserve_reviews_v032.__module__ = 'app.v031_fixed_review_patch'
+
+
+def _compact_number(value: str) -> str:
+    return ''.join(ch for ch in (value or '') if ch.isdigit())
 
 
 @router.get('/search', response_class=HTMLResponse)
@@ -117,14 +117,16 @@ def work_search_v124(request: Request, q: str = ''):
     service_hits = []
     if q:
         like = f'%{q}%'
+        compact = _compact_number(q)
         with db() as conn:
             exact = conn.execute(
                 '''SELECT s.id service_id,s.customer_id,c.name customer_name,
                           s.service_type,s.holder_name,s.number,s.account
                    FROM services s JOIN customers c ON c.id=s.customer_id
                    WHERE s.number=? OR s.account=?
+                      OR (?<>'' AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(s.number,' ',''),'-',''),'(',''),')',''),'—','')=?)
                    ORDER BY c.name,s.sort_order,s.id LIMIT 3''',
-                (q, q),
+                (q, q, compact, compact),
             ).fetchall()
             if len(exact) == 1:
                 hit = exact[0]
@@ -164,7 +166,5 @@ def work_search_v124(request: Request, q: str = ''):
     )
 
 
-# main.py's compatibility guards intentionally identify the mature work search by
-# this historical public identity. Keep it while letting v1.2.4 own the behavior.
 work_search_v124.__name__ = 'work_search_v101'
 work_search_v124.__module__ = 'app.v10_routes'
