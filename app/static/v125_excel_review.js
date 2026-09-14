@@ -15,17 +15,24 @@
 
   /* v1.2.5: stage 1 is derived state, never a manual workflow action. */
   const reviewButton = flow?.querySelector('[data-v031-flow-action="review"]');
+  let paintingReview = false;
   const paintReviewFromRows = () => {
-    if (!reviewButton || !paymentList) return;
+    if (!reviewButton || !paymentList || paintingReview) return;
     const rows = [...paymentList.querySelectorAll('[data-payment-row]')];
     const allConfirmed = rows.length > 0 && rows.every(row => row.dataset.confirmed === '1');
+    const pressed = allConfirmed ? 'true' : 'false';
+    const text = allConfirmed ? '✓ 1 金额核对' : '1 金额核对';
+    const title = allConfirmed ? '所有缴费金额均已确认，自动完成金额核对' : '存在未核对金额，金额核对自动失效';
+    if (reviewButton.disabled && reviewButton.getAttribute('aria-disabled') === 'true' && reviewButton.getAttribute('aria-pressed') === pressed && reviewButton.textContent === text && reviewButton.title === title) return;
+    paintingReview = true;
     reviewButton.disabled = true;
     reviewButton.setAttribute('aria-disabled', 'true');
-    reviewButton.setAttribute('aria-pressed', allConfirmed ? 'true' : 'false');
+    reviewButton.setAttribute('aria-pressed', pressed);
     reviewButton.classList.toggle('done', allConfirmed);
     reviewButton.classList.toggle('current', !allConfirmed);
-    reviewButton.textContent = allConfirmed ? '✓ 1 金额核对' : '1 金额核对';
-    reviewButton.title = allConfirmed ? '所有缴费金额均已确认，自动完成金额核对' : '存在未核对金额，金额核对自动失效';
+    reviewButton.textContent = text;
+    reviewButton.title = title;
+    queueMicrotask(() => { paintingReview = false; });
   };
 
   document.addEventListener('click', event => {
@@ -40,8 +47,9 @@
   const syncWorkflow = () => {
     paintReviewFromRows();
     clearTimeout(reviewSyncTimer);
-    reviewSyncTimer = setTimeout(() => {
-      window.ChenPaymentWorkflowRuntimeV031?.refresh?.();
+    reviewSyncTimer = setTimeout(async () => {
+      try { await window.ChenPaymentWorkflowRuntimeV031?.refresh?.(); }
+      finally { paintReviewFromRows(); }
     }, 80);
   };
 
@@ -49,15 +57,23 @@
     new MutationObserver(mutations => {
       if (mutations.some(m => m.type === 'attributes' && m.attributeName === 'data-confirmed')) syncWorkflow();
     }).observe(paymentList, {subtree: true, attributes: true, attributeFilter: ['data-confirmed']});
+    if (reviewButton) {
+      new MutationObserver(() => queueMicrotask(paintReviewFromRows)).observe(reviewButton, {
+        attributes: true,
+        attributeFilter: ['disabled', 'aria-disabled', 'aria-pressed', 'class'],
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    }
     paintReviewFromRows();
     setTimeout(syncWorkflow, 350);
   }
 
-  /* Remove all v1.2.4 standalone search/filter bars. */
+  /* Remove all standalone search/filter bars. Header cells own searching/filtering. */
   root.querySelectorAll('[data-v124-payment-tools], .v124-business-search-wrap').forEach(el => el.remove());
   root.querySelectorAll('[data-business-filters], .business-filters').forEach(el => el.remove());
-  const legacyServiceFilter = root.querySelector('#serviceFilter');
-  legacyServiceFilter?.remove();
+  root.querySelector('#serviceFilter')?.remove();
 
   const applyPaymentFilters = () => {
     if (!paymentList) return;
@@ -72,8 +88,6 @@
         const key = input.dataset.v125PaymentFilter || '';
         let cellText = '';
         if (key === 'payment_amount') cellText = row.querySelector('.quick-amount')?.value || '';
-        else if (key === 'number') cellText = row.querySelector('[data-payment-attr-key="number"], [data-display="number"]')?.textContent || row.querySelector('.dense-id:nth-of-type(1)')?.textContent || '';
-        else if (key === 'account') cellText = row.querySelector('[data-payment-attr-key="account"], [data-display="account"]')?.textContent || '';
         else if (key) cellText = row.querySelector(`[data-payment-attr-key="${CSS.escape(key)}"]`)?.textContent || '';
         if (!cellText) cellText = rowText(row);
         show = normalized(cellText).includes(q);
@@ -108,7 +122,7 @@
       input.className = 'v125-head-search';
       input.placeholder = '搜索';
       input.dataset.v125PaymentFilter = key;
-      input.setAttribute('aria-label', `${head.textContent.trim() || key}筛选`);
+      input.setAttribute('aria-label', `${head.querySelector('span')?.textContent?.trim() || key}筛选`);
       input.addEventListener('pointerdown', e => e.stopPropagation());
       input.addEventListener('click', e => e.stopPropagation());
       input.addEventListener('input', applyPaymentFilters);
@@ -117,9 +131,11 @@
     const trailing = header.lastElementChild;
     if (trailing && !trailing.querySelector?.('[data-v125-payment-state]')) {
       trailing.classList.add('v125-state-head');
+      trailing.textContent = '';
       const select = document.createElement('select');
       select.className = 'v125-head-select';
       select.dataset.v125PaymentState = '1';
+      select.setAttribute('aria-label', '核对状态与金额规则筛选');
       select.innerHTML = '<option value="">全部</option><option value="pending">待核对</option><option value="confirmed">已核对</option><option value="fixed">固定</option><option value="variable">变动</option>';
       select.addEventListener('change', applyPaymentFilters);
       trailing.appendChild(select);
@@ -148,7 +164,8 @@
   };
 
   const unique = key => [...new Set([...businessList.querySelectorAll('[data-business-row]')].map(row => row.dataset[key] || '').filter(Boolean))];
-  const optionHtml = (allLabel, values) => `<option value="">${allLabel}</option>${values.map(v => `<option value="${String(v).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;')}">${v}</option>`).join('')}`;
+  const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  const optionHtml = (allLabel, values) => `<option value="">${allLabel}</option>${values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('')}`;
 
   const installBusinessHeaderFilters = () => {
     if (!businessList || businessList.dataset.v125HeaderFilters === '1') return;
@@ -166,7 +183,7 @@
       const cell = document.createElement('div');
       cell.className = 'v125-business-head-cell';
       const label = attr.querySelector('small')?.textContent?.trim() || `字段${index + 1}`;
-      cell.innerHTML = `<span>${label}</span><input type="search" autocomplete="off" class="v125-head-search" placeholder="搜索" data-v125-business-attr="${index}">`;
+      cell.innerHTML = `<span>${escapeHtml(label)}</span><input type="search" autocomplete="off" class="v125-head-search" placeholder="搜索" data-v125-business-attr="${index}">`;
       cell.querySelector('input').addEventListener('input', event => {
         businessFilters.attrs[index] = normalized(event.target.value);
         applyBusinessFilters();
@@ -178,13 +195,12 @@
     filterCell.className = 'v125-business-head-cell v125-business-conditions';
     filterCell.innerHTML = '<span>筛选</span><button type="button" class="v125-filter-button" data-v125-business-filter-button>▾</button><div class="v125-filter-popover" data-v125-business-filter-popover hidden></div>';
     const popover = filterCell.querySelector('[data-v125-business-filter-popover]');
-    const invoiceValues = unique('filterInvoice');
     popover.innerHTML = `
       <label>类型<select data-key="type">${optionHtml('全部', unique('filterType'))}</select></label>
       <label>缴费<select data-key="due"><option value="">全部</option><option value="1">本月应缴</option><option value="0">本月不缴</option></select></label>
       <label>金额<select data-key="mode"><option value="">全部</option><option value="fixed">固定</option><option value="variable">变动</option></select></label>
       <label>优惠<select data-key="promo">${optionHtml('全部', unique('filterPromo'))}</select></label>
-      <label>发票组<select data-key="invoice">${optionHtml('全部', invoiceValues)}</select></label>
+      <label>发票组<select data-key="invoice">${optionHtml('全部', unique('filterInvoice'))}</select></label>
       <button type="button" class="ghost small" data-v125-clear-business>清除</button>`;
     filterCell.querySelector('[data-v125-business-filter-button]').addEventListener('click', event => {
       event.stopPropagation();
