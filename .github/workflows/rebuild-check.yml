@@ -53,6 +53,7 @@ jobs:
             app/static/v12.js \
             app/static/v124_work_tables.js \
             app/static/v125_excel_review.js \
+            app/static/v126_workflow_rollback_guard.js \
             app/static/recipe-print-v101.js
           do
             node --check "$asset"
@@ -93,6 +94,9 @@ jobs:
 
       - name: v1.2.5 realtime review/header-filter acceptance
         run: python tests/v124_payment_search_acceptance.py
+
+      - name: v1.2.6 workflow rollback acceptance
+        run: python tests/v126_payment_workflow_rollback_acceptance.py
 
       - name: Legacy work-system browser acceptance
         run: |
