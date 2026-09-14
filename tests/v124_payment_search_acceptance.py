@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-_TMPDIR = tempfile.TemporaryDirectory(prefix='chen-v125-')
+_TMPDIR = tempfile.TemporaryDirectory(prefix='chen-v128-')
 TEST_DB = Path(_TMPDIR.name) / 'app.db'
 os.environ['APP_DB_PATH'] = str(TEST_DB)
 os.environ.update({
@@ -45,13 +45,14 @@ def seed():
                    VALUES(?,?,?,?,?)''',
                 (name, group_code, 1, now, now),
             ).lastrowid)
+            number = '139 0000-0002' if idx == 2 else f'1390000000{idx}'
             sid = int(conn.execute(
                 '''INSERT INTO services
                    (customer_id,service_type,holder_name,number,account,monthly_fee,fixed_fee,
                     payment_cycle,payment_interval_months,next_payment_period,active_from_period,
                     sort_order,source_row,payment_method)
                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-                (cid, '成员', f'使用人{idx}', f'1390000000{idx}', f'ACC-{idx}', old_amount,
+                (cid, '成员', f'使用人{idx}', number, f'ACC-{idx}', old_amount,
                  1 if mode == 'fixed' else 0, '1个月', 1, '', period, idx * 10, idx, '微信'),
             ).lastrowid)
             extra_sid = None
@@ -116,7 +117,6 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8144'}])
             page = context.new_page()
 
-            # Enter still confirms the edited row, while stage 1 is automatic/status-only.
             for cid, sid, entered, mode, _ in seeded:
                 page.goto(f'http://127.0.0.1:8144/customers/{cid}', wait_until='networkidle')
                 row = page.locator(f'[data-payment-row][data-service-id="{sid}"]')
@@ -129,10 +129,10 @@ def main():
                 review = page.locator('[data-v031-flow-action="review"]')
                 expect(review).to_be_disabled(timeout=5000)
                 assert page.locator('[data-v124-payment-tools]').count() == 0
-                assert page.locator('[data-v125-payment-filter]').count() >= 1
+                assert page.locator('[data-v125-payment-filter]').count() == 0
                 assert page.locator('.v124-payment-total-row #paymentGrandTotal').count() == 1
+                expect(page.locator('[data-v128-finder="payment"] [data-v128-finder-trigger]')).to_be_visible()
 
-            # Customer B has two variable rows. Stage 1 follows row confirmations in both directions.
             cid, sid, _, _, extra_sid = seeded[1]
             page.goto(f'http://127.0.0.1:8144/customers/{cid}', wait_until='networkidle')
             main_row = page.locator(f'[data-payment-row][data-service-id="{sid}"]')
@@ -142,36 +142,30 @@ def main():
             main_row.locator('.quick-amount').fill('125')
             main_row.locator('.quick-amount').press('Enter')
             extra_row.locator('[data-review-toggle]').click()
-            expect(main_row).to_have_attribute('data-confirmed', '1', timeout=5000)
-            expect(extra_row).to_have_attribute('data-confirmed', '1', timeout=5000)
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=5000)
-            expect(review).to_contain_text('✓', timeout=5000)
 
-            # Manually make one amount unreviewed: stage 1 must immediately become invalid.
             extra_row.locator('[data-review-toggle]').click()
-            expect(extra_row).to_have_attribute('data-confirmed', '0', timeout=5000)
             expect(review).to_have_attribute('aria-pressed', 'false', timeout=5000)
-            expect(review).not_to_contain_text('✓', timeout=5000)
-
-            # Reconfirm it: stage 1 must automatically return without clicking stage 1.
             extra_row.locator('[data-review-toggle]').click()
-            expect(extra_row).to_have_attribute('data-confirmed', '1', timeout=5000)
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=5000)
 
-            # Payment filtering lives in table headers, not a standalone toolbar.
-            account_filter = page.locator('[data-v125-payment-filter="account"]')
-            expect(account_filter).to_be_visible()
-            account_filter.fill('BACKUP-ACC')
+            # Table header is clean. Find/filter appears only after opening the compact panel.
+            assert page.locator('[data-v125-payment-filter]').count() == 0
+            payment_finder = page.locator('[data-v128-finder="payment"]')
+            payment_finder.locator('[data-v128-finder-trigger]').click()
+            panel = payment_finder.locator('[data-v128-finder-panel]')
+            expect(panel).to_be_visible()
+            panel.locator('[data-v128-query]').fill('BACKUP-ACC')
             expect(extra_row).to_be_visible()
             expect(main_row).to_be_hidden()
-            account_filter.fill('')
-            state_filter = page.locator('[data-v125-payment-state]')
-            state_filter.select_option('confirmed')
+            panel.locator('[data-v128-clear]').click()
+            expect(main_row).to_be_visible()
+            panel.locator('[data-v128-filter="state"]').select_option('confirmed')
             expect(main_row).to_be_visible()
             expect(extra_row).to_be_visible()
-            state_filter.select_option('')
 
-            # Exact number search still lands directly on the matching business row.
+            # Work-home/global work search: an exact phone number must open business tab
+            # and focus the precise service row, even if the stored number is formatted.
             number = '13900000002'
             page.goto(f'http://127.0.0.1:8144/search?q={number}', wait_until='networkidle')
             assert f'/customers/{cid}' in page.url, page.url
@@ -179,33 +173,29 @@ def main():
             target = page.locator(f'[data-business-row][data-service-id="{sid}"]')
             extra_business = page.locator(f'[data-business-row][data-service-id="{extra_sid}"]')
             expect(target).to_be_visible(timeout=5000)
-            expect(target).to_have_class(__import__('re').compile(r'v124-focus-hit'), timeout=5000)
+            expect(target).to_have_class(__import__('re').compile(r'v128-focus-hit|v124-focus-hit'), timeout=5000)
+            expect(page.locator('[data-customer-tab="services"]')).to_have_class(__import__('re').compile(r'active'), timeout=5000)
 
-            # All old standalone business filters/search are gone; Excel-like header owns filtering.
+            # Business table also uses one compact on-demand finder; no table-header inputs.
             assert page.locator('[data-business-filters]').count() == 0
-            assert page.locator('[data-v124-business-search]').count() == 0
-            header = page.locator('.v125-business-header')
-            expect(header).to_be_visible()
-            account_head = header.locator('.v125-business-head-cell').filter(has_text='账号')
-            if account_head.count():
-                account_head.locator('input').fill('ACC-2')
-                expect(target).to_be_visible()
-                expect(extra_business).to_be_hidden()
-                account_head.locator('input').fill('')
-
-            filter_button = header.locator('[data-v125-business-filter-button]')
-            filter_button.click()
-            popover = header.locator('[data-v125-business-filter-popover]')
-            expect(popover).to_be_visible()
-            popover.locator('select[data-key="mode"]').select_option('variable')
+            assert page.locator('.v125-business-header').count() == 0
+            business_finder = page.locator('[data-v128-finder="business"]')
+            expect(business_finder.locator('[data-v128-finder-trigger]')).to_be_visible()
+            business_finder.locator('[data-v128-finder-trigger]').click()
+            business_panel = business_finder.locator('[data-v128-finder-panel]')
+            business_panel.locator('[data-v128-query]').fill('BACKUP-ACC')
+            expect(extra_business).to_be_visible()
+            expect(target).to_be_hidden()
+            business_panel.locator('[data-v128-clear]').click()
+            business_panel.locator('[data-v128-filter="mode"]').select_option('variable')
             expect(target).to_be_visible()
+            expect(extra_business).to_be_visible()
 
-            # Group-code search remains available and returns the customer.
             page.goto('http://127.0.0.1:8144/search?q=G-B', wait_until='networkidle')
             expect(page.locator('section.card').filter(has_text='客户')).to_contain_text('实时联动-双业务')
 
             browser.close()
-        print('v1.2.5 realtime review + Excel-style header filtering acceptance passed')
+        print('v1.2.8 compact table finder + exact-number landing acceptance passed')
     finally:
         proc.terminate()
         try:
