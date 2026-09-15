@@ -56,7 +56,8 @@
     renumberSteps();
   }
 
-  document.querySelector('.brand span')?.replaceChildren('v1.2.1');
+  // Version rendering is server-driven through request.app.version in base.html.
+  // Do not overwrite it in JavaScript; this keeps UI, /health and deploy checks aligned.
   if (!document.querySelector('link[href*="/static/v12.css"]')) {
     const link = document.createElement('link');
     link.rel = 'stylesheet'; link.href = '/static/v12.css?v=1200';
