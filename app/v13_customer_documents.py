@@ -70,6 +70,14 @@ def _safe_download_name(name: str) -> str:
     return cleaned[:180] or 'download'
 
 
+async def _best_effort_remote_delete(storage_key: str) -> None:
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            await client.delete(_storage_url(storage_key), headers=_storage_headers())
+    except Exception:
+        pass
+
+
 @router.get('/customers/{customer_id}/documents-v13')
 def list_documents_v13(customer_id: int):
     ensure_v13_customer_documents()
@@ -100,6 +108,9 @@ async def upload_document_v13(
 ):
     check_csrf(request, csrf)
     ensure_v13_customer_documents()
+    with db() as conn:
+        if not _customer_exists(conn, customer_id):
+            raise HTTPException(404, '客户不存在')
     if not _storage_configured():
         raise HTTPException(503, '远程资料存储尚未配置')
 
@@ -112,6 +123,7 @@ async def upload_document_v13(
     storage_key = uuid.uuid4().hex
     digest = hashlib.sha256()
     sent = 0
+    mime_type = file.content_type or mimetypes.guess_type(original_name)[0] or 'application/octet-stream'
 
     async def body_stream():
         nonlocal sent
@@ -129,7 +141,7 @@ async def upload_document_v13(
     headers.update({
         'X-Original-Name': quote(original_name, safe=''),
         'X-Max-Bytes': str(max_bytes),
-        'Content-Type': file.content_type or 'application/octet-stream',
+        'Content-Type': mime_type,
     })
     timeout = httpx.Timeout(connect=10.0, read=120.0, write=120.0, pool=10.0)
     try:
@@ -145,17 +157,18 @@ async def upload_document_v13(
     finally:
         await file.close()
 
-    mime_type = file.content_type or mimetypes.guess_type(original_name)[0] or 'application/octet-stream'
-    with db() as conn:
-        if not _customer_exists(conn, customer_id):
-            raise HTTPException(404, '客户不存在')
-        cur = conn.execute(
-            '''INSERT INTO customer_documents
-               (customer_id,category,original_name,storage_key,size,mime_type,sha256,created_at)
-               VALUES(?,?,?,?,?,?,?,?)''',
-            (customer_id, category, original_name, storage_key, sent, mime_type, digest.hexdigest(), _now_iso()),
-        )
-        document_id = int(cur.lastrowid)
+    try:
+        with db() as conn:
+            cur = conn.execute(
+                '''INSERT INTO customer_documents
+                   (customer_id,category,original_name,storage_key,size,mime_type,sha256,created_at)
+                   VALUES(?,?,?,?,?,?,?,?)''',
+                (customer_id, category, original_name, storage_key, sent, mime_type, digest.hexdigest(), _now_iso()),
+            )
+            document_id = int(cur.lastrowid)
+    except Exception:
+        await _best_effort_remote_delete(storage_key)
+        raise
     return JSONResponse({'ok': True, 'id': document_id, 'name': original_name, 'size': sent})
 
 
@@ -185,11 +198,12 @@ async def download_document_v13(customer_id: int, document_id: int):
         await client.aclose()
         raise HTTPException(502, f'无法连接美国资料存储节点：{exc}') from exc
     if remote.status_code != 200:
+        status = remote.status_code
         await remote.aclose()
         await client.aclose()
-        if remote.status_code == 404:
+        if status == 404:
             raise HTTPException(404, '美国节点中的文件不存在')
-        raise HTTPException(502, f'美国资料存储节点返回 {remote.status_code}')
+        raise HTTPException(502, f'美国资料存储节点返回 {status}')
 
     async def iterator():
         try:
