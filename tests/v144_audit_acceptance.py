@@ -91,15 +91,15 @@ def main():
             })
             assert response.status_code == 409, (response.status_code, response.text)
 
-            response = client.post(f'/life/recipes/{recipe_id}/edit', data=[
-                ('csrf', csrf),
-                ('name', recipe_original_name),
-                ('base_amount', '500'),
-                ('base_unit', 'g'),
-                ('ingredient_name', '测试配料'),
-                ('ingredient_amount', 'inf'),
-                ('ingredient_unit', 'g'),
-            ])
+            response = client.post(f'/life/recipes/{recipe_id}/edit', data={
+                'csrf': csrf,
+                'name': recipe_original_name,
+                'base_amount': '500',
+                'base_unit': 'g',
+                'ingredient_name': ['测试配料'],
+                'ingredient_amount': ['inf'],
+                'ingredient_unit': ['g'],
+            })
             assert response.status_code == 400, (response.status_code, response.text)
 
             response = client.post('/life/knowledge/new', data={
