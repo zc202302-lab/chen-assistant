@@ -2,7 +2,7 @@
   const brand = document.querySelector('.brand');
   if (brand) {
     const path = window.location.pathname;
-    const isWork = path === '/work' || path === '/search' || path.startsWith('/customers') || path.startsWith('/products') || path.startsWith('/accounts');
+    const isWork = path === '/work' || path.startsWith('/work/') || path === '/search' || path.startsWith('/customers') || path.startsWith('/products') || path.startsWith('/accounts');
     const isLife = path.startsWith('/life');
     // Preserve the visible workspace href for compatibility, but the actual click
     // always returns to the outermost Chen Assistant home as requested.
