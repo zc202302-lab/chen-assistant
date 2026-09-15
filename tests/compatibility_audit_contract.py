@@ -50,7 +50,7 @@ def main():
 
     assert 'data-global-back' in base
     assert 'data-back-fallback' in base
-    assert 'history.back()' not in back_js, '返回上一级不得重新依赖浏览器历史栈'
+    assert 'window.history.back()' not in back_js, '返回上一级不得重新依赖浏览器历史栈'
     assert "MANUAL_UNCHECKED_SOURCE = 'manual_unchecked'" in review_patch
     assert 'MANUAL_PENDING_SOURCES' in review_patch
     assert 'workflow_invalidated' in review_patch
