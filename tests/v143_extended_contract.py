@@ -40,7 +40,7 @@ def main():
         'app.v143_payment_controls_patch', 'toggle_fixed_v143_compat'
     )
     assert first_owner('POST', '/customers/{customer_id}/payment-workflow-v031') == (
-        'app.v143_payment_controls_patch', 'payment_workflow_v143_compat'
+        'app.v031_payment_workflow_routes', 'update_payment_workflow_v031'
     )
     assert first_owner('POST', '/customers/{customer_id}/documents-v13') == (
         'app.v143_customer_resources', 'upload_document_free_category_v143'
@@ -56,6 +56,10 @@ def main():
     guard = (ROOT / 'app/static/v031_workflow_dom_guard.js').read_text(encoding='utf-8')
     assert 'if (fixedToggle.disabled) fixedToggle.disabled = false;' in guard
     assert "attributeFilter: ['readonly', 'disabled', 'data-confirmed', 'data-mode']" in guard
+
+    workflow = (ROOT / 'app/v031_payment_workflow_routes.py').read_text(encoding='utf-8')
+    assert '_legacy_paid_schedule_recovery' in workflow
+    assert "'legacy_schedule_recovered': True" in workflow
 
     print('v1.4.3 extended compatibility contract passed')
 
