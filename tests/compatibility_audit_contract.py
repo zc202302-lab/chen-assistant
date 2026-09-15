@@ -48,15 +48,21 @@ def main():
     for command in required_suite_commands:
         assert command in workflow, f'missing compatibility suite command: {command}'
 
-    # v1.4.2 deliberately replaces the old deterministic parent-level back button
-    # with real global browser-history controls. Both directions must be present;
-    # the old single-button fallback contract must not return accidentally.
+    # Global two-way navigation must remain present. v1.4.3 keeps an explicit
+    # per-tab stack because native forward traversal proved unreliable in the real
+    # cross-document browser acceptance. Guard both directions and the stateful
+    # traversal contract here; the browser suite still verifies the actual clicks.
     assert 'data-history-back' in base
     assert 'data-history-forward' in base
     assert 'data-global-back' not in base
     assert 'data-back-fallback' not in base
-    assert 'window.history.back()' in back_js
-    assert 'window.history.forward()' in back_js
+    assert "STORAGE_KEY = 'chen-assistant:history-nav:v1432'" in back_js
+    assert 'state.index > 0' in back_js
+    assert 'state.index < state.entries.length - 1' in back_js
+    assert 'navigateTo(state.index - 1)' in back_js
+    assert 'navigateTo(state.index + 1)' in back_js
+    assert 'state.pending = { target, index: targetIndex }' in back_js
+    assert 'window.location.assign(target)' in back_js
     assert "MANUAL_UNCHECKED_SOURCE = 'manual_unchecked'" in review_patch
     assert 'MANUAL_PENDING_SOURCES' in review_patch
     assert 'workflow_invalidated' in review_patch
