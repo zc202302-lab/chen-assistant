@@ -17,52 +17,44 @@
   if (!backButton || !forwardButton) return;
 
   const navigationApi = window.navigation;
-  const supportsNavigationApi = Boolean(
+  const supportsNavigationAvailability = Boolean(
     navigationApi
-      && typeof navigationApi.back === 'function'
-      && typeof navigationApi.forward === 'function'
+      && typeof navigationApi.canGoBack === 'boolean'
+      && typeof navigationApi.canGoForward === 'boolean'
   );
 
   const updateAvailability = () => {
-    // Chromium and newer WebKit expose exact back/forward availability through
-    // the Navigation API. Older browsers still receive working History API
-    // controls; they simply stay visually enabled because the History API does
-    // not expose the current position inside the browser history stack.
-    if (supportsNavigationApi && typeof navigationApi.canGoBack === 'boolean') {
+    // The Navigation API is useful for knowing whether adjacent history entries
+    // exist. Actual traversal deliberately uses the long-established History API
+    // below: it is more reliable for ordinary cross-document back/forward history
+    // and matches the browser controls this UI mirrors.
+    if (supportsNavigationAvailability) {
       backButton.disabled = !navigationApi.canGoBack;
-    } else {
-      backButton.disabled = false;
-    }
-    if (supportsNavigationApi && typeof navigationApi.canGoForward === 'boolean') {
       forwardButton.disabled = !navigationApi.canGoForward;
     } else {
+      // History API does not expose the current stack position. Keep the controls
+      // usable on older browsers; a no-op at either end is native browser behavior.
+      backButton.disabled = false;
       forwardButton.disabled = false;
     }
   };
 
   backButton.addEventListener('click', event => {
     event.preventDefault();
-    if (supportsNavigationApi) {
-      if (typeof navigationApi.canGoBack === 'boolean' && !navigationApi.canGoBack) return;
-      navigationApi.back();
-      return;
-    }
+    if (supportsNavigationAvailability && !navigationApi.canGoBack) return;
     window.history.back();
   });
 
   forwardButton.addEventListener('click', event => {
     event.preventDefault();
-    if (supportsNavigationApi) {
-      if (typeof navigationApi.canGoForward === 'boolean' && !navigationApi.canGoForward) return;
-      navigationApi.forward();
-      return;
-    }
+    if (supportsNavigationAvailability && !navigationApi.canGoForward) return;
     window.history.forward();
   });
 
-  if (supportsNavigationApi && typeof navigationApi.addEventListener === 'function') {
+  if (navigationApi && typeof navigationApi.addEventListener === 'function') {
     navigationApi.addEventListener('currententrychange', updateAvailability);
   }
   window.addEventListener('pageshow', updateAvailability);
+  window.addEventListener('popstate', updateAvailability);
   updateAvailability();
 })();
