@@ -22,6 +22,7 @@ os.environ.update({
     'APP_SECURE_COOKIE': '0',
 })
 
+from app import config  # noqa: E402
 from app.db import init_db  # noqa: E402
 from app.security import create_session  # noqa: E402
 from app.v10_routes import ensure_v10_schema  # noqa: E402
@@ -80,7 +81,7 @@ def main():
             expect(page.get_by_role('heading', name='工作资料')).to_be_visible()
             expect(page.locator('.brand')).to_have_attribute('href', '/work')
             expect(page.locator('.search-link')).to_have_attribute('href', '/search')
-            expect(page.locator('.brand')).to_contain_text('v1.4.0')
+            expect(page.locator('.brand')).to_contain_text(f'v{config.APP_VERSION}')
             assert_back(page, '/')
 
             page.goto('http://127.0.0.1:8141/work/customers', wait_until='networkidle')
@@ -120,7 +121,7 @@ def main():
 
             page.goto('http://127.0.0.1:8141/life', wait_until='networkidle')
             assert nav_labels(page) == ['生活', '菜谱', '工具']
-            expect(page.locator('.brand')).to_contain_text('v1.4.0')
+            expect(page.locator('.brand')).to_contain_text(f'v{config.APP_VERSION}')
             expect(page.get_by_text('烹饪工具', exact=True)).to_be_visible()
             assert_back(page, '/')
 
