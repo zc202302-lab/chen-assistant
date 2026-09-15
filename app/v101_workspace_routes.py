@@ -13,6 +13,8 @@ from .v101_recipe_template_patch import ensure_v101_recipe_templates, router as 
 from .v12_tools_routes import router as v12_tools_router
 from .v124_work_patch import router as v124_work_patch_router
 from .v13_customer_documents import ensure_v13_customer_documents, router as v13_customer_documents_router
+from .v143_customer_resources import ensure_customer_resources_v143, router as v143_customer_resources_router
+from .v143_payment_controls_patch import router as v143_payment_controls_router
 from .work_architecture import WORK_DOMAINS, WORK_LIBRARY_CATEGORIES
 
 router = APIRouter()
@@ -20,6 +22,8 @@ templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
 
 # Work fixes / customer extensions are registered before historical compatibility
 # routes so duplicate legacy paths keep resolving to the newest compatible behavior.
+router.include_router(v143_payment_controls_router)
+router.include_router(v143_customer_resources_router)
 router.include_router(v124_work_patch_router)
 router.include_router(v13_customer_documents_router)
 router.include_router(recipe_template_router)
@@ -30,6 +34,7 @@ router.include_router(v12_tools_router)
 def startup_recipe_template_import_v101():
     ensure_v101_recipe_templates()
     ensure_v13_customer_documents()
+    ensure_customer_resources_v143()
 
 
 @router.get('/work', response_class=HTMLResponse)
