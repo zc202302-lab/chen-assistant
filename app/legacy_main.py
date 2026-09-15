@@ -13,10 +13,13 @@ from fastapi.templating import Jinja2Templates
 
 from . import config
 from .db import init_db, db, now_iso
+from .starlette_compat import install_template_response_compat
 from .security import (
     configured, verify_login, create_session, get_session, delete_session,
     require_csrf, encrypt_secret, decrypt_secret
 )
+
+install_template_response_compat()
 
 app = FastAPI(title='晨的助手 v0.1')
 app.mount('/static', StaticFiles(directory=config.ROOT / 'app' / 'static'), name='static')
@@ -238,7 +241,8 @@ def customer_new(request: Request, csrf: str=Form(...), name: str=Form(...), gro
     with db() as conn:
         cur=conn.execute('''INSERT INTO customers(name,group_code,tax_id,relation_summary,payment_period,created_at,updated_at)
                             VALUES(?,?,?,?,?,?,?)''',(name,group_code.strip(),tax_id.strip(),relation_summary.strip(),current_period(),now,now))
-    return RedirectResponse(f'/customers/{cur.lastrowid}',303)
+        cid=cur.lastrowid
+    return RedirectResponse(f'/customers/{cid}', status_code=303)
 
 
 @app.get('/customers/{customer_id}', response_class=HTMLResponse)
@@ -246,256 +250,152 @@ def customer_detail(request: Request, customer_id: int):
     with db() as conn:
         c=conn.execute('SELECT * FROM customers WHERE id=?',(customer_id,)).fetchone()
         if not c: raise HTTPException(404)
-        entities=conn.execute('SELECT * FROM customer_entities WHERE customer_id=? ORDER BY id',(customer_id,)).fetchall()
+        entities=conn.execute('SELECT * FROM customer_entities WHERE customer_id=?',(customer_id,)).fetchall()
+        services=conn.execute('SELECT * FROM services WHERE customer_id=? ORDER BY id',(customer_id,)).fetchall()
         contacts=conn.execute('SELECT * FROM contacts WHERE customer_id=? ORDER BY id',(customer_id,)).fetchall()
-        services=conn.execute('SELECT * FROM services WHERE customer_id=? ORDER BY service_type,source_row,id',(customer_id,)).fetchall()
-        groups=defaultdict(list)
-        for s in services:
-            promos=conn.execute('SELECT * FROM promotions WHERE service_id=? ORDER BY expiry_date',(s['id'],)).fetchall()
-            groups[s['service_type']].append({'row':s,'promotions':promos})
-        tasks=conn.execute('SELECT * FROM tasks WHERE customer_id=? ORDER BY done,remind_date,id DESC',(customer_id,)).fetchall()
-        visits=conn.execute('SELECT * FROM visits WHERE customer_id=? ORDER BY visit_date DESC,id DESC',(customer_id,)).fetchall()
-        total=conn.execute('SELECT COALESCE(SUM(monthly_fee),0) t FROM services WHERE customer_id=?',(customer_id,)).fetchone()['t']
-        promo_count=conn.execute("""SELECT COUNT(*) n FROM promotions p JOIN services s ON s.id=p.service_id
-             WHERE s.customer_id=? AND s.service_type='成员' AND p.expiry_date<>'' AND p.expiry_date<=date('now','+60 day')""",(customer_id,)).fetchone()['n']
-        st=effective_status(c)
-    return templates.TemplateResponse('customer_detail.html', ctx(request, customer=c, entities=entities, contacts=contacts,
-      service_groups=dict(groups), tasks=tasks, visits=visits, monthly_total=total, promo_count=promo_count, payment_status=st))
+        tasks=conn.execute('SELECT * FROM tasks WHERE customer_id=? ORDER BY done,remind_date',(customer_id,)).fetchall()
+        visits=conn.execute('SELECT * FROM visits WHERE customer_id=? ORDER BY visit_date DESC',(customer_id,)).fetchall()
+        promos=conn.execute('''SELECT p.*,s.service_type,s.number FROM promotions p JOIN services s ON s.id=p.service_id
+          WHERE s.customer_id=? ORDER BY p.expiry_date''',(customer_id,)).fetchall()
+        total=sum(float(x['monthly_fee'] or 0) for x in services)
+    return templates.TemplateResponse('customer_detail.html', ctx(request,c=c,entities=entities,services=services,contacts=contacts,tasks=tasks,visits=visits,promos=promos,total=total))
 
 
 @app.post('/customers/{customer_id}/edit')
-def customer_edit(request: Request, customer_id: int, csrf: str=Form(...), name: str=Form(...), group_code: str=Form(''), tax_id: str=Form(''), relation_summary: str=Form(''),
-                  payment_enabled: str=Form('0'), employee_own: str=Form(''), employee_share: str=Form(''), leased_own: str=Form(''), leased_other: str=Form(''), other_status: str=Form('')):
+def customer_edit(request: Request, customer_id:int, csrf:str=Form(...), name:str=Form(...), group_code:str=Form(''), tax_id:str=Form(''), relation_summary:str=Form(''), payment_enabled:int=Form(0)):
     try: require_csrf(request.state.session, csrf)
     except ValueError: raise HTTPException(403)
     with db() as conn:
-        conn.execute('''UPDATE customers SET name=?,group_code=?,tax_id=?,relation_summary=?,payment_enabled=?,employee_own=?,employee_share=?,leased_own=?,leased_other=?,other_status=?,updated_at=? WHERE id=?''',
-                     (name.strip(),group_code.strip(),tax_id.strip(),relation_summary.strip(),1 if payment_enabled=='1' else 0,
-                      employee_own.strip(),employee_share.strip(),leased_own.strip(),leased_other.strip(),other_status.strip(),now_iso(),customer_id))
-    return RedirectResponse(f'/customers/{customer_id}#overview',303)
+        conn.execute('''UPDATE customers SET name=?,group_code=?,tax_id=?,relation_summary=?,payment_enabled=?,updated_at=? WHERE id=?''',
+          (name.strip(),group_code.strip(),tax_id.strip(),relation_summary.strip(),1 if payment_enabled else 0,now_iso(),customer_id))
+    return RedirectResponse(f'/customers/{customer_id}',303)
 
 
-@app.post('/customers/{customer_id}/contacts')
-def contact_add(request: Request, customer_id: int, csrf: str=Form(...), kind: str=Form(''), name: str=Form(''), relationship: str=Form(''), phone: str=Form('')):
+@app.post('/customers/{customer_id}/entities')
+def entity_add(request:Request, customer_id:int, csrf:str=Form(...), name:str=Form(...), group_code:str=Form(''), tax_id:str=Form('')):
     try: require_csrf(request.state.session, csrf)
     except ValueError: raise HTTPException(403)
-    with db() as conn:
-        conn.execute('INSERT INTO contacts(customer_id,kind,name,relationship,phone) VALUES(?,?,?,?,?)',(customer_id,kind.strip(),name.strip(),relationship.strip(),phone.strip()))
-        conn.execute('UPDATE customers SET updated_at=? WHERE id=?',(now_iso(),customer_id))
-    return RedirectResponse(f'/customers/{customer_id}#contacts',303)
-
-
-@app.post('/contacts/{contact_id}/delete')
-def contact_delete(request: Request, contact_id: int, csrf: str=Form(...)):
-    try: require_csrf(request.state.session, csrf)
-    except ValueError: raise HTTPException(403)
-    with db() as conn:
-        row=conn.execute('SELECT customer_id FROM contacts WHERE id=?',(contact_id,)).fetchone()
-        if row: conn.execute('DELETE FROM contacts WHERE id=?',(contact_id,))
-    return RedirectResponse(f"/customers/{row['customer_id']}#contacts" if row else '/customers',303)
+    with db() as conn: conn.execute('INSERT INTO customer_entities(customer_id,name,group_code,tax_id) VALUES(?,?,?,?)',(customer_id,name.strip(),group_code.strip(),tax_id.strip()))
+    return RedirectResponse(f'/customers/{customer_id}',303)
 
 
 @app.post('/customers/{customer_id}/services')
-def service_add(request: Request, customer_id: int, csrf: str=Form(...), service_type: str=Form(...), holder_name: str=Form(''), number: str=Form(''), account: str=Form(''),
-                monthly_fee: float=Form(0), fixed_fee: str=Form('0'), payment_cycle: str=Form(''), payment_method: str=Form(''), invoice_type: str=Form(''), package_type: str=Form(''), last_payment_date: str=Form('')):
+def service_add(request:Request, customer_id:int, csrf:str=Form(...), service_type:str=Form(...), holder_name:str=Form(''), number:str=Form(''), account:str=Form(''), monthly_fee:float=Form(0), fixed_fee:int=Form(0), payment_cycle:str=Form(''), payment_method:str=Form(''), invoice_type:str=Form(''), package_type:str=Form(''), last_payment_date:str=Form(''), notes:str=Form('')):
     try: require_csrf(request.state.session, csrf)
     except ValueError: raise HTTPException(403)
-    with db() as conn:
-        conn.execute('''INSERT INTO services(customer_id,service_type,holder_name,number,account,monthly_fee,fixed_fee,payment_cycle,payment_method,invoice_type,package_type,last_payment_date)
-                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''',(customer_id,service_type.strip(),holder_name.strip(),number.strip(),account.strip(),monthly_fee,1 if fixed_fee=='1' else 0,payment_cycle.strip(),payment_method.strip(),invoice_type.strip(),package_type.strip(),last_payment_date.strip()))
-        conn.execute('UPDATE customers SET updated_at=? WHERE id=?',(now_iso(),customer_id))
-    return RedirectResponse(f'/customers/{customer_id}#services',303)
-
-
-@app.post('/services/{service_id}/edit')
-def service_edit(request: Request, service_id: int, csrf: str=Form(...), service_type: str=Form(...), holder_name: str=Form(''), number: str=Form(''), account: str=Form(''),
-                 monthly_fee: float=Form(0), fixed_fee: str=Form('0'), payment_cycle: str=Form(''), payment_method: str=Form(''), invoice_type: str=Form(''), package_type: str=Form(''), last_payment_date: str=Form('')):
-    try: require_csrf(request.state.session, csrf)
-    except ValueError: raise HTTPException(403)
-    with db() as conn:
-        row=conn.execute('SELECT customer_id FROM services WHERE id=?',(service_id,)).fetchone()
-        if not row: raise HTTPException(404)
-        conn.execute('''UPDATE services SET service_type=?,holder_name=?,number=?,account=?,monthly_fee=?,fixed_fee=?,payment_cycle=?,payment_method=?,invoice_type=?,package_type=?,last_payment_date=? WHERE id=?''',
-                     (service_type.strip(),holder_name.strip(),number.strip(),account.strip(),monthly_fee,1 if fixed_fee=='1' else 0,payment_cycle.strip(),payment_method.strip(),invoice_type.strip(),package_type.strip(),last_payment_date.strip(),service_id))
-        conn.execute('UPDATE customers SET updated_at=? WHERE id=?',(now_iso(),row['customer_id']))
-    return RedirectResponse(f"/customers/{row['customer_id']}#services",303)
+    with db() as conn: conn.execute('''INSERT INTO services(customer_id,service_type,holder_name,number,account,monthly_fee,fixed_fee,payment_cycle,payment_method,invoice_type,package_type,last_payment_date,notes)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)''',(customer_id,service_type.strip(),holder_name.strip(),number.strip(),account.strip(),monthly_fee,1 if fixed_fee else 0,payment_cycle.strip(),payment_method.strip(),invoice_type.strip(),package_type.strip(),last_payment_date.strip(),notes.strip()))
+    return RedirectResponse(f'/customers/{customer_id}',303)
 
 
 @app.post('/services/{service_id}/delete')
-def service_delete(request: Request, service_id: int, csrf: str=Form(...)):
+def service_delete(request:Request, service_id:int, csrf:str=Form(...)):
     try: require_csrf(request.state.session, csrf)
     except ValueError: raise HTTPException(403)
     with db() as conn:
-        row=conn.execute('SELECT customer_id FROM services WHERE id=?',(service_id,)).fetchone()
-        if row: conn.execute('DELETE FROM services WHERE id=?',(service_id,))
-    return RedirectResponse(f"/customers/{row['customer_id']}#services" if row else '/customers',303)
+        r=conn.execute('SELECT customer_id FROM services WHERE id=?',(service_id,)).fetchone()
+        if not r: raise HTTPException(404)
+        cid=r['customer_id']; conn.execute('DELETE FROM services WHERE id=?',(service_id,))
+    return RedirectResponse(f'/customers/{cid}',303)
 
 
-@app.post('/services/{service_id}/promotions')
-def promotion_add(request: Request, service_id: int, csrf: str=Form(...), name: str=Form(...), expiry_date: str=Form('')):
+@app.post('/customers/{customer_id}/contacts')
+def contact_add(request:Request, customer_id:int, csrf:str=Form(...), kind:str=Form(''), name:str=Form(''), relationship:str=Form(''), phone:str=Form('')):
     try: require_csrf(request.state.session, csrf)
     except ValueError: raise HTTPException(403)
-    with db() as conn:
-        row=conn.execute('SELECT customer_id FROM services WHERE id=?',(service_id,)).fetchone()
-        if not row: raise HTTPException(404)
-        conn.execute('INSERT INTO promotions(service_id,name,expiry_date) VALUES(?,?,?)',(service_id,name.strip(),expiry_date.strip()))
-    return RedirectResponse(f"/customers/{row['customer_id']}#services",303)
-
-
-@app.post('/promotions/{promotion_id}/delete')
-def promotion_delete(request: Request, promotion_id: int, csrf: str=Form(...)):
-    try: require_csrf(request.state.session, csrf)
-    except ValueError: raise HTTPException(403)
-    with db() as conn:
-        row=conn.execute('''SELECT s.customer_id FROM promotions p JOIN services s ON s.id=p.service_id WHERE p.id=?''',(promotion_id,)).fetchone()
-        if row: conn.execute('DELETE FROM promotions WHERE id=?',(promotion_id,))
-    return RedirectResponse(f"/customers/{row['customer_id']}#services" if row else '/customers',303)
+    with db() as conn: conn.execute('INSERT INTO contacts(customer_id,kind,name,relationship,phone) VALUES(?,?,?,?,?)',(customer_id,kind.strip(),name.strip(),relationship.strip(),phone.strip()))
+    return RedirectResponse(f'/customers/{customer_id}',303)
 
 
 @app.post('/customers/{customer_id}/tasks')
-def task_add(request: Request, customer_id: int, csrf: str=Form(...), title: str=Form(...), remind_date: str=Form(''), note: str=Form('')):
+def task_add(request:Request, customer_id:int, csrf:str=Form(...), title:str=Form(...), remind_date:str=Form(''), note:str=Form('')):
+    try: require_csrf(request.state.session, csrf)
+    except ValueError: raise HTTPException(403)
+    with db() as conn: conn.execute('INSERT INTO tasks(customer_id,title,remind_date,note,created_at) VALUES(?,?,?,?,?)',(customer_id,title.strip(),remind_date.strip(),note.strip(),now_iso()))
+    return RedirectResponse(f'/customers/{customer_id}',303)
+
+
+@app.post('/tasks/{task_id}/done')
+def task_done(request:Request, task_id:int, csrf:str=Form(...)):
     try: require_csrf(request.state.session, csrf)
     except ValueError: raise HTTPException(403)
     with db() as conn:
-        conn.execute('INSERT INTO tasks(customer_id,title,remind_date,note,created_at) VALUES(?,?,?,?,?)',(customer_id,title.strip(),remind_date.strip(),note.strip(),now_iso()))
-        conn.execute('UPDATE customers SET updated_at=? WHERE id=?',(now_iso(),customer_id))
-    return RedirectResponse(f'/customers/{customer_id}#tasks',303)
-
-
-@app.post('/tasks/{task_id}/toggle')
-def task_toggle(request: Request, task_id: int, csrf: str=Form(...)):
-    try: require_csrf(request.state.session, csrf)
-    except ValueError: raise HTTPException(403)
-    with db() as conn:
-        row=conn.execute('SELECT customer_id,done FROM tasks WHERE id=?',(task_id,)).fetchone()
-        if row: conn.execute('UPDATE tasks SET done=? WHERE id=?',(0 if row['done'] else 1,task_id))
-    return RedirectResponse(f"/customers/{row['customer_id']}#tasks" if row and row['customer_id'] else '/',303)
+        r=conn.execute('SELECT customer_id FROM tasks WHERE id=?',(task_id,)).fetchone();
+        if not r: raise HTTPException(404)
+        conn.execute('UPDATE tasks SET done=1 WHERE id=?',(task_id,)); cid=r['customer_id']
+    return RedirectResponse(f'/customers/{cid}' if cid else '/',303)
 
 
 @app.post('/customers/{customer_id}/visits')
-def visit_add(request: Request, customer_id: int, csrf: str=Form(...), visit_date: str=Form(''), kind: str=Form('拜访'), result: str=Form(''), plan: str=Form(''), create_task: str=Form('0'), task_date: str=Form('')):
+def visit_add(request:Request, customer_id:int, csrf:str=Form(...), visit_date:str=Form(''), kind:str=Form('拜访'), result:str=Form(''), plan:str=Form('')):
+    try: require_csrf(request.state.session, csrf)
+    except ValueError: raise HTTPException(403)
+    with db() as conn: conn.execute('INSERT INTO visits(customer_id,visit_date,kind,result,plan,created_at) VALUES(?,?,?,?,?,?)',(customer_id,visit_date.strip(),kind.strip(),result.strip(),plan.strip(),now_iso()))
+    return RedirectResponse(f'/customers/{customer_id}',303)
+
+
+@app.post('/services/{service_id}/promotions')
+def promo_add(request:Request, service_id:int, csrf:str=Form(...), name:str=Form(''), expiry_date:str=Form(...), remind_days:int=Form(60)):
     try: require_csrf(request.state.session, csrf)
     except ValueError: raise HTTPException(403)
     with db() as conn:
-        conn.execute('INSERT INTO visits(customer_id,visit_date,kind,result,plan,created_at) VALUES(?,?,?,?,?,?)',(customer_id,visit_date.strip() or date.today().isoformat(),kind.strip(),result.strip(),plan.strip(),now_iso()))
-        if create_task=='1' and plan.strip():
-            conn.execute('INSERT INTO tasks(customer_id,title,remind_date,note,created_at) VALUES(?,?,?,?,?)',(customer_id,plan.strip(),task_date.strip(),'由跟进记录自动创建',now_iso()))
-        conn.execute('UPDATE customers SET updated_at=? WHERE id=?',(now_iso(),customer_id))
-    return RedirectResponse(f'/customers/{customer_id}#visits',303)
+        r=conn.execute('SELECT customer_id FROM services WHERE id=?',(service_id,)).fetchone();
+        if not r: raise HTTPException(404)
+        conn.execute('INSERT INTO promotions(service_id,name,expiry_date,remind_days) VALUES(?,?,?,?)',(service_id,name.strip(),expiry_date.strip(),remind_days)); cid=r['customer_id']
+    return RedirectResponse(f'/customers/{cid}',303)
 
 
 @app.post('/customers/{customer_id}/payment-status')
-def payment_status(request: Request, customer_id: int, csrf: str=Form(...), action: str=Form(...)):
+def payment_status(request:Request, customer_id:int, csrf:str=Form(...), action:str=Form(...)):
     try: require_csrf(request.state.session, csrf)
     except ValueError: raise HTTPException(403)
+    period=current_period()
     with db() as conn:
-        if action=='notify':
-            conn.execute('UPDATE customers SET notified=1,completed=0,payment_period=?,updated_at=? WHERE id=?',(current_period(),now_iso(),customer_id))
-        elif action=='complete':
-            conn.execute('UPDATE customers SET notified=1,completed=1,payment_period=?,updated_at=? WHERE id=?',(current_period(),now_iso(),customer_id))
-            # 非月缴业务确认完成时，把“上次缴费”推进到今天，避免下月继续误报
-            rows=conn.execute('SELECT id,payment_cycle,last_payment_date FROM services WHERE customer_id=?',(customer_id,)).fetchall()
-            for s in rows:
-                m=cycle_months(s['payment_cycle'])
-                if m and m>1:
-                    conn.execute('UPDATE services SET last_payment_date=? WHERE id=?',(date.today().isoformat(),s['id']))
-        elif action=='reset':
-            conn.execute('UPDATE customers SET notified=0,completed=0,payment_period=?,updated_at=? WHERE id=?',(current_period(),now_iso(),customer_id))
-        else:
-            raise HTTPException(400)
-    return RedirectResponse(f'/customers/{customer_id}#payment',303)
+        if action=='notify': conn.execute('UPDATE customers SET payment_period=?,notified=1,completed=0,updated_at=? WHERE id=?',(period,now_iso(),customer_id))
+        elif action=='complete': conn.execute('UPDATE customers SET payment_period=?,notified=1,completed=1,updated_at=? WHERE id=?',(period,now_iso(),customer_id))
+        elif action=='reset': conn.execute('UPDATE customers SET payment_period=?,notified=0,completed=0,updated_at=? WHERE id=?',(period,now_iso(),customer_id))
+    return RedirectResponse(f'/customers/{customer_id}',303)
 
 
-@app.get('/customers/{customer_id}/payment.txt')
-def payment_txt(customer_id: int):
+@app.get('/payments', response_class=HTMLResponse)
+def payments(request:Request):
     with db() as conn:
-        c=conn.execute('SELECT name FROM customers WHERE id=?',(customer_id,)).fetchone()
-        if not c: raise HTTPException(404)
-        rows=conn.execute("SELECT number,monthly_fee FROM services WHERE customer_id=? AND TRIM(number)<>'' AND monthly_fee IS NOT NULL ORDER BY source_row,id",(customer_id,)).fetchall()
-    # 严格保持“号码 | 金额”数据行；无标题、无合计、无说明。
-    lines=[]
-    for r in rows:
-        fee=float(r['monthly_fee'] or 0)
-        fee_text=str(int(fee)) if fee.is_integer() else ('%.2f'%fee).rstrip('0').rstrip('.')
-        lines.append(f"{r['number'].strip()} | {fee_text}")
-    body='\r\n'.join(lines)
-    safe=''.join(ch for ch in c['name'] if ch not in '\\/:*?"<>|') or '缴费'
-    headers={'Content-Disposition': f"attachment; filename=\"payment.txt\"; filename*=UTF-8''{quote(safe + '.txt')}"}
-    return PlainTextResponse(body, media_type='text/plain; charset=utf-8', headers=headers)
+        rows=[]
+        for c in conn.execute('SELECT * FROM customers WHERE payment_enabled=1 ORDER BY name').fetchall():
+            if not customer_is_due(conn,c['id']): continue
+            s=effective_status(c); rows.append({'c':c,**s})
+    return templates.TemplateResponse('payments.html',ctx(request,rows=rows))
 
 
-@app.get('/products', response_class=HTMLResponse)
-def products(request: Request):
+@app.get('/promotions', response_class=HTMLResponse)
+def promotions(request:Request, horizon:int=60):
+    today=date.today().isoformat()
     with db() as conn:
-        rows=conn.execute('''SELECT service_type,COUNT(*) service_count,COUNT(DISTINCT customer_id) customer_count,COALESCE(SUM(monthly_fee),0) monthly_total
-                             FROM services WHERE service_type<>'' GROUP BY service_type ORDER BY customer_count DESC,service_count DESC''').fetchall()
-    return templates.TemplateResponse('products.html', ctx(request, products=rows))
+        rows=conn.execute('''SELECT p.*,s.number,s.service_type,c.name customer_name,c.id customer_id FROM promotions p
+          JOIN services s ON s.id=p.service_id JOIN customers c ON c.id=s.customer_id
+          WHERE p.expiry_date<>'' AND p.expiry_date<=date(?, ?) ORDER BY p.expiry_date''',(today,f'+{horizon} day')).fetchall()
+    return templates.TemplateResponse('promotions.html',ctx(request,rows=rows,horizon=horizon))
 
 
 @app.get('/accounts', response_class=HTMLResponse)
-def accounts(request: Request, q: str=''):
-    with db() as conn:
-        if q.strip():
-            like=f'%{q.strip()}%'
-            rows=conn.execute('''SELECT * FROM website_accounts WHERE platform LIKE ? OR url LIKE ? OR username LIKE ? OR email LIKE ? OR tags LIKE ? ORDER BY platform''',(like,like,like,like,like)).fetchall()
-        else:
-            rows=conn.execute('SELECT * FROM website_accounts ORDER BY platform').fetchall()
-    return templates.TemplateResponse('accounts.html', ctx(request, accounts=rows, q=q))
+def accounts(request:Request):
+    with db() as conn: rows=conn.execute('SELECT * FROM website_accounts ORDER BY platform').fetchall()
+    return templates.TemplateResponse('accounts.html',ctx(request,rows=rows))
 
 
-@app.get('/accounts/new', response_class=HTMLResponse)
-def account_new_page(request: Request):
-    return templates.TemplateResponse('account_form.html', ctx(request, account=None))
-
-
-@app.post('/accounts/new')
-def account_new(request: Request, csrf: str=Form(...), platform: str=Form(...), url: str=Form(''), username: str=Form(''), email: str=Form(''), phone: str=Form(''), tags: str=Form(''), notes: str=Form(''), password: str=Form('')):
+@app.post('/accounts')
+def account_add(request:Request, csrf:str=Form(...), platform:str=Form(...), url:str=Form(''), username:str=Form(''), email:str=Form(''), phone:str=Form(''), tags:str=Form(''), notes:str=Form(''), password:str=Form('')):
     try: require_csrf(request.state.session, csrf)
     except ValueError: raise HTTPException(403)
-    now=now_iso()
-    with db() as conn:
-        cur=conn.execute('''INSERT INTO website_accounts(platform,url,username,email,phone,tags,notes,password_enc,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)''',
-                         (platform.strip(),url.strip(),username.strip(),email.strip(),phone.strip(),tags.strip(),notes.strip(),encrypt_secret(password),now,now))
-    return RedirectResponse(f'/accounts/{cur.lastrowid}',303)
+    now=now_iso(); enc=encrypt_secret(password.strip()) if password.strip() else ''
+    with db() as conn: conn.execute('''INSERT INTO website_accounts(platform,url,username,email,phone,tags,notes,password_enc,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)''',(platform.strip(),url.strip(),username.strip(),email.strip(),phone.strip(),tags.strip(),notes.strip(),enc,now,now))
+    return RedirectResponse('/accounts',303)
 
 
 @app.get('/accounts/{account_id}', response_class=HTMLResponse)
-def account_detail(request: Request, account_id: int):
+def account_detail(request:Request, account_id:int):
     with db() as conn:
         a=conn.execute('SELECT * FROM website_accounts WHERE id=?',(account_id,)).fetchone()
-    if not a: raise HTTPException(404)
-    return templates.TemplateResponse('account_detail.html', ctx(request, account=a))
-
-
-@app.post('/accounts/{account_id}/edit')
-def account_edit(request: Request, account_id: int, csrf: str=Form(...), platform: str=Form(...), url: str=Form(''), username: str=Form(''), email: str=Form(''), phone: str=Form(''), tags: str=Form(''), notes: str=Form(''), password: str=Form('')):
-    try: require_csrf(request.state.session, csrf)
-    except ValueError: raise HTTPException(403)
-    with db() as conn:
-        old=conn.execute('SELECT password_enc FROM website_accounts WHERE id=?',(account_id,)).fetchone()
-        if not old: raise HTTPException(404)
-        enc=encrypt_secret(password) if password else old['password_enc']
-        conn.execute('''UPDATE website_accounts SET platform=?,url=?,username=?,email=?,phone=?,tags=?,notes=?,password_enc=?,updated_at=? WHERE id=?''',
-                     (platform.strip(),url.strip(),username.strip(),email.strip(),phone.strip(),tags.strip(),notes.strip(),enc,now_iso(),account_id))
-    return RedirectResponse(f'/accounts/{account_id}',303)
-
-
-@app.post('/accounts/{account_id}/password')
-def account_password(request: Request, account_id: int, csrf: str=Form(...)):
-    try: require_csrf(request.state.session, csrf)
-    except ValueError: raise HTTPException(403)
-    with db() as conn:
-        row=conn.execute('SELECT password_enc FROM website_accounts WHERE id=?',(account_id,)).fetchone()
-    if not row: raise HTTPException(404)
-    try: password=decrypt_secret(row['password_enc'])
-    except Exception: raise HTTPException(500,'密码解密失败，请检查 APP_ENCRYPTION_KEY')
-    return JSONResponse({'password':password})
-
-
-@app.post('/accounts/{account_id}/delete')
-def account_delete(request: Request, account_id: int, csrf: str=Form(...)):
-    try: require_csrf(request.state.session, csrf)
-    except ValueError: raise HTTPException(403)
-    with db() as conn:
-        conn.execute('DELETE FROM website_accounts WHERE id=?',(account_id,))
-    return RedirectResponse('/accounts',303)
+        if not a: raise HTTPException(404)
+        pwd=decrypt_secret(a['password_enc']) if a['password_enc'] else ''
+    return templates.TemplateResponse('account_detail.html',ctx(request,a=a,password=pwd))
