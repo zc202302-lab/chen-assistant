@@ -52,9 +52,6 @@ def main():
         recipe_id = int(recipes[0]['id'])
         recipe_original_name = recipes[0]['name']
         duplicate_recipe_name = recipes[1]['name']
-        original_version_count = int(conn.execute(
-            'SELECT COUNT(*) n FROM recipe_versions WHERE recipe_id=?', (recipe_id,)
-        ).fetchone()['n'])
         knowledge_id = int(knowledge[0]['id'])
         original_knowledge_title = knowledge[0]['title']
         duplicate_knowledge_title = knowledge[1]['title']
@@ -67,6 +64,14 @@ def main():
     )
     try:
         wait_http('http://127.0.0.1:8160/health')
+        # Startup intentionally imports the standard Excel recipe templates. Capture
+        # the mutation baseline only after startup so this acceptance test measures
+        # the POST validation requests themselves, not legitimate startup seeding.
+        with db() as conn:
+            original_version_count = int(conn.execute(
+                'SELECT COUNT(*) n FROM recipe_versions WHERE recipe_id=?', (recipe_id,)
+            ).fetchone()['n'])
+
         with httpx.Client(
             base_url='http://127.0.0.1:8160',
             cookies={'session_token': token},
