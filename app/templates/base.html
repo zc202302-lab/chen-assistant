@@ -22,7 +22,9 @@
   <link rel="stylesheet" href="/static/v032_customer_import.css?v=0320">
   <link rel="stylesheet" href="/static/v10.css?v=1000">
   <link rel="stylesheet" href="/static/work-home-polish-v121.css?v=1210">
-  <link rel="stylesheet" href="/static/global-back.css?v=1420">
+  <link rel="stylesheet" href="/static/global-back.css?v=1430">
+  <link rel="stylesheet" href="/static/v143_customer_status.css?v=1430">
+  <link rel="stylesheet" href="/static/v143_customer_resources.css?v=1431">
   <link rel="stylesheet" href="/static/v124_work_tables.css?v=1241">
   <link rel="stylesheet" href="/static/v125_excel_review.css?v=1250">
   <link rel="stylesheet" href="/static/v128_table_finder.css?v=1280">
@@ -37,8 +39,8 @@
 <header class="topbar">
   <div class="topbar-left">
     <div class="global-history-nav" data-history-nav aria-label="页面前进后退">
-      <button class="global-history-button" type="button" data-history-back aria-label="后退" title="后退">←</button>
-      <button class="global-history-button" type="button" data-history-forward aria-label="前进" title="前进">→</button>
+      <button class="global-history-button" type="button" data-history-back aria-label="后退" title="后退" disabled aria-disabled="true">←</button>
+      <button class="global-history-button" type="button" data-history-forward aria-label="前进" title="前进" disabled aria-disabled="true">→</button>
     </div>
     <a class="brand" href="/">晨的助手 <span>v{{ request.app.version }}</span></a>
   </div>
@@ -85,11 +87,12 @@
 <script src="/static/v031_amount_rollback_fix.js?v=0314"></script>
 <script src="/static/v031_workflow_actions.js?v=0316"></script>
 <script src="/static/v031_workflow_runtime_fix.js?v=0314"></script>
-<script src="/static/v031_workflow_dom_guard.js?v=0314"></script>
+<script src="/static/v031_workflow_dom_guard.js?v=0315"></script>
 <script src="/static/v031_windows_bootstrap.js?v=0317"></script>
 <script src="/static/v033_payment_flow_patch.js?v=0331"></script>
 <script src="/static/v10.js?v=1000"></script>
-<script src="/static/global-back.js?v=1420"></script>
+<script src="/static/global-back.js?v=1432"></script>
+<script src="/static/v143_customer_status.js?v=1430"></script>
 <script src="/static/v12.js?v=1200"></script>
 <script src="/static/v123_foxmail_compose_fix.js?v=1230"></script>
 <script src="/static/v124_work_tables.js?v=1241"></script>
@@ -97,6 +100,7 @@
 <script src="/static/v126_workflow_rollback_guard.js?v=1260"></script>
 <script src="/static/v128_table_finder.js?v=1280"></script>
 <script src="/static/v13_customer_documents.js?v=1300"></script>
+<script src="/static/v143_customer_resources.js?v=1431"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

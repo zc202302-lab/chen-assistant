@@ -16,127 +16,102 @@
   const forwardButton = document.querySelector('[data-history-forward]');
   if (!backButton || !forwardButton) return;
 
-  const HISTORY_KEY = 'chen:app-history:v142';
-  const MAX_ENTRIES = 60;
+  const STORAGE_KEY = 'chen-assistant:history-nav:v1432';
+  const MAX_ENTRIES = 80;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
-  const currentLocation = () => `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  const emptyHistory = () => ({entries: [], index: -1});
+  const sanitize = raw => {
+    if (!raw || !Array.isArray(raw.entries) || !raw.entries.length) return null;
+    const entries = raw.entries
+      .filter(value => typeof value === 'string' && value.startsWith('/'))
+      .slice(-MAX_ENTRIES);
+    if (!entries.length) return null;
+    let index = Number.isInteger(raw.index) ? raw.index : entries.length - 1;
+    index = Math.max(0, Math.min(index, entries.length - 1));
+    const pending = raw.pending && typeof raw.pending === 'object'
+      && typeof raw.pending.target === 'string'
+      && Number.isInteger(raw.pending.index)
+      ? { target: raw.pending.target, index: raw.pending.index }
+      : null;
+    return { entries, index, pending };
+  };
 
-  const readHistory = () => {
+  const loadState = () => {
     try {
-      const parsed = JSON.parse(window.sessionStorage.getItem(HISTORY_KEY) || 'null');
-      if (!parsed || !Array.isArray(parsed.entries) || !Number.isInteger(parsed.index)) {
-        return emptyHistory();
-      }
-      const entries = parsed.entries.filter(entry => typeof entry === 'string' && entry.startsWith('/'));
-      if (!entries.length) return emptyHistory();
-      const index = Math.max(0, Math.min(parsed.index, entries.length - 1));
-      return {entries, index};
-    } catch (_error) {
-      return emptyHistory();
+      return sanitize(JSON.parse(window.sessionStorage.getItem(STORAGE_KEY) || 'null'));
+    } catch (_) {
+      return null;
     }
   };
 
-  const writeHistory = state => {
+  const saveState = state => {
     try {
-      window.sessionStorage.setItem(HISTORY_KEY, JSON.stringify(state));
-      return true;
-    } catch (_error) {
-      return false;
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (_) {
+      // If sessionStorage is unavailable, page navigation itself still works.
     }
   };
 
-  const reconcileHistory = () => {
-    const current = currentLocation();
-    const state = readHistory();
-
-    if (!state.entries.length) {
-      const initial = {entries: [current], index: 0};
-      writeHistory(initial);
-      return initial;
-    }
-
-    if (state.entries[state.index] === current) return state;
-
-    // Native browser back/forward can still be used from the browser toolbar.
-    // When that happens, follow an adjacent logical entry instead of creating a duplicate.
-    if (state.index > 0 && state.entries[state.index - 1] === current) {
-      state.index -= 1;
-      writeHistory(state);
-      return state;
-    }
-    if (state.index + 1 < state.entries.length && state.entries[state.index + 1] === current) {
-      state.index += 1;
-      writeHistory(state);
-      return state;
-    }
-
-    // A normal in-app navigation after going back starts a new branch, matching
-    // normal browser semantics: the old forward branch is discarded.
+  let state = loadState();
+  if (!state) {
+    state = { entries: [currentUrl], index: 0, pending: null };
+  } else if (
+    state.pending
+    && state.pending.target === currentUrl
+    && state.pending.index >= 0
+    && state.pending.index < state.entries.length
+    && state.entries[state.pending.index] === currentUrl
+  ) {
+    state.index = state.pending.index;
+    state.pending = null;
+  } else if (state.entries[state.index] === currentUrl) {
+    state.pending = null;
+  } else if (state.index > 0 && state.entries[state.index - 1] === currentUrl) {
+    state.index -= 1;
+    state.pending = null;
+  } else if (state.index < state.entries.length - 1 && state.entries[state.index + 1] === currentUrl) {
+    state.index += 1;
+    state.pending = null;
+  } else {
     state.entries = state.entries.slice(0, state.index + 1);
-    state.entries.push(current);
+    state.entries.push(currentUrl);
+    if (state.entries.length > MAX_ENTRIES) state.entries = state.entries.slice(-MAX_ENTRIES);
     state.index = state.entries.length - 1;
+    state.pending = null;
+  }
+  saveState(state);
 
-    if (state.entries.length > MAX_ENTRIES) {
-      const trim = state.entries.length - MAX_ENTRIES;
-      state.entries = state.entries.slice(trim);
-      state.index = Math.max(0, state.index - trim);
-    }
-
-    writeHistory(state);
-    return state;
+  const updateAvailability = () => {
+    const canBack = state.index > 0;
+    const canForward = state.index < state.entries.length - 1;
+    backButton.disabled = !canBack;
+    forwardButton.disabled = !canForward;
+    backButton.setAttribute('aria-disabled', canBack ? 'false' : 'true');
+    forwardButton.setAttribute('aria-disabled', canForward ? 'false' : 'true');
+    backButton.title = canBack ? '返回上一页' : '没有可返回的页面';
+    forwardButton.title = canForward ? '前进到下一页' : '没有可前进的页面';
   };
 
-  const paintAvailability = () => {
-    const state = reconcileHistory();
-    const hasBack = state.index > 0;
-    const hasForward = state.index >= 0 && state.index < state.entries.length - 1;
-
-    backButton.disabled = !hasBack;
-    forwardButton.disabled = !hasForward;
-    backButton.setAttribute('aria-disabled', hasBack ? 'false' : 'true');
-    forwardButton.setAttribute('aria-disabled', hasForward ? 'false' : 'true');
-    backButton.title = hasBack ? '返回上一页' : '没有可返回的页面';
-    forwardButton.title = hasForward ? '前进到下一页' : '没有可前进的页面';
-  };
-
-  const nativeTraverse = offset => {
-    if (offset < 0) window.history.back();
-    else window.history.forward();
-  };
-
-  const traverse = offset => {
-    const state = reconcileHistory();
-    const targetIndex = state.index + offset;
+  const navigateTo = targetIndex => {
     if (targetIndex < 0 || targetIndex >= state.entries.length) return;
-
     const target = state.entries[targetIndex];
-    state.index = targetIndex;
-
-    // The app-level controls deliberately target the recorded URL directly. This is
-    // deterministic across redirects, BFCache restores and installed/PWA windows where
-    // a native history.forward() can report an entry yet leave the page unchanged.
-    // If sessionStorage is unavailable, fall back to the browser History API.
-    if (writeHistory(state)) {
-      window.location.assign(target);
-      return;
-    }
-    nativeTraverse(offset);
+    if (!target) return;
+    state.pending = { target, index: targetIndex };
+    saveState(state);
+    window.location.assign(target);
   };
 
   backButton.addEventListener('click', event => {
     event.preventDefault();
-    if (backButton.disabled) return;
-    traverse(-1);
+    if (state.index <= 0) return;
+    navigateTo(state.index - 1);
   });
 
   forwardButton.addEventListener('click', event => {
     event.preventDefault();
-    if (forwardButton.disabled) return;
-    traverse(1);
+    if (state.index >= state.entries.length - 1) return;
+    navigateTo(state.index + 1);
   });
 
-  window.addEventListener('pageshow', paintAvailability);
-  window.addEventListener('popstate', paintAvailability);
-  paintAvailability();
+  updateAvailability();
 })();

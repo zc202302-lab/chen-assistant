@@ -227,6 +227,43 @@ def _invalidate_after_amount_change(conn, customer_id: int, period: str, run):
     )
 
 
+def _legacy_paid_schedule_recovery(conn, customer_id: int, period: str, run) -> None:
+    """Safely reopen an old completed run that predates schedule snapshots.
+
+    Exact historical last-payment dates do not exist for these records. Preserve the
+    stored historical date instead of inventing one; for multi-month services, move
+    next_payment_period back to this run's period so its existing payment entry can
+    participate again. Newer runs still use the exact snapshot restore path below.
+    """
+    rows = conn.execute(
+        '''SELECT DISTINCT s.*
+           FROM services s
+           JOIN payment_entries pe ON pe.service_id=s.id AND pe.period=?
+           WHERE s.customer_id=?''',
+        (period, customer_id),
+    ).fetchall()
+    for service in rows:
+        months = core.service_interval_months(service)
+        if months and months > 1:
+            conn.execute(
+                'UPDATE services SET next_payment_period=? WHERE id=?',
+                (period, int(service['id'])),
+            )
+        core._save_runtime(conn, int(service['id']), deferred_until_period='')
+
+    now = now_iso()
+    conn.execute(
+        '''UPDATE customer_payment_runs
+           SET paid_at='',emailed_at='',email_to='',email_subject='',updated_at=?
+           WHERE id=?''',
+        (now, int(run['id'])),
+    )
+    conn.execute(
+        'UPDATE customers SET payment_period=?,notified=1,completed=0,updated_at=? WHERE id=?',
+        (period, now, customer_id),
+    )
+
+
 def _response_state(customer_id: int, extra: dict | None = None):
     with db() as conn:
         run, stats = _run_v031(conn, customer_id)
@@ -319,7 +356,9 @@ def update_payment_workflow_v031(
 
     if action == 'paid':
         # Keep the v0.3 snapshot/restore implementation as the single authority for
-        # advancing and reverting service payment periods.
+        # modern runs. Old runs created before snapshots existed use a deliberately
+        # conservative recovery path that preserves their known historical date.
+        legacy_recovered = False
         with db() as conn:
             run, _ = _run_v031(conn, customer_id, period)
             if not run['paid'] and not run['initiated']:
@@ -330,10 +369,11 @@ def update_payment_workflow_v031(
                     (run['id'],),
                 ).fetchone()['n']
                 if not n:
-                    raise HTTPException(
-                        409,
-                        '这条完成缴费记录来自旧版本，没有保存缴费前周期快照。为保护缴费周期，系统不允许自动撤回。',
-                    )
+                    _legacy_paid_schedule_recovery(conn, customer_id, period, run)
+                    legacy_recovered = True
+        if legacy_recovered:
+            return _response_state(customer_id, {'legacy_schedule_recovered': True})
+
         result = v03.set_payment_run_v03(
             request=request,
             customer_id=customer_id,

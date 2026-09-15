@@ -56,7 +56,9 @@ def main():
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert '/static/v031_workflow_actions.js?v=0316' in base
     assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
-    assert '/static/v031_workflow_dom_guard.js?v=0314' in base
+    # v1.4.3 updates the DOM guard while retaining the same legacy safety behavior;
+    # keep the contract tied to the currently shipped cache-busted asset version.
+    assert '/static/v031_workflow_dom_guard.js?v=0315' in base
     assert '/static/v033_payment_flow_patch.js?v=0331' in base
     assert base.index('/static/v033_payment_flow_patch.js') > base.index('/static/v031_workflow_runtime_fix.js')
 

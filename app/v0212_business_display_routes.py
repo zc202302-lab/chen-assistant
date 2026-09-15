@@ -262,3 +262,150 @@ def save_service_runtime_display_order_v0212(
         'schedule_state': schedule_state,
         'rows': result_rows,
     })
+
+
+# v1.4.3: customer-level active/inactive state. This is deliberately separate
+# from per-service runtime state and from the older payment_enabled preference.
+# Disabling a customer suppresses every payment reminder without mutating any
+# service status, amount, review state, schedule, or historical payment run.
+CUSTOMER_RUNTIME_TABLE = 'customer_runtime_v143'
+
+
+def _ensure_customer_runtime_v143(conn):
+    conn.execute(
+        f'''CREATE TABLE IF NOT EXISTS {CUSTOMER_RUNTIME_TABLE} (
+               customer_id INTEGER PRIMARY KEY REFERENCES customers(id) ON DELETE CASCADE,
+               status TEXT NOT NULL DEFAULT 'active',
+               updated_at TEXT NOT NULL DEFAULT ''
+           )'''
+    )
+
+
+def _customer_status_v143(conn, customer_id: int) -> str:
+    _ensure_customer_runtime_v143(conn)
+    row = conn.execute(
+        f'SELECT status FROM {CUSTOMER_RUNTIME_TABLE} WHERE customer_id=?',
+        (int(customer_id),),
+    ).fetchone()
+    status = (row['status'] or 'active').strip() if row else 'active'
+    return status if status in {'active', 'inactive'} else 'active'
+
+
+def _customer_active_v143(conn, customer_id: int) -> bool:
+    return _customer_status_v143(conn, customer_id) == 'active'
+
+
+def _save_customer_status_v143(conn, customer_id: int, status: str):
+    if status not in {'active', 'inactive'}:
+        raise HTTPException(400, '客户状态无效')
+    _ensure_customer_runtime_v143(conn)
+    conn.execute(
+        f'''INSERT INTO {CUSTOMER_RUNTIME_TABLE}(customer_id,status,updated_at)
+            VALUES(?,?,?)
+            ON CONFLICT(customer_id) DO UPDATE SET
+              status=excluded.status,updated_at=excluded.updated_at''',
+        (int(customer_id), status, now_iso()),
+    )
+    conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), int(customer_id)))
+
+
+_BASE_PAYMENT_SNAPSHOT_V143 = core.payment_snapshot_v0212
+_BASE_BUSINESS_PAYLOAD_V143 = _business_payload_ordered
+
+
+def _payment_snapshot_customer_gate_v143(conn, customer_id: int, period: str | None = None):
+    if not _customer_active_v143(conn, customer_id):
+        return [], {
+            'due_count': 0,
+            'required': 0,
+            'pending': 0,
+            'changed': 0,
+            'zero': 0,
+            'total': 0.0,
+            'txt_ready': False,
+            'customer_active': False,
+        }
+    items, stats = _BASE_PAYMENT_SNAPSHOT_V143(conn, customer_id, period)
+    stats = dict(stats)
+    stats['customer_active'] = True
+    return items, stats
+
+
+def _business_payload_customer_gate_v143(conn, customer_id: int, template, services, promo_rows, visible_keys, runtime):
+    rows = _BASE_BUSINESS_PAYLOAD_V143(
+        conn, customer_id, template, services, promo_rows, visible_keys, runtime
+    )
+    if _customer_active_v143(conn, customer_id):
+        return rows
+    for item in rows:
+        item['due'] = False
+        for attr in item.get('preview_attributes', []):
+            if attr.get('key') == SYSTEM_PAYMENT_STATE_KEY:
+                attr['value'] = '客户停用'
+                attr['raw'] = '客户停用'
+    return rows
+
+
+# Rebind the names looked up dynamically by the mature workspace. The v1.4.1
+# row-review patch imports after this module, so its snapshot wrapper inherits
+# this customer-level gate instead of bypassing it.
+core.payment_snapshot_v0212 = _payment_snapshot_customer_gate_v143
+_business_payload_ordered = _business_payload_customer_gate_v143
+core._business_payload_v0212 = _business_payload_customer_gate_v143
+
+
+# Older payment reminder dashboards imported customer_is_due by value. Keep
+# those compatibility routes gated as well even though current /work no longer
+# renders them directly.
+from . import payment_v02 as _payment_core_v143  # noqa: E402
+_BASE_CUSTOMER_IS_DUE_V143 = _payment_core_v143.customer_is_due
+
+
+def _customer_is_due_v143(conn, customer_id: int) -> bool:
+    return _customer_active_v143(conn, customer_id) and _BASE_CUSTOMER_IS_DUE_V143(conn, customer_id)
+
+
+_payment_core_v143.customer_is_due = _customer_is_due_v143
+for _module_name in ('v025_home', 'v026_home', 'v027_home'):
+    try:
+        _module = __import__(f'app.{_module_name}', fromlist=['customer_is_due'])
+        _module.customer_is_due = _customer_is_due_v143
+    except Exception:
+        pass
+
+
+@router.get('/customers/{customer_id}/runtime-v143')
+def get_customer_runtime_v143(customer_id: int):
+    with db() as conn:
+        customer_or_404(conn, customer_id)
+        status = _customer_status_v143(conn, customer_id)
+    return JSONResponse({
+        'ok': True,
+        'customer_id': int(customer_id),
+        'status': status,
+        'payment_reminders_enabled': status == 'active',
+    })
+
+
+@router.post('/customers/{customer_id}/runtime-v143')
+def save_customer_runtime_v143(
+    request: Request,
+    customer_id: int,
+    csrf: str = Form(...),
+    status: str = Form(...),
+):
+    check_csrf(request, csrf)
+    if status not in {'active', 'inactive'}:
+        raise HTTPException(400, '客户状态无效')
+    with db() as conn:
+        customer_or_404(conn, customer_id)
+        _save_customer_status_v143(conn, customer_id, status)
+        template = _template(conn)
+        rows = _customer_rows_payload(conn, customer_id, template)
+    return JSONResponse({
+        'ok': True,
+        'customer_id': int(customer_id),
+        'status': status,
+        'payment_reminders_enabled': status == 'active',
+        'rows': rows,
+    })
