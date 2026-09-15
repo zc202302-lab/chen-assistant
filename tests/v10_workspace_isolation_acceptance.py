@@ -10,14 +10,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-_TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v12-workspace-')
+_TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v14-workspace-')
 TEST_DB = Path(_TMPDIR.name) / 'app.db'
 os.environ['APP_DB_PATH'] = str(TEST_DB)
 os.environ.update({
     'APP_USERNAME': '晨',
     'APP_PASSWORD_SALT': 'dGVzdHNhbHQ=',
     'APP_PASSWORD_HASH': 'x',
-    'APP_SESSION_SECRET': 'v12-workspace-session',
+    'APP_SESSION_SECRET': 'v14-workspace-session',
     'APP_ENCRYPTION_KEY': 'x',
     'APP_SECURE_COOKIE': '0',
 })
@@ -75,22 +75,41 @@ def main():
             assert_back(page, '/')
 
             page.goto('http://127.0.0.1:8141/work', wait_until='networkidle')
-            assert nav_labels(page) == ['首页', '客户', '产品', '账户']
-            work_tabs = page.locator('[data-home-tabs] [data-home-tab]')
-            assert [x.strip() for x in work_tabs.all_inner_texts()] == ['待办 0', '缴费 0', '优惠 0', '最近客户']
-            expect(page.locator('.brand')).to_have_attribute('href', '/work')
+            assert nav_labels(page) == ['首页', '客户', '资料', '搜索']
+            expect(page.get_by_role('heading', name='客户管理')).to_be_visible()
+            expect(page.get_by_role('heading', name='工作资料')).to_be_visible()
+            expect(page.locator('.brand')).to_have_attribute('href', '/')
             expect(page.locator('.search-link')).to_have_attribute('href', '/search')
+            expect(page.locator('.brand')).to_contain_text('v1.4.0')
             assert_back(page, '/')
 
+            page.goto('http://127.0.0.1:8141/work/customers', wait_until='networkidle')
+            assert nav_labels(page) == ['首页', '客户', '资料', '搜索']
+            work_tabs = page.locator('[data-home-tabs] [data-home-tab]')
+            assert [x.strip() for x in work_tabs.all_inner_texts()] == ['待办 0', '缴费 0', '优惠 0', '最近客户']
+            assert_back(page, '/work')
+
+            page.goto('http://127.0.0.1:8141/work/library', wait_until='networkidle')
+            assert nav_labels(page) == ['首页', '客户', '资料', '搜索']
+            expect(page.get_by_role('heading', name='工作资料')).to_be_visible()
+            expect(page.get_by_role('heading', name='产品资料')).to_be_visible()
+            expect(page.get_by_role('heading', name='资费资料')).to_be_visible()
+            expect(page.get_by_text('架构已建立 · 内容功能待开发', exact=True)).to_be_visible()
+            assert_back(page, '/work')
+
+            page.goto('http://127.0.0.1:8141/work?home=payment', wait_until='networkidle')
+            assert '/work/customers?home=payment' in page.url
+            expect(page.locator('[data-home-tab="payment"]')).to_have_class('active')
+
             page.goto('http://127.0.0.1:8141/search', wait_until='networkidle')
-            assert nav_labels(page) == ['首页', '客户', '产品', '账户']
+            assert nav_labels(page) == ['首页', '客户', '资料', '搜索']
             expect(page.locator('input[name="q"]')).to_have_attribute('placeholder', '客户名 / 集团编码 / 税号 / 号码 / 账号 / 网站账户')
             expect(page.get_by_text('菜谱', exact=True)).to_have_count(0)
             assert_back(page, '/work')
 
             page.goto('http://127.0.0.1:8141/customers', wait_until='networkidle')
-            assert nav_labels(page) == ['首页', '客户', '产品', '账户']
-            assert_back(page, '/work')
+            assert nav_labels(page) == ['首页', '客户', '资料', '搜索']
+            assert_back(page, '/work/customers')
 
             page.goto('http://127.0.0.1:8141/global-search', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '工作', '生活', '搜索']
@@ -98,23 +117,23 @@ def main():
             assert_back(page, '/')
 
             page.goto('http://127.0.0.1:8141/life', wait_until='networkidle')
-            assert nav_labels(page) == ['生活', '菜谱', '工具']
-            expect(page.locator('.brand')).to_contain_text('v1.2')
+            assert nav_labels(page) == ['生活', '菜谱', '记录', '工具']
+            expect(page.locator('.brand')).to_contain_text('v1.4.0')
             expect(page.get_by_text('烹饪工具', exact=True)).to_be_visible()
             assert_back(page, '/')
 
             page.goto('http://127.0.0.1:8141/life/recipes', wait_until='networkidle')
-            assert nav_labels(page) == ['生活', '菜谱', '工具']
+            assert nav_labels(page) == ['生活', '菜谱', '记录', '工具']
             assert_back(page, '/life')
 
             page.goto('http://127.0.0.1:8141/life/tools', wait_until='networkidle')
-            assert nav_labels(page) == ['生活', '菜谱', '工具']
+            assert nav_labels(page) == ['生活', '菜谱', '记录', '工具']
             expect(page.get_by_role('heading', name='基础知识 · 计算工具')).to_be_visible()
             assert_back(page, '/life')
 
             browser.close()
 
-        print('v1.2 independent work/life workspace + cooking tools navigation acceptance passed')
+        print('v1.4 work architecture + independent work/life navigation acceptance passed')
     finally:
         proc.terminate()
         try:
