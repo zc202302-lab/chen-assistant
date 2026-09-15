@@ -108,11 +108,13 @@ def main():
                 row = rows.nth(i)
                 assert row.get_attribute('data-confirmed') == '1'
                 assert row.locator('[data-row-state]').inner_text().strip() == '✓'
-                assert row.locator('[data-row-state]').is_disabled()
+                # v1.4.1 explicitly made every row marker manually reversible.
+                # Fixed rows must still auto-confirm, but their marker is no longer disabled.
+                expect(row.locator('[data-row-state]')).to_be_enabled(timeout=5000)
             assert page.locator('#pendingCount').inner_text().strip() == '0'
 
-            # All-fixed due rows are automatically confirmed. v1.2.5 derives stage 1
-            # directly from those row states, so it is status-only and not clickable.
+            # All-fixed due rows are still automatically confirmed and stage 1 remains
+            # derived/status-only. Only the individual row markers became clickable.
             wait_review_state(page, True)
             expect(review).to_be_disabled(timeout=5000)
             expect(review).to_have_attribute('aria-disabled', 'true', timeout=5000)
@@ -121,7 +123,7 @@ def main():
                 row = rows.nth(i)
                 assert row.get_attribute('data-confirmed') == '1'
                 assert row.locator('[data-row-state]').inner_text().strip() == '✓'
-                assert row.locator('[data-row-state]').is_disabled()
+                expect(row.locator('[data-row-state]')).to_be_enabled(timeout=5000)
             assert page.locator('#pendingCount').inner_text().strip() == '0'
 
             with db() as conn:
@@ -135,13 +137,15 @@ def main():
                 assert all(int(row['confirmed']) == 1 for row in entries)
                 assert all(row['source'] != 'fixed_review_reset' for row in entries)
 
-            # Automatic confirmation survives reload and derived stage 1 stays complete.
+            # Automatic confirmation survives reload, the derived stage stays complete,
+            # and fixed-row manual controls remain available after reload.
             page.reload(wait_until='networkidle')
             page.wait_for_timeout(1100)
             rows = page.locator('[data-payment-row]')
             for i in range(2):
                 assert rows.nth(i).get_attribute('data-confirmed') == '1'
                 assert rows.nth(i).locator('[data-row-state]').inner_text().strip() == '✓'
+                expect(rows.nth(i).locator('[data-row-state]')).to_be_enabled(timeout=5000)
             review = page.locator('[data-v031-flow-action="review"]')
             wait_review_state(page, True)
             expect(review).to_be_disabled(timeout=5000)
@@ -151,7 +155,7 @@ def main():
                 assert rows.nth(i).get_attribute('data-confirmed') == '1'
 
             browser.close()
-        print('v0.3.2 fixed amount auto-confirm acceptance passed with derived review stage (isolated test database)')
+        print('v0.3.2 fixed amount auto-confirm acceptance passed with v1.4.1 manual row controls (isolated test database)')
     finally:
         proc.terminate()
         try:

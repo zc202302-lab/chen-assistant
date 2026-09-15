@@ -43,11 +43,15 @@ def nav_labels(page):
     return [text.strip() for text in page.locator('.bottom-nav .nav-item span').all_inner_texts()]
 
 
-def assert_back(page, fallback: str):
-    back = page.locator('[data-global-back]')
+def assert_history_nav(page):
+    group = page.locator('[data-history-nav]')
+    back = page.locator('[data-history-back]')
+    forward = page.locator('[data-history-forward]')
+    expect(group).to_be_visible()
     expect(back).to_be_visible()
-    expect(back).to_have_attribute('aria-label', '返回上一页')
-    expect(back).to_have_attribute('data-back-fallback', fallback)
+    expect(forward).to_be_visible()
+    expect(back).to_have_attribute('aria-label', '后退')
+    expect(forward).to_have_attribute('aria-label', '前进')
 
 
 def main():
@@ -73,7 +77,7 @@ def main():
             assert nav_labels(page) == ['首页', '工作', '生活', '搜索']
             expect(page.get_by_text('工作空间', exact=True)).to_be_visible()
             expect(page.get_by_text('生活空间', exact=True)).to_be_visible()
-            assert_back(page, '/')
+            assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/work', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '客户', '资料', '搜索']
@@ -82,14 +86,14 @@ def main():
             expect(page.locator('.brand')).to_have_attribute('href', '/work')
             expect(page.locator('.search-link')).to_have_attribute('href', '/search')
             expect(page.locator('.brand')).to_contain_text(f'v{config.APP_VERSION}')
-            assert_back(page, '/')
+            assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/work/customers', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '客户', '资料', '搜索']
             work_tabs = page.locator('[data-home-tabs] [data-home-tab]')
             assert [x.strip() for x in work_tabs.all_inner_texts()] == ['待办 0', '缴费 0', '优惠 0', '最近客户']
             expect(page.locator('.brand')).to_have_attribute('href', '/work')
-            assert_back(page, '/work')
+            assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/work/library', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '客户', '资料', '搜索']
@@ -98,7 +102,7 @@ def main():
             expect(page.get_by_role('heading', name='资费资料')).to_be_visible()
             expect(page.get_by_text('架构已建立 · 内容功能待开发', exact=True)).to_be_visible()
             expect(page.locator('.brand')).to_have_attribute('href', '/work')
-            assert_back(page, '/work')
+            assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/work?home=payment', wait_until='networkidle')
             assert '/work/customers?home=payment' in page.url
@@ -108,31 +112,31 @@ def main():
             assert nav_labels(page) == ['首页', '客户', '资料', '搜索']
             expect(page.locator('input[name="q"]')).to_have_attribute('placeholder', '客户名 / 集团编码 / 税号 / 号码 / 账号 / 网站账户')
             expect(page.get_by_text('菜谱', exact=True)).to_have_count(0)
-            assert_back(page, '/work')
+            assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/customers', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '客户', '资料', '搜索']
-            assert_back(page, '/work/customers')
+            assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/global-search', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '工作', '生活', '搜索']
             expect(page.get_by_role('heading', name='搜索整个晨的助手')).to_be_visible()
-            assert_back(page, '/')
+            assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/life', wait_until='networkidle')
             assert nav_labels(page) == ['生活', '菜谱', '工具']
             expect(page.locator('.brand')).to_contain_text(f'v{config.APP_VERSION}')
             expect(page.get_by_text('烹饪工具', exact=True)).to_be_visible()
-            assert_back(page, '/')
+            assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/life/recipes', wait_until='networkidle')
             assert nav_labels(page) == ['生活', '菜谱', '工具']
-            assert_back(page, '/life')
+            assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/life/tools', wait_until='networkidle')
             assert nav_labels(page) == ['生活', '菜谱', '工具']
             expect(page.get_by_role('heading', name='基础知识 · 计算工具')).to_be_visible()
-            assert_back(page, '/life')
+            assert_history_nav(page)
 
             browser.close()
 
