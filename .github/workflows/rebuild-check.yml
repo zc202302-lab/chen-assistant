@@ -51,6 +51,7 @@ jobs:
             app/static/v033_payment_flow_patch.js \
             app/static/v10.js \
             app/static/global-back.js \
+            app/static/v143_customer_status.js \
             app/static/v12.js \
             app/static/v124_work_tables.js \
             app/static/v125_excel_review.js \
@@ -112,6 +113,9 @@ jobs:
 
       - name: v1.4.2 navigation and row-review acceptance
         run: python tests/v141_navigation_review_acceptance.py
+
+      - name: v1.4.3 centered navigation and customer status acceptance
+        run: python tests/v143_customer_status_acceptance.py
 
       - name: Legacy customer import browser acceptance
         run: python tests/v032_customer_import_acceptance.py
