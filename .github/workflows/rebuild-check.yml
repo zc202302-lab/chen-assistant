@@ -20,7 +20,7 @@ jobs:
           node-version: '22'
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt playwright
+        run: pip install -r requirements.txt playwright pip-audit bandit
 
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
@@ -33,6 +33,11 @@ jobs:
 
       - name: Compile Python
         run: python -m compileall -q app storage_node tests
+
+      - name: Security audit
+        run: |
+          pip-audit -r requirements.txt
+          bandit -q -r app storage_node -lll
 
       - name: Existing feature compatibility audit policy
         run: |
