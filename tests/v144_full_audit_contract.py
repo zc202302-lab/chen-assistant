@@ -60,6 +60,8 @@ def audit_static_references():
     assert "find app/static -maxdepth 1 -type f -name '*.js'" in workflow, 'CI must syntax-check every JS asset'
     assert "find app/static -maxdepth 1 -type f -name '*.js'" in deploy, 'deploy must syntax-check every JS asset'
     assert "find app/static -maxdepth 1 -type f \\( -name '*.js' -o -name '*.css' \\)" in deploy, 'deploy must hash-check every JS/CSS asset'
+    assert 'CHEN_DEPLOY_REEXEC' in deploy and 'exec env CHEN_DEPLOY_REEXEC=1' in deploy, 'deploy must re-exec after self-update'
+    assert deploy.index('git merge --ff-only origin/main') < deploy.index('BACKUP_FILE='), 'updated deploy script must re-exec before DB backup/migrations'
 
 
 def audit_transaction_guards():
@@ -87,6 +89,20 @@ def audit_transaction_guards():
     with db() as conn:
         row = conn.execute("SELECT value FROM app_meta WHERE key='v144_partial_seed'").fetchone()
         assert row is None, 'schema seeding committed partial data after an exception'
+
+
+def audit_remote_storage_integrity_guards():
+    documents = (ROOT / 'app/v13_customer_documents.py').read_text(encoding='utf-8')
+    storage = (ROOT / 'storage_node/app.py').read_text(encoding='utf-8')
+    for token in (
+        "remote_size = int(remote_meta.get('size', -1))",
+        "remote_hash = str(remote_meta.get('sha256', '')).lower()",
+        'if remote_size != sent or remote_hash != local_hash:',
+        'await _best_effort_remote_delete(storage_key)',
+        "_CONTROL_RE = re.compile(r'[\\x00-\\x1f\\x7f]+')",
+    ):
+        assert token in documents, token
+    assert "except (TypeError, ValueError):\n    MAX_FILE_MB = 50" in storage
 
 
 def audit_route_ownership():
@@ -146,9 +162,10 @@ def audit_csrf_first_winners():
 def main():
     audit_static_references()
     audit_transaction_guards()
+    audit_remote_storage_integrity_guards()
     audit_route_ownership()
     audit_csrf_first_winners()
-    print('v1.4.4 full-code audit contract passed: assets + transactions + route ownership + CSRF surface')
+    print('v1.4.4 full-code audit contract passed: assets + transactions + deployment + remote storage + routes + CSRF')
 
 
 if __name__ == '__main__':
