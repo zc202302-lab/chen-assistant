@@ -53,14 +53,21 @@
         review.classList.toggle('v031-auto-confirmed', fixed && confirmed);
       }
 
-      // Rule/defer controls still follow the completed-payment lock. Only the
-      // row review marker is intentionally allowed to trigger a rollback.
-      if (fixedToggle && fixedToggle.disabled !== paid) fixedToggle.disabled = paid;
+      // Fixed/variable is a real row-level setting, not a display-only badge.
+      // It must remain manually adjustable even after completion; the current
+      // compatibility route safely rolls the payment workflow back first.
+      if (fixedToggle) {
+        if (fixedToggle.disabled) fixedToggle.disabled = false;
+        fixedToggle.title = fixed ? '当前为固定金额；点击改为变动金额' : '当前为变动金额；点击改为固定金额';
+      }
+
+      // Deferral still follows the completed-payment lock because it changes the
+      // schedule itself rather than the current row's review/rule state.
       if (defer && defer.disabled !== paid) defer.disabled = paid;
     });
 
-    // Other controls may remain protected after completion, but amount fields and
-    // review markers are no longer visually or functionally locked.
+    // Other controls may remain protected after completion, but amount fields,
+    // review markers and fixed/variable toggles are intentionally editable.
     root.classList.remove('v03-payment-locked');
   };
 
@@ -80,7 +87,7 @@
   new MutationObserver(schedule).observe(workbench, {
     subtree: true,
     attributes: true,
-    attributeFilter: ['readonly', 'disabled', 'data-confirmed'],
+    attributeFilter: ['readonly', 'disabled', 'data-confirmed', 'data-mode'],
   });
 
   enforce();
