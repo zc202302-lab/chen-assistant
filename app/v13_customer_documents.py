@@ -24,6 +24,7 @@ ALLOWED_EXTENSIONS = {
 }
 CATEGORIES = {'营业执照', '合同', '报价单', '方案', '身份证明', '其他'}
 _KEY_RE = re.compile(r'^[a-f0-9]{32}$')
+_CONTROL_RE = re.compile(r'[\x00-\x1f\x7f]+')
 
 
 def _now_iso() -> str:
@@ -66,7 +67,7 @@ def _storage_url(key: str) -> str:
 
 
 def _safe_download_name(name: str) -> str:
-    cleaned = (name or 'download').replace('\r', ' ').replace('\n', ' ').replace('"', '')
+    cleaned = _CONTROL_RE.sub(' ', name or 'download').replace('"', '').strip()
     return cleaned[:180] or 'download'
 
 
@@ -150,6 +151,17 @@ async def upload_document_v13(
             if response.status_code >= 400:
                 detail = response.text[:300] or f'远程存储返回 {response.status_code}'
                 raise HTTPException(502, f'远程存储失败：{detail}')
+            try:
+                remote_meta = response.json()
+                remote_size = int(remote_meta.get('size', -1))
+                remote_hash = str(remote_meta.get('sha256', '')).lower()
+            except Exception as exc:
+                await _best_effort_remote_delete(storage_key)
+                raise HTTPException(502, '远程存储写入完成，但完整性回执无效') from exc
+            local_hash = digest.hexdigest()
+            if remote_size != sent or remote_hash != local_hash:
+                await _best_effort_remote_delete(storage_key)
+                raise HTTPException(502, '远程存储完整性校验失败，未建立资料索引')
     except HTTPException:
         raise
     except Exception as exc:
