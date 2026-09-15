@@ -27,14 +27,17 @@
   <link rel="stylesheet" href="/static/v125_excel_review.css?v=1250">
   <link rel="stylesheet" href="/static/v128_table_finder.css?v=1280">
   <link rel="stylesheet" href="/static/v13_customer_documents.css?v=1300">
+  <link rel="stylesheet" href="/static/work-architecture-v14.css?v=1400">
   <title>{% block title %}晨的助手{% endblock %}</title>
 </head>
 <body>
 {% set _path = request.url.path %}
-{% set _is_work = _path == '/work' or _path == '/search' or _path.startswith('/customers') or _path.startswith('/products') or _path.startswith('/accounts') %}
+{% set _is_work = _path == '/work' or _path.startswith('/work/') or _path == '/search' or _path.startswith('/customers') or _path.startswith('/products') or _path.startswith('/accounts') %}
 {% set _is_life = _path.startswith('/life') %}
 {% set _back_fallback = '/' %}
-{% if _is_work and _path != '/work' %}
+{% if _path.startswith('/customers') or _path.startswith('/products') or _path.startswith('/accounts') %}
+  {% set _back_fallback = '/work/customers' %}
+{% elif _is_work and _path != '/work' %}
   {% set _back_fallback = '/work' %}
 {% elif _is_life and _path != '/life' %}
   {% set _back_fallback = '/life' %}
@@ -42,7 +45,7 @@
 <header class="topbar">
   <div class="topbar-left">
     <button class="global-back" type="button" data-global-back data-back-fallback="{{ _back_fallback }}" aria-label="返回上一页" title="返回上一页">←</button>
-    <a class="brand" href="/">晨的助手 <span>v1.2.1</span></a>
+    <a class="brand" href="/">晨的助手 <span>v{{ request.app.version }}</span></a>
   </div>
   <a class="search-link" href="{% if _is_work %}/search{% else %}/global-search{% endif %}" aria-label="搜索">⌕</a>
 </header>
@@ -50,9 +53,9 @@
 {% if _is_work %}
 <nav class="bottom-nav" aria-label="工作导航">
   <a href="/work" class="nav-item">⌂<span>首页</span></a>
-  <a href="/customers" class="nav-item">◎<span>客户</span></a>
-  <a href="/products" class="nav-item">▦<span>产品</span></a>
-  <a href="/accounts" class="nav-item">⌘<span>账户</span></a>
+  <a href="/work/customers" class="nav-item">◎<span>客户</span></a>
+  <a href="/work/library" class="nav-item">▤<span>资料</span></a>
+  <a href="/search" class="nav-item">⌕<span>搜索</span></a>
 </nav>
 {% elif _is_life %}
 <nav class="bottom-nav" aria-label="生活导航">
