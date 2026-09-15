@@ -110,14 +110,23 @@ jobs:
       - name: v1.3 remote customer documents acceptance
         run: python tests/v13_customer_documents_acceptance.py
 
-      - name: v1.4.1 navigation and row-review acceptance
+      - name: v1.4.2 navigation and row-review acceptance
         run: python tests/v141_navigation_review_acceptance.py
 
-      - name: Legacy work-system browser acceptance
-        run: |
-          python tests/v032_customer_import_acceptance.py
-          python tests/v031_payment_workflow_acceptance.py
-          python tests/v031_legacy_customer_acceptance.py
-          python tests/v03_runtime_fix_acceptance.py
-          python tests/v03_insert_order_acceptance.py
-          python tests/v03_review_reset_acceptance.py
+      - name: Legacy customer import browser acceptance
+        run: python tests/v032_customer_import_acceptance.py
+
+      - name: Legacy payment workflow browser acceptance
+        run: python tests/v031_payment_workflow_acceptance.py
+
+      - name: Legacy customer browser acceptance
+        run: python tests/v031_legacy_customer_acceptance.py
+
+      - name: Legacy runtime-fix browser acceptance
+        run: python tests/v03_runtime_fix_acceptance.py
+
+      - name: Legacy insert-order browser acceptance
+        run: python tests/v03_insert_order_acceptance.py
+
+      - name: Legacy review-reset browser acceptance
+        run: python tests/v03_review_reset_acceptance.py
