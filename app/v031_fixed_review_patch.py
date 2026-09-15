@@ -22,15 +22,17 @@ router = APIRouter()
 _base_run_v031 = workflow._run_v031
 _base_snapshot_v0212 = core.payment_snapshot_v0212
 MANUAL_CHANGED_SOURCE = 'manual_changed'
+MANUAL_UNCHECKED_SOURCE = 'manual_unchecked'
+MANUAL_PENDING_SOURCES = {MANUAL_CHANGED_SOURCE, MANUAL_UNCHECKED_SOURCE}
 
 
 def _ensure_payment_entry_review_aware(conn, service, period: str):
-    """Do not let legacy fixed-fee auto-confirm erase a deliberate changed-row review."""
+    """Preserve a deliberate row-level pending state, including fixed amounts."""
     existing = conn.execute(
         'SELECT * FROM payment_entries WHERE service_id=? AND period=?',
         (service['id'], period),
     ).fetchone()
-    if existing and (existing['source'] or '') == MANUAL_CHANGED_SOURCE and not bool(existing['confirmed']):
+    if existing and (existing['source'] or '') in MANUAL_PENDING_SOURCES and not bool(existing['confirmed']):
         rule = effective_payment_rule(conn, service['id'], period, service)
         if rule['mode'] == 'fixed':
             return existing, rule
@@ -40,9 +42,10 @@ def _ensure_payment_entry_review_aware(conn, service, period: str):
 def _review_snapshot(conn, customer_id: int, period: str | None = None):
     """Return the payment snapshot using row-level review semantics.
 
-    Fixed amounts are normally automatic confirmations. A fixed amount that the
-    user has just edited is the one exception: that changed row remains pending
-    until the user confirms it once. All untouched rows keep their own state.
+    Fixed amounts are normally automatic confirmations, but a fixed row may be
+    explicitly made pending by either an amount edit or a manual click. Those
+    deliberate pending states survive refreshes until the user confirms that row.
+    Every untouched row keeps its own confirmation state.
     """
     period = period or current_period()
     items, stats = _base_snapshot_v0212(conn, customer_id, period)
@@ -52,7 +55,7 @@ def _review_snapshot(conn, customer_id: int, period: str | None = None):
         for item in items
         if item['rule']['mode'] == 'fixed'
         and not bool(item['payment']['confirmed'])
-        and (item['payment']['source'] or '') != MANUAL_CHANGED_SOURCE
+        and (item['payment']['source'] or '') not in MANUAL_PENDING_SOURCES
     ]
     if repair_ids:
         placeholders = ','.join('?' for _ in repair_ids)
@@ -70,7 +73,7 @@ def _review_snapshot(conn, customer_id: int, period: str | None = None):
     required = sum(
         1 for item in items
         if item['rule']['mode'] == 'variable'
-        or (item['payment']['source'] or '') == MANUAL_CHANGED_SOURCE
+        or (item['payment']['source'] or '') in MANUAL_PENDING_SOURCES
     )
     stats = dict(stats)
     stats['required'] = required
@@ -112,9 +115,9 @@ def _auto_review_run(conn, customer_id: int, period: str | None = None):
             run['label'] = '金额已全部核对，待通知客户'
 
     elif pending > 0 and not run['paid'] and (run['reviewed'] or run['notified'] or run['initiated']):
-        # Once any amount becomes pending, every communication step based on the
-        # old total is stale. Payment-entry confirmations are deliberately not
-        # reset here; only the row whose amount changed is made pending by save.
+        # Once any row becomes pending, every communication step based on the old
+        # total is stale. Only workflow timestamps are reset; untouched payment
+        # rows retain their existing confirmation state.
         now = now_iso()
         conn.execute(
             """UPDATE customer_payment_runs
@@ -133,7 +136,7 @@ def _auto_review_run(conn, customer_id: int, period: str | None = None):
         run['notified_at'] = ''
         run['initiated_at'] = ''
         run['stage'] = 'checking'
-        run['label'] = '金额有修改，待重新确认'
+        run['label'] = '存在未核对金额，待重新确认'
 
     return run, stats
 
@@ -180,7 +183,6 @@ def _fixed_amount_review(conn, customer_id: int, period: str, run, items, stats)
             )
             variable_ids.append(sid)
 
-        # For an all-fixed customer there is nothing meaningful to withdraw.
         if not variable_ids:
             return {
                 'review_reset_all': False,
@@ -213,7 +215,7 @@ def _fixed_amount_review(conn, customer_id: int, period: str, run, items, stats)
 
 
 def _rollback_completed_payment(conn, customer_id: int, period: str, run):
-    """Restore the pre-payment schedule before an amount edit rolls stage 4 back."""
+    """Restore the pre-payment schedule before a row-level change rolls stage 4 back."""
     run_id = int(run['id'])
     snapshots = conn.execute(
         '''SELECT * FROM payment_run_service_snapshots_v03
@@ -333,7 +335,12 @@ def payment_review_toggle_preserve_reviews_v032(
     service_id: int,
     csrf: str = Form(...),
 ):
-    """Confirm the changed row without disturbing any other row."""
+    """Toggle exactly one row and derive the whole workflow from row state.
+
+    Both fixed and variable rows can be manually confirmed or unconfirmed. If a
+    confirmed row is manually unchecked after stage 1 (or later), the workflow
+    rolls back to amount review while every untouched row keeps its own state.
+    """
     check_csrf(request, csrf)
     period = current_period()
     with db() as conn:
@@ -346,33 +353,34 @@ def payment_review_toggle_preserve_reviews_v032(
             return JSONResponse({'ok': False, 'error': '该业务本月无需缴费'}, status_code=400)
 
         pe, rule = _ensure_payment_entry_review_aware(conn, service, period)
-        if rule['mode'] == 'fixed':
-            if bool(pe['confirmed']):
-                new_confirmed = 1
-            else:
-                # A manually changed fixed amount needs exactly one explicit
-                # reconfirmation. Legacy fixed rows are repaired the same way.
-                new_confirmed = 1
-                conn.execute(
-                    "UPDATE payment_entries SET confirmed=1,source='fixed',updated_at=? WHERE id=?",
-                    (now_iso(), pe['id']),
-                )
-        else:
-            new_confirmed = 0 if bool(pe['confirmed']) else 1
-            conn.execute(
-                'UPDATE payment_entries SET confirmed=?,updated_at=? WHERE id=?',
-                (new_confirmed, now_iso(), pe['id']),
-            )
+        was_confirmed = bool(pe['confirmed'])
+        run, _ = workflow._run_v031(conn, int(service['customer_id']), period)
+        if was_confirmed and run['paid']:
+            _rollback_completed_payment(conn, int(service['customer_id']), period, run)
+
+        new_confirmed = 0 if was_confirmed else 1
+        source = pe['source'] or ('fixed' if rule['mode'] == 'fixed' else 'manual')
+        if new_confirmed:
+            if rule['mode'] == 'fixed':
+                source = 'fixed'
+        elif rule['mode'] == 'fixed':
+            source = MANUAL_UNCHECKED_SOURCE
+
+        conn.execute(
+            'UPDATE payment_entries SET confirmed=?,source=?,updated_at=? WHERE id=?',
+            (new_confirmed, source, now_iso(), pe['id']),
+        )
 
         payload = _payment_payload(conn, service['customer_id'], period, service_id)
         current_run, current_stats = workflow._run_v031(conn, service['customer_id'], period)
         payload.update(current_stats)
+        payload['workflow_invalidated'] = bool(was_confirmed and not new_confirmed)
         payload['workflow_run'] = current_run
         return JSONResponse(payload)
 
 
 # The stable v0.2.12 snapshot looks up this imported helper at runtime. Rebind it
-# so a deliberately changed fixed row survives snapshot refresh until confirmed.
+# so a deliberately pending fixed row survives snapshot refresh until confirmed.
 core.ensure_payment_entry = _ensure_payment_entry_review_aware
 # Public payment rendering and workflow state use the same row-level truth.
 core.payment_snapshot_v0212 = _review_snapshot
