@@ -16,67 +16,114 @@
   const forwardButton = document.querySelector('[data-history-forward]');
   if (!backButton || !forwardButton) return;
 
-  const navigationApi = window.navigation;
-  const supportsNavigationEntries = Boolean(
-    navigationApi
-      && typeof navigationApi.entries === 'function'
-      && typeof navigationApi.traverseTo === 'function'
-      && navigationApi.currentEntry
-  );
+  const HISTORY_KEY = 'chen:app-history:v142';
+  const MAX_ENTRIES = 60;
+  let pageLeaving = false;
 
-  const sameOrigin = entry => {
-    if (!entry?.url) return false;
+  const currentLocation = () => `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  const emptyHistory = () => ({entries: [], index: -1});
+
+  const readHistory = () => {
     try {
-      return new URL(entry.url).origin === window.location.origin;
+      const parsed = JSON.parse(window.sessionStorage.getItem(HISTORY_KEY) || 'null');
+      if (!parsed || !Array.isArray(parsed.entries) || !Number.isInteger(parsed.index)) {
+        return emptyHistory();
+      }
+      const entries = parsed.entries.filter(entry => typeof entry === 'string' && entry.startsWith('/'));
+      if (!entries.length) return emptyHistory();
+      const index = Math.max(0, Math.min(parsed.index, entries.length - 1));
+      return {entries, index};
+    } catch (_error) {
+      return emptyHistory();
+    }
+  };
+
+  const writeHistory = state => {
+    try {
+      window.sessionStorage.setItem(HISTORY_KEY, JSON.stringify(state));
+      return true;
     } catch (_error) {
       return false;
     }
   };
 
-  const adjacentEntry = offset => {
-    if (!supportsNavigationEntries) return null;
-    const entries = navigationApi.entries();
-    const current = navigationApi.currentEntry;
-    const entry = entries[current.index + offset];
-    return sameOrigin(entry) ? entry : null;
-  };
+  const reconcileHistory = () => {
+    const current = currentLocation();
+    const state = readHistory();
 
-  const updateAvailability = () => {
-    if (supportsNavigationEntries) {
-      const backEntry = adjacentEntry(-1);
-      const forwardEntry = adjacentEntry(1);
-      backButton.disabled = !backEntry;
-      forwardButton.disabled = !forwardEntry;
-      backButton.setAttribute('aria-disabled', backEntry ? 'false' : 'true');
-      forwardButton.setAttribute('aria-disabled', forwardEntry ? 'false' : 'true');
-      backButton.title = backEntry ? '返回上一页' : '没有可返回的页面';
-      forwardButton.title = forwardEntry ? '前进到下一页' : '没有可前进的页面';
-      return;
+    if (!state.entries.length) {
+      const initial = {entries: [current], index: 0};
+      writeHistory(initial);
+      return initial;
     }
 
-    // Older browsers do not expose the current history-stack position. Keep the
-    // controls usable and let the History API use native no-op behavior at an end.
-    backButton.disabled = false;
-    forwardButton.disabled = false;
-    backButton.setAttribute('aria-disabled', 'false');
-    forwardButton.setAttribute('aria-disabled', 'false');
+    if (state.entries[state.index] === current) return state;
+
+    if (state.index > 0 && state.entries[state.index - 1] === current) {
+      state.index -= 1;
+      writeHistory(state);
+      return state;
+    }
+
+    if (state.index + 1 < state.entries.length && state.entries[state.index + 1] === current) {
+      state.index += 1;
+      writeHistory(state);
+      return state;
+    }
+
+    // This is a new in-app navigation rather than an adjacent history traversal.
+    // Drop the logical forward branch, just like a normal browser navigation does.
+    state.entries = state.entries.slice(0, state.index + 1);
+    state.entries.push(current);
+    state.index = state.entries.length - 1;
+
+    if (state.entries.length > MAX_ENTRIES) {
+      const trim = state.entries.length - MAX_ENTRIES;
+      state.entries = state.entries.slice(trim);
+      state.index = Math.max(0, state.index - trim);
+    }
+
+    writeHistory(state);
+    return state;
+  };
+
+  const paintAvailability = () => {
+    const state = reconcileHistory();
+    const hasBack = state.index > 0;
+    const hasForward = state.index >= 0 && state.index < state.entries.length - 1;
+
+    backButton.disabled = !hasBack;
+    forwardButton.disabled = !hasForward;
+    backButton.setAttribute('aria-disabled', hasBack ? 'false' : 'true');
+    forwardButton.setAttribute('aria-disabled', hasForward ? 'false' : 'true');
+    backButton.title = hasBack ? '返回上一页' : '没有可返回的页面';
+    forwardButton.title = hasForward ? '前进到下一页' : '没有可前进的页面';
   };
 
   const traverse = offset => {
-    if (supportsNavigationEntries) {
-      const entry = adjacentEntry(offset);
-      if (!entry) return;
-      // Target the exact adjacent history entry instead of issuing a generic
-      // forward/back request. This avoids a rapid back-then-forward click being
-      // lost while a cross-document traversal has just restored the page.
-      const result = navigationApi.traverseTo(entry.key);
-      if (result?.finished && typeof result.finished.catch === 'function') {
-        result.finished.catch(() => {});
-      }
-      return;
-    }
+    const state = reconcileHistory();
+    const targetIndex = state.index + offset;
+    if (targetIndex < 0 || targetIndex >= state.entries.length) return;
+
+    const source = currentLocation();
+    const target = state.entries[targetIndex];
+    state.index = targetIndex;
+    writeHistory(state);
+    pageLeaving = false;
+
+    // Prefer the native browser traversal so the real history stack, scroll position,
+    // and BFCache behavior remain intact. Some browser/PWA combinations can report a
+    // forward/back entry yet ignore the actual traversal; in that case, fall back to
+    // the exact URL that our same-tab app history recorded.
     if (offset < 0) window.history.back();
     else window.history.forward();
+
+    window.setTimeout(() => {
+      if (!pageLeaving && currentLocation() === source) {
+        window.location.assign(target);
+      }
+    }, 350);
   };
 
   backButton.addEventListener('click', event => {
@@ -91,10 +138,14 @@
     traverse(1);
   });
 
-  if (navigationApi && typeof navigationApi.addEventListener === 'function') {
-    navigationApi.addEventListener('currententrychange', updateAvailability);
-  }
-  window.addEventListener('pageshow', updateAvailability);
-  window.addEventListener('popstate', updateAvailability);
-  updateAvailability();
+  window.addEventListener('pagehide', () => {
+    pageLeaving = true;
+  });
+  window.addEventListener('pageshow', () => {
+    pageLeaving = false;
+    paintAvailability();
+  });
+  window.addEventListener('popstate', paintAvailability);
+
+  paintAvailability();
 })();
