@@ -15,6 +15,7 @@ _TMPDIR = tempfile.TemporaryDirectory(prefix='chen-assistant-v12-browser-')
 os.environ['APP_DB_PATH'] = str(Path(_TMPDIR.name) / 'app.db')
 os.environ.update({'APP_USERNAME':'晨','APP_PASSWORD_SALT':'dGVzdHNhbHQ=','APP_PASSWORD_HASH':'x','APP_SESSION_SECRET':'v12-browser-session','APP_ENCRYPTION_KEY':'x','APP_SECURE_COOKIE':'0'})
 
+from app import config  # noqa: E402
 from app.db import db, init_db  # noqa: E402
 from app.security import create_session  # noqa: E402
 from app.v101_recipe_template_data import TEMPLATE_SHEET_NAMES  # noqa: E402
@@ -47,7 +48,7 @@ def main():
             context.add_cookies([{'name':'session_token','value':token,'url':'http://127.0.0.1:8142'}])
             page = context.new_page()
             page.goto('http://127.0.0.1:8142/life/recipes', wait_until='networkidle')
-            expect(page.locator('.brand')).to_contain_text('v1.2')
+            expect(page.locator('.brand')).to_contain_text(f'v{config.APP_VERSION}')
             assert [x.strip() for x in page.locator('.bottom-nav .nav-item span').all_inner_texts()] == ['生活','菜谱','工具']
             for name in TEMPLATE_SHEET_NAMES:
                 expect(page.get_by_text(name, exact=True).first).to_be_visible()
@@ -77,7 +78,7 @@ def main():
             pages = len(re.findall(rb'/Type\s*/Page(?!s)\b', pdf))
             assert pages == 1, pages
             browser.close()
-        print('v1.2 browser acceptance passed: template recipes + original text + formula tools + one-page A4')
+        print('recipe tools browser acceptance passed on current app version: template recipes + original text + formula tools + one-page A4')
     finally:
         proc.terminate()
         try: proc.wait(timeout=5)

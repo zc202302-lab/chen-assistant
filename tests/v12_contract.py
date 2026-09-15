@@ -30,7 +30,8 @@ def first_route(path: str, method: str = 'GET'):
 
 
 def main():
-    assert config.APP_VERSION.startswith('1.2')
+    version_parts = tuple(int(part) for part in config.APP_VERSION.split('.')[:2])
+    assert version_parts >= (1, 2), config.APP_VERSION
     assert app.version == config.APP_VERSION
     assert first_route('/life').endpoint.__name__ == 'life_home_v10'
     assert first_route('/life/recipes').endpoint.__name__ == 'recipe_list_v10'
@@ -68,8 +69,10 @@ def main():
     print_js = (ROOT / 'app/static/recipe-print-v101.js').read_text(encoding='utf-8')
     assert '@page{size:A4 portrait' in print_css and 'targetHeight = 1040' in print_js
     shell_js = (ROOT / 'app/static/v10.js').read_text(encoding='utf-8')
-    assert f"replaceChildren('v{config.APP_VERSION}')" in shell_js and '/life/tools' in shell_js
-    print('v1.2 contract passed: 18 Excel templates + original steps + A4 print + formula tools + work isolation')
+    assert "replaceChildren('v1.2.1')" not in shell_js and '/life/tools' in shell_js
+    base = (ROOT / 'app/templates/base.html').read_text(encoding='utf-8')
+    assert 'v{{ request.app.version }}' in base
+    print('v1.2 feature contract passed on current app version: 18 Excel templates + original steps + A4 print + formula tools + work isolation')
 
 
 if __name__ == '__main__':

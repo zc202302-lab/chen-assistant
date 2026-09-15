@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}工作 · 晨的助手{% endblock %}
+{% block content %}
+<section class="v10-shell work-arch-shell">
+  <div class="v10-page-head work-arch-head">
+    <div>
+      <span class="v10-kicker">工作空间</span>
+      <h1>工作</h1>
+      <p>工作模块从现在起按“客户管理”和“工作资料”两条主线组织；公共模板与规则作为内部共享层。</p>
+    </div>
+  </div>
+
+  <div class="work-domain-grid" aria-label="工作两大模块">
+    <a class="work-domain-card work-domain-customer" href="/work/customers">
+      <div class="work-domain-icon">客</div>
+      <div class="work-domain-body">
+        <div class="work-domain-title"><h2>客户管理</h2><span>{{ customer_count }} 个客户</span></div>
+        <p>每个客户拥有自己的业务、缴费、联系人、资料、待办、跟进和个性化属性设置。</p>
+        <div class="work-domain-meta">
+          <span>客户实例数据彼此独立</span>
+          <span>当前 {{ open_tasks }} 项未完成待办</span>
+        </div>
+      </div>
+      <strong class="work-domain-arrow">进入 →</strong>
+    </a>
+
+    <a class="work-domain-card work-domain-library" href="/work/library">
+      <div class="work-domain-icon">资</div>
+      <div class="work-domain-body">
+        <div class="work-domain-title"><h2>工作资料</h2><span>结构已就绪</span></div>
+        <p>集中管理跨客户复用的产品、资费、开通流程、操作指南、系统截图、制度规范和模板文件。</p>
+        <div class="work-domain-meta">
+          <span>公共知识资产</span>
+          <span>下一阶段开发内容管理能力</span>
+        </div>
+      </div>
+      <strong class="work-domain-arrow">进入 →</strong>
+    </a>
+  </div>
+
+  <section class="v10-section work-arch-principle">
+    <div class="v10-section-head">
+      <div><h2>架构边界</h2><p>以后新增功能先判断数据属于哪一层，再决定页面和表结构。</p></div>
+    </div>
+    <div class="work-layer-grid">
+      <div class="work-layer-card">
+        <b>客户实例数据</b>
+        <p>号码、专线、缴费状态、联系人、客户资料、待办、跟进等；必须归属于具体客户。</p>
+      </div>
+      <div class="work-layer-card">
+        <b>公共模板 / 规则</b>
+        <p>业务模板、缴费模板、客户属性模板、产品定义等；定义结构，但不拥有客户实际值。</p>
+      </div>
+      <div class="work-layer-card">
+        <b>公共工作资料</b>
+        <p>资费、流程、操作截图、制度、模板文件等；可被多个客户业务关联，但不重复复制。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="v10-section">
+    <div class="v10-section-head">
+      <div><h2>现有辅助入口</h2><p>旧功能继续保留，先不强行迁移数据，后续逐步归位。</p></div>
+    </div>
+    <div class="work-legacy-grid">
+      <a href="/customers"><b>客户列表</b><span>直接查找与新建客户</span></a>
+      <a href="/products"><b>现有产品汇总</b><span>{{ product_count }} 个业务类型</span></a>
+      <a href="/accounts"><b>网站 / 平台账户</b><span>{{ account_count }} 条记录</span></a>
+      <a href="/search"><b>工作搜索</b><span>查询客户、号码、账号等现有数据</span></a>
+    </div>
+  </section>
+</section>
+{% endblock %}

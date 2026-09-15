@@ -130,7 +130,7 @@ def main():
         assert matches[0].endpoint.__name__ == endpoint
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-    assert f'v{config.APP_VERSION}' in base
+    assert 'v{{ request.app.version }}' in base
     assert '/static/v031_workflow_actions.js?v=0316' in base
     assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
     assert '/static/v031_workflow_dom_guard.js?v=0314' in base

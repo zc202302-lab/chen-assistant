@@ -177,7 +177,7 @@ def test_ui_contract():
     assert '/customers/export-v032.xlsx' in template
     assert 'v032-preview-metrics' in css
     assert '/static/v032_customer_import.css' in base
-    assert f'v{config.APP_VERSION}' in base
+    assert 'v{{ request.app.version }}' in base
 
 
 if __name__ == '__main__':
