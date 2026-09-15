@@ -48,9 +48,15 @@ def main():
     for command in required_suite_commands:
         assert command in workflow, f'missing compatibility suite command: {command}'
 
-    assert 'data-global-back' in base
-    assert 'data-back-fallback' in base
-    assert 'window.history.back()' not in back_js, '返回上一级不得重新依赖浏览器历史栈'
+    # v1.4.2 deliberately replaces the old deterministic parent-level back button
+    # with real global browser-history controls. Both directions must be present;
+    # the old single-button fallback contract must not return accidentally.
+    assert 'data-history-back' in base
+    assert 'data-history-forward' in base
+    assert 'data-global-back' not in base
+    assert 'data-back-fallback' not in base
+    assert 'window.history.back()' in back_js
+    assert 'window.history.forward()' in back_js
     assert "MANUAL_UNCHECKED_SOURCE = 'manual_unchecked'" in review_patch
     assert 'MANUAL_PENDING_SOURCES' in review_patch
     assert 'workflow_invalidated' in review_patch
