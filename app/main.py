@@ -126,6 +126,17 @@ for _route in app.router.routes:
         break
 
 
+def _route_debug(route):
+    endpoint = getattr(route, 'endpoint', None)
+    return (
+        getattr(route, 'path', ''),
+        getattr(endpoint, '__module__', ''),
+        getattr(endpoint, '__name__', ''),
+        tuple(sorted(getattr(route, 'methods', set()))),
+        getattr(getattr(route, 'path_regex', None), 'pattern', ''),
+    )
+
+
 def _assert_customer_new_route_guard():
     new_scope = {'type': 'http', 'path': '/customers/new', 'method': 'GET'}
     id_scope = {'type': 'http', 'path': '/customers/123', 'method': 'GET'}
@@ -134,7 +145,10 @@ def _assert_customer_new_route_guard():
         raise RuntimeError('v1.0 路由自检失败：/customers/new 没有可用 GET 路由')
     owner = getattr(getattr(full_new[0], 'endpoint', None), '__module__', '')
     if getattr(full_new[0], 'path', '') != '/customers/new' or owner != 'app.v032_customer_import_routes':
-        raise RuntimeError('v1.0 路由自检失败：/customers/new 被其他客户路由抢占，已停止启动')
+        raise RuntimeError(
+            'v1.0 路由自检失败：/customers/new 被其他客户路由抢占，已停止启动；'
+            f'首个匹配={_route_debug(full_new[0])!r}；全部匹配={[ _route_debug(r) for r in full_new ]!r}'
+        )
     detail = next((route for route in app.router.routes if getattr(route, 'path', '') == '/customers/{customer_id}' and getattr(getattr(route, 'endpoint', None), '__module__', '') == 'app.v0212_routes'), None)
     if detail is None or detail.matches(new_scope)[0] != Match.NONE or detail.matches(id_scope)[0] != Match.FULL:
         raise RuntimeError('v1.0 路由自检失败：客户详情路由没有被限制为数字 customer_id')
