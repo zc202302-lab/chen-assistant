@@ -18,10 +18,8 @@
 
   const HISTORY_KEY = 'chen:app-history:v142';
   const MAX_ENTRIES = 60;
-  let pageLeaving = false;
 
   const currentLocation = () => `${window.location.pathname}${window.location.search}${window.location.hash}`;
-
   const emptyHistory = () => ({entries: [], index: -1});
 
   const readHistory = () => {
@@ -60,20 +58,21 @@
 
     if (state.entries[state.index] === current) return state;
 
+    // Native browser back/forward can still be used from the browser toolbar.
+    // When that happens, follow an adjacent logical entry instead of creating a duplicate.
     if (state.index > 0 && state.entries[state.index - 1] === current) {
       state.index -= 1;
       writeHistory(state);
       return state;
     }
-
     if (state.index + 1 < state.entries.length && state.entries[state.index + 1] === current) {
       state.index += 1;
       writeHistory(state);
       return state;
     }
 
-    // This is a new in-app navigation rather than an adjacent history traversal.
-    // Drop the logical forward branch, just like a normal browser navigation does.
+    // A normal in-app navigation after going back starts a new branch, matching
+    // normal browser semantics: the old forward branch is discarded.
     state.entries = state.entries.slice(0, state.index + 1);
     state.entries.push(current);
     state.index = state.entries.length - 1;
@@ -101,29 +100,28 @@
     forwardButton.title = hasForward ? '前进到下一页' : '没有可前进的页面';
   };
 
+  const nativeTraverse = offset => {
+    if (offset < 0) window.history.back();
+    else window.history.forward();
+  };
+
   const traverse = offset => {
     const state = reconcileHistory();
     const targetIndex = state.index + offset;
     if (targetIndex < 0 || targetIndex >= state.entries.length) return;
 
-    const source = currentLocation();
     const target = state.entries[targetIndex];
     state.index = targetIndex;
-    writeHistory(state);
-    pageLeaving = false;
 
-    // Prefer the native browser traversal so the real history stack, scroll position,
-    // and BFCache behavior remain intact. Some browser/PWA combinations can report a
-    // forward/back entry yet ignore the actual traversal; in that case, fall back to
-    // the exact URL that our same-tab app history recorded.
-    if (offset < 0) window.history.back();
-    else window.history.forward();
-
-    window.setTimeout(() => {
-      if (!pageLeaving && currentLocation() === source) {
-        window.location.assign(target);
-      }
-    }, 350);
+    // The app-level controls deliberately target the recorded URL directly. This is
+    // deterministic across redirects, BFCache restores and installed/PWA windows where
+    // a native history.forward() can report an entry yet leave the page unchanged.
+    // If sessionStorage is unavailable, fall back to the browser History API.
+    if (writeHistory(state)) {
+      window.location.assign(target);
+      return;
+    }
+    nativeTraverse(offset);
   };
 
   backButton.addEventListener('click', event => {
@@ -138,14 +136,7 @@
     traverse(1);
   });
 
-  window.addEventListener('pagehide', () => {
-    pageLeaving = true;
-  });
-  window.addEventListener('pageshow', () => {
-    pageLeaving = false;
-    paintAvailability();
-  });
+  window.addEventListener('pageshow', paintAvailability);
   window.addEventListener('popstate', paintAvailability);
-
   paintAvailability();
 })();
