@@ -15,13 +15,15 @@ from .v124_work_patch import router as v124_work_patch_router
 from .v13_customer_documents import ensure_v13_customer_documents, router as v13_customer_documents_router
 from .v143_customer_resources import ensure_customer_resources_v143, router as v143_customer_resources_router
 from .v143_payment_controls_patch import router as v143_payment_controls_router
+from .v144_audit_hardening import router as v144_audit_hardening_router
 from .work_architecture import WORK_DOMAINS, WORK_LIBRARY_CATEGORIES
 
 router = APIRouter()
 templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
 
-# Work fixes / customer extensions are registered before historical compatibility
-# routes so duplicate legacy paths keep resolving to the newest compatible behavior.
+# Audit hardening and current customer extensions are registered before historical
+# compatibility routes so duplicate paths resolve to the newest safe behavior.
+router.include_router(v144_audit_hardening_router)
 router.include_router(v143_payment_controls_router)
 router.include_router(v143_customer_resources_router)
 router.include_router(v124_work_patch_router)

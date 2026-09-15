@@ -14,7 +14,10 @@ app = FastAPI(title='Chen Assistant Private Storage', docs_url=None, redoc_url=N
 
 ROOT = Path(os.getenv('CHEN_STORAGE_ROOT', '/data/chen-files')).resolve()
 TOKEN = os.getenv('CHEN_STORAGE_TOKEN', '').strip()
-MAX_FILE_MB = max(1, min(500, int(os.getenv('CHEN_STORAGE_MAX_FILE_MB', '50'))))
+try:
+    MAX_FILE_MB = max(1, min(500, int(os.getenv('CHEN_STORAGE_MAX_FILE_MB', '50'))))
+except (TypeError, ValueError):
+    MAX_FILE_MB = 50
 MAX_BYTES = MAX_FILE_MB * 1024 * 1024
 KEY_RE = re.compile(r'^[a-f0-9]{32}$')
 

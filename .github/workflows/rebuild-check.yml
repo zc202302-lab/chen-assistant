@@ -20,57 +20,31 @@ jobs:
           node-version: '22'
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt playwright
+        run: pip install -r requirements.txt playwright pip-audit bandit
 
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
 
       - name: Check JavaScript syntax
         run: |
-          for asset in \
-            app/static/app.js \
-            app/static/v028.js \
-            app/static/ui-drag.js \
-            app/static/service-promotions.js \
-            app/static/business-sync.js \
-            app/static/v0211.js \
-            app/static/workspace-refinement-v0212.js \
-            app/static/v03.js \
-            app/static/v03_runtime_fix.js \
-            app/static/v03_business_mail.js \
-            app/static/v03_payment_template.js \
-            app/static/v03_foxmail_action_fix.js \
-            app/static/v03_insert_order.js \
-            app/static/v03_review_reset.js \
-            app/static/v031_payment_workflow.js \
-            app/static/v031_amount_rollback_fix.js \
-            app/static/v031_workflow_actions.js \
-            app/static/v031_workflow_runtime_fix.js \
-            app/static/v031_workflow_dom_guard.js \
-            app/static/v031_windows_bootstrap.js \
-            app/static/v033_payment_flow_patch.js \
-            app/static/v10.js \
-            app/static/global-back.js \
-            app/static/v143_customer_status.js \
-            app/static/v143_customer_resources.js \
-            app/static/v12.js \
-            app/static/v124_work_tables.js \
-            app/static/v125_excel_review.js \
-            app/static/v126_workflow_rollback_guard.js \
-            app/static/v128_table_finder.js \
-            app/static/v13_customer_documents.js \
-            app/static/recipe-print-v101.js
-          do
+          find app/static -maxdepth 1 -type f -name '*.js' -print0 | sort -z | while IFS= read -r -d '' asset; do
             node --check "$asset"
           done
 
       - name: Compile Python
         run: python -m compileall -q app storage_node tests
 
+      - name: Security audit
+        run: |
+          pip-audit -r requirements.txt
+          bandit -q -r app storage_node -lll
+
       - name: Existing feature compatibility audit policy
         run: |
           python tests/compatibility_audit_contract.py
           python tests/v143_extended_contract.py
+          python tests/v144_full_audit_contract.py
+          python tests/v144_audit_acceptance.py
 
       - name: v1.2 architecture and recipe tools contracts
         run: |
