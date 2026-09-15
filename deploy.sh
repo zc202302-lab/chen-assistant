@@ -4,6 +4,11 @@ APP_DIR="/opt/chen-assistant"; SERVICE="chen-assistant"; APP_HTTP="http://172.19
 cd "$APP_DIR"
 echo "===== 晨的助手 v${EXPECTED_VERSION} 一键更新 ====="
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then echo "✗ 检测到服务器受 Git 管理文件有本地修改，已停止更新。"; git status --short; exit 1; fi
+START_REV="$(git rev-parse HEAD)"; echo "当前代码：$(git rev-parse --short HEAD)"; git fetch origin main; git merge --ff-only origin/main; END_REV="$(git rev-parse HEAD)"
+if [[ "$START_REV" != "$END_REV" && "${CHEN_DEPLOY_REEXEC:-0}" != "1" ]]; then
+  echo "✓ 已更新部署脚本与代码，使用新脚本继续部署"
+  exec env CHEN_DEPLOY_REEXEC=1 bash "$APP_DIR/deploy.sh"
+fi
 SERVICE_USER="$(systemctl show "$SERVICE" -p User --value)"; [[ -n "$SERVICE_USER" ]] || SERVICE_USER="root"
 SERVICE_GROUP="$(systemctl show "$SERVICE" -p Group --value)"; [[ -n "$SERVICE_GROUP" ]] || SERVICE_GROUP="$SERVICE_USER"
 mkdir -p "$BACKUP_DIR"; TS="$(date +%Y%m%d-%H%M%S)"; BACKUP_FILE="$BACKUP_DIR/app.db.$TS"
@@ -16,7 +21,7 @@ with sqlite3.connect(src) as s, sqlite3.connect(dst) as d:
 print(f'✓ 数据库备份完成：{dst}')
 PY
 fi
-echo "当前代码：$(git rev-parse --short HEAD)"; git fetch origin main; git merge --ff-only origin/main; .venv/bin/pip install -q -r requirements.txt
+.venv/bin/pip install -q -r requirements.txt
 .venv/bin/python -m compileall -q app storage_node
 if command -v node >/dev/null 2>&1; then
   find app/static -maxdepth 1 -type f -name '*.js' -print0 | sort -z | while IFS= read -r -d '' ASSET; do
