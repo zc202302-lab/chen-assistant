@@ -5,11 +5,13 @@ import math
 from fastapi import APIRouter, HTTPException, Request
 
 from .db import db, now_iso
+from .starlette_compat import install_template_response_compat
 from . import v10_routes as v10
 from . import v101_recipe_template_patch as v101
 
 
 router = APIRouter()
+install_template_response_compat()
 
 
 def _safe_ensure_v10_schema(conn=None):
