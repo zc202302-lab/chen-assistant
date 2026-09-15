@@ -1,0 +1,65 @@
+name: diagnose legacy browser acceptance
+
+on:
+  push:
+    branches: [v1.4.2-global-history-nav]
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt playwright
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+
+      - name: customer import browser acceptance
+        id: import
+        continue-on-error: true
+        run: python tests/v032_customer_import_acceptance.py
+
+      - name: payment workflow browser acceptance
+        id: payment
+        continue-on-error: true
+        run: python tests/v031_payment_workflow_acceptance.py
+
+      - name: legacy customer browser acceptance
+        id: legacy_customer
+        continue-on-error: true
+        run: python tests/v031_legacy_customer_acceptance.py
+
+      - name: runtime fix browser acceptance
+        id: runtime_fix
+        continue-on-error: true
+        run: python tests/v03_runtime_fix_acceptance.py
+
+      - name: insert order browser acceptance
+        id: insert_order
+        continue-on-error: true
+        run: python tests/v03_insert_order_acceptance.py
+
+      - name: review reset browser acceptance
+        id: review_reset
+        continue-on-error: true
+        run: python tests/v03_review_reset_acceptance.py
+
+      - name: Fail when any legacy browser acceptance failed
+        if: always()
+        run: |
+          echo "import=${{ steps.import.outcome }}"
+          echo "payment=${{ steps.payment.outcome }}"
+          echo "legacy_customer=${{ steps.legacy_customer.outcome }}"
+          echo "runtime_fix=${{ steps.runtime_fix.outcome }}"
+          echo "insert_order=${{ steps.insert_order.outcome }}"
+          echo "review_reset=${{ steps.review_reset.outcome }}"
+          test "${{ steps.import.outcome }}" = success
+          test "${{ steps.payment.outcome }}" = success
+          test "${{ steps.legacy_customer.outcome }}" = success
+          test "${{ steps.runtime_fix.outcome }}" = success
+          test "${{ steps.insert_order.outcome }}" = success
+          test "${{ steps.review_reset.outcome }}" = success
