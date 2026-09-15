@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 TMP = tempfile.TemporaryDirectory(prefix='chen-v143-contract-')
 os.environ.setdefault('APP_DB_PATH', str(Path(TMP.name) / 'app.db'))
 os.environ.setdefault('APP_USERNAME', 'contract')
