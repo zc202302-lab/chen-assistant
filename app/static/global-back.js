@@ -16,53 +16,102 @@
   const forwardButton = document.querySelector('[data-history-forward]');
   if (!backButton || !forwardButton) return;
 
-  const navigationApi = window.navigation;
-  const supportsNavigationAvailability = Boolean(
-    navigationApi
-      && typeof navigationApi.canGoBack === 'boolean'
-      && typeof navigationApi.canGoForward === 'boolean'
-  );
+  const STORAGE_KEY = 'chen-assistant:history-nav:v1432';
+  const MAX_ENTRIES = 80;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  const sanitize = raw => {
+    if (!raw || !Array.isArray(raw.entries) || !raw.entries.length) return null;
+    const entries = raw.entries
+      .filter(value => typeof value === 'string' && value.startsWith('/'))
+      .slice(-MAX_ENTRIES);
+    if (!entries.length) return null;
+    let index = Number.isInteger(raw.index) ? raw.index : entries.length - 1;
+    index = Math.max(0, Math.min(index, entries.length - 1));
+    const pending = raw.pending && typeof raw.pending === 'object'
+      && typeof raw.pending.target === 'string'
+      && Number.isInteger(raw.pending.index)
+      ? { target: raw.pending.target, index: raw.pending.index }
+      : null;
+    return { entries, index, pending };
+  };
+
+  const loadState = () => {
+    try {
+      return sanitize(JSON.parse(window.sessionStorage.getItem(STORAGE_KEY) || 'null'));
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const saveState = state => {
+    try {
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (_) {
+      // If sessionStorage is unavailable, page navigation itself still works.
+    }
+  };
+
+  let state = loadState();
+  if (!state) {
+    state = { entries: [currentUrl], index: 0, pending: null };
+  } else if (
+    state.pending
+    && state.pending.target === currentUrl
+    && state.pending.index >= 0
+    && state.pending.index < state.entries.length
+    && state.entries[state.pending.index] === currentUrl
+  ) {
+    state.index = state.pending.index;
+    state.pending = null;
+  } else if (state.entries[state.index] === currentUrl) {
+    state.pending = null;
+  } else if (state.index > 0 && state.entries[state.index - 1] === currentUrl) {
+    state.index -= 1;
+    state.pending = null;
+  } else if (state.index < state.entries.length - 1 && state.entries[state.index + 1] === currentUrl) {
+    state.index += 1;
+    state.pending = null;
+  } else {
+    state.entries = state.entries.slice(0, state.index + 1);
+    state.entries.push(currentUrl);
+    if (state.entries.length > MAX_ENTRIES) state.entries = state.entries.slice(-MAX_ENTRIES);
+    state.index = state.entries.length - 1;
+    state.pending = null;
+  }
+  saveState(state);
 
   const updateAvailability = () => {
-    if (supportsNavigationAvailability) {
-      const hasBack = navigationApi.canGoBack;
-      const hasForward = navigationApi.canGoForward;
-      backButton.disabled = !hasBack;
-      forwardButton.disabled = !hasForward;
-      backButton.setAttribute('aria-disabled', hasBack ? 'false' : 'true');
-      forwardButton.setAttribute('aria-disabled', hasForward ? 'false' : 'true');
-      backButton.title = hasBack ? '返回上一页' : '没有可返回的页面';
-      forwardButton.title = hasForward ? '前进到下一页' : '没有可前进的页面';
-      return;
-    }
+    const canBack = state.index > 0;
+    const canForward = state.index < state.entries.length - 1;
+    backButton.disabled = !canBack;
+    forwardButton.disabled = !canForward;
+    backButton.setAttribute('aria-disabled', canBack ? 'false' : 'true');
+    forwardButton.setAttribute('aria-disabled', canForward ? 'false' : 'true');
+    backButton.title = canBack ? '返回上一页' : '没有可返回的页面';
+    forwardButton.title = canForward ? '前进到下一页' : '没有可前进的页面';
+  };
 
-    // Older browsers do not expose reliable history availability. Keep the
-    // controls enabled and let the native History API decide whether traversal
-    // is possible instead of inventing a parallel history stack.
-    backButton.disabled = false;
-    forwardButton.disabled = false;
-    backButton.setAttribute('aria-disabled', 'false');
-    forwardButton.setAttribute('aria-disabled', 'false');
-    backButton.title = '返回上一页';
-    forwardButton.title = '前进到下一页';
+  const navigateTo = targetIndex => {
+    if (targetIndex < 0 || targetIndex >= state.entries.length) return;
+    const target = state.entries[targetIndex];
+    if (!target) return;
+    state.pending = { target, index: targetIndex };
+    saveState(state);
+    window.location.assign(target);
   };
 
   backButton.addEventListener('click', event => {
     event.preventDefault();
-    if (supportsNavigationAvailability && !navigationApi.canGoBack) return;
-    window.history.back();
+    if (state.index <= 0) return;
+    navigateTo(state.index - 1);
   });
 
   forwardButton.addEventListener('click', event => {
     event.preventDefault();
-    if (supportsNavigationAvailability && !navigationApi.canGoForward) return;
-    window.history.forward();
+    if (state.index >= state.entries.length - 1) return;
+    navigateTo(state.index + 1);
   });
 
-  if (navigationApi && typeof navigationApi.addEventListener === 'function') {
-    navigationApi.addEventListener('currententrychange', updateAvailability);
-  }
-  window.addEventListener('pageshow', updateAvailability);
-  window.addEventListener('popstate', updateAvailability);
   updateAvailability();
 })();
