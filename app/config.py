@@ -32,3 +32,13 @@ APP_SESSION_SECRET = os.getenv("APP_SESSION_SECRET", "")
 APP_ENCRYPTION_KEY = os.getenv("APP_ENCRYPTION_KEY", "")
 APP_SECURE_COOKIE = os.getenv("APP_SECURE_COOKIE", "1") == "1"
 APP_BASE_URL = os.getenv("APP_BASE_URL", "")
+
+# v1.3 customer documents. In production this normally points to a localhost port
+# forwarded over the encrypted Qingdao -> RackNerd SSH tunnel; the file service on
+# the US host itself binds to 127.0.0.1 and is never exposed to the public Internet.
+REMOTE_STORAGE_BASE_URL = os.getenv("REMOTE_STORAGE_BASE_URL", "").strip()
+REMOTE_STORAGE_TOKEN = os.getenv("REMOTE_STORAGE_TOKEN", "").strip()
+try:
+    REMOTE_STORAGE_MAX_FILE_MB = max(1, min(500, int(os.getenv("REMOTE_STORAGE_MAX_FILE_MB", "50"))))
+except ValueError:
+    REMOTE_STORAGE_MAX_FILE_MB = 50

@@ -9,11 +9,13 @@ from .v10_routes import global_search_v10
 from .v101_recipe_template_patch import ensure_v101_recipe_templates, router as recipe_template_router
 from .v12_tools_routes import router as v12_tools_router
 from .v124_work_patch import router as v124_work_patch_router
+from .v13_customer_documents import ensure_v13_customer_documents, router as v13_customer_documents_router
 
 router = APIRouter()
-# v1.2.4 work fixes must be registered before historical compatibility routes so
-# duplicate /search and payment-current paths resolve to the patched behavior.
+# Work fixes / customer extensions are registered before historical compatibility
+# routes so duplicate legacy paths keep resolving to the newest compatible behavior.
 router.include_router(v124_work_patch_router)
+router.include_router(v13_customer_documents_router)
 router.include_router(recipe_template_router)
 router.include_router(v12_tools_router)
 
@@ -21,6 +23,7 @@ router.include_router(v12_tools_router)
 @router.on_event('startup')
 def startup_recipe_template_import_v101():
     ensure_v101_recipe_templates()
+    ensure_v13_customer_documents()
 
 
 @router.get('/work', response_class=HTMLResponse)

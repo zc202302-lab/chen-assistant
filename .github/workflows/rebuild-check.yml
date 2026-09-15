@@ -20,7 +20,7 @@ jobs:
           node-version: '22'
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt playwright httpx
+        run: pip install -r requirements.txt playwright
 
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
@@ -55,13 +55,14 @@ jobs:
             app/static/v125_excel_review.js \
             app/static/v126_workflow_rollback_guard.js \
             app/static/v128_table_finder.js \
+            app/static/v13_customer_documents.js \
             app/static/recipe-print-v101.js
           do
             node --check "$asset"
           done
 
       - name: Compile Python
-        run: python -m compileall -q app tests
+        run: python -m compileall -q app storage_node tests
 
       - name: v1.2 architecture and recipe tools contracts
         run: |
@@ -101,6 +102,9 @@ jobs:
 
       - name: v1.2.7 stale-UI server-first rollback acceptance
         run: python tests/v127_server_first_rollback_acceptance.py
+
+      - name: v1.3 remote customer documents acceptance
+        run: python tests/v13_customer_documents_acceptance.py
 
       - name: Legacy work-system browser acceptance
         run: |
