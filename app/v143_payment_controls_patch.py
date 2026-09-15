@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import JSONResponse
 
 from .db import db, now_iso
@@ -73,44 +73,9 @@ def _rollback_completed_payment_compat(conn, customer_id: int, period: str, run)
 
 # Row-review and amount-edit endpoints resolve this module global at request time.
 # Replacing it here also fixes old completed records without weakening the normal
-# exact snapshot/restore path for every newer run.
+# exact snapshot/restore path for every newer run. The four-stage workflow route
+# itself remains owned by app.v031_payment_workflow_routes for compatibility.
 review_patch._rollback_completed_payment = _rollback_completed_payment_compat
-
-
-@router.post('/customers/{customer_id}/payment-workflow-v031')
-def payment_workflow_v143_compat(
-    request: Request,
-    customer_id: int,
-    csrf: str = Form(...),
-    action: str = Form(...),
-):
-    """Keep the four-step workflow manually reversible, including old paid runs."""
-    if action != 'paid':
-        return workflow.update_payment_workflow_v031(request, customer_id, csrf, action)
-
-    check_csrf(request, csrf)
-    period = current_period()
-    with db() as conn:
-        run, _ = workflow._run_v031(conn, customer_id, period)
-        if not run['paid'] or _snapshot_count(conn, int(run['id'])):
-            # Completion and modern rollback remain owned by the established route.
-            pass
-        else:
-            _recover_legacy_due_schedule(conn, customer_id, period)
-            now = now_iso()
-            conn.execute(
-                '''UPDATE customer_payment_runs
-                   SET paid_at='',emailed_at='',email_to='',email_subject='',updated_at=?
-                   WHERE id=?''',
-                (now, int(run['id'])),
-            )
-            conn.execute(
-                'UPDATE customers SET payment_period=?,notified=1,completed=0,updated_at=? WHERE id=?',
-                (period, now, customer_id),
-            )
-            return workflow._response_state(customer_id, {'legacy_schedule_recovered': True})
-
-    return workflow.update_payment_workflow_v031(request, customer_id, csrf, action)
 
 
 @router.post('/services/{service_id}/toggle-fixed')
