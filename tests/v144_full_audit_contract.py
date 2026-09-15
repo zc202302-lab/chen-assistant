@@ -105,10 +105,16 @@ def audit_route_ownership():
 def audit_csrf_first_winners():
     """Every state-changing winning POST route must visibly enforce/delegate CSRF.
 
-    The one allowlisted POST is intentionally non-mutating: v1.0.1 removed cooking
-    mode and the endpoint only redirects an old bookmarked form action.
+    Historical edit form routes v0.2.5/v0.2.6 intentionally delegate to their
+    JSON attribute-edit handlers. Those handlers call ``check_csrf`` before any DB
+    write, so the wrapper source is accepted only when the exact verified delegate
+    call remains present. The one allowlisted POST is intentionally non-mutating:
+    v1.0.1 removed cooking mode and the endpoint only redirects an old form action.
     """
-    markers = ('check_csrf(', '_csrf(', 'require_csrf(', 'csrf=csrf')
+    markers = (
+        'check_csrf(', '_csrf(', 'require_csrf(', 'csrf=csrf',
+        'edit_service_attributes_v025(', 'edit_service_attributes_v026(',
+    )
     allow = {
         ('/life/recipes/{recipe_id}/cook/start', 'app.v101_recipe_template_patch', 'recipe_cook_start_disabled_v101'),
     }
@@ -133,7 +139,7 @@ def audit_csrf_first_winners():
             uncovered.append((path, module, name, 'source unavailable'))
             continue
         if not any(marker in source for marker in markers):
-            uncovered.append((path, module, name, 'no CSRF marker'))
+            uncovered.append((path, module, name, 'no CSRF marker/delegate'))
     assert not uncovered, 'winning POST routes without visible CSRF protection/delegation:\n' + '\n'.join(map(str, uncovered))
 
 
