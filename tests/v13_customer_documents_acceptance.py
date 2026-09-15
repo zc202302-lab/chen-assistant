@@ -91,12 +91,48 @@ def main():
             expect(page.locator('[data-customer-panel="documents"]')).to_be_visible()
             expect(page.locator('[data-v13-storage-state]')).to_contain_text('美国节点', timeout=5000)
 
-            page.locator('[data-v13-upload] select[name="category"]').select_option(label='营业执照')
+            # v1.4.3: customer "资料" is not file-only. Free-form records can store
+            # account names, URLs and other text, and their type is user-defined.
+            resource_form = page.locator('[data-v143-resource-form]')
+            expect(resource_form).to_be_visible(timeout=5000)
+            resource_form.locator('input[name="resource_type"]').fill('客户后台网址')
+            resource_form.locator('input[name="name"]').fill('集团业务系统')
+            resource_form.locator('textarea[name="value"]').fill('https://example.com/customer/login')
+            resource_form.locator('input[name="note"]').fill('客户专属入口')
+            resource_form.locator('[data-v143-resource-save]').click()
+            expect(page.locator('[data-v143-resource-id]')).to_have_count(1, timeout=5000)
+            expect(page.locator('[data-v143-resource-id]')).to_contain_text('客户后台网址')
+            expect(page.locator('[data-v143-resource-id]')).to_contain_text('集团业务系统')
+            expect(page.locator('[data-v143-resource-id]')).to_contain_text('https://example.com/customer/login')
+            expect(page.locator('[data-v143-resource-id] a', has_text='打开')).to_have_count(1)
+
+            page.locator('[data-v143-resource-edit]').click()
+            resource_form.locator('input[name="resource_type"]').fill('账号入口')
+            resource_form.locator('input[name="name"]').fill('集团系统账号入口')
+            resource_form.locator('[data-v143-resource-save]').click()
+            expect(page.locator('[data-v143-resource-id]')).to_contain_text('账号入口', timeout=5000)
+            expect(page.locator('[data-v143-resource-id]')).to_contain_text('集团系统账号入口')
+
+            with db() as conn:
+                resource = conn.execute(
+                    'SELECT resource_type,name,value,note FROM customer_resource_items_v143 WHERE customer_id=?',
+                    (cid,),
+                ).fetchone()
+                assert resource is not None
+                assert resource['resource_type'] == '账号入口'
+                assert resource['name'] == '集团系统账号入口'
+                assert resource['value'] == 'https://example.com/customer/login'
+                assert resource['note'] == '客户专属入口'
+
+            # File type is also free-form rather than a fixed category selector.
+            file_type = page.locator('[data-v13-upload] input[name="category"]')
+            expect(file_type).to_be_visible()
+            file_type.fill('客户自定义证照')
             page.locator('[data-v13-upload] input[type="file"]').set_input_files(str(SOURCE_FILE))
             page.locator('[data-v13-upload-button]').click()
             expect(page.locator('.v13-doc-row')).to_have_count(1, timeout=8000)
             expect(page.locator('.v13-doc-row')).to_contain_text('营业执照测试.txt')
-            expect(page.locator('.v13-doc-row')).to_contain_text('营业执照')
+            expect(page.locator('.v13-doc-row')).to_contain_text('客户自定义证照')
 
             remote_files = [p for p in REMOTE_ROOT.iterdir() if p.is_file() and not p.name.startswith('.')]
             assert len(remote_files) == 1, remote_files
@@ -110,7 +146,7 @@ def main():
                 ).fetchone()
                 assert row is not None
                 assert row['original_name'] == '营业执照测试.txt'
-                assert row['category'] == '营业执照'
+                assert row['category'] == '客户自定义证照'
                 assert int(row['size']) == len(SOURCE_CONTENT)
                 assert row['storage_key'] == remote_files[0].name
 
@@ -128,8 +164,14 @@ def main():
             with db() as conn:
                 assert conn.execute('SELECT COUNT(*) n FROM customer_documents WHERE customer_id=?', (cid,)).fetchone()['n'] == 0
 
+            page.once('dialog', lambda dialog: dialog.accept())
+            page.locator('[data-v143-resource-delete]').click()
+            expect(page.locator('[data-v143-resource-id]')).to_have_count(0, timeout=5000)
+            with db() as conn:
+                assert conn.execute('SELECT COUNT(*) n FROM customer_resource_items_v143 WHERE customer_id=?', (cid,)).fetchone()['n'] == 0
+
             browser.close()
-        print('v1.3 remote customer documents acceptance passed: upload -> US storage -> download -> delete')
+        print('v1.3/v1.4.3 customer resources acceptance passed: freeform info + custom file type + remote file lifecycle')
     finally:
         for proc in (app_proc, storage_proc):
             proc.terminate()
