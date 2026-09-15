@@ -85,13 +85,21 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8144'}])
             page = context.new_page()
 
-            # The top-left control is a deterministic parent-level navigation.
-            # This must test the actual click, not only the fallback attribute.
+            # v1.4.2 global navigation follows real browser history: back returns to
+            # the previous visited page and forward restores the page just left.
+            page.goto('http://127.0.0.1:8144/work', wait_until='networkidle')
             page.goto('http://127.0.0.1:8144/work/customers?home=payment', wait_until='networkidle')
-            back = page.locator('[data-global-back]')
-            expect(back).to_have_attribute('data-back-fallback', '/work')
+            back = page.locator('[data-history-back]')
+            forward = page.locator('[data-history-forward]')
+            expect(back).to_be_visible()
+            expect(forward).to_be_visible()
+            expect(back).to_be_enabled()
             back.click()
             expect(page).to_have_url('http://127.0.0.1:8144/work', timeout=3000)
+            forward = page.locator('[data-history-forward]')
+            expect(forward).to_be_enabled(timeout=3000)
+            forward.click()
+            expect(page).to_have_url('http://127.0.0.1:8144/work/customers?home=payment', timeout=3000)
 
             page.goto(f'http://127.0.0.1:8144/customers/{cid}', wait_until='networkidle')
             flow = page.locator('[data-v031-payment-flow]')
@@ -183,7 +191,7 @@ def main():
 
             browser.close()
 
-        print('v1.4.1 navigation + manual row review rollback acceptance passed')
+        print('v1.4.2 global history navigation + manual row review rollback acceptance passed')
     finally:
         proc.terminate()
         try:
