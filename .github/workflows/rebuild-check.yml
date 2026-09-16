@@ -102,6 +102,9 @@ jobs:
       - name: v1.5 customer live refresh acceptance
         run: python tests/v150_live_refresh_acceptance.py
 
+      - name: v1.5.1 live quick-search acceptance
+        run: python tests/v151_quick_search_live_acceptance.py
+
       - name: Legacy customer import browser acceptance
         run: python tests/v032_customer_import_acceptance.py
 
