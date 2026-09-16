@@ -76,8 +76,8 @@ def main():
             expect(page.locator('.v023-task-head .tab-text-link')).to_have_text('全部 0')
             assert page.evaluate('typeof window.ChenLiveRefresh?.refresh') == 'function'
 
-            # Let the initial live read establish its signature, then mutate the DB
-            # outside the browser. The open page must catch up without navigation.
+            # Establish the first page signature, then mutate authoritative data
+            # outside the browser. The same document must synchronize in place.
             page.wait_for_timeout(750)
             sentinel = 'keep-the-same-document'
             page.evaluate('(value) => { window.__liveRefreshSentinel = value; }', sentinel)
@@ -91,6 +91,19 @@ def main():
                     'INSERT INTO tasks(customer_id,title,remind_date,note,done,created_at) VALUES(?,?,?,?,?,?)',
                     (cid, '无需F5的新待办', '2026-09-17', '', 0, now),
                 )
+                conn.execute(
+                    'INSERT INTO contacts(customer_id,kind,name,relationship,phone) VALUES(?,?,?,?,?)',
+                    (cid, '财务', '无需F5的新联系人', '缴费联系人', '13800000000'),
+                )
+                conn.execute(
+                    'INSERT INTO visits(customer_id,visit_date,kind,result,plan,created_at) VALUES(?,?,?,?,?,?)',
+                    (cid, '2026-09-16', '电话', '无需F5的新跟进', '继续跟进', now),
+                )
+                conn.execute(
+                    '''INSERT INTO services(customer_id,service_type,holder_name,number,account,sort_order)
+                       VALUES(?,?,?,?,?,?)''',
+                    (cid, '测试业务', '测试成员', '13900000000', 'ACC-LIVE-001', 1),
+                )
 
             page.evaluate('window.ChenLiveRefresh.refresh()')
             expect(page.locator('.v023-name-line h1')).to_have_text('实时刷新客户·已更新', timeout=4000)
@@ -98,6 +111,10 @@ def main():
             expect(page.locator('.v023-identity-strip > div:nth-child(2) b')).to_have_text('TAX-002')
             expect(page.locator('.v023-task-head .tab-text-link')).to_have_text('全部 1')
             expect(page.locator('.v023-task-card .v023-task-line span')).to_have_text('无需F5的新待办')
+            expect(page.locator('[data-customer-panel="contacts"]')).to_contain_text('无需F5的新联系人')
+            expect(page.locator('[data-customer-panel="tasks"]')).to_contain_text('无需F5的新待办')
+            expect(page.locator('[data-customer-panel="visits"]')).to_contain_text('无需F5的新跟进')
+            expect(page.locator('[data-business-list] > [data-business-row]')).to_have_count(1)
             assert page.evaluate('window.__liveRefreshSentinel') == sentinel, 'live refresh must not navigate/reload the document'
 
             # Dirty editors are protected from polling; server changes must not
