@@ -56,6 +56,12 @@
     if (current.value !== fresh.value) current.value = fresh.value;
   };
 
+  const panelBusy = panel => {
+    if (!panel) return false;
+    if (document.activeElement && panel.contains(document.activeElement)) return true;
+    return !!panel.querySelector('[data-chen-dirty="1"],.is-saving,.sort-source-v0211,.v03-business-sort-source');
+  };
+
   const syncTaskPreview = freshDocument => {
     const currentCard = document.querySelector('.v023-task-card');
     const freshCard = freshDocument.querySelector('.v023-task-card');
@@ -131,9 +137,82 @@
       }
     }
 
-    // The mature workflow controller owns the four-stage buttons. Ask it to
-    // re-read authoritative server state rather than replacing its DOM nodes.
     window.ChenPaymentWorkflowRuntimeV031?.refresh?.();
+  };
+
+  // Contacts/tasks/visits contain only simple document-level interactions. Their
+  // card contents can be replaced in-place without losing the tab element,
+  // scroll position or global event delegation.
+  const syncSimplePanel = (name, freshDocument) => {
+    const currentPanel = root.querySelector(`[data-customer-panel="${name}"]`);
+    const freshPanel = freshDocument.querySelector(`[data-customer-panel="${name}"]`);
+    if (!currentPanel || !freshPanel || panelBusy(currentPanel)) return;
+    const currentCard = currentPanel.querySelector(':scope > .card, :scope > section.card');
+    const freshCard = freshPanel.querySelector(':scope > .card, :scope > section.card');
+    if (!currentCard || !freshCard) return;
+    if (hashText(currentCard.innerHTML) === hashText(freshCard.innerHTML)) return;
+    currentCard.innerHTML = freshCard.innerHTML;
+    softlyMark(currentCard);
+  };
+
+  const copyAttributes = (target, source, keep = new Set()) => {
+    const preserved = new Map();
+    keep.forEach(name => {
+      if (target.hasAttribute(name)) preserved.set(name, target.getAttribute(name));
+    });
+    [...target.attributes].forEach(attr => target.removeAttribute(attr.name));
+    [...source.attributes].forEach(attr => target.setAttribute(attr.name, attr.value));
+    preserved.forEach((value, name) => target.setAttribute(name, value));
+  };
+
+  // Keep the business list container itself alive because its drag/filter
+  // controllers are bound to that node. Reconcile keyed service rows inside it.
+  const syncBusinessRows = freshDocument => {
+    const currentPanel = root.querySelector('[data-customer-panel="services"]');
+    const freshPanel = freshDocument.querySelector('[data-customer-panel="services"]');
+    const currentList = currentPanel?.querySelector('[data-business-list]');
+    const freshList = freshPanel?.querySelector('[data-business-list]');
+    if (!currentPanel || !freshPanel || !currentList || !freshList || panelBusy(currentPanel)) return;
+
+    const currentRows = new Map([...currentList.querySelectorAll(':scope > [data-business-row]')]
+      .map(row => [String(row.dataset.serviceId || ''), row]));
+    const freshRows = [...freshList.querySelectorAll(':scope > [data-business-row]')];
+    const freshIds = new Set(freshRows.map(row => String(row.dataset.serviceId || '')));
+    let changed = false;
+
+    for (const freshRow of freshRows) {
+      const id = String(freshRow.dataset.serviceId || '');
+      if (!id) continue;
+      let currentRow = currentRows.get(id);
+      if (!currentRow) {
+        currentRow = freshRow.cloneNode(true);
+        currentList.appendChild(currentRow);
+        changed = true;
+      } else if (hashText(currentRow.outerHTML) !== hashText(freshRow.outerHTML)) {
+        const wasHidden = currentRow.hidden;
+        copyAttributes(currentRow, freshRow, new Set(wasHidden ? ['hidden'] : []));
+        currentRow.innerHTML = freshRow.innerHTML;
+        if (wasHidden) currentRow.hidden = true;
+        changed = true;
+      }
+      // Server order is authoritative. appendChild moves existing nodes without
+      // recreating the sortable list or its listeners.
+      currentList.appendChild(currentRow);
+    }
+
+    for (const [id, row] of currentRows.entries()) {
+      if (id && !freshIds.has(id)) {
+        row.remove();
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      const visibleCount = currentList.querySelectorAll(':scope > [data-business-row]:not([hidden])').length;
+      const counter = document.getElementById('businessVisibleCount');
+      if (counter) counter.textContent = String(visibleCount);
+      softlyMark(currentList);
+    }
   };
 
   const syncFromDocument = freshDocument => {
@@ -144,6 +223,10 @@
     syncTaskPreview(freshDocument);
     syncPromotionBadge(freshDocument);
     syncPaymentSummary(freshDocument);
+    syncBusinessRows(freshDocument);
+    syncSimplePanel('contacts', freshDocument);
+    syncSimplePanel('tasks', freshDocument);
+    syncSimplePanel('visits', freshDocument);
 
     window.dispatchEvent(new CustomEvent('chen:live-refresh', {
       detail: {customerId, freshDocument},
@@ -169,7 +252,7 @@
       const freshDocument = new DOMParser().parseFromString(html, 'text/html');
       syncFromDocument(freshDocument);
     } catch (_) {
-      // Live refresh is enhancement-only. Existing page behavior must keep working.
+      // Enhancement only: existing mature page behavior remains the fallback.
     } finally {
       refreshing = false;
     }
@@ -185,7 +268,6 @@
     refreshSoon: () => scheduleRefresh(180),
   };
 
-  // Mark manual edits so polling never overwrites text that the user is typing.
   root.addEventListener('input', event => {
     const field = event.target.closest?.('input,textarea,select');
     if (field) field.dataset.chenDirty = '1';
@@ -198,7 +280,7 @@
     event.target.querySelectorAll?.('[data-chen-dirty="1"]').forEach(field => delete field.dataset.chenDirty);
   }, true);
 
-  // Observe all existing AJAX writes without changing their success/error flow.
+  // Observe all existing AJAX writes without changing their own success/error flow.
   window.fetch = async (input, init = {}) => {
     const response = await nativeFetch(input, init);
     try {
@@ -212,8 +294,6 @@
     return response;
   };
 
-  // If another tab/device changes the same customer, the open page catches up
-  // automatically. Polling is deliberately light and pauses while hidden.
   const interval = setInterval(() => {
     if (!document.hidden) refreshNow();
   }, 8000);
@@ -223,8 +303,6 @@
   });
   window.addEventListener('pagehide', () => clearInterval(interval), {once: true});
 
-  // Preserve position on an explicit browser reload, reducing the visual jump
-  // while keeping normal navigation/back-forward semantics unchanged.
   const restoreKey = `chen-reload-position:${location.pathname}`;
   const navEntry = performance.getEntriesByType?.('navigation')?.[0];
   if (navEntry?.type === 'reload') {

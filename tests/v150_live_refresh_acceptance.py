@@ -76,8 +76,6 @@ def main():
             expect(page.locator('.v023-task-head .tab-text-link')).to_have_text('全部 0')
             assert page.evaluate('typeof window.ChenLiveRefresh?.refresh') == 'function'
 
-            # Let the initial live read establish its signature, then mutate the DB
-            # outside the browser. The open page must catch up without navigation.
             page.wait_for_timeout(750)
             sentinel = 'keep-the-same-document'
             page.evaluate('(value) => { window.__liveRefreshSentinel = value; }', sentinel)
@@ -91,6 +89,19 @@ def main():
                     'INSERT INTO tasks(customer_id,title,remind_date,note,done,created_at) VALUES(?,?,?,?,?,?)',
                     (cid, '无需F5的新待办', '2026-09-17', '', 0, now),
                 )
+                conn.execute(
+                    'INSERT INTO contacts(customer_id,kind,name,relationship,phone) VALUES(?,?,?,?,?)',
+                    (cid, '财务', '无需F5的新联系人', '缴费联系人', '13800000000'),
+                )
+                conn.execute(
+                    'INSERT INTO visits(customer_id,visit_date,kind,result,plan,created_at) VALUES(?,?,?,?,?,?)',
+                    (cid, '2026-09-16', '电话', '无需F5的新跟进', '继续跟进', now),
+                )
+                conn.execute(
+                    '''INSERT INTO services(customer_id,service_type,holder_name,number,account,sort_order)
+                       VALUES(?,?,?,?,?,?)''',
+                    (cid, '测试业务', '测试成员', '13900000000', 'ACC-LIVE-001', 1),
+                )
 
             page.evaluate('window.ChenLiveRefresh.refresh()')
             expect(page.locator('.v023-name-line h1')).to_have_text('实时刷新客户·已更新', timeout=4000)
@@ -98,10 +109,12 @@ def main():
             expect(page.locator('.v023-identity-strip > div:nth-child(2) b')).to_have_text('TAX-002')
             expect(page.locator('.v023-task-head .tab-text-link')).to_have_text('全部 1')
             expect(page.locator('.v023-task-card .v023-task-line span')).to_have_text('无需F5的新待办')
+            expect(page.locator('[data-customer-panel="contacts"]')).to_contain_text('无需F5的新联系人')
+            expect(page.locator('[data-customer-panel="tasks"]')).to_contain_text('无需F5的新待办')
+            expect(page.locator('[data-customer-panel="visits"]')).to_contain_text('无需F5的新跟进')
+            expect(page.locator('[data-business-list] > [data-business-row]')).to_have_count(1)
             assert page.evaluate('window.__liveRefreshSentinel') == sentinel, 'live refresh must not navigate/reload the document'
 
-            # Dirty editors are protected from polling; server changes must not
-            # overwrite a value the user is actively typing.
             edit = page.locator('.v023-customer-edit input[name="name"]')
             page.locator('.v023-customer-edit summary').click()
             edit.fill('我正在输入，不能被刷新覆盖')
@@ -115,8 +128,25 @@ def main():
             expect(edit).to_have_value('我正在输入，不能被刷新覆盖')
             expect(page.locator('.v023-name-line h1')).to_have_text('服务器再次更新')
 
+            # Top-right search no longer navigates just to open search. The home
+            # page behaves the same way; navigation only happens after submitting
+            # a non-empty query, and customer results come first.
+            page.goto('http://127.0.0.1:8143/', wait_until='networkidle')
+            home_url = page.url
+            page.locator('[data-quick-search-trigger]').click()
+            expect(page.locator('[data-quick-search-v15]')).to_be_visible()
+            assert page.url == home_url
+            search_input = page.locator('[data-quick-search-input]')
+            search_input.fill('服务器再次更新')
+            assert page.url == home_url
+            search_input.press('Enter')
+            expect(page).to_have_url(__import__('re').compile(r'/global-search\?q='), timeout=4000)
+            first_section = page.locator('.v10-search-sections .v10-section').nth(0)
+            expect(first_section.locator('h2')).to_contain_text('客户')
+            expect(first_section).to_contain_text('服务器再次更新')
+
             browser.close()
-        print('v1.5 customer live refresh acceptance passed')
+        print('v1.5 live refresh + quick search acceptance passed')
     finally:
         proc.terminate()
         try:

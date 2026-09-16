@@ -5,23 +5,26 @@
   const customerId = workspace.dataset.customerId;
   if (!customerId) return;
 
-  const servicesPanel = workspace.querySelector('[data-customer-panel="services"]');
-  const sectionHead = servicesPanel?.querySelector('.section-head');
-  if (!sectionHead) return;
+  const profileCard = workspace.querySelector('.v023-profile-card');
+  const identityStrip = profileCard?.querySelector('.v023-identity-strip');
+  const editDetails = identityStrip?.querySelector('.v023-customer-edit');
+  if (!profileCard || !identityStrip) return;
 
   const csrf = workspace.querySelector('input[name="csrf"]')?.value
     || workspace.querySelector('[data-payment-workbench]')?.dataset.csrf
     || '';
 
+  // Customer status is a customer-level property, so it belongs with the
+  // customer's identity instead of inside the Business table header.
   const control = document.createElement('div');
-  control.className = 'customer-runtime-v143';
+  control.className = 'customer-runtime-v143 customer-runtime-profile-v143';
   control.setAttribute('data-customer-runtime-v143', '');
   control.innerHTML = `
     <span class="customer-runtime-label-v143" data-customer-runtime-label>客户状态</span>
     <span class="customer-runtime-badge-v143" data-customer-runtime-badge>读取中</span>
     <button type="button" class="customer-runtime-action-v143" data-customer-runtime-action disabled>停用客户</button>
   `;
-  sectionHead.appendChild(control);
+  identityStrip.insertBefore(control, editDetails || null);
 
   const badge = control.querySelector('[data-customer-runtime-badge]');
   const action = control.querySelector('[data-customer-runtime-action]');
@@ -98,7 +101,9 @@
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) throw new Error(data.detail || data.error || `status ${response.status}`);
       paint(data.status);
-      window.location.reload();
+      // Keep the current document/scroll position. The shared live-refresh layer
+      // will reconcile authoritative payment/business state in place.
+      window.ChenLiveRefresh?.refresh?.();
     } catch (error) {
       console.error('customer status update failed', error);
       action.disabled = false;

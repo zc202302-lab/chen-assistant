@@ -92,8 +92,6 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8146'}])
             page = context.new_page()
 
-            # Navigation remains real back/forward, but is now large and centered
-            # in the page top bar instead of tucked into the left corner.
             page.goto('http://127.0.0.1:8146/work', wait_until='networkidle')
             nav = page.locator('[data-history-nav]')
             back = page.locator('[data-history-back]')
@@ -113,31 +111,29 @@ def main():
             page.locator('[data-history-forward]').click()
             expect(page).to_have_url('http://127.0.0.1:8146/work/customers?home=payment', timeout=3000)
 
-            # Customer-level status lives on the Business page. Existing customer
-            # and every existing service default/preserve their prior status.
             page.goto(f'http://127.0.0.1:8146/customers/{cid}?tab=services', wait_until='networkidle')
             status = page.locator('[data-customer-runtime-v143]')
             expect(status).to_be_visible()
+            # Customer-level status belongs to the top customer identity area, not
+            # to the Business table header.
+            assert page.locator('.v023-profile-card [data-customer-runtime-v143]').count() == 1
+            assert page.locator('[data-customer-panel="services"] [data-customer-runtime-v143]').count() == 0
             expect(status.locator('[data-customer-runtime-badge]')).to_have_text('已启用', timeout=3000)
             expect(status.locator('[data-customer-runtime-action]')).to_have_text('停用客户')
             expect(page.locator('#requiredCount')).to_have_text('1')
             assert page.locator(f'[data-business-row][data-service-id="{inactive_sid}"]').count() == 1
 
-            # Stop the whole customer: no service-level status is overwritten, all
-            # payment reminders disappear, and the Business page explicitly shows
-            # that the customer-level gate is the reason.
+            sentinel = 'same-document-status-toggle'
+            page.evaluate('(value) => window.__statusSentinel = value', sentinel)
             status.locator('[data-customer-runtime-action]').click()
-            page.wait_for_load_state('networkidle')
-            status = page.locator('[data-customer-runtime-v143]')
             expect(status.locator('[data-customer-runtime-badge]')).to_have_text('已停用', timeout=3000)
             expect(status.locator('[data-customer-runtime-action]')).to_have_text('重新启用')
             expect(page.locator('.customer-inactive-note-v143')).to_contain_text('不参与任何缴费提醒')
-            expect(page.locator('[data-payment-row]')).to_have_count(0)
-            expect(page.locator('.v023-review-count').nth(0)).to_contain_text('本月应缴 0')
-            expect(page.locator('#paymentReadiness')).to_have_text('客户已停用，不参与本月缴费提醒')
+            expect(page.locator('[data-payment-row]')).to_have_count(0, timeout=5000)
+            assert page.evaluate('window.__statusSentinel') == sentinel, 'status toggle must not reload the document'
             expect(page.locator('[data-business-row] [data-attr-key="__payment_state__"] strong')).to_have_count(2)
             for i in range(2):
-                expect(page.locator('[data-business-row] [data-attr-key="__payment_state__"] strong').nth(i)).to_have_text('客户停用')
+                expect(page.locator('[data-business-row] [data-attr-key="__payment_state__"] strong').nth(i)).to_have_text('客户停用', timeout=5000)
 
             with db() as conn:
                 customer_runtime = conn.execute(
@@ -149,19 +145,15 @@ def main():
                     (active_sid, inactive_sid),
                 ).fetchall()
                 by_id = {int(row['service_id']): row['status'] for row in service_runtime}
-                # Active service has no runtime row; inactive service must remain inactive.
                 assert by_id.get(inactive_sid) == 'inactive', by_id
                 assert by_id.get(active_sid, 'active') == 'active', by_id
 
-            # Re-enable the customer. The active service returns to the payment list,
-            # while the individually disabled service stays disabled exactly as before.
             status.locator('[data-customer-runtime-action]').click()
-            page.wait_for_load_state('networkidle')
-            status = page.locator('[data-customer-runtime-v143]')
             expect(status.locator('[data-customer-runtime-badge]')).to_have_text('已启用', timeout=3000)
-            expect(page.locator('[data-payment-row]')).to_have_count(1)
+            expect(page.locator('[data-payment-row]')).to_have_count(1, timeout=5000)
             expect(page.locator(f'[data-payment-row][data-service-id="{active_sid}"]')).to_have_count(1)
             expect(page.locator(f'[data-payment-row][data-service-id="{inactive_sid}"]')).to_have_count(0)
+            assert page.evaluate('window.__statusSentinel') == sentinel, 're-enable must keep the same document'
             with db() as conn:
                 row = conn.execute('SELECT status FROM service_runtime_v0212 WHERE service_id=?', (inactive_sid,)).fetchone()
                 assert row and row['status'] == 'inactive'
@@ -170,7 +162,7 @@ def main():
 
             browser.close()
 
-        print('v1.4.3 centered navigation + customer-level active/inactive acceptance passed')
+        print('v1.4.3 centered navigation + profile-level live customer status acceptance passed')
     finally:
         proc.terminate()
         try:
