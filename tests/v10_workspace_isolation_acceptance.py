@@ -75,7 +75,7 @@ def main():
 
             page.goto('http://127.0.0.1:8141/', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '客户', '生活', '搜索']
-            expect(page.get_by_text('工作空间', exact=True)).to_be_visible()
+            expect(page.get_by_role('heading', name='客户管理')).to_be_visible()
             expect(page.get_by_text('生活空间', exact=True)).to_be_visible()
             assert_history_nav(page)
 
