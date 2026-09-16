@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from . import config
@@ -119,31 +119,16 @@ def work_search_v124(request: Request, q: str = ''):
         like = f'%{q}%'
         compact = _compact_number(q)
         with db() as conn:
-            exact = conn.execute(
-                '''SELECT s.id service_id,s.customer_id,c.name customer_name,
-                          s.service_type,s.holder_name,s.number,s.account
-                   FROM services s JOIN customers c ON c.id=s.customer_id
-                   WHERE s.number=? OR s.account=?
-                      OR (?<>'' AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(s.number,' ',''),'-',''),'(',''),')',''),'—','')=?)
-                   ORDER BY c.name,s.sort_order,s.id LIMIT 3''',
-                (q, q, compact, compact),
-            ).fetchall()
-            if len(exact) == 1:
-                hit = exact[0]
-                return RedirectResponse(
-                    f"/customers/{hit['customer_id']}?tab=services&focus_service={hit['service_id']}",
-                    status_code=303,
-                )
-
             service_hits = conn.execute(
                 '''SELECT s.id service_id,s.customer_id,c.name customer_name,c.group_code,
                           s.service_type,s.holder_name,s.number,s.account
                    FROM services s JOIN customers c ON c.id=s.customer_id
                    WHERE s.number LIKE ? OR s.account LIKE ? OR s.holder_name LIKE ?
                       OR s.service_type LIKE ? OR c.name LIKE ? OR c.group_code LIKE ?
+                      OR (?<>'' AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(s.number,' ',''),'-',''),'(',''),')',''),'—','') LIKE ?)
                    ORDER BY CASE WHEN s.number=? OR s.account=? THEN 0 ELSE 1 END,
                             c.name,s.sort_order,s.id LIMIT 50''',
-                (like, like, like, like, like, like, q, q),
+                (like, like, like, like, like, like, compact, f'%{compact}%', q, q),
             ).fetchall()
             customers = conn.execute(
                 '''SELECT DISTINCT c.id,c.name,c.group_code,c.tax_id FROM customers c
@@ -151,8 +136,9 @@ def work_search_v124(request: Request, q: str = ''):
                    LEFT JOIN contacts k ON k.customer_id=c.id
                    WHERE c.name LIKE ? OR c.group_code LIKE ? OR c.tax_id LIKE ?
                       OR s.number LIKE ? OR s.account LIKE ? OR s.holder_name LIKE ? OR k.name LIKE ?
+                      OR (?<>'' AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(s.number,' ',''),'-',''),'(',''),')',''),'—','') LIKE ?)
                    ORDER BY c.name LIMIT 50''',
-                (like, like, like, like, like, like, like),
+                (like, like, like, like, like, like, like, compact, f'%{compact}%'),
             ).fetchall()
             accounts = conn.execute(
                 '''SELECT id,platform,url,username,email,tags FROM website_accounts
