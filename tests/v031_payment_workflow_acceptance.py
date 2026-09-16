@@ -121,19 +121,17 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
             page = context.new_page()
 
-            # CI has no real Windows desktop/Foxmail process. Stub the current v0.7
+            # CI has no real Windows desktop/Foxmail process. Stub the current v0.8
             # helper contract faithfully so this historical acceptance continues to
-            # validate the payment workflow itself without weakening any stage/state
-            # assertions. The transport stub must look exactly like a verified v0.7
-            # helper, including its health capability declaration and compose result.
+            # validate the payment workflow itself without weakening stage/state checks.
             page.route('http://127.0.0.1:18763/health', lambda route: route.fulfill(
                 status=200, content_type='application/json',
-                body='{"ok":true,"version":"0.7","launch_mode":"foxmail-exe-mailto","mapi_required":false}',
+                body='{"ok":true,"version":"0.8","launch_mode":"foxmail-exe-mailto-dialog","attachment_mode":"file-dialog-uiautomation","mapi_required":false}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
                 status=200, content_type='application/json',
-                body='{"ok":true,"mode":"foxmail-exe-mailto-clipboard","verified":true,"launch_verified":true,"clipboard_verified":true,"attachment_filename_exact":true,"state":"compose-window-detected"}',
+                body='{"ok":true,"mode":"foxmail-exe-mailto-dialog","verified":true,"launch_verified":true,"attachment_dialog_verified":true,"attachment_filename_exact":true,"state":"attachment-dialog-completed"}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route(f'**/customers/{cid}/payment-mail-compose-v031', lambda route: route.fulfill(
@@ -171,10 +169,6 @@ def main():
             downloaded_path = download.path(); assert downloaded_path is not None
             assert Path(downloaded_path).read_text(encoding='utf-8').splitlines() == ['13800000001|100', '13800000002|120']
 
-            # v1.2.4: Enter confirms the edited row immediately. When all rows are
-            # confirmed, the mature workflow also keeps/repairs the top-level review
-            # state automatically. Downstream communication/payment states must still
-            # be invalidated after any real amount change.
             assert_no_dialog_while(page, lambda: fixed_input.fill('125')); fixed_input.press('Enter')
             expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
             expect(variable_row).to_have_attribute('data-confirmed', '1', timeout=3000)

@@ -7,7 +7,7 @@ $InstallDir = Join-Path $env:LOCALAPPDATA 'ChenAssistant'
 $BootstrapPath = Join-Path $InstallDir 'chen_foxmail_bootstrap.ps1'
 $HelperPath = Join-Path $InstallDir 'chen_foxmail_helper.ps1'
 $BootstrapUrl = 'https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_bootstrap.ps1'
-$HelperUrl = 'https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_helper_v07.ps1'
+$HelperUrl = 'https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_helper_v08.ps1'
 $StartupName = 'ChenAssistant-Foxmail-Helper.lnk'
 $UpdateIntervalMinutes = 30
 $WatchIntervalSeconds = 20
@@ -39,9 +39,6 @@ function Stop-Bridge {
 }
 
 function Get-BridgePowerShell {
-    # v0.7 does not load Foxmail MAPI. Use the normal interactive Windows
-    # PowerShell process so mailto launch, foreground control and clipboard work
-    # in the signed-in desktop session regardless of Foxmail bitness.
     $native = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
     if (Test-Path -LiteralPath $native) { return $native }
     return 'powershell.exe'
@@ -85,12 +82,13 @@ function Test-HelperFile([string]$Path) {
         $text = [IO.File]::ReadAllText($Path, [Text.Encoding]::ASCII)
         foreach ($marker in @(
             '[switch]$BridgeMode',
-            "HelperVersion = '0.7'",
+            "HelperVersion = '0.8'",
             "AllowedRootDomain = 'ziboxiaozhushou.cn'",
             "Path -eq '/compose'",
             'Build-MailtoUri',
-            'Set-AttachmentClipboard',
-            "mode = 'foxmail-exe-mailto-clipboard'"
+            'Add-AttachmentViaDialog',
+            'UIAutomationClient',
+            "mode = 'foxmail-exe-mailto-dialog'"
         )) {
             if (-not $text.Contains($marker)) { return $false }
         }
@@ -131,10 +129,6 @@ function Update-Helper {
 
 function Install-Bootstrap {
     New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-
-    # When this script is launched with `irm <url> | iex`, PowerShell does not
-    # populate $PSCommandPath. In that case download a real copy of the current
-    # bootstrap to disk before creating the startup shortcut/watchdog.
     $source = $null
     if ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath)) {
         $source = [IO.Path]::GetFullPath($PSCommandPath)
@@ -186,13 +180,13 @@ if (-not $Watch) {
     $started = Start-Bridge
     Start-Watchdog
     Write-Host ''
-    Write-Host 'Chen Assistant Windows helper v0.7 bootstrap installed.' -ForegroundColor Green
+    Write-Host 'Chen Assistant Windows helper v0.8 bootstrap installed.' -ForegroundColor Green
     Write-Host "Install directory: $InstallDir"
     Write-Host ('Latest helper downloaded: ' + $(if ($updated) { 'yes' } else { 'already current or network unavailable' }))
     Write-Host ('Helper running: ' + $(if ($started) { 'yes' } else { 'no' }))
     Write-Host ('Bridge PowerShell: ' + (Get-BridgePowerShell))
-    Write-Host 'Foxmail launch mode: direct Foxmail.exe + mailto + clipboard attachment.'
-    Write-Host 'Simple MAPI is not used by v0.7.'
+    Write-Host 'Foxmail launch mode: direct Foxmail.exe + mailto + native attachment dialog.'
+    Write-Host 'Simple MAPI and compose-window file paste are not used by v0.8.'
     Write-Host ''
     Write-Host 'Return to Chen Assistant and refresh the page.'
     Read-Host 'Press Enter to close'
