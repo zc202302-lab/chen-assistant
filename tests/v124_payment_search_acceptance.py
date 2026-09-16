@@ -130,7 +130,8 @@ def main():
                 expect(review).to_be_disabled(timeout=5000)
                 assert page.locator('[data-v124-payment-tools]').count() == 0
                 assert page.locator('[data-v125-payment-filter]').count() == 0
-                assert page.locator('.v124-payment-total-row #paymentGrandTotal').count() == 1
+                assert page.locator('[data-payment-total-row-v152] #paymentGrandTotal').count() == 1
+                assert page.locator('.v124-payment-total-row #paymentGrandTotal').count() == 0
                 expect(page.locator('[data-v128-finder="payment"] [data-v128-finder-trigger]')).to_be_visible()
 
             cid, sid, _, _, extra_sid = seeded[1]
