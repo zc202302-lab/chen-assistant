@@ -22,9 +22,11 @@ def main():
     assert 'high-frequency-v152.css?v=1520' in base
     assert 'high-frequency-v152.js?v=1520' in base
     assert 'payment-total-row-v152' in js
-    assert "event.target.closest('[data-review-toggle]')" in js
+    assert "event.target.closest?.('.v028-workspace [data-review-toggle]')" in js
+    assert "event.target.closest?.('.v028-workspace .quick-amount')" in js
     assert 'focusAmountAndCopyAccount' in js
     assert '.identifier-copy[data-kind="账号"][data-copy]' in js
+    assert "item.dataset.confirmed === '0'" in js
     assert 'grid-column:5' in css
     print('v1.5.2 high-frequency customer/payment contract passed')
 
