@@ -1,0 +1,234 @@
+(() => {
+  const root = document.querySelector('.v0211-workspace');
+  if (!root) return;
+
+  const customerId = root.dataset.customerId || '';
+  if (!customerId) return;
+
+  const nativeFetch = window.fetch.bind(window);
+  let refreshTimer = 0;
+  let refreshing = false;
+  let lastHtmlSignature = '';
+
+  const softlyMark = element => {
+    if (!element || typeof element.animate !== 'function') return;
+    try {
+      element.animate([{opacity: 0.58}, {opacity: 1}], {duration: 150, easing: 'ease-out'});
+    } catch (_) {}
+  };
+
+  const syncText = (selector, freshDocument) => {
+    const current = document.querySelector(selector);
+    const fresh = freshDocument.querySelector(selector);
+    if (!current || !fresh) return false;
+    const next = fresh.textContent;
+    if (current.textContent === next) return false;
+    current.textContent = next;
+    softlyMark(current);
+    return true;
+  };
+
+  const syncCopyValue = (selector, freshDocument) => {
+    const current = document.querySelector(selector);
+    const fresh = freshDocument.querySelector(selector);
+    if (!current || !fresh) return;
+    const value = fresh.dataset.copy || '';
+    if (current.dataset.copy !== value) current.dataset.copy = value;
+  };
+
+  const syncInput = (selector, freshDocument) => {
+    const current = document.querySelector(selector);
+    const fresh = freshDocument.querySelector(selector);
+    if (!current || !fresh || document.activeElement === current || current.dataset.chenDirty === '1') return;
+    if (current.type === 'checkbox') {
+      current.checked = fresh.checked;
+      return;
+    }
+    if (current.value !== fresh.value) current.value = fresh.value;
+  };
+
+  const syncTaskPreview = freshDocument => {
+    const currentCard = document.querySelector('.v023-task-card');
+    const freshCard = freshDocument.querySelector('.v023-task-card');
+    if (!currentCard || !freshCard) return;
+
+    syncText('.v023-task-head .tab-text-link', freshDocument);
+    const addButton = currentCard.querySelector('.v023-add-task');
+    if (!addButton) return;
+
+    const currentRows = [...currentCard.querySelectorAll('.v023-task-line,.v023-task-empty')];
+    const freshRows = [...freshCard.querySelectorAll('.v023-task-line,.v023-task-empty')];
+    const currentSig = currentRows.map(row => row.textContent.trim()).join('\n');
+    const freshSig = freshRows.map(row => row.textContent.trim()).join('\n');
+    if (currentSig === freshSig) return;
+
+    currentRows.forEach(row => row.remove());
+    freshRows.forEach(row => addButton.before(row.cloneNode(true)));
+    softlyMark(currentCard);
+  };
+
+  const syncPromotionBadge = freshDocument => {
+    const button = document.querySelector('[data-customer-tab="promotions"]');
+    const freshButton = freshDocument.querySelector('[data-customer-tab="promotions"]');
+    if (!button || !freshButton) return;
+    const currentBadge = button.querySelector('.tab-count');
+    const freshBadge = freshButton.querySelector('.tab-count');
+    if (!freshBadge) {
+      currentBadge?.remove();
+      return;
+    }
+    if (!currentBadge) {
+      button.appendChild(freshBadge.cloneNode(true));
+      softlyMark(button);
+      return;
+    }
+    if (currentBadge.textContent !== freshBadge.textContent) {
+      currentBadge.textContent = freshBadge.textContent;
+      softlyMark(currentBadge);
+    }
+  };
+
+  const syncCustomerHeader = freshDocument => {
+    syncText('.v023-name-line h1', freshDocument);
+    syncText('.v023-identity-strip > div:nth-child(1) b', freshDocument);
+    syncText('.v023-identity-strip > div:nth-child(2) b', freshDocument);
+    syncCopyValue('.v023-name-line .copy-btn', freshDocument);
+    syncCopyValue('.v023-identity-strip > div:nth-child(1) .copy-btn', freshDocument);
+    syncCopyValue('.v023-identity-strip > div:nth-child(2) .copy-btn', freshDocument);
+
+    syncInput('.v023-customer-edit input[name="name"]', freshDocument);
+    syncInput('.v023-customer-edit input[name="group_code"]', freshDocument);
+    syncInput('.v023-customer-edit input[name="tax_id"]', freshDocument);
+    syncInput('.v023-customer-edit textarea[name="relation_summary"]', freshDocument);
+    syncInput('.v023-customer-edit input[name="payment_enabled"]', freshDocument);
+
+    const freshTitle = freshDocument.querySelector('title')?.textContent?.trim();
+    if (freshTitle && document.title !== freshTitle) document.title = freshTitle;
+  };
+
+  const syncPaymentSummary = freshDocument => {
+    [
+      '#requiredCount', '#pendingCount', '#paymentGrandTotal', '#paymentReadiness',
+      '#paymentRunLabel',
+    ].forEach(selector => syncText(selector, freshDocument));
+
+    const currentTxt = document.getElementById('paymentTxtButton');
+    const freshTxt = freshDocument.getElementById('paymentTxtButton');
+    if (currentTxt && freshTxt) {
+      for (const name of ['class', 'aria-disabled', 'href']) {
+        const value = freshTxt.getAttribute(name);
+        if (value === null) currentTxt.removeAttribute(name);
+        else currentTxt.setAttribute(name, value);
+      }
+    }
+
+    // The mature workflow controller owns the four-stage buttons. Ask it to
+    // re-read authoritative server state rather than replacing its DOM nodes.
+    window.ChenPaymentWorkflowRuntimeV031?.refresh?.();
+  };
+
+  const syncFromDocument = freshDocument => {
+    const freshRoot = freshDocument.querySelector('.v0211-workspace');
+    if (!freshRoot || freshRoot.dataset.customerId !== customerId) return;
+
+    syncCustomerHeader(freshDocument);
+    syncTaskPreview(freshDocument);
+    syncPromotionBadge(freshDocument);
+    syncPaymentSummary(freshDocument);
+
+    window.dispatchEvent(new CustomEvent('chen:live-refresh', {
+      detail: {customerId, freshDocument},
+    }));
+  };
+
+  const refreshNow = async () => {
+    if (refreshing || document.hidden) return;
+    if (document.querySelector('dialog[open]')) return;
+    refreshing = true;
+    try {
+      const response = await nativeFetch(location.href, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: {'X-Chen-Live-Refresh': '1'},
+      });
+      if (!response.ok) return;
+      const html = await response.text();
+      const signature = `${html.length}:${html.slice(-240)}`;
+      if (signature === lastHtmlSignature) return;
+      lastHtmlSignature = signature;
+      const freshDocument = new DOMParser().parseFromString(html, 'text/html');
+      syncFromDocument(freshDocument);
+    } catch (_) {
+      // Live refresh is enhancement-only. Existing page behavior must keep working.
+    } finally {
+      refreshing = false;
+    }
+  };
+
+  const scheduleRefresh = (delay = 180) => {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(refreshNow, delay);
+  };
+
+  window.ChenLiveRefresh = {
+    refresh: () => scheduleRefresh(0),
+    refreshSoon: () => scheduleRefresh(180),
+  };
+
+  // Mark manual edits so polling never overwrites text that the user is typing.
+  root.addEventListener('input', event => {
+    const field = event.target.closest?.('input,textarea,select');
+    if (field) field.dataset.chenDirty = '1';
+  }, true);
+  root.addEventListener('change', event => {
+    const field = event.target.closest?.('input,textarea,select');
+    if (field) field.dataset.chenDirty = '1';
+  }, true);
+  root.addEventListener('submit', event => {
+    event.target.querySelectorAll?.('[data-chen-dirty="1"]').forEach(field => delete field.dataset.chenDirty);
+  }, true);
+
+  // Observe all existing AJAX writes without changing their success/error flow.
+  window.fetch = async (input, init = {}) => {
+    const response = await nativeFetch(input, init);
+    try {
+      const method = String(init?.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+      const url = new URL(input instanceof Request ? input.url : String(input), location.href);
+      if (response.ok && url.origin === location.origin && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        scheduleRefresh(220);
+        setTimeout(() => scheduleRefresh(0), 800);
+      }
+    } catch (_) {}
+    return response;
+  };
+
+  // If another tab/device changes the same customer, the open page catches up
+  // automatically. Polling is deliberately light and pauses while hidden.
+  const interval = setInterval(() => {
+    if (!document.hidden) refreshNow();
+  }, 8000);
+  window.addEventListener('focus', () => scheduleRefresh(80));
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) scheduleRefresh(80);
+  });
+  window.addEventListener('pagehide', () => clearInterval(interval), {once: true});
+
+  // Preserve position on an explicit browser reload, reducing the visual jump
+  // while keeping normal navigation/back-forward semantics unchanged.
+  const restoreKey = `chen-reload-position:${location.pathname}`;
+  const navEntry = performance.getEntriesByType?.('navigation')?.[0];
+  if (navEntry?.type === 'reload') {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(restoreKey) || 'null');
+      if (saved && Date.now() - Number(saved.at || 0) < 30000) {
+        requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({top: Number(saved.y || 0), behavior: 'auto'})));
+      }
+    } catch (_) {}
+  }
+  window.addEventListener('beforeunload', () => {
+    try { sessionStorage.setItem(restoreKey, JSON.stringify({y: window.scrollY, at: Date.now()})); } catch (_) {}
+  });
+
+  scheduleRefresh(500);
+})();
