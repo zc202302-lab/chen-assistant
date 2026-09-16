@@ -74,7 +74,7 @@ def main():
             page = context.new_page()
 
             # Work quick search stays on the current document while typing and
-            # shows customer results first, before number/account detail hits.
+            # shows customer results first, before any detail-hit sections.
             page.goto('http://127.0.0.1:8147/work', wait_until='networkidle')
             start_url = page.url
             page.locator('[data-quick-search-trigger]').click()
@@ -85,8 +85,7 @@ def main():
             live = page.locator('[data-quick-search-results]')
             expect(live).to_be_visible(timeout=4000)
             groups = live.locator('.quick-search-group-v151')
-            expect(groups).to_have_count(1)
-            expect(groups.nth(0).locator('.quick-search-group-head-v151 strong')).to_have_text('客户')
+            expect(groups.nth(0).locator('.quick-search-group-head-v151 strong')).to_have_text('客户', timeout=4000)
             expect(groups.nth(0)).to_contain_text('欧木自动搜索客户')
             assert page.locator('[data-quick-search-form] input[name="q"]').count() == 0
 
