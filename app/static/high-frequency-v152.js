@@ -36,9 +36,19 @@
     return ok;
   };
 
-  const nextPendingBelow = row => {
+  const currentRowByServiceId = serviceId => {
+    if (!serviceId) return null;
+    return [...workbench.querySelectorAll('[data-payment-row]')]
+      .find(item => String(item.dataset.serviceId || '') === String(serviceId)) || null;
+  };
+
+  const nextPendingBelow = serviceId => {
+    // Live refresh can replace the payment-row DOM immediately after a successful
+    // request. Resolve the source again by its stable service id instead of keeping
+    // a detached Element reference captured before the request.
     const rows = [...workbench.querySelectorAll('[data-payment-row]')];
-    const index = rows.indexOf(row);
+    const source = rows.find(item => String(item.dataset.serviceId || '') === String(serviceId));
+    const index = rows.indexOf(source);
     if (index < 0) return null;
     // "未核对" is authoritative; a deliberately unchecked fixed row is also a
     // valid destination and must not be skipped.
@@ -57,8 +67,12 @@
     if (rect.top < top) window.scrollBy({top: rect.top - top, behavior:'auto'});
     else if (rect.bottom > window.innerHeight - 18) window.scrollBy({top: rect.bottom - (window.innerHeight - 18), behavior:'auto'});
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      input.focus({preventScroll:true});
-      try { input.setSelectionRange(0, input.value.length); } catch (_) { input.select?.(); }
+      // Re-resolve once more before focusing: another same-document reconciliation
+      // may have happened while clipboard access was pending.
+      const liveRow = currentRowByServiceId(String(row.dataset.serviceId || '')) || row;
+      const liveInput = liveRow.querySelector('.quick-amount') || input;
+      liveInput.focus({preventScroll:true});
+      try { liveInput.setSelectionRange(0, liveInput.value.length); } catch (_) { liveInput.select?.(); }
     }));
   };
 
@@ -66,7 +80,7 @@
   let serial = 0;
   const arm = (kind, row) => {
     if (!row) return;
-    armed = {kind, row, serial: ++serial, serviceId: String(row.dataset.serviceId || '')};
+    armed = {kind, serial: ++serial, serviceId: String(row.dataset.serviceId || '')};
   };
 
   // v0.2.8 handles Enter at document capture phase and stops propagation. Window
@@ -116,8 +130,7 @@
         if (armed?.serial === pending.serial) armed = null;
         return;
       }
-      const source = pending.row;
-      const next = nextPendingBelow(source);
+      const next = nextPendingBelow(pending.serviceId);
       if (armed?.serial === pending.serial) armed = null;
       if (next) await focusAmountAndCopyAccount(next);
     }, 0);
