@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -107,6 +108,121 @@ payment_save_preserve_reviews_v032.__module__ = 'app.v031_fixed_review_patch'
 
 def _compact_number(value: str) -> str:
     return ''.join(ch for ch in (value or '') if ch.isdigit())
+
+
+def _suggest_item(kind: str, title: str, meta: str, href: str) -> dict[str, str]:
+    return {'kind': kind, 'title': title or '', 'meta': meta or '', 'href': href}
+
+
+@router.get('/quick-search-suggest')
+def quick_search_suggest_v151(q: str = '', scope: str = 'work'):
+    """Small, customer-first suggestion payload for the top-bar quick search.
+
+    This endpoint never changes the current page. The browser only navigates after
+    the user chooses a suggestion or explicitly submits the full search form.
+    """
+    q = q.strip()
+    if not q:
+        return JSONResponse({'ok': True, 'groups': []})
+
+    scope = 'global' if scope == 'global' else 'work'
+    like = f'%{q}%'
+    compact = _compact_number(q)
+    groups: list[dict] = []
+
+    with db() as conn:
+        customers = conn.execute(
+            '''SELECT DISTINCT c.id,c.name,c.group_code,c.tax_id FROM customers c
+               LEFT JOIN services s ON s.customer_id=c.id
+               LEFT JOIN contacts k ON k.customer_id=c.id
+               WHERE c.name LIKE ? OR c.group_code LIKE ? OR c.tax_id LIKE ?
+                  OR s.number LIKE ? OR s.account LIKE ? OR s.holder_name LIKE ? OR k.name LIKE ?
+                  OR (?<>'' AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(s.number,' ',''),'-',''),'(',''),')',''),'—','') LIKE ?)
+               ORDER BY CASE WHEN c.name=? THEN 0 WHEN c.name LIKE ? THEN 1 ELSE 2 END,c.name
+               LIMIT 6''',
+            (like, like, like, like, like, like, like, compact, f'%{compact}%', q, f'{q}%'),
+        ).fetchall()
+        if customers:
+            groups.append({
+                'label': '客户',
+                'items': [
+                    _suggest_item(
+                        'customer', row['name'],
+                        ' · '.join(x for x in (row['group_code'], row['tax_id']) if x),
+                        f"/customers/{row['id']}",
+                    ) for row in customers
+                ],
+            })
+
+        services = conn.execute(
+            '''SELECT s.id service_id,s.customer_id,c.name customer_name,
+                      s.service_type,s.holder_name,s.number,s.account
+               FROM services s JOIN customers c ON c.id=s.customer_id
+               WHERE s.number LIKE ? OR s.account LIKE ? OR s.holder_name LIKE ? OR s.service_type LIKE ?
+                  OR (?<>'' AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(s.number,' ',''),'-',''),'(',''),')',''),'—','') LIKE ?)
+               ORDER BY CASE WHEN s.number=? OR s.account=? THEN 0 ELSE 1 END,c.name,s.sort_order,s.id
+               LIMIT 6''',
+            (like, like, like, like, compact, f'%{compact}%', q, q),
+        ).fetchall()
+        if services:
+            groups.append({
+                'label': '号码 / 账号',
+                'items': [
+                    _suggest_item(
+                        'service',
+                        row['number'] or row['account'] or row['holder_name'] or row['service_type'] or '业务',
+                        ' · '.join(x for x in (row['customer_name'], row['holder_name'], row['account'] if row['number'] else '') if x),
+                        f"/customers/{row['customer_id']}?tab=services&focus_service={row['service_id']}",
+                    ) for row in services
+                ],
+            })
+
+        accounts = conn.execute(
+            '''SELECT id,platform,username,email FROM website_accounts
+               WHERE platform LIKE ? OR url LIKE ? OR username LIKE ? OR email LIKE ? OR tags LIKE ?
+               ORDER BY platform LIMIT 5''',
+            (like, like, like, like, like),
+        ).fetchall()
+        if accounts:
+            groups.append({
+                'label': '网站账户',
+                'items': [
+                    _suggest_item(
+                        'account', row['platform'] or row['username'] or '网站账户',
+                        row['username'] or row['email'] or '', f"/accounts/{row['id']}",
+                    ) for row in accounts
+                ],
+            })
+
+        if scope == 'global':
+            recipes = conn.execute(
+                '''SELECT r.id,r.name,r.category FROM recipes r
+                   WHERE r.archived=0 AND (r.name LIKE ? OR r.category LIKE ? OR r.tags LIKE ? OR r.description LIKE ?)
+                   ORDER BY CASE WHEN r.name=? THEN 0 WHEN r.name LIKE ? THEN 1 ELSE 2 END,r.name LIMIT 5''',
+                (like, like, like, like, q, f'{q}%'),
+            ).fetchall()
+            if recipes:
+                groups.append({
+                    'label': '菜谱',
+                    'items': [_suggest_item('recipe', row['name'], row['category'], f"/life/recipes/{row['id']}") for row in recipes],
+                })
+
+            knowledge = conn.execute(
+                '''SELECT id,category,title FROM cooking_knowledge
+                   WHERE title LIKE ? OR category LIKE ? OR content LIKE ?
+                   ORDER BY CASE WHEN title=? THEN 0 WHEN title LIKE ? THEN 1 ELSE 2 END,category,title LIMIT 5''',
+                (like, like, like, q, f'{q}%'),
+            ).fetchall()
+            if knowledge:
+                groups.append({
+                    'label': '烹饪知识',
+                    'items': [
+                        _suggest_item('knowledge', row['title'], row['category'], f"/life/knowledge?q={quote_plus(row['title'])}")
+                        for row in knowledge
+                    ],
+                })
+
+    return JSONResponse({'ok': True, 'groups': groups})
 
 
 @router.get('/search', response_class=HTMLResponse)
