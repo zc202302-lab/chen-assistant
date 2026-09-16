@@ -7,7 +7,7 @@ $InstallDir = Join-Path $env:LOCALAPPDATA 'ChenAssistant'
 $BootstrapPath = Join-Path $InstallDir 'chen_foxmail_bootstrap.ps1'
 $HelperPath = Join-Path $InstallDir 'chen_foxmail_helper.ps1'
 $BootstrapUrl = 'https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_bootstrap.ps1'
-$HelperUrl = 'https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_helper_v08.ps1'
+$HelperUrl = 'https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_helper_v09.ps1'
 $StartupName = 'ChenAssistant-Foxmail-Helper.lnk'
 $UpdateIntervalMinutes = 30
 $WatchIntervalSeconds = 20
@@ -82,13 +82,13 @@ function Test-HelperFile([string]$Path) {
         $text = [IO.File]::ReadAllText($Path, [Text.Encoding]::ASCII)
         foreach ($marker in @(
             '[switch]$BridgeMode',
-            "HelperVersion = '0.8'",
+            "HelperVersion = '0.9'",
             "AllowedRootDomain = 'ziboxiaozhushou.cn'",
             "Path -eq '/compose'",
             'Build-MailtoUri',
-            'Add-AttachmentViaDialog',
-            'UIAutomationClient',
-            "mode = 'foxmail-exe-mailto-dialog'"
+            'Show-AttachmentInExplorer',
+            "attachment_mode='manual-file-selection'",
+            "mode = 'foxmail-exe-mailto-file-ready'"
         )) {
             if (-not $text.Contains($marker)) { return $false }
         }
@@ -180,13 +180,13 @@ if (-not $Watch) {
     $started = Start-Bridge
     Start-Watchdog
     Write-Host ''
-    Write-Host 'Chen Assistant Windows helper v0.8 bootstrap installed.' -ForegroundColor Green
+    Write-Host 'Chen Assistant Windows helper v0.9 bootstrap installed.' -ForegroundColor Green
     Write-Host "Install directory: $InstallDir"
     Write-Host ('Latest helper downloaded: ' + $(if ($updated) { 'yes' } else { 'already current or network unavailable' }))
     Write-Host ('Helper running: ' + $(if ($started) { 'yes' } else { 'no' }))
     Write-Host ('Bridge PowerShell: ' + (Get-BridgePowerShell))
-    Write-Host 'Foxmail launch mode: direct Foxmail.exe + mailto + native attachment dialog.'
-    Write-Host 'Simple MAPI and compose-window file paste are not used by v0.8.'
+    Write-Host 'Foxmail launch mode: direct Foxmail.exe + mailto; TXT is prepared and selected in Explorer for manual attachment.'
+    Write-Host 'The helper never auto-attaches and never sends mail.'
     Write-Host ''
     Write-Host 'Return to Chen Assistant and refresh the page.'
     Read-Host 'Press Enter to close'
