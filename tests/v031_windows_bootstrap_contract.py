@@ -14,7 +14,7 @@ def main():
         'Invoke-WebRequest', 'Get-FileHash', 'Parser]::ParseFile',
         "chen_foxmail_helper.download.ps1", "chen_foxmail_helper.new.ps1",
         "ChenAssistant-Foxmail-Helper.lnk", "-Watch",
-        "$HelperVersion = '0.7'", 'Build-MailtoUri', 'Set-AttachmentClipboard',
+        "HelperVersion = '0.7'", 'Build-MailtoUri', 'Set-AttachmentClipboard',
         'Simple MAPI is not used by v0.7.',
     ):
         assert token in bootstrap, token
