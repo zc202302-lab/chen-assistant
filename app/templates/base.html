@@ -23,19 +23,21 @@
   <link rel="stylesheet" href="/static/v10.css?v=1000">
   <link rel="stylesheet" href="/static/work-home-polish-v121.css?v=1210">
   <link rel="stylesheet" href="/static/global-back.css?v=1430">
-  <link rel="stylesheet" href="/static/v143_customer_status.css?v=1430">
+  <link rel="stylesheet" href="/static/v143_customer_status.css?v=1431">
   <link rel="stylesheet" href="/static/v143_customer_resources.css?v=1431">
   <link rel="stylesheet" href="/static/v124_work_tables.css?v=1241">
   <link rel="stylesheet" href="/static/v125_excel_review.css?v=1250">
   <link rel="stylesheet" href="/static/v128_table_finder.css?v=1280">
   <link rel="stylesheet" href="/static/v13_customer_documents.css?v=1300">
   <link rel="stylesheet" href="/static/work-architecture-v14.css?v=1400">
+  <link rel="stylesheet" href="/static/quick-search-v15.css?v=1500">
   <title>{% block title %}晨的助手{% endblock %}</title>
 </head>
 <body>
 {% set _path = request.url.path %}
 {% set _is_work = _path == '/work' or _path.startswith('/work/') or _path == '/search' or _path.startswith('/customers') or _path.startswith('/products') or _path.startswith('/accounts') %}
 {% set _is_life = _path.startswith('/life') %}
+{% set _search_target = '/search' if _is_work else '/global-search' %}
 <header class="topbar">
   <div class="topbar-left">
     <div class="global-history-nav" data-history-nav aria-label="页面前进后退">
@@ -44,8 +46,17 @@
     </div>
     <a class="brand" href="/">晨的助手 <span>v{{ request.app.version }}</span></a>
   </div>
-  <a class="search-link" href="{% if _is_work %}/search{% else %}/global-search{% endif %}" aria-label="搜索">⌕</a>
+  <a class="search-link" href="{{ _search_target }}" aria-label="搜索" data-quick-search-trigger>⌕</a>
 </header>
+<div class="quick-search-v15" data-quick-search-v15 hidden>
+  <div class="quick-search-card-v15" role="dialog" aria-modal="true" aria-label="搜索">
+    <form class="quick-search-form-v15" method="get" action="{{ _search_target }}" data-quick-search-form>
+      <input class="quick-search-input-v15" name="q" autocomplete="off" placeholder="{% if _is_work %}客户名 / 集团编码 / 税号 / 号码 / 账号{% else %}客户、号码、账号、菜名、知识点…{% endif %}" data-quick-search-input>
+      <button class="quick-search-submit-v15" type="submit">搜索</button>
+    </form>
+    <div class="quick-search-hint-v15"><span>输入内容后按 Enter 或点击“搜索”再进入结果页</span><button class="quick-search-close-v15" type="button" data-quick-search-close>取消</button></div>
+  </div>
+</div>
 <main class="page">{% block content %}{% endblock %}</main>
 {% if _is_work %}
 <nav class="bottom-nav" aria-label="工作导航">
@@ -92,7 +103,8 @@
 <script src="/static/v033_payment_flow_patch.js?v=0331"></script>
 <script src="/static/v10.js?v=1000"></script>
 <script src="/static/global-back.js?v=1432"></script>
-<script src="/static/v143_customer_status.js?v=1430"></script>
+<script src="/static/quick-search-v15.js?v=1500"></script>
+<script src="/static/v143_customer_status.js?v=1431"></script>
 <script src="/static/v12.js?v=1200"></script>
 <script src="/static/v123_foxmail_compose_fix.js?v=1470"></script>
 <script src="/static/v124_work_tables.js?v=1241"></script>
@@ -102,6 +114,7 @@
 <script src="/static/v13_customer_documents.js?v=1300"></script>
 <script src="/static/v143_customer_resources.js?v=1431"></script>
 <script src="/static/live-refresh-v15.js?v=1500"></script>
+<script src="/static/live-refresh-modules-v15.js?v=1501"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
