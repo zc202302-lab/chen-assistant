@@ -121,21 +121,19 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
             page = context.new_page()
 
-            # Stub the current stable .eml Shell route and historical MAPI fallback.
-            # CI has no Windows helper; the first initiate click must nevertheless
-            # complete its prepare phase so the second click can confirm stage 3.
-            page.route(f'**/customers/{cid}/payment-mail-draft-v03', lambda route: route.fulfill(
-                status=200,
-                content_type='message/rfc822',
-                body='From: test@example.com\r\nTo: test@example.com\r\nSubject: test\r\n\r\nbody',
-                headers={'Content-Disposition': 'attachment; filename="payment.eml"'},
-            ))
-            page.route('http://127.0.0.1:18763/open', lambda route: route.fulfill(
-                status=200, content_type='application/json', body='{"ok":true,"mode":"eml-shell"}',
+            # CI has no real Windows desktop/Foxmail process. Stub the current v0.7
+            # helper contract faithfully so this historical acceptance continues to
+            # validate the payment workflow itself without weakening any stage/state
+            # assertions. The transport stub must look exactly like a verified v0.7
+            # helper, including its health capability declaration and compose result.
+            page.route('http://127.0.0.1:18763/health', lambda route: route.fulfill(
+                status=200, content_type='application/json',
+                body='{"ok":true,"version":"0.7","launch_mode":"foxmail-exe-mailto","mapi_required":false}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
-                status=200, content_type='application/json', body='{"ok":true,"mode":"mapi","verified":true,"state":"compose-window-detected"}',
+                status=200, content_type='application/json',
+                body='{"ok":true,"mode":"foxmail-exe-mailto-clipboard","verified":true,"launch_verified":true,"clipboard_verified":true,"attachment_filename_exact":true,"state":"compose-window-detected"}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route(f'**/customers/{cid}/payment-mail-compose-v031', lambda route: route.fulfill(

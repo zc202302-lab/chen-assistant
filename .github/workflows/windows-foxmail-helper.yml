@@ -5,6 +5,17 @@ on:
     branches: [main, v0.3-dev]
     paths:
       - 'app/static/chen_foxmail_helper.ps1'
+      - 'app/static/chen_foxmail_helper_v06.ps1'
+      - 'app/static/chen_foxmail_helper_v07.ps1'
+      - 'app/static/chen_foxmail_bootstrap.ps1'
+      - 'windows/**'
+      - '.github/workflows/windows-foxmail-helper.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/static/chen_foxmail_helper.ps1'
+      - 'app/static/chen_foxmail_helper_v06.ps1'
+      - 'app/static/chen_foxmail_helper_v07.ps1'
       - 'app/static/chen_foxmail_bootstrap.ps1'
       - 'windows/**'
       - '.github/workflows/windows-foxmail-helper.yml'
@@ -15,11 +26,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Parse helper and bootstrap with Windows PowerShell 5.1
+      - name: Parse helpers and bootstrap with Windows PowerShell 5.1
         shell: powershell
         run: |
           foreach ($path in @(
             'app/static/chen_foxmail_helper.ps1',
+            'app/static/chen_foxmail_helper_v06.ps1',
+            'app/static/chen_foxmail_helper_v07.ps1',
             'app/static/chen_foxmail_bootstrap.ps1'
           )) {
             $tokens = $null
@@ -35,11 +48,13 @@ jobs:
             }
             Write-Host "Windows PowerShell 5.1 syntax check passed: $path"
           }
-      - name: Verify helper scripts stay ASCII-safe
+      - name: Verify downloadable helper scripts stay ASCII-safe
         shell: powershell
         run: |
           foreach ($path in @(
             'app/static/chen_foxmail_helper.ps1',
+            'app/static/chen_foxmail_helper_v06.ps1',
+            'app/static/chen_foxmail_helper_v07.ps1',
             'app/static/chen_foxmail_bootstrap.ps1'
           )) {
             $bytes = [IO.File]::ReadAllBytes((Resolve-Path $path))
