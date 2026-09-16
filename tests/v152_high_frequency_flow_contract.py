@@ -20,12 +20,13 @@ def main():
     assert 'href="/work/customers">进入客户管理' in home
     assert 'href="/work/customers" class="nav-item">◎<span>客户</span>' in base
     assert 'high-frequency-v152.css?v=1520' in base
-    assert 'high-frequency-v152.js?v=1521' in base
+    assert 'high-frequency-v152.js?v=1522' in base
     assert 'payment-total-row-v152' in js
     assert "event.target.closest?.('.v028-workspace [data-review-toggle]')" in js
     assert "event.target.closest?.('.v028-workspace .quick-amount')" in js
     assert 'focusAmountAndCopyAccount' in js
     assert 'currentRowByServiceId' in js
+    assert 'waitForReviewedRow' in js
     assert 'nextPendingBelow(pending.serviceId)' in js
     assert '.identifier-copy[data-kind="账号"][data-copy]' in js
     assert "item.dataset.confirmed === '0'" in js
