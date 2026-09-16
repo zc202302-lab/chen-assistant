@@ -121,17 +121,17 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8136'}])
             page = context.new_page()
 
-            # CI has no real Windows desktop/Foxmail process. Stub the current v0.8
-            # helper contract faithfully so this historical acceptance continues to
-            # validate the payment workflow itself without weakening stage/state checks.
+            # CI has no real Windows desktop/Foxmail process. Stub the current v0.9
+            # helper contract faithfully: Foxmail draft verified, exact TXT prepared,
+            # Explorer selection dispatched, but attachment/send remain manual.
             page.route('http://127.0.0.1:18763/health', lambda route: route.fulfill(
                 status=200, content_type='application/json',
-                body='{"ok":true,"version":"0.8","launch_mode":"foxmail-exe-mailto-dialog","attachment_mode":"file-dialog-uiautomation","mapi_required":false}',
+                body='{"ok":true,"version":"0.9","launch_mode":"foxmail-exe-mailto-file-ready","attachment_mode":"manual-file-selection","auto_send":false,"mapi_required":false}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
                 status=200, content_type='application/json',
-                body='{"ok":true,"mode":"foxmail-exe-mailto-dialog","verified":true,"launch_verified":true,"attachment_dialog_verified":true,"attachment_filename_exact":true,"state":"attachment-dialog-completed"}',
+                body='{"ok":true,"mode":"foxmail-exe-mailto-file-ready","verified":true,"launch_verified":true,"attachment_file_verified":true,"explorer_dispatched":true,"attachment_filename_exact":true,"state":"draft-open-file-selected"}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route(f'**/customers/{cid}/payment-mail-compose-v031', lambda route: route.fulfill(
@@ -180,6 +180,7 @@ def main():
             expect(initiate).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: initiate.click(), 700)
             expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(initiate).to_contain_text('待确认', timeout=3000)
             assert_no_dialog_while(page, lambda: initiate.click()); expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=5000)
             expect(paid).to_be_enabled(timeout=5000)
 
@@ -196,6 +197,7 @@ def main():
             expect(initiate).to_be_enabled(timeout=5000)
             assert_no_dialog_while(page, lambda: initiate.click(), 700)
             expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
+            expect(initiate).to_contain_text('待确认', timeout=3000)
             assert_no_dialog_while(page, lambda: initiate.click()); expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=5000)
             assert_no_dialog_while(page, lambda: paid.click()); expect(paid).to_have_attribute('aria-pressed', 'true', timeout=5000)
 
@@ -215,7 +217,7 @@ def main():
                 assert restored == period, restored
             browser.close()
 
-        print('current app shell + mature payment template-TXT/Enter-confirm/nonblocking browser acceptance passed')
+        print('current app shell + mature payment template-TXT/manual-mail-preparation/nonblocking acceptance passed')
     finally:
         proc.terminate()
         try: proc.wait(timeout=5)
