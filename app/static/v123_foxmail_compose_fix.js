@@ -107,4 +107,40 @@
   const verifiedPrimary = async () => prepareFoxmailDraft();
   verifiedPrimary.__v147FoxmailManualAttachment = true;
   actions.prepareInitiate = verifiedPrimary;
+
+  const previousAlert = window.alert.bind(window);
+  window.alert = message => {
+    const text = String(message ?? '');
+    if (text.includes('Foxmail写邮件窗口已打开，并已带入收件人、主题、正文和TXT附件')) {
+      if (window.ChenToast) {
+        window.ChenToast('Foxmail草稿已打开，TXT已在资源管理器中选中；请手动加入附件并检查发送');
+      }
+      return;
+    }
+    return previousAlert(message);
+  };
+
+  const syncManualHint = () => {
+    const button = root.querySelector('[data-v031-flow-action="initiate"]');
+    if (!button) return;
+    const awaiting = button.classList.contains('awaiting-confirm');
+    const done = button.getAttribute('aria-pressed') === 'true';
+    const nextTitle = done
+      ? '已确认缴费邮件发送完成；点击可撤回此状态'
+      : awaiting
+        ? 'Foxmail草稿和TXT已准备；手动把资源管理器中选中的TXT加入邮件，检查并发送后再次点击确认'
+        : '准备Foxmail草稿和TXT文件；附件由你手动加入，系统不会自动发送邮件';
+    if (button.title !== nextTitle) button.title = nextTitle;
+  };
+
+  syncManualHint();
+  const flow = root.querySelector('[data-v031-payment-flow]');
+  if (flow) {
+    new MutationObserver(syncManualHint).observe(flow, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['class', 'aria-pressed', 'title'],
+    });
+  }
 })();
