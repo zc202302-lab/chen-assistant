@@ -48,6 +48,7 @@ jobs:
           python tests/v145_foxmail_launch_contract.py
           python tests/v145_bootstrap_iex_contract.py
           python tests/v151_quick_search_contract.py
+          python tests/v152_high_frequency_flow_contract.py
 
       - name: v1.2 architecture and recipe tools contracts
         run: |
@@ -105,6 +106,9 @@ jobs:
 
       - name: v1.5.1 live quick-search acceptance
         run: python tests/v151_quick_search_live_acceptance.py
+
+      - name: v1.5.2 high-frequency payment flow acceptance
+        run: python tests/v152_high_frequency_flow_acceptance.py
 
       - name: Legacy customer import browser acceptance
         run: python tests/v032_customer_import_acceptance.py
