@@ -84,7 +84,7 @@ function Test-HelperFile([string]$Path) {
         $text = [IO.File]::ReadAllText($Path, [Text.Encoding]::ASCII)
         foreach ($marker in @(
             '[switch]$BridgeMode',
-            "$HelperVersion = '0.7'",
+            "HelperVersion = '0.7'",
             "AllowedRootDomain = 'ziboxiaozhushou.cn'",
             "Path -eq '/compose'",
             'Build-MailtoUri',
