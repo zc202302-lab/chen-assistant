@@ -66,7 +66,7 @@ def work_home_v101(request: Request, home: str = ''):
 
 
 @router.get('/work/customers', response_class=HTMLResponse)
-def work_customer_management_v14(request: Request, home: str = 'tasks'):
+def work_customer_management_v14(request: Request, home: str = 'payment'):
     """Existing mature customer workbench, now explicitly under customer management."""
     return dashboard_v027(request, home)
 
