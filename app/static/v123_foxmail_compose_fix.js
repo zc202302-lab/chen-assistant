@@ -1,7 +1,7 @@
 (() => {
   const root = document.querySelector('.v0211-workspace');
   const actions = window.ChenPaymentWorkflowActionsV031;
-  if (!root || !actions?.prepareInitiate || actions.prepareInitiate.__v145FoxmailExePrimary) return;
+  if (!root || !actions?.prepareInitiate || actions.prepareInitiate.__v146FoxmailDialogPrimary) return;
 
   const customerId = root.dataset.customerId || '';
   if (!customerId) return;
@@ -17,7 +17,7 @@
     return (await response.text().catch(() => '')).trim() || `请求失败（${response.status}）`;
   };
 
-  const bridgeFetch = async (path, options = {}, timeoutMs = 22000) => {
+  const bridgeFetch = async (path, options = {}, timeoutMs = 30000) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -38,19 +38,24 @@
     }
   };
 
-  const requireV07Bridge = async () => {
+  const requireV08Bridge = async () => {
     const response = await bridgeFetch('/health', {headers: {'Accept': 'application/json'}}, 4000);
     const health = await response.json().catch(() => ({}));
     if (!response.ok || health?.ok !== true) {
       throw new Error('Windows 邮箱助手状态异常，请重新安装最新版 Windows 助手');
     }
-    if (health?.version !== '0.7' || health?.launch_mode !== 'foxmail-exe-mailto' || health?.mapi_required !== false) {
+    if (
+      health?.version !== '0.8' ||
+      health?.launch_mode !== 'foxmail-exe-mailto-dialog' ||
+      health?.attachment_mode !== 'file-dialog-uiautomation' ||
+      health?.mapi_required !== false
+    ) {
       throw new Error('检测到旧版 Windows 邮箱助手。请重新安装最新版助手后再发起缴费。');
     }
   };
 
   const openWithFoxmailExe = async () => {
-    await requireV07Bridge();
+    await requireV08Bridge();
 
     const compose = await fetch(`/customers/${customerId}/payment-mail-compose-v031`, {
       credentials: 'same-origin',
@@ -74,24 +79,29 @@
       result?.ok !== true ||
       result?.verified !== true ||
       result?.launch_verified !== true ||
-      result?.state !== 'compose-window-detected' ||
-      result?.mode !== 'foxmail-exe-mailto-clipboard'
+      result?.attachment_dialog_verified !== true ||
+      result?.state !== 'attachment-dialog-completed' ||
+      result?.mode !== 'foxmail-exe-mailto-dialog'
     ) {
       const message = String(result?.error || '');
       if (message.includes('compose window did not appear')) {
         throw new Error('Foxmail 没有真正打开写信窗口。请确认 Foxmail 已正常登录，然后重试。');
       }
-      throw new Error(message || `Foxmail 写信窗口启动失败（${response.status}）`);
+      if (message.includes('attachment dialog')) {
+        throw new Error('Foxmail 已打开写信窗口，但 TXT 附件没有成功通过附件窗口加入。请重试。');
+      }
+      throw new Error(message || `Foxmail 写信窗口启动或附件添加失败（${response.status}）`);
     }
 
     return {
       mode: result.mode,
       state: result.state,
       verified: true,
+      attachmentVerified: true,
     };
   };
 
   const verifiedPrimary = async () => openWithFoxmailExe();
-  verifiedPrimary.__v145FoxmailExePrimary = true;
+  verifiedPrimary.__v146FoxmailDialogPrimary = true;
   actions.prepareInitiate = verifiedPrimary;
 })();
