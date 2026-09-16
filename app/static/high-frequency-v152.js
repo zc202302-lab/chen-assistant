@@ -6,7 +6,8 @@
   if (!workbench) return;
 
   // Move the monthly total out of the header and align it with the amount column
-  // at the bottom of the current payment table.
+  // at the bottom of the current payment table. When there are no rows the total
+  // remains in the header, so an empty payment month never loses its summary.
   const paymentList = document.getElementById('paymentSortable');
   const total = document.querySelector('.v023-total');
   if (paymentList && total && !paymentList.querySelector('[data-payment-total-row-v152]')) {
@@ -39,7 +40,9 @@
     const rows = [...workbench.querySelectorAll('[data-payment-row]')];
     const index = rows.indexOf(row);
     if (index < 0) return null;
-    return rows.slice(index + 1).find(item => item.dataset.mode === 'variable' && item.dataset.confirmed === '0') || null;
+    // "未核对" is authoritative; a deliberately unchecked fixed row is also a
+    // valid destination and must not be skipped.
+    return rows.slice(index + 1).find(item => item.dataset.confirmed === '0') || null;
   };
 
   const focusAmountAndCopyAccount = async row => {
@@ -59,42 +62,65 @@
     }));
   };
 
-  let advanceSource = null;
-  let advanceToken = 0;
-
-  const armAdvance = row => {
-    if (!row || row.dataset.confirmed !== '0' || row.dataset.mode !== 'variable') return;
-    advanceSource = row;
-    advanceToken += 1;
+  let armed = null;
+  let serial = 0;
+  const arm = (kind, row) => {
+    if (!row) return;
+    armed = {kind, row, serial: ++serial, serviceId: String(row.dataset.serviceId || '')};
   };
 
-  // Enter already saves and advances in v0.2.8; remember the source so the
-  // destination row's account can be copied at the same time.
-  document.addEventListener('keydown', event => {
+  // v0.2.8 handles Enter at document capture phase and stops propagation. Window
+  // capture runs earlier, so it is the stable place to remember the user's intent
+  // without changing the mature save handler itself.
+  window.addEventListener('keydown', event => {
     if (event.key !== 'Enter') return;
     const input = event.target.closest?.('.v028-workspace .quick-amount');
     if (!input) return;
-    armAdvance(input.closest('[data-payment-row]'));
+    arm('amount', input.closest('[data-payment-row]'));
   }, true);
 
-  // Manual review confirmation gets the same advance behavior as Enter.
-  workbench.addEventListener('pointerdown', event => {
-    const button = event.target.closest('[data-review-toggle]');
+  // Only a manual transition from 未核对 -> 已核对 should advance. Remember the
+  // row before the existing handler sends its request.
+  window.addEventListener('pointerdown', event => {
+    const button = event.target.closest?.('.v028-workspace [data-review-toggle]');
     if (!button) return;
-    armAdvance(button.closest('[data-payment-row]'));
+    const row = button.closest('[data-payment-row]');
+    if (row?.dataset.confirmed === '0') arm('review', row);
   }, true);
 
-  const observer = new MutationObserver(() => {
-    const source = advanceSource;
-    if (!source || source.dataset.confirmed !== '1') return;
-    const token = advanceToken;
-    advanceSource = null;
-    const next = nextPendingBelow(source);
-    if (!next) return;
-    setTimeout(() => {
-      if (token !== advanceToken) return;
-      focusAmountAndCopyAccount(next);
+  // Observe the two established payment endpoints at the network boundary. This
+  // keeps all server/state semantics in the mature handlers; v1.5.2 only adds the
+  // post-success focus + clipboard behavior requested for high-frequency entry.
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (...args) => {
+    const requestUrl = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+    const pending = armed;
+    const isAmount = /\/services\/(\d+)\/payment-current(?:\?|$)/.exec(requestUrl);
+    const isReview = /\/services\/(\d+)\/payment-review-toggle(?:\?|$)/.exec(requestUrl);
+    const response = await nativeFetch(...args);
+
+    if (!pending || (!isAmount && !isReview)) return response;
+    const serviceId = String((isAmount || isReview)[1] || '');
+    if (serviceId !== pending.serviceId) return response;
+
+    const clone = response.clone();
+    setTimeout(async () => {
+      if (armed?.serial !== pending.serial) return;
+      let data = {};
+      try { data = await clone.json(); } catch (_) {}
+      if (!response.ok || !data?.ok) {
+        if (armed?.serial === pending.serial) armed = null;
+        return;
+      }
+      if (pending.kind === 'review' && !data.confirmed) {
+        if (armed?.serial === pending.serial) armed = null;
+        return;
+      }
+      const source = pending.row;
+      const next = nextPendingBelow(source);
+      if (armed?.serial === pending.serial) armed = null;
+      if (next) await focusAmountAndCopyAccount(next);
     }, 0);
-  });
-  observer.observe(workbench, {subtree:true, attributes:true, attributeFilter:['data-confirmed']});
+    return response;
+  };
 })();
