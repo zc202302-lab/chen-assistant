@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 $InstallDir = Join-Path $env:LOCALAPPDATA 'ChenAssistant'
 $BootstrapPath = Join-Path $InstallDir 'chen_foxmail_bootstrap.ps1'
 $HelperPath = Join-Path $InstallDir 'chen_foxmail_helper.ps1'
+$BootstrapUrl = 'https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_bootstrap.ps1'
 $HelperUrl = 'https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_helper_v07.ps1'
 $StartupName = 'ChenAssistant-Foxmail-Helper.lnk'
 $UpdateIntervalMinutes = 30
@@ -130,11 +131,43 @@ function Update-Helper {
 
 function Install-Bootstrap {
     New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-    $source = [IO.Path]::GetFullPath($PSCommandPath)
-    $target = [IO.Path]::GetFullPath($BootstrapPath)
-    if (-not $source.Equals($target, [StringComparison]::OrdinalIgnoreCase)) {
-        Copy-Item -Force -LiteralPath $source -Destination $BootstrapPath
+
+    # When this script is launched with `irm <url> | iex`, PowerShell does not
+    # populate $PSCommandPath. In that case download a real copy of the current
+    # bootstrap to disk before creating the startup shortcut/watchdog.
+    $source = $null
+    if ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath)) {
+        $source = [IO.Path]::GetFullPath($PSCommandPath)
     }
+
+    $target = [IO.Path]::GetFullPath($BootstrapPath)
+    if ($source) {
+        if (-not $source.Equals($target, [StringComparison]::OrdinalIgnoreCase)) {
+            Copy-Item -Force -LiteralPath $source -Destination $BootstrapPath
+        }
+    } else {
+        $download = Join-Path $InstallDir 'chen_foxmail_bootstrap.download.ps1'
+        Remove-Item -Force -ErrorAction SilentlyContinue $download
+        try {
+            $uri = $BootstrapUrl + '?install=' + [DateTime]::UtcNow.Ticks
+            Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $download -TimeoutSec 20
+            $bytes = [IO.File]::ReadAllBytes($download)
+            if ($bytes.Length -lt 1000) { throw 'Downloaded bootstrap is unexpectedly small.' }
+            if (($bytes | Where-Object { $_ -gt 127 }).Count -gt 0) { throw 'Downloaded bootstrap is not ASCII-safe.' }
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+                $download,
+                [ref]$tokens,
+                [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) { throw 'Downloaded bootstrap failed PowerShell syntax validation.' }
+            Copy-Item -Force -LiteralPath $download -Destination $BootstrapPath
+        } finally {
+            Remove-Item -Force -ErrorAction SilentlyContinue $download
+        }
+    }
+
     $startup = [Environment]::GetFolderPath('Startup')
     $shortcutPath = Join-Path $startup $StartupName
     $shell = New-Object -ComObject WScript.Shell
