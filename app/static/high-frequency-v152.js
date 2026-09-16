@@ -36,56 +36,55 @@
     return ok;
   };
 
-  const currentRowByServiceId = serviceId => {
-    if (!serviceId) return null;
-    return [...workbench.querySelectorAll('[data-payment-row]')]
-      .find(item => String(item.dataset.serviceId || '') === String(serviceId)) || null;
-  };
+  const rowsNow = () => [...workbench.querySelectorAll('[data-payment-row]')];
+  const currentRowByServiceId = serviceId => rowsNow()
+    .find(item => String(item.dataset.serviceId || '') === String(serviceId || '')) || null;
 
   const nextPendingBelow = serviceId => {
-    // Live refresh can replace the payment-row DOM immediately after a successful
-    // request. Resolve the source again by its stable service id instead of keeping
-    // a detached Element reference captured before the request.
-    const rows = [...workbench.querySelectorAll('[data-payment-row]')];
-    const source = rows.find(item => String(item.dataset.serviceId || '') === String(serviceId));
+    const rows = rowsNow();
+    const source = rows.find(item => String(item.dataset.serviceId || '') === String(serviceId || ''));
     const index = rows.indexOf(source);
     if (index < 0) return null;
-    // "未核对" is authoritative; a deliberately unchecked fixed row is also a
-    // valid destination and must not be skipped.
     return rows.slice(index + 1).find(item => item.dataset.confirmed === '0') || null;
   };
 
+  const accountValue = row => row?.querySelector('.identifier-copy[data-kind="账号"][data-copy]')?.dataset.copy || '';
+
   const focusAmountAndCopyAccount = async row => {
     if (!row) return;
-    const account = row.querySelector('.identifier-copy[data-kind="账号"][data-copy]');
-    if (account?.dataset.copy) await copyText(account.dataset.copy);
-    const input = row.querySelector('.quick-amount');
+    const serviceId = String(row.dataset.serviceId || '');
+    const account = accountValue(row);
+    if (account) await copyText(account);
+
+    // Clipboard access can yield long enough for same-document live refresh to
+    // reconcile the rows. Re-resolve the destination before scrolling/focusing.
+    const liveRow = currentRowByServiceId(serviceId) || row;
+    const input = liveRow.querySelector('.quick-amount');
     if (!input) return;
     const sticky = root.querySelector('.workspace-sticky-top');
     const top = (sticky ? sticky.getBoundingClientRect().bottom : 64) + 8;
-    const rect = row.getBoundingClientRect();
+    const rect = liveRow.getBoundingClientRect();
     if (rect.top < top) window.scrollBy({top: rect.top - top, behavior:'auto'});
     else if (rect.bottom > window.innerHeight - 18) window.scrollBy({top: rect.bottom - (window.innerHeight - 18), behavior:'auto'});
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      // Re-resolve once more before focusing: another same-document reconciliation
-      // may have happened while clipboard access was pending.
-      const liveRow = currentRowByServiceId(String(row.dataset.serviceId || '')) || row;
-      const liveInput = liveRow.querySelector('.quick-amount') || input;
-      liveInput.focus({preventScroll:true});
-      try { liveInput.setSelectionRange(0, liveInput.value.length); } catch (_) { liveInput.select?.(); }
+      const latestRow = currentRowByServiceId(serviceId) || liveRow;
+      const latestInput = latestRow.querySelector('.quick-amount') || input;
+      latestInput.focus({preventScroll:true});
+      try { latestInput.setSelectionRange(0, latestInput.value.length); } catch (_) { latestInput.select?.(); }
     }));
   };
 
   let armed = null;
   let serial = 0;
   const arm = (kind, row) => {
-    if (!row) return;
+    if (!row) return null;
     armed = {kind, serial: ++serial, serviceId: String(row.dataset.serviceId || '')};
+    return armed;
   };
 
-  // v0.2.8 handles Enter at document capture phase and stops propagation. Window
-  // capture runs earlier, so it is the stable place to remember the user's intent
-  // without changing the mature save handler itself.
+  // v0.2.8 already owns the mature Enter-save behavior and moves focus after a
+  // successful save. Remember the source before its document-capture handler runs;
+  // a later focusin on another payment amount is therefore the successful advance.
   window.addEventListener('keydown', event => {
     if (event.key !== 'Enter') return;
     const input = event.target.closest?.('.v028-workspace .quick-amount');
@@ -93,47 +92,48 @@
     arm('amount', input.closest('[data-payment-row]'));
   }, true);
 
-  // Only a manual transition from 未核对 -> 已核对 should advance. Remember the
-  // row before the existing handler sends its request.
+  root.addEventListener('focusin', event => {
+    const input = event.target.closest?.('.quick-amount');
+    if (!input || armed?.kind !== 'amount') return;
+    const row = input.closest('[data-payment-row]');
+    if (!row) return;
+    const targetId = String(row.dataset.serviceId || '');
+    if (!targetId || targetId === armed.serviceId) return;
+    const pending = armed;
+    armed = null;
+    // Focus has already landed on the mature handler's chosen next row. Copying
+    // does not disturb that focus, so no second competing navigation is introduced.
+    void copyText(accountValue(row));
+    if (pending.serial !== serial) return;
+  });
+
+  const waitForReviewedRow = (pending, attemptsLeft = 160) => {
+    if (!pending || pending.kind !== 'review') return;
+    if (armed?.serial !== pending.serial) return;
+    const source = currentRowByServiceId(pending.serviceId);
+    if (source?.dataset.confirmed === '1') {
+      const next = nextPendingBelow(pending.serviceId);
+      armed = null;
+      if (next) void focusAmountAndCopyAccount(next);
+      return;
+    }
+    if (attemptsLeft <= 0) {
+      if (armed?.serial === pending.serial) armed = null;
+      return;
+    }
+    setTimeout(() => waitForReviewedRow(pending, attemptsLeft - 1), 25);
+  };
+
+  // A manual 未核对 -> 已核对 is the one review action that advances. Instead of
+  // monkey-patching window.fetch, observe the authoritative DOM state that the
+  // mature v0.2.8 handler updates after a successful server response. This remains
+  // correct even when live refresh replaces payment-row elements during the request.
   window.addEventListener('pointerdown', event => {
     const button = event.target.closest?.('.v028-workspace [data-review-toggle]');
     if (!button) return;
     const row = button.closest('[data-payment-row]');
-    if (row?.dataset.confirmed === '0') arm('review', row);
+    if (row?.dataset.confirmed !== '0') return;
+    const pending = arm('review', row);
+    setTimeout(() => waitForReviewedRow(pending), 0);
   }, true);
-
-  // Observe the two established payment endpoints at the network boundary. This
-  // keeps all server/state semantics in the mature handlers; v1.5.2 only adds the
-  // post-success focus + clipboard behavior requested for high-frequency entry.
-  const nativeFetch = window.fetch.bind(window);
-  window.fetch = async (...args) => {
-    const requestUrl = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
-    const pending = armed;
-    const isAmount = /\/services\/(\d+)\/payment-current(?:\?|$)/.exec(requestUrl);
-    const isReview = /\/services\/(\d+)\/payment-review-toggle(?:\?|$)/.exec(requestUrl);
-    const response = await nativeFetch(...args);
-
-    if (!pending || (!isAmount && !isReview)) return response;
-    const serviceId = String((isAmount || isReview)[1] || '');
-    if (serviceId !== pending.serviceId) return response;
-
-    const clone = response.clone();
-    setTimeout(async () => {
-      if (armed?.serial !== pending.serial) return;
-      let data = {};
-      try { data = await clone.json(); } catch (_) {}
-      if (!response.ok || !data?.ok) {
-        if (armed?.serial === pending.serial) armed = null;
-        return;
-      }
-      if (pending.kind === 'review' && !data.confirmed) {
-        if (armed?.serial === pending.serial) armed = null;
-        return;
-      }
-      const next = nextPendingBelow(pending.serviceId);
-      if (armed?.serial === pending.serial) armed = null;
-      if (next) await focusAmountAndCopyAccount(next);
-    }, 0);
-    return response;
-  };
 })();
