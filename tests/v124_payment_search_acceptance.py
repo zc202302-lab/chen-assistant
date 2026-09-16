@@ -163,8 +163,6 @@ def main():
             expect(main_row).to_be_visible()
             expect(extra_row).to_be_visible()
 
-            # Exact-number search now stays on the results page first. Customer is
-            # the first result section; the precise service remains one click away.
             number = '13900000002'
             page.goto(f'http://127.0.0.1:8144/search?q={number}', wait_until='networkidle')
             expect(page).to_have_url(f'http://127.0.0.1:8144/search?q={number}')
@@ -191,7 +189,7 @@ def main():
             business_panel.locator('[data-v128-query]').fill('BACKUP-ACC')
             expect(extra_business).to_be_visible()
             expect(target).to_be_hidden()
-            business_finder.locator('[data-v128-clear]').click()
+            business_panel.locator('[data-v128-clear]').click()
             business_panel.locator('[data-v128-filter="mode"]').select_option('variable')
             expect(target).to_be_visible()
             expect(extra_business).to_be_visible()
