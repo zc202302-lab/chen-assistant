@@ -149,7 +149,6 @@ def main():
             extra_row.locator('[data-review-toggle]').click()
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=5000)
 
-            # Table header is clean. Find/filter appears only after opening the compact panel.
             assert page.locator('[data-v125-payment-filter]').count() == 0
             payment_finder = page.locator('[data-v128-finder="payment"]')
             payment_finder.locator('[data-v128-finder-trigger]').click()
@@ -164,10 +163,17 @@ def main():
             expect(main_row).to_be_visible()
             expect(extra_row).to_be_visible()
 
-            # Work-home/global work search: an exact phone number must open business tab
-            # and focus the precise service row, even if the stored number is formatted.
+            # Exact-number search now stays on the results page first. Customer is
+            # the first result section; the precise service remains one click away.
             number = '13900000002'
             page.goto(f'http://127.0.0.1:8144/search?q={number}', wait_until='networkidle')
+            expect(page).to_have_url(f'http://127.0.0.1:8144/search?q={number}')
+            cards = page.locator('section.card')
+            expect(cards.nth(0).locator('h2')).to_have_text('客户')
+            expect(cards.nth(0)).to_contain_text('实时联动-双业务')
+            service_hit = page.locator('[data-search-service-hit]').filter(has_text='139 0000-0002')
+            expect(service_hit).to_be_visible()
+            service_hit.click()
             assert f'/customers/{cid}' in page.url, page.url
             assert 'tab=services' in page.url and f'focus_service={sid}' in page.url, page.url
             target = page.locator(f'[data-business-row][data-service-id="{sid}"]')
@@ -176,7 +182,6 @@ def main():
             expect(target).to_have_class(__import__('re').compile(r'v128-focus-hit|v124-focus-hit'), timeout=5000)
             expect(page.locator('[data-customer-tab="services"]')).to_have_class(__import__('re').compile(r'active'), timeout=5000)
 
-            # Business table also uses one compact on-demand finder; no table-header inputs.
             assert page.locator('[data-business-filters]').count() == 0
             assert page.locator('.v125-business-header').count() == 0
             business_finder = page.locator('[data-v128-finder="business"]')
@@ -186,16 +191,16 @@ def main():
             business_panel.locator('[data-v128-query]').fill('BACKUP-ACC')
             expect(extra_business).to_be_visible()
             expect(target).to_be_hidden()
-            business_panel.locator('[data-v128-clear]').click()
+            business_finder.locator('[data-v128-clear]').click()
             business_panel.locator('[data-v128-filter="mode"]').select_option('variable')
             expect(target).to_be_visible()
             expect(extra_business).to_be_visible()
 
             page.goto('http://127.0.0.1:8144/search?q=G-B', wait_until='networkidle')
-            expect(page.locator('section.card').filter(has_text='客户')).to_contain_text('实时联动-双业务')
+            expect(page.locator('section.card').nth(0)).to_contain_text('实时联动-双业务')
 
             browser.close()
-        print('v1.2.8 compact table finder + exact-number landing acceptance passed')
+        print('v1.2.8 compact table finder + customer-first search acceptance passed')
     finally:
         proc.terminate()
         try:
