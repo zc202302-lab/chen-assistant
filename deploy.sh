@@ -45,9 +45,9 @@ with db() as conn:
     n=conn.execute('SELECT COUNT(*) n FROM recipe_versions WHERE change_summary LIKE ?',(f'{TEMPLATE_IMPORT_MARKER}%',)).fetchone()['n']; assert n==len(TEMPLATE_SHEET_NAMES)==18,n
     assert conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='customer_documents'").fetchone()
     assert conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='customer_resource_items_v143'").fetchone()
-for path in ['app/templates/cooking_tools_v12.html','app/templates/recipe_print_v101.html','app/static/v12.js','app/static/v12.css','app/static/recipe-print-v101.css','app/static/work-home-polish-v121.css','app/static/global-back.js','app/static/global-back.css','app/static/v143_customer_status.js','app/static/v143_customer_status.css','app/static/v143_customer_resources.js','app/static/v143_customer_resources.css','app/static/v13_customer_documents.js','app/static/v13_customer_documents.css','app/v143_payment_controls_patch.py','app/v143_customer_resources.py','app/v144_audit_hardening.py','app/work_architecture.py','app/templates/work_shell_v14.html','app/templates/work_library_v14.html','app/static/work-architecture-v14.css','storage_node/app.py']:
+for path in ['app/templates/cooking_tools_v12.html','app/templates/recipe_print_v101.html','app/static/v12.js','app/static/v12.css','app/static/recipe-print-v101.css','app/static/work-home-polish-v121.css','app/static/global-back.js','app/static/global-back.css','app/static/v143_customer_status.js','app/static/v143_customer_status.css','app/static/v143_customer_resources.js','app/static/v143_customer_resources.css','app/static/v13_customer_documents.js','app/static/v13_customer_documents.css','app/static/chen_foxmail_bootstrap.ps1','app/static/chen_foxmail_helper_v07.ps1','app/static/v123_foxmail_compose_fix.js','app/v143_payment_controls_patch.py','app/v143_customer_resources.py','app/v144_audit_hardening.py','app/work_architecture.py','app/templates/work_shell_v14.html','app/templates/work_library_v14.html','app/static/work-architecture-v14.css','storage_node/app.py']:
     assert Path(path).is_file(),path
-print('✓ v1.3 客户远程文件 + v1.4 工作双模块 + v1.4.3 功能 + 全量审计加固检查通过')
+print('✓ v1.3 客户远程文件 + v1.4 工作双模块 + v1.4.3 功能 + Foxmail v0.7 + 全量审计加固检查通过')
 PY
 if [[ -d data ]]; then chown "$SERVICE_USER:$SERVICE_GROUP" data; find data -maxdepth 1 -type f \( -name 'app.db' -o -name 'app.db-wal' -o -name 'app.db-shm' \) -exec chown "$SERVICE_USER:$SERVICE_GROUP" {} +; chmod u+rwx data; fi
 systemctl restart "$SERVICE"; sleep 3; HEALTH_JSON="$(curl -fsS "$HEALTH_URL")"; echo "$HEALTH_JSON"
@@ -64,6 +64,13 @@ find app/static -maxdepth 1 -type f \( -name '*.js' -o -name '*.css' \) -print0 
   rm -f "$TMP"
 done
 echo "✓ 全部 JS/CSS 静态资源一致"
+for ASSET in chen_foxmail_bootstrap.ps1 chen_foxmail_helper_v07.ps1; do
+  TMP="$(mktemp)"
+  curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP"
+  [[ "$(sha256sum "app/static/$ASSET"|awk '{print $1}')" == "$(sha256sum "$TMP"|awk '{print $1}')" ]] || { echo "✗ Foxmail 助手资源不一致：$ASSET"; rm -f "$TMP"; exit 1; }
+  rm -f "$TMP"
+done
+echo "✓ Foxmail v0.7 助手资源一致"
 if grep -q '^REMOTE_STORAGE_BASE_URL=' .env 2>/dev/null && grep -q '^REMOTE_STORAGE_TOKEN=' .env 2>/dev/null; then
   STORAGE_URL="$(grep '^REMOTE_STORAGE_BASE_URL=' .env | tail -n1 | cut -d= -f2-)"
   if [[ -n "$STORAGE_URL" ]]; then curl -fsS "${STORAGE_URL%/}/health" >/dev/null && echo "✓ 远程资料存储通道在线" || echo "⚠ 远程资料存储已配置，但当前健康检查失败"; fi
