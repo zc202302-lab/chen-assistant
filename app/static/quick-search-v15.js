@@ -47,5 +47,13 @@
       return;
     }
     input.value = q;
+    let field = form.querySelector('input[type="hidden"][name="q"]');
+    if (!field) {
+      field = document.createElement('input');
+      field.type = 'hidden';
+      field.name = 'q';
+      form.appendChild(field);
+    }
+    field.value = q;
   });
 })();
