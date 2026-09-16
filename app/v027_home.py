@@ -24,9 +24,9 @@ def ctx(request: Request, **extra):
 
 
 @router.get('/', response_class=HTMLResponse)
-def dashboard_v027(request: Request, home: str = 'tasks'):
+def dashboard_v027(request: Request, home: str = 'payment'):
     today_iso = date.today().isoformat()
-    active_home_tab = home if home in {'tasks', 'payment', 'promos', 'recent'} else 'tasks'
+    active_home_tab = home if home in {'tasks', 'payment', 'promos', 'recent'} else 'payment'
     with db() as conn:
         tasks = conn.execute(
             '''SELECT t.*,c.name customer_name FROM tasks t LEFT JOIN customers c ON c.id=t.customer_id
