@@ -10,6 +10,15 @@
   let refreshing = false;
   let lastHtmlSignature = '';
 
+  const hashText = text => {
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `${text.length}:${hash >>> 0}`;
+  };
+
   const softlyMark = element => {
     if (!element || typeof element.animate !== 'function') return;
     try {
@@ -154,7 +163,7 @@
       });
       if (!response.ok) return;
       const html = await response.text();
-      const signature = `${html.length}:${html.slice(-240)}`;
+      const signature = hashText(html);
       if (signature === lastHtmlSignature) return;
       lastHtmlSignature = signature;
       const freshDocument = new DOMParser().parseFromString(html, 'text/html');
