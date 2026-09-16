@@ -7,17 +7,23 @@ def main():
     bootstrap_path = ROOT / 'app' / 'static' / 'chen_foxmail_bootstrap.ps1'
     bootstrap = bootstrap_path.read_text(encoding='ascii')
     for token in (
+        "https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_bootstrap.ps1",
         "https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_helper_v07.ps1",
         'Update-Helper', 'Start-Watchdog', 'Start-Bridge', 'Get-WatchProcesses',
         'Get-BridgePowerShell', 'System32\\WindowsPowerShell\\v1.0\\powershell.exe',
         'UpdateIntervalMinutes = 30', 'WatchIntervalSeconds = 20',
         'Invoke-WebRequest', 'Get-FileHash', 'Parser]::ParseFile',
+        "chen_foxmail_bootstrap.download.ps1",
         "chen_foxmail_helper.download.ps1", "chen_foxmail_helper.new.ps1",
+        "if ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath))",
+        "$uri = $BootstrapUrl + '?install='",
+        'Copy-Item -Force -LiteralPath $download -Destination $BootstrapPath',
         "ChenAssistant-Foxmail-Helper.lnk", "-Watch",
         "HelperVersion = '0.7'", 'Build-MailtoUri', 'Set-AttachmentClipboard',
         'Simple MAPI is not used by v0.7.',
     ):
         assert token in bootstrap, token
+    assert 'GetFullPath($PSCommandPath)' in bootstrap
     assert 'SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe' not in bootstrap
     assert all(b < 128 for b in bootstrap_path.read_bytes())
 
