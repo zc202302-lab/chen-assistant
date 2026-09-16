@@ -47,6 +47,7 @@ jobs:
           python tests/v144_audit_acceptance.py
           python tests/v145_foxmail_launch_contract.py
           python tests/v145_bootstrap_iex_contract.py
+          python tests/v151_quick_search_contract.py
 
       - name: v1.2 architecture and recipe tools contracts
         run: |
