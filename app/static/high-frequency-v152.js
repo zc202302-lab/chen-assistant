@@ -15,8 +15,15 @@
       row.dataset.paymentTotalRowV152 = '1';
       paymentList.appendChild(row);
     }
+    total.classList.remove('v124-total-moved');
     total.classList.add('payment-total-v152');
     if (total.parentElement !== row) row.appendChild(total);
+
+    // v1.2.4 used its own total helper row. v1.5.2 supersedes that row; once the
+    // real total has moved into the v1.5.2 row, remove the now-empty legacy row so
+    // live reconciliation cannot strand it directly below the table header.
+    paymentList.querySelectorAll('.v124-payment-total-row').forEach(legacy => legacy.remove());
+
     // Reconciliation may append payment rows after this helper row. Keep the total
     // physically at the bottom of the current payment table after every refresh.
     if (row !== paymentList.lastElementChild) paymentList.appendChild(row);
