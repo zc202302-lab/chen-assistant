@@ -101,7 +101,7 @@ def main():
             expect(top_nav.locator('a[href="/"]')).to_have_attribute('aria-current', 'page')
             expect(top_nav.locator('a[href="/work"]')).to_contain_text('工作')
             expect(top_nav.locator('a[href="/life"]')).to_contain_text('生活')
-            expect(page.locator('.v153-home-dashboard a[href="/work/customers"]')).to_be_visible()
+            expect(page.locator('.v153-home-dashboard a[href="/work/customers"]').first).to_be_visible()
 
             page.goto(f'http://127.0.0.1:8158/customers/{cid}', wait_until='networkidle')
             page.wait_for_timeout(900)
