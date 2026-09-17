@@ -92,7 +92,7 @@ def main():
             assert abs(box['width'] - 649.7) <= 3, box
             assert abs(box['height'] - 914.8) <= 4, box
             pdf = page.pdf(print_background=True, prefer_css_page_size=True)
-            pages = len(re.findall(rb'/Type\\s*/Page(?!s)\\b', pdf))
+            pages = len(re.findall(rb'/Type\s*/Page(?!s)\b', pdf))
             assert pages == 1, pages
             browser.close()
         print('recipe tools browser acceptance passed: Excel-grid recipe print + original text + formula tools + one-page A4')
