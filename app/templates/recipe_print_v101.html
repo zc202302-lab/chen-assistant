@@ -1,1 +1,57 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ recipe.name }} · A4打印</title><link rel="stylesheet" href="/static/recipe-print-v101.css?v=1010"></head><body class="print-density-{{ print_density }}"><div class="print-toolbar"><a href="/life/recipes/{{ recipe.id }}">← 返回菜谱</a><button type="button" data-recipe-print>打印</button></div><article class="recipe-print-sheet"><header class="recipe-print-head"><div><h1>{{ recipe.name }}</h1><p>当前标准 V{{ version.version_no }} · 标准主材 {{ version.base_amount }}{{ version.base_unit }}</p></div>{% if recipe.description %}<span>{{ recipe.description }}</span>{% endif %}</header><div class="recipe-print-body"><section class="recipe-print-ingredients"><h2>配方</h2>{% for group in ingredient_groups %}<div class="print-group"><h3>{{ group['name'] }}</h3>{% for item in group['items'] %}<div class="print-ingredient"><span>{{ item.name }}</span><b>{{ item.amount }}{{ item.unit }}</b></div>{% endfor %}</div>{% endfor %}</section><section class="recipe-print-steps"><h2>步骤</h2>{% for s in steps %}<div class="print-step"><h3>{{ s.step_no }}. {{ s.title }}</h3>{% if s.action %}<p>{{ s.action }}</p>{% endif %}{% if s.principle %}<aside><strong>原理 / 备注</strong><p>{{ s.principle }}</p></aside>{% endif %}</div>{% endfor %}</section></div><footer>来源：《菜谱.xlsm》标准模板 · 晨的助手</footer></article><script src="/static/recipe-print-v101.js?v=1010" defer></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ recipe.name }} · A4打印</title>
+  <link rel="stylesheet" href="/static/recipe-print-v101.css?v=1550">
+</head>
+<body>
+  <div class="print-toolbar">
+    <a href="/life/recipes/{{ recipe.id }}">← 返回菜谱</a>
+    <strong>{{ recipe.name }} · Excel版式</strong>
+    <button type="button" data-recipe-print>打印</button>
+  </div>
+  <main class="recipe-print-canvas">
+    <article class="recipe-print-sheet" aria-label="{{ recipe.name }} A4菜谱">
+      <table class="excel-recipe-grid">
+        <colgroup>
+          {% for _ in range(9) %}<col class="excel-standard-column">{% endfor %}
+          <col class="excel-note-column">
+        </colgroup>
+        <tbody>
+          <tr class="excel-ingredient-row">
+            <th scope="row">{{ main_label }}</th>
+            {% for slot in main_slots %}<td>{{ slot }}</td>{% endfor %}
+            <th>备注</th>
+          </tr>
+          {% for group in ingredient_groups %}
+          <tr class="excel-ingredient-row">
+            <th scope="row" rowspan="2">{{ group.name }}</th>
+            {% for item in group['items'] %}<td>{{ item.name }}</td>{% endfor %}
+            {% if loop.first %}<td class="excel-ingredient-notes" rowspan="8">{{ ingredient_notes }}</td>{% endif %}
+          </tr>
+          <tr class="excel-ingredient-row">
+            {% for item in group['items'] %}<td>{{ item.amount }}</td>{% endfor %}
+          </tr>
+          {% endfor %}
+          <tr class="excel-section-header-row">
+            <th rowspan="2">步骤</th>
+            <th colspan="8" rowspan="2">方法</th>
+            <th rowspan="2">原理</th>
+          </tr>
+          <tr class="excel-section-header-row"></tr>
+          {% for step in print_steps %}
+          <tr class="excel-step-row">
+            <th scope="row">{{ step.title }}</th>
+            <td class="excel-step-method" colspan="8">{{ step.method }}</td>
+            <td class="excel-step-principle">{{ step.principle }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </article>
+  </main>
+  <script src="/static/recipe-print-v101.js?v=1010" defer></script>
+</body>
+</html>

@@ -93,23 +93,106 @@ def ensure_v101_recipe_templates(conn=None):
             cm.__exit__(None, None, None)
 
 
-def _print_groups(conn, version):
+def _print_amount(row, version):
+    amount = _scaled_amount(row, version, float(version['base_amount'] or 0))
+    unit = str(row['unit'] or '')
+    return f'{amount}{unit}' if amount else unit
+
+
+def _print_step_method(step):
+    parts = [str(step['action'] or '').strip()]
+    for label, key in (('火候', 'heat'), ('时长', 'duration'), ('判断', 'judgement')):
+        value = str(step[key] or '').strip()
+        if value:
+            parts.append(f'{label}：{value}')
+    return '\n'.join(part for part in parts if part)
+
+
+def _print_step_principle(step):
+    parts = [str(step['principle'] or '').strip()]
+    risk = str(step['risk'] or '').strip()
+    if risk:
+        parts.append(f'注意：{risk}')
+    return '\n'.join(part for part in parts if part)
+
+
+def _excel_print_layout(conn, version):
     ingredients, steps, grouped = _version_payload(conn, version['id'])
-    groups = []
-    for group_name, rows in grouped.items():
-        groups.append({
-            'name': group_name,
-            'items': [
-                {
-                    'name': row['name'],
-                    'amount': _scaled_amount(row, version, float(version['base_amount'] or 0)),
-                    'unit': row['unit'],
-                    'note': row['note'],
-                }
-                for row in rows
-            ],
-        })
-    return ingredients, steps, groups
+    ordered_groups = list(grouped.items())
+    main_index = next((idx for idx, (name, _) in enumerate(ordered_groups) if name == '主材'), 0)
+    main_name, main_rows = ordered_groups.pop(main_index) if ordered_groups else ('主材', [])
+
+    main_slots = [''] * 8
+    overflow_notes = []
+    for idx, row in enumerate(main_rows):
+        item_text = f"{row['name']} {_print_amount(row, version)}".strip()
+        if idx < 4:
+            main_slots[idx * 2] = str(row['name'] or '')
+            main_slots[idx * 2 + 1] = _print_amount(row, version)
+        elif item_text:
+            overflow_notes.append(f'主材：{item_text}')
+
+    grid_groups = []
+    for group_name, rows in ordered_groups:
+        chunks = [rows[i:i + 8] for i in range(0, len(rows), 8)] or [[]]
+        for chunk_index, chunk in enumerate(chunks):
+            grid_groups.append({
+                'name': group_name if chunk_index == 0 else f'{group_name}（续）',
+                'items': [
+                    {'name': str(row['name'] or ''), 'amount': _print_amount(row, version)}
+                    for row in chunk
+                ],
+            })
+
+    if len(grid_groups) > 4:
+        for extra in grid_groups[4:]:
+            values = [
+                f"{item['name']} {item['amount']}".strip()
+                for item in extra['items']
+                if item['name'] or item['amount']
+            ]
+            if values:
+                overflow_notes.append(f"{extra['name']}：{'，'.join(values)}")
+        grid_groups = grid_groups[:4]
+
+    while len(grid_groups) < 4:
+        grid_groups.append({'name': '', 'items': []})
+    for group in grid_groups:
+        group['items'] = group['items'][:8] + [{'name': '', 'amount': ''}] * (8 - len(group['items']))
+
+    ingredient_notes = []
+    for row in ingredients:
+        note = str(row['note'] or '').strip()
+        if note:
+            ingredient_notes.append(f"{row['name']}：{note}")
+    ingredient_notes.extend(overflow_notes)
+
+    print_steps = []
+    for step in steps:
+        item = {
+            'title': str(step['title'] or ''),
+            'method': _print_step_method(step),
+            'principle': _print_step_principle(step),
+        }
+        if len(print_steps) < 4:
+            print_steps.append(item)
+        else:
+            suffix = f"{step['step_no']}. {item['title']}\n{item['method']}".strip()
+            if suffix:
+                print_steps[-1]['method'] = '\n'.join(filter(None, [print_steps[-1]['method'], suffix]))
+            if item['principle']:
+                print_steps[-1]['principle'] = '\n'.join(filter(None, [print_steps[-1]['principle'], item['principle']]))
+
+    while len(print_steps) < 4:
+        print_steps.append({'title': '', 'method': '', 'principle': ''})
+
+    return {
+        'main_label': main_name or '主材',
+        'main_slots': main_slots,
+        'ingredient_groups': grid_groups,
+        'ingredient_notes': '\n'.join(ingredient_notes),
+        'print_steps': print_steps,
+    }
 
 
 @router.get('/life/recipes/{recipe_id}/print', response_class=HTMLResponse)
@@ -118,17 +201,12 @@ def recipe_print_v101(request: Request, recipe_id: int):
         ensure_v101_recipe_templates(conn)
         recipe = _recipe_or_404(conn, recipe_id)
         version = _current_version(conn, recipe)
-        ingredients, steps, groups = _print_groups(conn, version)
-    char_count = sum(len(str(s['action'] or '')) + len(str(s['principle'] or '')) for s in steps)
-    char_count += sum(len(str(i['name'] or '')) + len(str(i['note'] or '')) for i in ingredients)
-    density = 'dense' if char_count > 1700 else ('compact' if char_count > 1050 else 'normal')
+        layout = _excel_print_layout(conn, version)
     return templates.TemplateResponse('recipe_print_v101.html', _ctx(
         request,
         recipe=recipe,
         version=version,
-        ingredient_groups=groups,
-        steps=steps,
-        print_density=density,
+        **layout,
     ))
 
 
