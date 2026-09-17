@@ -104,17 +104,18 @@ def main():
             for row in rows:
                 expect(row).to_have_attribute('data-confirmed', '0')
 
-            # Monthly total is physically the last row and centered beneath the table.
+            # Monthly total is physically the last row and centered against the
+            # whole browser viewport, not merely the fixed-width payment columns.
             total_row = page.locator('[data-payment-total-row-v152]')
             expect(total_row).to_be_visible()
             total_box = total_row.locator('.payment-total-v152')
             expect(total_box.locator('#paymentGrandTotal')).to_have_text('¥600')
             assert page.locator('#paymentSortable > *').last.get_attribute('data-payment-total-row-v152') == '1'
-            placement = total_box.evaluate("el => { const s=getComputedStyle(el); return [s.gridColumnStart,s.gridColumnEnd,s.justifySelf,s.textAlign]; }")
-            assert placement[0] == '1', placement
-            assert placement[1] == '-1', placement
-            assert placement[2] == 'center', placement
-            assert placement[3] == 'center', placement
+            rect = total_box.bounding_box()
+            assert rect
+            viewport_width = page.evaluate('window.innerWidth')
+            total_center = rect['x'] + rect['width'] / 2
+            assert abs(total_center - viewport_width / 2) <= 20, (total_center, viewport_width)
 
             # Manual 未核对 -> 已核对: immediately move to the next pending amount
             # and copy that destination row's account to the clipboard.
