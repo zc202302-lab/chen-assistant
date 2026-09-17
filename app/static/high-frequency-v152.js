@@ -1,23 +1,29 @@
 (() => {
-  const root = document.querySelector('.v027-workspace');
-  if (!root) return;
-
-  const workbench = root.querySelector('[data-payment-workbench]');
+  const workbench = document.querySelector('[data-payment-workbench]');
   if (!workbench) return;
+  const root = workbench.closest('.v0211-workspace,.v027-workspace') || document;
 
-  // Move the monthly total out of the header and align it with the amount column
-  // at the bottom of the current payment table. When there are no rows the total
-  // remains in the header, so an empty payment month never loses its summary.
-  const paymentList = document.getElementById('paymentSortable');
-  const total = document.querySelector('.v023-total');
-  if (paymentList && total && !paymentList.querySelector('[data-payment-total-row-v152]')) {
-    const row = document.createElement('div');
-    row.className = 'payment-total-row-v152';
-    row.dataset.paymentTotalRowV152 = '1';
+  const ensurePaymentTotalRow = () => {
+    const paymentList = document.getElementById('paymentSortable');
+    const grandTotal = document.getElementById('paymentGrandTotal');
+    const total = grandTotal?.closest('.v023-total') || grandTotal?.parentElement || document.querySelector('.v023-total');
+    if (!paymentList || !total) return;
+    let row = paymentList.querySelector('[data-payment-total-row-v152]');
+    if (!row) {
+      row = document.createElement('div');
+      row.className = 'payment-total-row-v152';
+      row.dataset.paymentTotalRowV152 = '1';
+      paymentList.appendChild(row);
+    }
     total.classList.add('payment-total-v152');
-    row.appendChild(total);
-    paymentList.appendChild(row);
-  }
+    if (total.parentElement !== row) row.appendChild(total);
+    // Reconciliation may append payment rows after this helper row. Keep the total
+    // physically at the bottom of the current payment table after every refresh.
+    if (row !== paymentList.lastElementChild) paymentList.appendChild(row);
+  };
+
+  ensurePaymentTotalRow();
+  window.addEventListener('chen:live-refresh', () => ensurePaymentTotalRow());
 
   const copyText = async value => {
     if (!value) return false;
@@ -56,12 +62,10 @@
     const account = accountValue(row);
     if (account) await copyText(account);
 
-    // Clipboard access can yield long enough for same-document live refresh to
-    // reconcile the rows. Re-resolve the destination before scrolling/focusing.
     const liveRow = currentRowByServiceId(serviceId) || row;
     const input = liveRow.querySelector('.quick-amount');
     if (!input) return;
-    const sticky = root.querySelector('.workspace-sticky-top');
+    const sticky = root.querySelector?.('.workspace-sticky-top');
     const top = (sticky ? sticky.getBoundingClientRect().bottom : 64) + 8;
     const rect = liveRow.getBoundingClientRect();
     if (rect.top < top) window.scrollBy({top: rect.top - top, behavior:'auto'});
@@ -82,17 +86,14 @@
     return armed;
   };
 
-  // The existing customer workbench owns the mature Enter-save behavior and moves
-  // focus after a successful save. Remember the source before its capture handler
-  // runs; a later focusin on another payment amount is therefore the successful advance.
   window.addEventListener('keydown', event => {
     if (event.key !== 'Enter') return;
-    const input = event.target.closest?.('.v027-workspace .quick-amount');
+    const input = event.target.closest?.('[data-payment-workbench] .quick-amount');
     if (!input) return;
     arm('amount', input.closest('[data-payment-row]'));
   }, true);
 
-  root.addEventListener('focusin', event => {
+  workbench.addEventListener('focusin', event => {
     const input = event.target.closest?.('.quick-amount');
     if (!input || armed?.kind !== 'amount') return;
     const row = input.closest('[data-payment-row]');
@@ -101,8 +102,6 @@
     if (!targetId || targetId === armed.serviceId) return;
     const pending = armed;
     armed = null;
-    // Focus has already landed on the mature handler's chosen next row. Copying
-    // does not disturb that focus, so no second competing navigation is introduced.
     void copyText(accountValue(row));
     if (pending.serial !== serial) return;
   });
@@ -124,11 +123,8 @@
     setTimeout(() => waitForReviewedRow(pending, attemptsLeft - 1), 25);
   };
 
-  // A manual 未核对 -> 已核对 is the one review action that advances. Observe the
-  // authoritative DOM state that the mature handler updates after a successful
-  // server response, which also remains correct if live refresh replaces row nodes.
   window.addEventListener('pointerdown', event => {
-    const button = event.target.closest?.('.v027-workspace [data-review-toggle]');
+    const button = event.target.closest?.('[data-payment-workbench] [data-review-toggle]');
     if (!button) return;
     const row = button.closest('[data-payment-row]');
     if (row?.dataset.confirmed !== '0') return;
