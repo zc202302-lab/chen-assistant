@@ -28,11 +28,11 @@
           {% for group in ingredient_groups %}
           <tr class="excel-ingredient-row">
             <th scope="row" rowspan="2">{{ group.name }}</th>
-            {% for item in group.items %}<td>{{ item.name }}</td>{% endfor %}
+            {% for item in group['items'] %}<td>{{ item.name }}</td>{% endfor %}
             {% if loop.first %}<td class="excel-ingredient-notes" rowspan="8">{{ ingredient_notes }}</td>{% endif %}
           </tr>
           <tr class="excel-ingredient-row">
-            {% for item in group.items %}<td>{{ item.amount }}</td>{% endfor %}
+            {% for item in group['items'] %}<td>{{ item.amount }}</td>{% endfor %}
           </tr>
           {% endfor %}
           <tr class="excel-section-header-row">
