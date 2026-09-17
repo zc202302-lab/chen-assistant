@@ -74,11 +74,28 @@ def main():
 
             page.emulate_media(media='print')
             page.goto(f'http://127.0.0.1:8142/life/recipes/{rid}/print', wait_until='networkidle')
+            grid = page.locator('.excel-recipe-grid')
+            expect(grid).to_be_visible()
+            assert page.locator('.excel-recipe-grid tr').count() == 15
+            assert page.locator('.excel-ingredient-row').count() == 9
+            assert page.locator('.excel-section-header-row').count() == 2
+            assert page.locator('.excel-step-row').count() == 4
+            expect(page.locator('.recipe-print-head')).to_have_count(0)
+            expect(page.locator('.excel-ingredient-row').first.locator('th')).to_have_text(['主材', '备注'])
+            expect(page.locator('.excel-ingredient-row').first.locator('td').nth(0)).to_have_text('排骨')
+            expect(page.locator('.excel-ingredient-row').first.locator('td').nth(1)).to_have_text('500')
+            expect(page.locator('.excel-ingredient-row').nth(1).locator('th')).to_have_text('糖色')
+            expect(page.locator('.excel-step-row').first.locator('th')).to_have_text('主材准备')
+            expect(page.locator('.excel-step-row').first.locator('.excel-step-method')).to_contain_text('1.排骨：500g')
+            box = grid.bounding_box()
+            assert box
+            assert abs(box['width'] - 649.7) <= 3, box
+            assert abs(box['height'] - 914.8) <= 4, box
             pdf = page.pdf(print_background=True, prefer_css_page_size=True)
-            pages = len(re.findall(rb'/Type\s*/Page(?!s)\b', pdf))
+            pages = len(re.findall(rb'/Type\\s*/Page(?!s)\\b', pdf))
             assert pages == 1, pages
             browser.close()
-        print('recipe tools browser acceptance passed on current app version: template recipes + original text + formula tools + one-page A4')
+        print('recipe tools browser acceptance passed: Excel-grid recipe print + original text + formula tools + one-page A4')
     finally:
         proc.terminate()
         try: proc.wait(timeout=5)
