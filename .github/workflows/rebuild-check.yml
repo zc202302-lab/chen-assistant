@@ -12,34 +12,83 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify change scope
+        id: scope
+        shell: bash
+        run: |
+          mode=full
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            mode=fast
+            git diff --name-only "origin/${{ github.base_ref }}...HEAD" > /tmp/chen-changed-files.txt
+            echo "Changed files:"
+            cat /tmp/chen-changed-files.txt
+            while IFS= read -r path; do
+              [[ -z "$path" ]] && continue
+              case "$path" in
+                docs/*|app/templates/home_v10.html|app/static/home-*.css|tests/v10_workspace_isolation_acceptance.py|tests/v153_home_navigation_contract.py)
+                  ;;
+                *)
+                  mode=full
+                  break
+                  ;;
+              esac
+            done < /tmp/chen-changed-files.txt
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "Validation mode: $mode"
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
       - uses: actions/setup-node@v4
+        if: steps.scope.outputs.mode == 'full'
         with:
           node-version: '22'
 
-      - name: Install Python dependencies
+      - name: Install fast validation dependencies
+        if: steps.scope.outputs.mode == 'fast'
+        run: pip install -r requirements.txt playwright
+
+      - name: Install full validation dependencies
+        if: steps.scope.outputs.mode == 'full'
         run: pip install -r requirements.txt playwright pip-audit bandit
 
       - name: Install Chromium
         run: python -m playwright install --with-deps chromium
 
+      - name: Fast UI contracts
+        if: steps.scope.outputs.mode == 'fast'
+        run: |
+          python -m compileall -q app tests/v10_workspace_isolation_acceptance.py tests/v153_home_navigation_contract.py
+          python tests/stability_contract.py
+          python tests/v153_home_navigation_contract.py
+          python tests/v10_workspace_isolation_acceptance.py
+
       - name: Check JavaScript syntax
+        if: steps.scope.outputs.mode == 'full'
         run: |
           find app/static -maxdepth 1 -type f -name '*.js' -print0 | sort -z | while IFS= read -r -d '' asset; do
             node --check "$asset"
           done
 
       - name: Compile Python
+        if: steps.scope.outputs.mode == 'full'
         run: python -m compileall -q app storage_node tests
 
       - name: Security audit
+        if: steps.scope.outputs.mode == 'full'
         run: |
           pip-audit -r requirements.txt
           bandit -q -r app storage_node -lll
 
       - name: Existing feature compatibility audit policy
+        if: steps.scope.outputs.mode == 'full'
         run: |
           python tests/compatibility_audit_contract.py
           python tests/v143_extended_contract.py
@@ -52,12 +101,14 @@ jobs:
           python tests/v153_home_navigation_contract.py
 
       - name: v1.2 architecture and recipe tools contracts
+        if: steps.scope.outputs.mode == 'full'
         run: |
           python tests/stability_contract.py
           python tests/v12_contract.py
           python tests/v125_contract.py
 
       - name: Legacy work-system compatibility contracts
+        if: steps.scope.outputs.mode == 'full'
         run: |
           python tests/v03_contract.py
           python tests/v03_runtime_fix_contract.py
@@ -70,61 +121,80 @@ jobs:
           python tests/v032_customer_exchange_contract.py
 
       - name: Production regressions
+        if: steps.scope.outputs.mode == 'full'
         run: |
           python tests/production_experience_regression.py
           python tests/promotion_render_regression.py
           python tests/promotion_rename_route_regression.py
 
       - name: v1.2 recipe tools browser acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v12_recipe_tools_acceptance.py
 
       - name: v1.2 workspace isolation acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v10_workspace_isolation_acceptance.py
 
       - name: v1.2.8 table finder / exact-number landing acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v124_payment_search_acceptance.py
 
       - name: v1.2.6 workflow rollback acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v126_payment_workflow_rollback_acceptance.py
 
       - name: v1.2.7 stale-UI server-first rollback acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v127_server_first_rollback_acceptance.py
 
       - name: v1.3 remote customer documents acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v13_customer_documents_acceptance.py
 
       - name: v1.4.2 navigation and row-review acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v141_navigation_review_acceptance.py
 
       - name: v1.4.3 centered navigation and customer status acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v143_customer_status_acceptance.py
 
       - name: v1.4.3 payment controls acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v143_payment_controls_acceptance.py
 
       - name: v1.5 customer live refresh acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v150_live_refresh_acceptance.py
 
       - name: v1.5.1 live quick-search acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v151_quick_search_live_acceptance.py
 
       - name: v1.5.2 high-frequency payment flow acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v152_high_frequency_flow_acceptance.py
 
       - name: Legacy customer import browser acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v032_customer_import_acceptance.py
 
       - name: Legacy payment workflow browser acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v031_payment_workflow_acceptance.py
 
       - name: Legacy customer browser acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v031_legacy_customer_acceptance.py
 
       - name: Legacy runtime-fix browser acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v03_runtime_fix_acceptance.py
 
       - name: Legacy insert-order browser acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v03_insert_order_acceptance.py
 
       - name: Legacy review-reset browser acceptance
+        if: steps.scope.outputs.mode == 'full'
         run: python tests/v03_review_reset_acceptance.py

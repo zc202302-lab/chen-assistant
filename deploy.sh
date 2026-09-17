@@ -4,10 +4,18 @@ APP_DIR="/opt/chen-assistant"; SERVICE="chen-assistant"; APP_HTTP="http://172.19
 cd "$APP_DIR"
 echo "===== 晨的助手 v${EXPECTED_VERSION} 一键更新 ====="
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then echo "✗ 检测到服务器受 Git 管理文件有本地修改，已停止更新。"; git status --short; exit 1; fi
+DEPLOY_FROM_REV="${CHEN_DEPLOY_FROM_REV:-$(git rev-parse HEAD)}"
 START_REV="$(git rev-parse HEAD)"; echo "当前代码：$(git rev-parse --short HEAD)"; git fetch origin main; git merge --ff-only origin/main; END_REV="$(git rev-parse HEAD)"
 if [[ "$START_REV" != "$END_REV" && "${CHEN_DEPLOY_REEXEC:-0}" != "1" ]]; then
   echo "✓ 已更新部署脚本与代码，使用新脚本继续部署"
-  exec env CHEN_DEPLOY_REEXEC=1 bash "$APP_DIR/deploy.sh"
+  exec env CHEN_DEPLOY_REEXEC=1 CHEN_DEPLOY_FROM_REV="$DEPLOY_FROM_REV" bash "$APP_DIR/deploy.sh"
+fi
+CHANGED_FILE_LIST="$(mktemp)"
+trap 'rm -f "$CHANGED_FILE_LIST"' EXIT
+if [[ "$DEPLOY_FROM_REV" != "$END_REV" ]]; then
+  git diff --name-only "$DEPLOY_FROM_REV" "$END_REV" > "$CHANGED_FILE_LIST"
+else
+  : > "$CHANGED_FILE_LIST"
 fi
 SERVICE_USER="$(systemctl show "$SERVICE" -p User --value)"; [[ -n "$SERVICE_USER" ]] || SERVICE_USER="root"
 SERVICE_GROUP="$(systemctl show "$SERVICE" -p Group --value)"; [[ -n "$SERVICE_GROUP" ]] || SERVICE_GROUP="$SERVICE_USER"
@@ -21,7 +29,12 @@ with sqlite3.connect(src) as s, sqlite3.connect(dst) as d:
 print(f'✓ 数据库备份完成：{dst}')
 PY
 fi
-.venv/bin/pip install -q -r requirements.txt
+if grep -qx 'requirements.txt' "$CHANGED_FILE_LIST"; then
+  echo "→ requirements.txt 有变化，更新 Python 依赖"
+  .venv/bin/pip install -q -r requirements.txt
+else
+  echo "✓ Python 依赖未变化，跳过 pip install"
+fi
 .venv/bin/python -m compileall -q app storage_node
 if command -v node >/dev/null 2>&1; then
   find app/static -maxdepth 1 -type f -name '*.js' -print0 | sort -z | while IFS= read -r -d '' ASSET; do
@@ -64,16 +77,20 @@ find app/static -maxdepth 1 -type f \( -name '*.js' -o -name '*.css' \) -print0 
   rm -f "$TMP"
 done
 echo "✓ 全部 JS/CSS 静态资源一致"
+FOXMAIL_CHANGED=0
 for ASSET in chen_foxmail_bootstrap.ps1 chen_foxmail_helper_v09.ps1; do
-  TMP="$(mktemp)"
-  curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP"
-  [[ "$(sha256sum "app/static/$ASSET"|awk '{print $1}')" == "$(sha256sum "$TMP"|awk '{print $1}')" ]] || { echo "✗ Foxmail 助手资源不一致：$ASSET"; rm -f "$TMP"; exit 1; }
-  rm -f "$TMP"
+  if grep -qx "app/static/$ASSET" "$CHANGED_FILE_LIST"; then
+    TMP="$(mktemp)"
+    curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP"
+    [[ "$(sha256sum "app/static/$ASSET"|awk '{print $1}')" == "$(sha256sum "$TMP"|awk '{print $1}')" ]] || { echo "✗ Foxmail 助手资源不一致：$ASSET"; rm -f "$TMP"; exit 1; }
+    rm -f "$TMP"
+    FOXMAIL_CHANGED=1
+  fi
 done
-echo "✓ Foxmail v0.9 助手资源一致"
+if [[ "$FOXMAIL_CHANGED" -eq 1 ]]; then echo "✓ Foxmail v0.9 本次变更资源一致"; else echo "✓ Foxmail 助手未变化，跳过资源重复校验"; fi
 if grep -q '^REMOTE_STORAGE_BASE_URL=' .env 2>/dev/null && grep -q '^REMOTE_STORAGE_TOKEN=' .env 2>/dev/null; then
   STORAGE_URL="$(grep '^REMOTE_STORAGE_BASE_URL=' .env | tail -n1 | cut -d= -f2-)"
-  if [[ -n "$STORAGE_URL" ]]; then curl -fsS "${STORAGE_URL%/}/health" >/dev/null && echo "✓ 远程资料存储通道在线" || echo "⚠ 远程资料存储已配置，但当前健康检查失败"; fi
+  if [[ -n "$STORAGE_URL" ]]; then curl --max-time 5 -fsS "${STORAGE_URL%/}/health" >/dev/null && echo "✓ 远程资料存储通道在线" || echo "⚠ 远程资料存储已配置，但当前健康检查失败（5 秒超时，不阻塞部署）"; fi
 else
   echo "ℹ 客户资料模块已安装；远程存储尚未配置时会在页面提示。"
 fi
