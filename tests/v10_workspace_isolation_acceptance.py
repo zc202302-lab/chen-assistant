@@ -138,7 +138,7 @@ def main():
             assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/life', wait_until='networkidle')
-            assert nav_labels(page) == ['生活', '菜谱', '记录', '工具']
+            assert nav_labels(page) == ['生活', '菜谱', '工具']
             assert_primary_nav(page, '生活')
             expect(page.locator('.brand')).to_have_attribute('href', '/')
             expect(page.locator('.brand')).to_contain_text(f'v{config.APP_VERSION}')
@@ -146,12 +146,12 @@ def main():
             assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/life/recipes', wait_until='networkidle')
-            assert nav_labels(page) == ['生活', '菜谱', '记录', '工具']
+            assert nav_labels(page) == ['生活', '菜谱', '工具']
             assert_primary_nav(page, '生活')
             assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/life/tools', wait_until='networkidle')
-            assert nav_labels(page) == ['生活', '菜谱', '记录', '工具']
+            assert nav_labels(page) == ['生活', '菜谱', '工具']
             assert_primary_nav(page, '生活')
             expect(page.get_by_role('heading', name='基础知识 · 计算工具')).to_be_visible()
             assert_history_nav(page)
