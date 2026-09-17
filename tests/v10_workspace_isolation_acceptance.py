@@ -75,8 +75,12 @@ def main():
 
             page.goto('http://127.0.0.1:8141/', wait_until='networkidle')
             assert nav_labels(page) == ['首页', '客户', '生活', '搜索']
-            expect(page.get_by_role('heading', name='客户管理')).to_be_visible()
-            expect(page.get_by_text('生活空间', exact=True)).to_be_visible()
+            home_nav = page.locator('.home-top-nav-v153')
+            expect(home_nav).to_be_visible()
+            assert [x.strip() for x in home_nav.locator('a').all_inner_texts()] == ['首页', '工作', '生活']
+            expect(home_nav.locator('a.active')).to_have_text('首页')
+            expect(page.get_by_role('heading', name='客户管理')).to_have_count(0)
+            expect(page.get_by_text('生活空间', exact=True)).to_have_count(0)
             assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/work', wait_until='networkidle')
@@ -140,7 +144,7 @@ def main():
 
             browser.close()
 
-        print('v1.4 work architecture + independent work/life navigation acceptance passed')
+        print('v1.5.3 top-nav home + v1.4 work architecture + independent work/life navigation acceptance passed')
     finally:
         proc.terminate()
         try:
