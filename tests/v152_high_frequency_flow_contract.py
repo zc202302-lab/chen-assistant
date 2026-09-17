@@ -22,9 +22,11 @@ def main():
     assert 'high-frequency-v152.css?v=1520' in base
     assert 'high-frequency-v152.js?v=1522' in base
     assert 'payment-total-row-v152' in js
-    assert "document.querySelector('.v027-workspace')" in js
-    assert "event.target.closest?.('.v027-workspace [data-review-toggle]')" in js
-    assert "event.target.closest?.('.v027-workspace .quick-amount')" in js
+    assert "document.querySelector('[data-payment-workbench]')" in js
+    assert "event.target.closest?.('[data-payment-workbench] [data-review-toggle]')" in js
+    assert "event.target.closest?.('[data-payment-workbench] .quick-amount')" in js
+    assert 'ensurePaymentTotalRow' in js
+    assert "window.addEventListener('chen:live-refresh'" in js
     assert 'focusAmountAndCopyAccount' in js
     assert 'currentRowByServiceId' in js
     assert 'waitForReviewedRow' in js
