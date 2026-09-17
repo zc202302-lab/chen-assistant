@@ -92,11 +92,11 @@ def main():
             expect(page.locator('[data-home-panel="payment"]')).to_be_visible()
             assert page.locator('[data-home-tab]').first.get_attribute('data-home-tab') == 'payment'
 
-            # v1.5.3 keeps the homepage as an overview and moves the top-level
-            # Work/Life entries into a compact top navigation. Customer management
-            # remains directly reachable from the overview's current-work section.
+            # v1.5.4 keeps the homepage as an overview and exposes the top-level
+            # areas through the global primary navigation on every page. Customer
+            # management remains directly reachable from the overview.
             page.goto('http://127.0.0.1:8158/', wait_until='networkidle')
-            top_nav = page.locator('nav.home-top-nav-v153')
+            top_nav = page.locator('nav.global-primary-nav')
             expect(top_nav).to_be_visible()
             expect(top_nav.locator('a[href="/"]')).to_have_attribute('aria-current', 'page')
             expect(top_nav.locator('a[href="/work"]')).to_contain_text('工作')
