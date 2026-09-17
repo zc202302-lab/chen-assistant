@@ -31,6 +31,7 @@
   <link rel="stylesheet" href="/static/v13_customer_documents.css?v=1300">
   <link rel="stylesheet" href="/static/work-architecture-v14.css?v=1400">
   <link rel="stylesheet" href="/static/quick-search-v15.css?v=1510">
+  <link rel="stylesheet" href="/static/high-frequency-v152.css?v=1520">
   <title>{% block title %}晨的助手{% endblock %}</title>
 </head>
 <body>
@@ -62,7 +63,7 @@
 <main class="page">{% block content %}{% endblock %}</main>
 {% if _is_work %}
 <nav class="bottom-nav" aria-label="工作导航">
-  <a href="/work" class="nav-item">⌂<span>首页</span></a>
+  <a href="/work" class="nav-item">⌂<span>工作</span></a>
   <a href="/work/customers" class="nav-item">◎<span>客户</span></a>
   <a href="/work/library" class="nav-item">▤<span>资料</span></a>
   <a href="/search" class="nav-item">⌕<span>搜索</span></a>
@@ -77,7 +78,7 @@
 {% else %}
 <nav class="bottom-nav" aria-label="主导航">
   <a href="/" class="nav-item">⌂<span>首页</span></a>
-  <a href="/work" class="nav-item">▣<span>工作</span></a>
+  <a href="/work/customers" class="nav-item">◎<span>客户</span></a>
   <a href="/life" class="nav-item">◇<span>生活</span></a>
   <a href="/global-search" class="nav-item">⌕<span>搜索</span></a>
 </nav>
@@ -117,6 +118,7 @@
 <script src="/static/v143_customer_resources.js?v=1431"></script>
 <script src="/static/live-refresh-v15.js?v=1500"></script>
 <script src="/static/live-refresh-modules-v15.js?v=1501"></script>
+<script src="/static/high-frequency-v152.js?v=1522"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
