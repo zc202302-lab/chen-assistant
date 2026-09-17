@@ -92,11 +92,16 @@ def main():
             expect(page.locator('[data-home-panel="payment"]')).to_be_visible()
             assert page.locator('[data-home-tab]').first.get_attribute('data-home-tab') == 'payment'
 
-            # Home now exposes customer management directly as the high-frequency
-            # work entry rather than forcing a detour through /work.
+            # v1.5.3 keeps the homepage as an overview and moves the top-level
+            # Work/Life entries into a compact top navigation. Customer management
+            # remains directly reachable from the overview's current-work section.
             page.goto('http://127.0.0.1:8158/', wait_until='networkidle')
-            expect(page.locator('a.v10-primary[href="/work/customers"]')).to_be_visible()
-            expect(page.locator('.bottom-nav a[href="/work/customers"]')).to_contain_text('客户')
+            top_nav = page.locator('nav.home-top-nav-v153')
+            expect(top_nav).to_be_visible()
+            expect(top_nav.locator('a[href="/"]')).to_have_attribute('aria-current', 'page')
+            expect(top_nav.locator('a[href="/work"]')).to_contain_text('工作')
+            expect(top_nav.locator('a[href="/life"]')).to_contain_text('生活')
+            expect(page.locator('.v153-home-dashboard a[href="/work/customers"]').first).to_be_visible()
 
             page.goto(f'http://127.0.0.1:8158/customers/{cid}', wait_until='networkidle')
             page.wait_for_timeout(900)

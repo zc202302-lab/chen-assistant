@@ -1,10 +1,15 @@
 {% extends "base.html" %}
 {% block title %}首页 · 晨的助手{% endblock %}
 {% block content %}
-<section class="v10-shell v10-home">
-  <div class="v10-hero"><div><div class="v10-eyebrow">个人工作与生活数字化系统</div><h1>晚上好，{{ app_username }}</h1><p>今天的工作与生活，从这里进入。</p></div><div class="v10-hero-version">v1.0</div></div>
+<link rel="stylesheet" href="/static/home-top-nav-v153.css?v=1530">
+<nav class="home-top-nav-v153" aria-label="首页主导航">
+  <a class="active" href="/" aria-current="page">首页</a>
+  <a href="/work">工作</a>
+  <a href="/life">生活</a>
+</nav>
+<section class="v10-shell v10-home v153-home-dashboard">
+  <div class="v10-hero"><div><div class="v10-eyebrow">个人工作与生活数字化系统</div><h1>晚上好，{{ app_username }}</h1><p>首页只保留总览；工作与生活从顶部导航分别进入。</p></div><div class="v10-hero-version">v1.5.3</div></div>
   <section class="v10-section"><div class="v10-section-head"><div><span class="v10-kicker">今日</span><h2>待处理事项</h2></div><a href="/work/customers">进入客户管理 →</a></div><div class="v10-stat-grid v10-stat-grid-2"><a class="v10-stat-card" href="/work/customers"><strong>{{ customer_count }}</strong><span>客户</span></a><a class="v10-stat-card" href="/work/customers?home=tasks"><strong>{{ open_tasks }}</strong><span>未完成待办</span></a></div>{% if tasks %}<div class="v10-list-card">{% for task in tasks %}<a class="v10-row" href="{% if task.customer_id %}/customers/{{ task.customer_id }}{% else %}/work/customers?home=tasks{% endif %}"><div><strong>{{ task.title }}</strong><small>{{ task.customer_name or '通用待办' }}</small></div><span>{{ task.remind_date or '未设日期' }}</span></a>{% endfor %}</div>{% else %}<div class="v10-empty">今天没有到期待办。</div>{% endif %}</section>
-  <div class="v10-space-grid v152-space-grid"><section class="v10-space-card v152-customer-space"><div class="v10-space-icon">工</div><div><span class="v10-kicker">高频工作入口</span><h2>客户管理</h2><p>直接进入缴费默认视图；客户、业务、优惠、联系人、待办与跟进都从这里展开。</p></div><a class="v10-primary" href="/work/customers">进入客户管理</a>{% if recent_customers %}<div class="v10-mini-list">{% for c in recent_customers[:3] %}<a href="/customers/{{ c.id }}">{{ c.name }}</a>{% endfor %}</div>{% endif %}</section><section class="v10-space-card v152-life-space"><div class="v10-space-icon">生</div><div><span class="v10-kicker">生活空间</span><h2>个人烹饪系统</h2><p>{{ recipe_count }} 道菜谱，标准配方可以随着每一次实践持续进化。</p></div><a class="v10-primary" href="/life">进入生活</a>{% if recent_recipes %}<div class="v10-mini-list">{% for r in recent_recipes[:3] %}<a href="/life/recipes/{{ r.id }}">{{ r.name }} <small>V{{ r.version_no or 1 }}</small></a>{% endfor %}</div>{% endif %}</section></div>
   {% if last_records %}<section class="v10-section"><div class="v10-section-head"><div><span class="v10-kicker">最近生活</span><h2>最近做过</h2></div><a href="/life/records">全部记录 →</a></div><div class="v10-card-grid">{% for row in last_records %}<a class="v10-simple-card" href="/life/records/{{ row.id }}"><strong>{{ row.recipe_name }}</strong><span>{{ row.cooked_at[:10] }}</span>{% if row.rating %}<em>{{ row.rating }}/10</em>{% endif %}</a>{% endfor %}</div></section>{% endif %}
 </section>
 {% endblock %}
