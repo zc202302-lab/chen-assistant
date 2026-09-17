@@ -92,7 +92,7 @@ def main():
             assert_primary_nav(page, '工作')
             expect(page.get_by_role('heading', name='客户管理')).to_be_visible()
             expect(page.get_by_role('heading', name='工作资料')).to_be_visible()
-            expect(page.locator('.brand')).to_have_attribute('href', '/')
+            expect(page.locator('.brand')).to_have_attribute('href', '/work')
             expect(page.locator('.search-link')).to_have_attribute('href', '/search')
             expect(page.locator('.brand')).to_contain_text(f'v{config.APP_VERSION}')
             assert_history_nav(page)
@@ -102,7 +102,7 @@ def main():
             assert_primary_nav(page, '工作')
             work_tabs = page.locator('[data-home-tabs] [data-home-tab]')
             assert [x.strip() for x in work_tabs.all_inner_texts()] == ['缴费 0', '待办 0', '优惠 0', '最近客户']
-            expect(page.locator('.brand')).to_have_attribute('href', '/')
+            expect(page.locator('.brand')).to_have_attribute('href', '/work')
             assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/work/library', wait_until='networkidle')
@@ -112,7 +112,7 @@ def main():
             expect(page.get_by_role('heading', name='产品资料')).to_be_visible()
             expect(page.get_by_role('heading', name='资费资料')).to_be_visible()
             expect(page.get_by_text('架构已建立 · 内容功能待开发', exact=True)).to_be_visible()
-            expect(page.locator('.brand')).to_have_attribute('href', '/')
+            expect(page.locator('.brand')).to_have_attribute('href', '/work')
             assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/work?home=payment', wait_until='networkidle')
