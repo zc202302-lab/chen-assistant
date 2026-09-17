@@ -37,9 +37,9 @@ else
 fi
 .venv/bin/python -m compileall -q app storage_node
 if command -v node >/dev/null 2>&1; then
-  while IFS= read -r ASSET; do
-    [[ -f "$ASSET" ]] && node --check "$ASSET"
-  done < <(grep '^app/static/.*\.js$' "$CHANGED_FILE_LIST" || true)
+  find app/static -maxdepth 1 -type f -name '*.js' -print0 | sort -z | while IFS= read -r -d '' ASSET; do
+    node --check "$ASSET"
+  done
 fi
 .venv/bin/python - "$EXPECTED_VERSION" <<'PY'
 import sys
