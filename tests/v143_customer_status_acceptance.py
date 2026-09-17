@@ -93,15 +93,21 @@ def main():
             page = context.new_page()
 
             page.goto('http://127.0.0.1:8146/work', wait_until='networkidle')
+            primary_nav = page.locator('.global-primary-nav')
             nav = page.locator('[data-history-nav]')
             back = page.locator('[data-history-back]')
             forward = page.locator('[data-history-forward]')
+            expect(primary_nav).to_be_visible()
             expect(nav).to_be_visible()
-            box = nav.bounding_box()
-            assert box, 'global history nav has no bounding box'
-            assert abs((box['x'] + box['width'] / 2) - 720) <= 4, box
+            primary_box = primary_nav.bounding_box()
+            history_box = nav.bounding_box()
+            assert primary_box, 'global primary nav has no bounding box'
+            assert history_box, 'global history nav has no bounding box'
+            assert abs((primary_box['x'] + primary_box['width'] / 2) - 720) <= 4, primary_box
+            assert history_box['x'] > primary_box['x'] + primary_box['width'], (primary_box, history_box)
+            assert page.locator('.topbar-actions [data-history-nav]').count() == 1
             b = back.bounding_box(); f = forward.bounding_box()
-            assert b and f and b['width'] >= 44 and b['height'] >= 36 and f['width'] >= 44 and f['height'] >= 36
+            assert b and f and b['width'] >= 34 and b['height'] >= 32 and f['width'] >= 34 and f['height'] >= 32
 
             page.goto('http://127.0.0.1:8146/work/customers?home=payment', wait_until='networkidle')
             expect(page.locator('[data-history-back]')).to_be_enabled()
@@ -162,7 +168,7 @@ def main():
 
             browser.close()
 
-        print('v1.4.3 centered navigation + profile-level live customer status acceptance passed')
+        print('v1.5.4 centered primary navigation + right-side history controls + profile-level live customer status acceptance passed')
     finally:
         proc.terminate()
         try:

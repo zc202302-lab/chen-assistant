@@ -1,15 +1,8 @@
 (() => {
   const brand = document.querySelector('.brand');
   if (brand) {
-    const path = window.location.pathname;
-    const isWork = path === '/work' || path.startsWith('/work/') || path === '/search' || path.startsWith('/customers') || path.startsWith('/products') || path.startsWith('/accounts');
-    const isLife = path.startsWith('/life');
-    brand.href = isWork ? '/work' : (isLife ? '/life' : '/');
+    brand.href = '/';
     brand.title = '返回晨的助手主页面';
-    brand.addEventListener('click', event => {
-      event.preventDefault();
-      window.location.assign('/');
-    });
   }
 
   const backButton = document.querySelector('[data-history-back]');
