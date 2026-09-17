@@ -5,20 +5,25 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     home = (ROOT / 'app' / 'templates' / 'home_v10.html').read_text(encoding='utf-8')
-    css = (ROOT / 'app' / 'static' / 'home-top-nav-v153.css').read_text(encoding='utf-8')
+    base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
+    css = (ROOT / 'app' / 'static' / 'global-back.css').read_text(encoding='utf-8')
     config = (ROOT / 'app' / 'config.py').read_text(encoding='utf-8')
 
-    assert 'home-top-nav-v153' in home
-    assert 'href="/" aria-current="page">首页</a>' in home
-    assert 'href="/work">工作</a>' in home
-    assert 'href="/life">生活</a>' in home
+    assert 'class="global-primary-nav"' in base
+    assert 'href="/"' in base and '>首页</a>' in base
+    assert 'href="/work"' in base and '>工作</a>' in base
+    assert 'href="/life"' in base and '>生活</a>' in base
+    assert 'home-top-nav-v153' not in home
     assert 'v10-space-grid v152-space-grid' not in home
     assert 'v152-customer-space' not in home
     assert 'v152-life-space' not in home
-    assert 'position:sticky' in css
-    assert 'justify-content:center' in css
-    assert 'APP_VERSION = "1.5.3"' in config
-    print('v1.5.3 home top navigation contract passed')
+    assert '@view-transition{navigation:auto}' in css
+    assert 'view-transition-name:app-topbar' in css
+    assert 'view-transition-name:app-page' in css
+    assert '.topbar-actions' in css
+    assert 'position:static' in css
+    assert 'APP_VERSION = "1.5.4"' in config
+    print('v1.5.4 global top navigation contract passed')
 
 
 if __name__ == '__main__':
