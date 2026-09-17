@@ -88,9 +88,11 @@ def main():
             expect(page.locator('.excel-step-row').first.locator('th')).to_have_text('主材准备')
             expect(page.locator('.excel-step-row').first.locator('.excel-step-method')).to_contain_text('1.排骨：500g')
             box = grid.bounding_box()
-            assert box
-            assert abs(box['width'] - 649.7) <= 3, box
-            assert abs(box['height'] - 914.8) <= 4, box
+            sheet_box = page.locator('.recipe-print-sheet').bounding_box()
+            assert box and sheet_box
+            assert abs(box['width'] / sheet_box['width'] - 171.9 / 210) <= .01, (box, sheet_box)
+            assert abs(box['height'] / sheet_box['height'] - 242.1 / 297) <= .01, (box, sheet_box)
+            assert abs(box['width'] / box['height'] - 171.9 / 242.1) <= .01, box
             pdf = page.pdf(print_background=True, prefer_css_page_size=True)
             pages = len(re.findall(rb'/Type\s*/Page(?!s)\b', pdf))
             assert pages == 1, pages
