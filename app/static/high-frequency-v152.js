@@ -1,5 +1,5 @@
 (() => {
-  const root = document.querySelector('.v028-workspace');
+  const root = document.querySelector('.v027-workspace');
   if (!root) return;
 
   const workbench = root.querySelector('[data-payment-workbench]');
@@ -82,12 +82,12 @@
     return armed;
   };
 
-  // v0.2.8 already owns the mature Enter-save behavior and moves focus after a
-  // successful save. Remember the source before its document-capture handler runs;
-  // a later focusin on another payment amount is therefore the successful advance.
+  // The existing customer workbench owns the mature Enter-save behavior and moves
+  // focus after a successful save. Remember the source before its capture handler
+  // runs; a later focusin on another payment amount is therefore the successful advance.
   window.addEventListener('keydown', event => {
     if (event.key !== 'Enter') return;
-    const input = event.target.closest?.('.v028-workspace .quick-amount');
+    const input = event.target.closest?.('.v027-workspace .quick-amount');
     if (!input) return;
     arm('amount', input.closest('[data-payment-row]'));
   }, true);
@@ -124,12 +124,11 @@
     setTimeout(() => waitForReviewedRow(pending, attemptsLeft - 1), 25);
   };
 
-  // A manual 未核对 -> 已核对 is the one review action that advances. Instead of
-  // monkey-patching window.fetch, observe the authoritative DOM state that the
-  // mature v0.2.8 handler updates after a successful server response. This remains
-  // correct even when live refresh replaces payment-row elements during the request.
+  // A manual 未核对 -> 已核对 is the one review action that advances. Observe the
+  // authoritative DOM state that the mature handler updates after a successful
+  // server response, which also remains correct if live refresh replaces row nodes.
   window.addEventListener('pointerdown', event => {
-    const button = event.target.closest?.('.v028-workspace [data-review-toggle]');
+    const button = event.target.closest?.('.v027-workspace [data-review-toggle]');
     if (!button) return;
     const row = button.closest('[data-payment-row]');
     if (row?.dataset.confirmed !== '0') return;
