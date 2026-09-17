@@ -19,7 +19,7 @@ def main():
     assert dashboard.index('data-home-tab="payment"') < dashboard.index('data-home-tab="tasks"')
     assert 'href="/work/customers">进入客户管理' in home
     assert 'href="/work/customers" class="nav-item">◎<span>客户</span>' in base
-    assert 'high-frequency-v152.css?v=1523' in base
+    assert 'high-frequency-v152.css?v=1524' in base
     assert 'high-frequency-v152.js?v=1522' in base
     assert 'payment-total-row-v152' in js
     assert "document.querySelector('[data-payment-workbench]')" in js
@@ -34,7 +34,8 @@ def main():
     assert '.identifier-copy[data-kind="账号"][data-copy]' in js
     assert "item.dataset.confirmed === '0'" in js
     assert 'grid-column:1/-1' in css
-    assert 'justify-self:end' in css
+    assert 'justify-self:center' in css
+    assert 'text-align:center' in css
     print('v1.5.2 high-frequency customer/payment contract passed')
 
 
