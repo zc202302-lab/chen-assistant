@@ -69,18 +69,14 @@ import json,sys
 p=json.loads(sys.argv[1]); expected=sys.argv[2]; assert p.get('ok') is True and p.get('version')==expected,(p,expected); print(f"✓ 服务版本：{p['version']}")
 PY
 REV="$(git rev-parse --short HEAD)"
-STATIC_COUNT=0
-while IFS= read -r PATHNAME; do
-  [[ -f "$PATHNAME" ]] || continue
+find app/static -maxdepth 1 -type f \( -name '*.js' -o -name '*.css' \) -print0 | sort -z | while IFS= read -r -d '' PATHNAME; do
   ASSET="${PATHNAME#app/static/}"
-  case "$ASSET" in *.js|*.css) ;; *) continue ;; esac
   TMP="$(mktemp)"
   curl -fsS "$APP_HTTP/static/$ASSET?deploy=$REV" -o "$TMP"
   [[ "$(sha256sum "$PATHNAME"|awk '{print $1}')" == "$(sha256sum "$TMP"|awk '{print $1}')" ]] || { echo "✗ 静态资源不一致：$ASSET"; rm -f "$TMP"; exit 1; }
   rm -f "$TMP"
-  STATIC_COUNT=$((STATIC_COUNT+1))
-done < "$CHANGED_FILE_LIST"
-if [[ "$STATIC_COUNT" -gt 0 ]]; then echo "✓ 本次变更的 JS/CSS 静态资源一致（$STATIC_COUNT 个）"; else echo "✓ 本次无 JS/CSS 变更，跳过静态资源逐个校验"; fi
+done
+echo "✓ 全部 JS/CSS 静态资源一致"
 FOXMAIL_CHANGED=0
 for ASSET in chen_foxmail_bootstrap.ps1 chen_foxmail_helper_v09.ps1; do
   if grep -qx "app/static/$ASSET" "$CHANGED_FILE_LIST"; then
