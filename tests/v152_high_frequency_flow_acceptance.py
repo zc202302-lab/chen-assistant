@@ -104,14 +104,17 @@ def main():
             for row in rows:
                 expect(row).to_have_attribute('data-confirmed', '0')
 
-            # Monthly total is physically at the bottom of the payment table and
-            # the CSS grid aligns it with the payment-amount column.
+            # Monthly total is physically the last row and spans the full table grid,
+            # with its own box aligned to the far-right edge of that row.
             total_row = page.locator('[data-payment-total-row-v152]')
             expect(total_row).to_be_visible()
-            expect(total_row.locator('#paymentGrandTotal')).to_have_text('¥600')
+            total_box = total_row.locator('.payment-total-v152')
+            expect(total_box.locator('#paymentGrandTotal')).to_have_text('¥600')
             assert page.locator('#paymentSortable > *').last.get_attribute('data-payment-total-row-v152') == '1'
-            grid_column = total_row.locator('.payment-total-v152').evaluate("el => getComputedStyle(el).gridColumnStart")
-            assert grid_column == '5', grid_column
+            placement = total_box.evaluate("el => { const s=getComputedStyle(el); return [s.gridColumnStart,s.gridColumnEnd,s.justifySelf]; }")
+            assert placement[0] == '1', placement
+            assert placement[1] == '-1', placement
+            assert placement[2] == 'end', placement
 
             # Manual 未核对 -> 已核对: immediately move to the next pending amount
             # and copy that destination row's account to the clipboard.
