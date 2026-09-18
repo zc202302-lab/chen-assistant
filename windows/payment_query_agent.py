@@ -170,6 +170,50 @@ QUERY_SCRIPT = r"""
 """
 
 
+INSPECT_SCRIPT = r"""
+(async queryValue => {
+  const visible = el => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
+  const text = el => (el?.innerText || el?.textContent || '').replace(/\s+/g, ' ').trim();
+  const compact = value => String(value || '').replace(/\s+/g, '');
+  const controls = [...document.querySelectorAll('input,button,a')].filter(visible);
+  const radios = controls.filter(el => el.tagName === 'INPUT' && el.type === 'radio');
+  const radioCaption = radio => {
+    if (radio.labels?.length) return text(radio.labels[0]);
+    let value = '';
+    let node = radio.nextSibling;
+    while (node && value.length < 40) {
+      if (node.nodeType === Node.ELEMENT_NODE && node.matches?.('input[type="radio"]')) break;
+      value += ` ${node.textContent || ''}`;
+      node = node.nextSibling;
+    }
+    return value.replace(/\s+/g, ' ').trim();
+  };
+  const accountRadio = radios.find(el => /按(帐|账)户查询/.test(compact(radioCaption(el))))
+    || radios[1];
+  if (!accountRadio) return {found:false};
+  const selected = () => radios.map((el, index) => ({
+    index, caption: radioCaption(el), checked: !!el.checked,
+    id: el.id || '', name: el.name || '', value: el.value || ''
+  }));
+  const before = selected();
+  const inputs = controls.filter(el => el.tagName === 'INPUT' && !['hidden','button','submit','radio','checkbox'].includes(el.type));
+  const input = inputs.find(el =>
+    accountRadio.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING
+  );
+  if (!input) return {found:false, before};
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  setter.call(input, queryValue);
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return {
+    found:true,
+    before,
+    after:selected(),
+    input:{id:input.id || '', name:input.name || '', type:input.type || '', value:input.value || ''}
+  };
+})(%s)
+"""
+
+
 def frame_contexts(cdp: Cdp) -> list[int]:
     tree = cdp.call("Page.getFrameTree").get("frameTree", {})
     contexts = []
@@ -239,6 +283,21 @@ def run_query(query_value: str, port: int) -> tuple[int, dict]:
         cdp.close()
 
 
+def inspect_query_input(query_value: str, port: int) -> dict:
+    """Fill only the account field and report radio state; never submit."""
+    target = find_business_target(port)
+    cdp = Cdp(target["webSocketDebuggerUrl"])
+    try:
+        cdp.call("Page.enable")
+        for context_id in frame_contexts(cdp):
+            result = evaluate(cdp, context_id, INSPECT_SCRIPT % json.dumps(query_value, ensure_ascii=False))
+            if result and result.get("found"):
+                return result
+        raise RuntimeError("没有找到“按账户查询”后方的输入框")
+    finally:
+        cdp.close()
+
+
 def atomic_json(path: Path, payload: dict):
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix(path.suffix + f".{uuid.uuid4().hex}.tmp")
@@ -293,7 +352,16 @@ def main():
     parser.add_argument("--port", type=int, default=9222)
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--query", help="诊断模式：立即查询一个账号并在窗口显示结果")
+    parser.add_argument("--inspect-query", help="安全诊断：只填写账号并报告查询方式，不点击确定")
     args = parser.parse_args()
+    if args.inspect_query:
+        query_value = str(args.inspect_query).strip()
+        if not re.fullmatch(r"\d{6,24}", query_value):
+            raise ValueError("查询号码格式无效，应为6至24位数字")
+        result = inspect_query_input(query_value, args.port)
+        print("安全诊断完成：没有点击确定，也没有发起查询。")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
     if args.query:
         query_value = str(args.query).strip()
         if not re.fullmatch(r"\d{6,24}", query_value):
