@@ -4,7 +4,6 @@ import argparse
 import json
 import math
 import re
-import shutil
 import sys
 import time
 import urllib.request
@@ -182,6 +181,8 @@ def run_query(query_value: str, port: int) -> tuple[int, dict]:
         for context_id in contexts:
             result = evaluate(cdp, context_id, QUERY_SCRIPT % json.dumps(query_value, ensure_ascii=False))
             acted = acted or bool(result and result.get("acted"))
+            if acted:
+                break
         if not acted:
             raise RuntimeError("没有找到业务系统的账户查询输入框或确定按钮")
 
