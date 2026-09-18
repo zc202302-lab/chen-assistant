@@ -140,7 +140,8 @@ QUERY_SCRIPT = r"""
     }
     return value.replace(/\s+/g, ' ').trim();
   };
-  const accountRadio = radios.find(el => /按(帐|账)户查询/.test(compact(radioCaption(el))))
+  const accountRadio = document.getElementById('chargeTypeByAcct')
+    || radios.find(el => /按(帐|账)户查询/.test(compact(radioCaption(el))))
     || radios[1];
   // The operator chooses the query mode. Never change either radio here.
   if (!accountRadio || !accountRadio.checked) {
@@ -152,7 +153,7 @@ QUERY_SCRIPT = r"""
   // horizontal row and to the right of the account-query radio.
   const radioRect = accountRadio.getBoundingClientRect();
   const radioY = (radioRect.top + radioRect.bottom) / 2;
-  const input = inputs.map(el => {
+  const input = document.querySelector('input[name="telnumber"]') || inputs.map(el => {
     const rect = el.getBoundingClientRect();
     return {el, rect, dy: Math.abs((rect.top + rect.bottom) / 2 - radioY)};
   }).filter(x => x.rect.left > radioRect.right && x.dy <= 18)
@@ -198,7 +199,8 @@ INSPECT_SCRIPT = r"""
     }
     return value.replace(/\s+/g, ' ').trim();
   };
-  const accountRadio = radios.find(el => /按(帐|账)户查询/.test(compact(radioCaption(el))))
+  const accountRadio = document.getElementById('chargeTypeByAcct')
+    || radios.find(el => /按(帐|账)户查询/.test(compact(radioCaption(el))))
     || radios[1];
   if (!accountRadio) return {found:false};
   const selected = () => radios.map((el, index) => ({
@@ -209,7 +211,7 @@ INSPECT_SCRIPT = r"""
   const inputs = controls.filter(el => el.tagName === 'INPUT' && !['hidden','button','submit','radio','checkbox'].includes(el.type));
   const radioRect = accountRadio.getBoundingClientRect();
   const radioY = (radioRect.top + radioRect.bottom) / 2;
-  const input = inputs.map(el => {
+  const input = document.querySelector('input[name="telnumber"]') || inputs.map(el => {
     const rect = el.getBoundingClientRect();
     return {el, rect, dy: Math.abs((rect.top + rect.bottom) / 2 - radioY)};
   }).filter(x => x.rect.left > radioRect.right && x.dy <= 18)
