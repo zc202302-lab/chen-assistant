@@ -263,7 +263,15 @@ def main():
     parser.add_argument("--bridge", type=Path, default=DEFAULT_BRIDGE)
     parser.add_argument("--port", type=int, default=9222)
     parser.add_argument("--once", action="store_true")
+    parser.add_argument("--query", help="诊断模式：立即查询一个账号并在窗口显示结果")
     args = parser.parse_args()
+    if args.query:
+        query_value = str(args.query).strip()
+        if not re.fullmatch(r"\d{6,24}", query_value):
+            raise ValueError("查询号码格式无效，应为6至24位数字")
+        amount, evidence = run_query(query_value, args.port)
+        print(json.dumps({"ok": True, "amount": amount, "evidence": evidence}, ensure_ascii=False, indent=2))
+        return
     Agent(args.bridge, args.port).run(args.once)
 
 
