@@ -126,9 +126,21 @@ QUERY_SCRIPT = r"""
 (queryValue => {
   const visible = el => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
   const text = el => (el?.innerText || el?.textContent || '').replace(/\s+/g, ' ').trim();
+  const compact = value => String(value || '').replace(/\s+/g, '');
   const controls = [...document.querySelectorAll('input,button,a')].filter(visible);
   const radios = controls.filter(el => el.tagName === 'INPUT' && el.type === 'radio');
-  const accountRadio = radios.find(el => /按(帐|账)户查询/.test(text(el.closest('label') || el.parentElement)));
+  const radioCaption = radio => {
+    if (radio.labels?.length) return text(radio.labels[0]);
+    let value = '';
+    let node = radio.nextSibling;
+    while (node && value.length < 40) {
+      if (node.nodeType === Node.ELEMENT_NODE && node.matches?.('input[type="radio"]')) break;
+      value += ` ${node.textContent || ''}`;
+      node = node.nextSibling;
+    }
+    return value.replace(/\s+/g, ' ').trim();
+  };
+  const accountRadio = radios.find(el => /按(帐|账)户查询/.test(compact(radioCaption(el))));
   if (accountRadio) accountRadio.click();
   const inputs = controls.filter(el => el.tagName === 'INPUT' && !['hidden','button','submit','radio','checkbox'].includes(el.type));
   const input = inputs.find(el => /按(帐|账)户查询/.test(text(el.parentElement)))
@@ -139,7 +151,9 @@ QUERY_SCRIPT = r"""
   setter.call(input, queryValue);
   input.dispatchEvent(new Event('input', {bubbles:true}));
   input.dispatchEvent(new Event('change', {bubbles:true}));
-  const action = controls.find(el => /^(确定|查询|搜索)$/.test((el.value || text(el)).trim()));
+  const following = controls.filter(el => input.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+  const action = following.find(el => /^(确定|查询)$/.test(compact(el.value || text(el))))
+    || controls.find(el => /^(确定|查询|搜索)$/.test(compact(el.value || text(el))));
   if (!action) return {acted:false, filled:true};
   action.click();
   return {acted:true};
