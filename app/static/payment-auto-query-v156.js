@@ -37,7 +37,7 @@
   };
 
   const ensureBridge = async () => {
-    let handle = bridgeHandle || await storedHandle();
+    let handle = bridgeHandle;
     if (handle) {
       let permission = await handle.queryPermission({mode: 'readwrite'});
       if (permission !== 'granted') permission = await handle.requestPermission({mode: 'readwrite'});
@@ -48,6 +48,8 @@
     bridgeHandle = handle;
     return handle;
   };
+
+  storedHandle().then(handle => { bridgeHandle = handle; }).catch(() => {});
 
   const writeJson = async (directory, filename, value) => {
     const file = await directory.getFileHandle(filename, {create: true});
