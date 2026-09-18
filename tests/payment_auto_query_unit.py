@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
 from windows.payment_query_agent import calculate_amount, next_five_band
 
 
@@ -30,3 +36,24 @@ def test_prepaid_uses_maximum_in_bill_section():
     )
     assert amount == 105
     assert evidence["raw_amount"] == 100.22
+
+
+def test_route_is_registered():
+    from app.main import app
+
+    matches = [
+        route for route in app.router.routes
+        if getattr(route, "path", "") == "/services/{service_id}/payment-auto-query-result"
+        and "POST" in getattr(route, "methods", set())
+    ]
+    assert matches
+    assert matches[0].endpoint.__name__ == "apply_payment_auto_query_result"
+
+
+if __name__ == "__main__":
+    test_next_five_band()
+    test_afterpaid_prefers_receivable()
+    test_afterpaid_uses_unbilled_when_receivable_zero()
+    test_prepaid_uses_maximum_in_bill_section()
+    test_route_is_registered()
+    print("payment auto-query checks passed")
