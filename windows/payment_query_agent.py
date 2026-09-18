@@ -140,7 +140,8 @@ QUERY_SCRIPT = r"""
     }
     return value.replace(/\s+/g, ' ').trim();
   };
-  const accountRadio = radios.find(el => /按(帐|账)户查询/.test(compact(radioCaption(el))));
+  const accountRadio = radios.find(el => /按(帐|账)户查询/.test(compact(radioCaption(el))))
+    || radios[1];
   if (accountRadio) accountRadio.click();
   const inputs = controls.filter(el => el.tagName === 'INPUT' && !['hidden','button','submit','radio','checkbox'].includes(el.type));
   const input = inputs.find(el => /按(帐|账)户查询/.test(text(el.parentElement)))
@@ -151,6 +152,12 @@ QUERY_SCRIPT = r"""
   setter.call(input, queryValue);
   input.dispatchEvent(new Event('input', {bubbles:true}));
   input.dispatchEvent(new Event('change', {bubbles:true}));
+  // This legacy page may switch back to "按服务号码查询" when the input
+  // value changes. Select account mode again immediately before querying.
+  if (accountRadio && !accountRadio.checked) accountRadio.click();
+  if (!accountRadio || !accountRadio.checked) {
+    return {acted:false, filled:true, accountMode:false};
+  }
   const following = controls.filter(el => input.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
   const action = following.find(el => /^(确定|查询)$/.test(compact(el.value || text(el))))
     || controls.find(el => /^(确定|查询|搜索)$/.test(compact(el.value || text(el))));
