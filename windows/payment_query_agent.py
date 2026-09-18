@@ -147,11 +147,16 @@ QUERY_SCRIPT = r"""
     return {acted:false, accountMode:false};
   }
   const inputs = controls.filter(el => el.tagName === 'INPUT' && !['hidden','button','submit','radio','checkbox'].includes(el.type));
-  // The page also contains a global search box above the query form. Only use
-  // the first editable input that follows the account-query radio in DOM order.
-  const input = inputs.find(el =>
-    accountRadio.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING
-  );
+  // Visual position is authoritative on this legacy page: its DOM order does
+  // not match the screen layout. Pick the nearest editable field on the same
+  // horizontal row and to the right of the account-query radio.
+  const radioRect = accountRadio.getBoundingClientRect();
+  const radioY = (radioRect.top + radioRect.bottom) / 2;
+  const input = inputs.map(el => {
+    const rect = el.getBoundingClientRect();
+    return {el, rect, dy: Math.abs((rect.top + rect.bottom) / 2 - radioY)};
+  }).filter(x => x.rect.left > radioRect.right && x.dy <= 18)
+    .sort((a, b) => a.dy - b.dy || a.rect.left - b.rect.left)[0]?.el;
   if (!input) return {acted:false};
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
   setter.call(input, queryValue);
@@ -160,9 +165,14 @@ QUERY_SCRIPT = r"""
   if (!accountRadio.checked) {
     return {acted:false, filled:true, accountMode:false};
   }
-  const following = controls.filter(el => input.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
-  const action = following.find(el => /^(确定|查询)$/.test(compact(el.value || text(el))))
-    || controls.find(el => /^(确定|查询|搜索)$/.test(compact(el.value || text(el))));
+  const inputRect = input.getBoundingClientRect();
+  const inputY = (inputRect.top + inputRect.bottom) / 2;
+  const action = controls.map(el => {
+    const rect = el.getBoundingClientRect();
+    return {el, rect, dy: Math.abs((rect.top + rect.bottom) / 2 - inputY)};
+  }).filter(x => x.rect.left > inputRect.right && x.dy <= 18
+    && /^(确定|查询)$/.test(compact(x.el.value || text(x.el))))
+    .sort((a, b) => a.dy - b.dy || a.rect.left - b.rect.left)[0]?.el;
   if (!action) return {acted:false, filled:true};
   action.click();
   return {acted:true};
@@ -197,9 +207,13 @@ INSPECT_SCRIPT = r"""
   }));
   const before = selected();
   const inputs = controls.filter(el => el.tagName === 'INPUT' && !['hidden','button','submit','radio','checkbox'].includes(el.type));
-  const input = inputs.find(el =>
-    accountRadio.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING
-  );
+  const radioRect = accountRadio.getBoundingClientRect();
+  const radioY = (radioRect.top + radioRect.bottom) / 2;
+  const input = inputs.map(el => {
+    const rect = el.getBoundingClientRect();
+    return {el, rect, dy: Math.abs((rect.top + rect.bottom) / 2 - radioY)};
+  }).filter(x => x.rect.left > radioRect.right && x.dy <= 18)
+    .sort((a, b) => a.dy - b.dy || a.rect.left - b.rect.left)[0]?.el;
   if (!input) return {found:false, before};
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
   setter.call(input, queryValue);
@@ -208,7 +222,11 @@ INSPECT_SCRIPT = r"""
     found:true,
     before,
     after:selected(),
-    input:{id:input.id || '', name:input.name || '', type:input.type || '', value:input.value || ''}
+    input:{
+      id:input.id || '', name:input.name || '', type:input.type || '', value:input.value || '',
+      left:Math.round(input.getBoundingClientRect().left),
+      top:Math.round(input.getBoundingClientRect().top)
+    }
   };
 })(%s)
 """
