@@ -123,7 +123,7 @@ def _frame_ids(tree: dict) -> list[str]:
 
 
 QUERY_SCRIPT = r"""
-(queryValue => {
+(async queryValue => {
   const visible = el => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
   const text = el => (el?.innerText || el?.textContent || '').replace(/\s+/g, ' ').trim();
   const compact = value => String(value || '').replace(/\s+/g, '');
@@ -152,9 +152,11 @@ QUERY_SCRIPT = r"""
   setter.call(input, queryValue);
   input.dispatchEvent(new Event('input', {bubbles:true}));
   input.dispatchEvent(new Event('change', {bubbles:true}));
-  // This legacy page may switch back to "按服务号码查询" when the input
-  // value changes. Select account mode again immediately before querying.
+  // This legacy page changes the radio asynchronously after the input event.
+  // Let that handler finish, then restore account mode immediately before submit.
+  await new Promise(resolve => setTimeout(resolve, 400));
   if (accountRadio && !accountRadio.checked) accountRadio.click();
+  await new Promise(resolve => setTimeout(resolve, 150));
   if (!accountRadio || !accountRadio.checked) {
     return {acted:false, filled:true, accountMode:false};
   }
