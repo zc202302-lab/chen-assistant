@@ -23,7 +23,7 @@ def main():
     assert '.topbar-actions' in css
     assert 'position:static' in css
     assert 'APP_VERSION = "1.5.6"' in config
-    print('v1.5.4 global top navigation contract passed on app v1.5.5')
+    print('v1.5.4 global top navigation contract passed on app v1.5.6')
 
 
 if __name__ == '__main__':
