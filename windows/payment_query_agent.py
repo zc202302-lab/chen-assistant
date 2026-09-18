@@ -264,6 +264,21 @@ EXPAND_BILL_SCRIPT = r"""
 """
 
 
+READ_PAGE_SCRIPT = r"""
+(() => {
+  const visible = el => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
+  const clean = value => String(value || '').replace(/[\t\u00a0 ]+/g, ' ').trim();
+  const rows = [...document.querySelectorAll('tr')].filter(visible).map(row => {
+    const cells = [...row.children].filter(cell => /^(TH|TD)$/.test(cell.tagName))
+      .filter(visible).map(cell => clean(cell.innerText || cell.textContent));
+    return cells.filter(Boolean).join('\t');
+  }).filter(Boolean);
+  const body = document.body ? document.body.innerText : '';
+  return `${rows.join('\n')}\n${body}`;
+})()
+"""
+
+
 def frame_contexts(cdp: Cdp) -> list[int]:
     tree = cdp.call("Page.getFrameTree").get("frameTree", {})
     contexts = []
@@ -317,7 +332,7 @@ def run_query(query_value: str, port: int) -> tuple[int, dict]:
             texts = []
             for context_id in frame_contexts(cdp):
                 try:
-                    value = evaluate(cdp, context_id, "document.body ? document.body.innerText : ''")
+                    value = evaluate(cdp, context_id, READ_PAGE_SCRIPT)
                     if value:
                         texts.append(value)
                 except Exception:
