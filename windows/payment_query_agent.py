@@ -147,15 +147,16 @@ QUERY_SCRIPT = r"""
     return {acted:false, accountMode:false};
   }
   const inputs = controls.filter(el => el.tagName === 'INPUT' && !['hidden','button','submit','radio','checkbox'].includes(el.type));
-  const input = inputs.find(el => /按(帐|账)户查询/.test(text(el.parentElement)))
-    || inputs.find(el => /^\d{6,}$/.test(el.value || ''))
-    || inputs.find(el => ['text','search',''].includes(el.type));
+  // The page also contains a global search box above the query form. Only use
+  // the first editable input that follows the account-query radio in DOM order.
+  const input = inputs.find(el =>
+    accountRadio.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING
+  );
   if (!input) return {acted:false};
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
   setter.call(input, queryValue);
-  input.dispatchEvent(new Event('input', {bubbles:true}));
-  input.dispatchEvent(new Event('change', {bubbles:true}));
-  await new Promise(resolve => setTimeout(resolve, 150));
+  // The legacy form reads the current value when "确定" is clicked. Do not
+  // emit input/change events because the page binds unrelated mode switching.
   if (!accountRadio.checked) {
     return {acted:false, filled:true, accountMode:false};
   }
