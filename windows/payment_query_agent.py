@@ -142,7 +142,10 @@ QUERY_SCRIPT = r"""
   };
   const accountRadio = radios.find(el => /按(帐|账)户查询/.test(compact(radioCaption(el))))
     || radios[1];
-  if (accountRadio) accountRadio.click();
+  // The operator chooses the query mode. Never change either radio here.
+  if (!accountRadio || !accountRadio.checked) {
+    return {acted:false, accountMode:false};
+  }
   const inputs = controls.filter(el => el.tagName === 'INPUT' && !['hidden','button','submit','radio','checkbox'].includes(el.type));
   const input = inputs.find(el => /按(帐|账)户查询/.test(text(el.parentElement)))
     || inputs.find(el => /^\d{6,}$/.test(el.value || ''))
@@ -152,12 +155,8 @@ QUERY_SCRIPT = r"""
   setter.call(input, queryValue);
   input.dispatchEvent(new Event('input', {bubbles:true}));
   input.dispatchEvent(new Event('change', {bubbles:true}));
-  // This legacy page changes the radio asynchronously after the input event.
-  // Let that handler finish, then restore account mode immediately before submit.
-  await new Promise(resolve => setTimeout(resolve, 400));
-  if (accountRadio && !accountRadio.checked) accountRadio.click();
   await new Promise(resolve => setTimeout(resolve, 150));
-  if (!accountRadio || !accountRadio.checked) {
+  if (!accountRadio.checked) {
     return {acted:false, filled:true, accountMode:false};
   }
   const following = controls.filter(el => input.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
@@ -201,12 +200,18 @@ def run_query(query_value: str, port: int) -> tuple[int, dict]:
         cdp.call("Page.enable")
         contexts = frame_contexts(cdp)
         acted = False
+        account_mode_invalid = False
         for context_id in contexts:
             result = evaluate(cdp, context_id, QUERY_SCRIPT % json.dumps(query_value, ensure_ascii=False))
+            account_mode_invalid = account_mode_invalid or bool(
+                result and result.get("accountMode") is False
+            )
             acted = acted or bool(result and result.get("acted"))
             if acted:
                 break
         if not acted:
+            if account_mode_invalid:
+                raise RuntimeError("当前未选中“按账户查询”；程序没有切换查询方式，也没有提交")
             raise RuntimeError("没有找到业务系统的账户查询输入框或确定按钮")
 
         deadline = time.time() + 18
