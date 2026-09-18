@@ -68,6 +68,7 @@ jobs:
           python -m compileall -q app tests/v10_workspace_isolation_acceptance.py tests/v153_home_navigation_contract.py
           python tests/stability_contract.py
           python tests/v153_home_navigation_contract.py
+          python tests/payment_auto_query_unit.py
           python tests/v10_workspace_isolation_acceptance.py
 
       - name: Check JavaScript syntax

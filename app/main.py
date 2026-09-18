@@ -30,6 +30,7 @@ from .v031_payment_workflow_routes import router as v031_payment_workflow_router
 from .v032_customer_import_routes import router as v032_customer_import_router
 from .v032_customer_exchange_routes import router as v032_customer_exchange_router
 from .v031_fixed_review_patch import router as v031_review_sync_router
+from .payment_auto_query import router as payment_auto_query_router
 from . import v031_fixed_review_patch as _v031_fixed_review_patch  # noqa: F401
 from .v033_payment_flow_patch import router as v033_payment_flow_patch_router
 from .v10_routes import router as v10_router, ensure_v10_schema
@@ -68,6 +69,7 @@ _v031_runtime_routes = _include(v031_runtime_router)
 _v03_mail_draft_routes = _include(v03_mail_draft_router)
 _v031_payment_workflow_routes = _include(v031_payment_workflow_router)
 _v031_review_sync_routes = _include(v031_review_sync_router)
+_payment_auto_query_routes = _include(payment_auto_query_router)
 _v032_customer_import_routes = _include(v032_customer_import_router)
 _v032_customer_exchange_routes = _include(v032_customer_exchange_router)
 _v033_payment_flow_patch_routes = _include(v033_payment_flow_patch_router)
@@ -83,7 +85,7 @@ _ordered = (
     _v101_workspace_routes +
     _v10_routes +
     _v033_payment_flow_patch_routes +
-    _v032_customer_exchange_routes + _v032_customer_import_routes + _v031_review_sync_routes +
+    _v032_customer_exchange_routes + _v032_customer_import_routes + _payment_auto_query_routes + _v031_review_sync_routes +
     _v031_payment_workflow_routes + _v03_mail_draft_routes + _v031_runtime_routes +
     _v03_payment_routes + _v03_routes + _v0212_business_display_routes +
     _v0212_payment_routes + _v0212_routes + _v0211_promotion_routes + _v0211_routes +
