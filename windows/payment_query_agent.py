@@ -245,6 +245,25 @@ INSPECT_SCRIPT = r"""
 """
 
 
+EXPAND_BILL_SCRIPT = r"""
+(() => {
+  const visible = el => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
+  const text = el => (el?.innerText || el?.textContent || '').replace(/\s+/g, '').trim();
+  const labels = [...document.querySelectorAll('div,td,span,a')]
+    .filter(el => visible(el) && text(el) === '应结账单');
+  if (!labels.length) return {clicked:false};
+  const label = labels.sort((a, b) => a.children.length - b.children.length)[0];
+  let target = label;
+  for (let i = 0; i < 4 && target.parentElement; i += 1) {
+    if (target.hasAttribute('onclick') || target.getAttribute('role') === 'button') break;
+    target = target.parentElement;
+  }
+  target.click();
+  return {clicked:true};
+})()
+"""
+
+
 def frame_contexts(cdp: Cdp) -> list[int]:
     tree = cdp.call("Page.getFrameTree").get("frameTree", {})
     contexts = []
@@ -292,6 +311,7 @@ def run_query(query_value: str, port: int) -> tuple[int, dict]:
 
         deadline = time.time() + 18
         last_error = "查询结果尚未出现"
+        bill_expand_attempted = False
         while time.time() < deadline:
             time.sleep(0.8)
             texts = []
@@ -309,6 +329,20 @@ def run_query(query_value: str, port: int) -> tuple[int, dict]:
                 return amount, evidence
             except ValueError as exc:
                 last_error = str(exc)
+                if (
+                    not bill_expand_attempted
+                    and "预付费" in combined
+                    and "应结账单区域没有可用金额" in last_error
+                ):
+                    for context_id in frame_contexts(cdp):
+                        try:
+                            expanded = evaluate(cdp, context_id, EXPAND_BILL_SCRIPT)
+                            if expanded and expanded.get("clicked"):
+                                bill_expand_attempted = True
+                                time.sleep(0.6)
+                                break
+                        except Exception:
+                            pass
         raise RuntimeError(last_error)
     finally:
         cdp.close()
