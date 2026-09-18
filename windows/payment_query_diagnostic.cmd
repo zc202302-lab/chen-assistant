@@ -9,6 +9,8 @@ echo 3. http://127.0.0.1:9222/json/list 能看到10.19.89.56页面
 echo.
 set /p CHEN_QUERY=请输入要测试的账号或号码：
 echo.
-ChenPaymentQueryAgent.exe --query "%CHEN_QUERY%"
+echo 本次仅填写账号并检测查询方式，不会点击“确定”，不会发起查询。
+echo.
+ChenPaymentQueryAgent.exe --inspect-query "%CHEN_QUERY%"
 echo.
 pause
