@@ -37,8 +37,19 @@ def _label_money(text: str, label: str) -> float | None:
 
 def calculate_amount(page_text: str) -> tuple[int, dict]:
     compact = re.sub(r"[\t\u00a0 ]+", " ", page_text)
-    product_match = re.search(r"产品类型\s*[:：]?\s*([^\r\n]+)", compact)
-    product_type = product_match.group(1).strip() if product_match else ""
+    product_marker = compact.find("产品类型")
+    product_context = compact[product_marker:product_marker + 180] if product_marker >= 0 else compact
+    if "后付费" in product_context:
+        product_type = "后付费"
+    elif "预付费" in product_context:
+        product_type = "预付费"
+    elif "后付费" in compact:
+        product_type = "后付费"
+    elif "预付费" in compact:
+        product_type = "预付费"
+    else:
+        product_match = re.search(r"产品类型\s*[:：]?\s*([^\r\n]+)", compact)
+        product_type = product_match.group(1).strip() if product_match else ""
 
     if "后付费" in product_type:
         receivable = _label_money(compact, "应收金额")
