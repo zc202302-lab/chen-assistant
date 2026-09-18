@@ -30,6 +30,16 @@ def test_afterpaid_uses_unbilled_when_receivable_zero():
     assert evidence["raw_amount"] == 38.1
 
 
+def test_afterpaid_detects_product_across_table_lines():
+    amount, evidence = calculate_amount(
+        "产品类型\n淄博后付费全球通新国内套餐\n集团用户号码\n"
+        "未出账话费 136.00\n应收金额 0.00"
+    )
+    assert amount == 140
+    assert evidence["product_type"] == "后付费"
+    assert evidence["raw_amount"] == 136.0
+
+
 def test_prepaid_uses_maximum_in_bill_section():
     amount, evidence = calculate_amount(
         "产品类型 预付费\n应结账单\n费用合计 62.12\n未销账金额 38.10\n合计 100.22"
@@ -54,6 +64,7 @@ if __name__ == "__main__":
     test_next_five_band()
     test_afterpaid_prefers_receivable()
     test_afterpaid_uses_unbilled_when_receivable_zero()
+    test_afterpaid_detects_product_across_table_lines()
     test_prepaid_uses_maximum_in_bill_section()
     test_route_is_registered()
     print("payment auto-query checks passed")
