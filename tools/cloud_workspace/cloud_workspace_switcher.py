@@ -4,6 +4,8 @@ import ctypes
 from ctypes import wintypes
 import sys
 import time
+import json
+from pathlib import Path
 
 if sys.platform != "win32":
     raise SystemExit("仅支持 Windows。")
@@ -33,6 +35,15 @@ PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 
 TARGET_PROCESS = "uSmartView_VDI_Client.exe"
 TARGET_TITLE_FALLBACK = "我的电脑"
+
+CONFIG_PATH = Path(__file__).with_name("cloud_workspace_config.json")
+DEFAULT_CONFIG = {
+    "toggle": "Ctrl+Alt+Space",
+    "maximize": "Ctrl+Alt+Enter",
+    "dock_right": "Ctrl+Alt+Right",
+    "dock_left": "Ctrl+Alt+Left",
+    "minimize": "Ctrl+Alt+Esc",
+}
 
 HOTKEY_TOGGLE = 1
 HOTKEY_MAXIMIZE = 2
@@ -252,7 +263,75 @@ class Switcher:
                 user32.SetForegroundWindow(self.previous_hwnd)
 
 
-def register_hotkey(hotkey_id: int, modifiers: int, vk: int, label: str):
+KEY_NAME_TO_VK = {
+    "SPACE": VK_SPACE,
+    "ENTER": VK_RETURN,
+    "RETURN": VK_RETURN,
+    "RIGHT": VK_RIGHT,
+    "LEFT": VK_LEFT,
+    "ESC": VK_ESCAPE,
+    "ESCAPE": VK_ESCAPE,
+    **{chr(code): code for code in range(ord("A"), ord("Z") + 1)},
+    **{str(n): ord(str(n)) for n in range(10)},
+    **{f"F{n}": 0x6F + n for n in range(1, 13)},
+}
+
+
+def ensure_config() -> dict:
+    if not CONFIG_PATH.exists():
+        CONFIG_PATH.write_text(
+            json.dumps(DEFAULT_CONFIG, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return dict(DEFAULT_CONFIG)
+    try:
+        raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"快捷键配置文件读取失败：{CONFIG_PATH}\n{exc}") from exc
+    result = dict(DEFAULT_CONFIG)
+    for key in result:
+        value = str(raw.get(key, result[key])).strip()
+        if value:
+            result[key] = value
+    return result
+
+
+def parse_hotkey(text: str) -> tuple[int, int]:
+    parts = [p.strip() for p in text.replace("＋", "+").split("+") if p.strip()]
+    if not parts:
+        raise ValueError("快捷键不能为空")
+    modifiers = 0
+    key_name = None
+    for part in parts:
+        upper = part.upper()
+        if upper in {"CTRL", "CONTROL"}:
+            modifiers |= MOD_CONTROL
+        elif upper == "ALT":
+            modifiers |= MOD_ALT
+        elif upper == "SHIFT":
+            modifiers |= MOD_SHIFT
+        elif upper in {"WIN", "WINDOWS", "META"}:
+            modifiers |= 0x0008
+        else:
+            if key_name is not None:
+                raise ValueError(f"只能有一个主按键：{text}")
+            key_name = upper
+    if key_name is None:
+        raise ValueError(f"缺少主按键：{text}")
+    vk = KEY_NAME_TO_VK.get(key_name)
+    if vk is None:
+        raise ValueError(
+            f"不支持的按键“{key_name}”。可用 A-Z、0-9、F1-F12、Space、Enter、Left、Right、Esc。"
+        )
+    return modifiers, vk
+
+
+def register_hotkey(hotkey_id: int, text: str):
+    modifiers, vk = parse_hotkey(text)
+    if not user32.RegisterHotKey(None, hotkey_id, modifiers | MOD_NOREPEAT, vk):
+        raise RuntimeError(f"快捷键注册失败：{text}。可能已被其他软件占用。")
+
+
     if not user32.RegisterHotKey(None, hotkey_id, modifiers | MOD_NOREPEAT, vk):
         raise RuntimeError(f"快捷键注册失败：{label}。可能已被其他软件占用。")
 
