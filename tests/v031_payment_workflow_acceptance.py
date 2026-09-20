@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import subprocess
 import sys
 import tempfile
@@ -27,6 +28,7 @@ from app import config  # noqa: E402
 from app.db import db, init_db, now_iso  # noqa: E402
 from app.payment_v02 import add_periods, current_period  # noqa: E402
 from app.security import create_session  # noqa: E402
+from app.v027_routes import _meta_set  # noqa: E402
 
 
 def seed():
@@ -68,6 +70,11 @@ def seed():
                 'INSERT INTO service_payment_rules(service_id,effective_period,mode,fixed_amount,created_at) VALUES(?,?,?,?,?)',
                 (sid, '1900-01', 'variable' if variable else 'fixed', 0 if variable else amount, now),
             )
+        _meta_set(
+            conn,
+            f'payment_columns_v0211:{cid}',
+            json.dumps(['number', 'account', 'payment_amount']),
+        )
     token, _, _ = create_session()
     return cid, ids, token
 
@@ -177,9 +184,15 @@ def main():
             with zipfile.ZipFile(excel_path) as archive:
                 shared = archive.read('xl/sharedStrings.xml').decode('utf-8')
                 sheet = archive.read('xl/worksheets/sheet1.xml').decode('utf-8')
-            for value in ('类型', '姓名/属性', '号码', '账号', '金额', '成员1', '成员2', '13800000001', '13800000002', 'A001', 'A002'):
+                archive_names = set(archive.namelist())
+            for value in ('号码', '账号', '缴费金额', '13800000001', '13800000002', 'A001', 'A002'):
                 assert value in shared, value
+            for hidden_value in ('类型', '姓名/属性', '成员1', '成员2'):
+                assert hidden_value not in shared, hidden_value
             assert '<v>100</v>' in sheet and '<v>120</v>' in sheet
+            assert not any(name.startswith('xl/tables/') for name in archive_names)
+            assert '<autoFilter' not in sheet and '<tableParts' not in sheet
+            assert '<cols>' in sheet and 'customHeight="1"' in sheet
             assert page.locator('.payment-export-actions a').all_inner_texts() == ['生成缴费EXCEL', '生成缴费TXT']
 
             with page.expect_download(timeout=3000) as download_info:

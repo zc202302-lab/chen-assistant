@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-APP_DIR="/opt/chen-assistant"; SERVICE="chen-assistant"; APP_HTTP="http://172.19.0.1:8010"; HEALTH_URL="$APP_HTTP/health"; BACKUP_DIR="$APP_DIR/backups"; EXPECTED_VERSION="1.5.6"
+APP_DIR="/opt/chen-assistant"; SERVICE="chen-assistant"; APP_HTTP="http://172.19.0.1:8010"; HEALTH_URL="$APP_HTTP/health"; BACKUP_DIR="$APP_DIR/backups"; EXPECTED_VERSION="1.5.7"
 cd "$APP_DIR"
 echo "===== 晨的助手 v${EXPECTED_VERSION} 一键更新 ====="
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then echo "✗ 检测到服务器受 Git 管理文件有本地修改，已停止更新。"; git status --short; exit 1; fi
@@ -60,7 +60,7 @@ with db() as conn:
     assert conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='customer_resource_items_v143'").fetchone()
 for path in ['app/templates/cooking_tools_v12.html','app/templates/recipe_print_v101.html','app/static/v12.js','app/static/v12.css','app/static/recipe-print-v101.css','app/static/work-home-polish-v121.css','app/static/global-back.js','app/static/global-back.css','app/static/v143_customer_status.js','app/static/v143_customer_status.css','app/static/v143_customer_resources.js','app/static/v143_customer_resources.css','app/static/v13_customer_documents.js','app/static/v13_customer_documents.css','app/static/chen_foxmail_bootstrap.ps1','app/static/chen_foxmail_helper_v09.ps1','app/static/v123_foxmail_compose_fix.js','app/static/home-top-nav-v153.css','app/v143_payment_controls_patch.py','app/v143_customer_resources.py','app/v144_audit_hardening.py','app/work_architecture.py','app/templates/work_shell_v14.html','app/templates/work_library_v14.html','storage_node/app.py']:
     assert Path(path).is_file(),path
-print('✓ v1.5.6 缴费EXCEL导出 + v1.5.5 Excel菜谱A4打印 + 历史功能检查通过')
+print('✓ v1.5.7 缴费EXCEL按网页显示列导出 + v1.5.5 Excel菜谱A4打印 + 历史功能检查通过')
 PY
 if [[ -d data ]]; then chown "$SERVICE_USER:$SERVICE_GROUP" data; find data -maxdepth 1 -type f \( -name 'app.db' -o -name 'app.db-wal' -o -name 'app.db-shm' \) -exec chown "$SERVICE_USER:$SERVICE_GROUP" {} +; chmod u+rwx data; fi
 systemctl restart "$SERVICE"; sleep 3; HEALTH_JSON="$(curl -fsS "$HEALTH_URL")"; echo "$HEALTH_JSON"
