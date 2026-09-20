@@ -36,7 +36,24 @@ def static_inventory():
         for path in (ROOT / "app" / "static").iterdir()
         if path.is_file() and path.suffix.lower() in {".js", ".css", ".ps1"}
     }
-    return all_assets, referenced
+
+    mentions = defaultdict(set)
+    skip_roots = {".git", ".venv", "__pycache__"}
+    for path in ROOT.rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in TEXT_SUFFIXES:
+            continue
+        if any(part in skip_roots for part in path.parts):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for asset in all_assets:
+            if path == ROOT / "app" / "static" / asset:
+                continue
+            if asset in text:
+                mentions[asset].add(str(path.relative_to(ROOT)))
+    return all_assets, referenced, mentions
 
 
 def main():
@@ -49,12 +66,26 @@ def main():
         rendered = " -> ".join(f"{module}:{name}" for module, name in values)
         print(f"DUP {method} {path} :: {rendered}")
 
-    all_assets, referenced = static_inventory()
+    current_duplicate_signatures = set(duplicates)
+    unexpected_duplicates = current_duplicate_signatures - KNOWN_DUPLICATE_SIGNATURES
+    assert not unexpected_duplicates, f"new duplicate route signatures: {sorted(unexpected_duplicates)}"
+    removed_duplicates = KNOWN_DUPLICATE_SIGNATURES - current_duplicate_signatures
+    if removed_duplicates:
+        print(f"IMPROVED_DUPLICATES {sorted(removed_duplicates)}")
+
+    all_assets, referenced, mentions = static_inventory()
     unreferenced = sorted(all_assets - referenced)
+    orphans = [asset for asset in unreferenced if not mentions.get(asset)]
     print("=== STATIC ASSET INVENTORY ===")
-    print(f"top_level_assets={len(all_assets)} template_referenced={len(referenced)} unreferenced={len(unreferenced)}")
+    print(
+        f"top_level_assets={len(all_assets)} template_referenced={len(referenced)} "
+        f"unreferenced={len(unreferenced)} orphan_candidates={len(orphans)}"
+    )
     for asset in unreferenced:
-        print(f"UNREF {asset}")
+        refs = ",".join(sorted(mentions.get(asset, set())))
+        print(f"UNREF {asset} :: refs={refs or '-'}")
+    for asset in orphans:
+        print(f"ORPHAN_CANDIDATE {asset}")
 
     key_expected = {
         ("GET", "/customers/{customer_id}"): ("app.v0212_routes", "customer_workspace_v0212"),
