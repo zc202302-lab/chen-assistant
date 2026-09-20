@@ -203,7 +203,7 @@
     const required = document.getElementById('requiredCount');
     const pending = document.getElementById('pendingCount');
     const readiness = document.getElementById('paymentReadiness');
-    const txt = document.getElementById('paymentTxtButton');
+    const exportButtons = ['paymentExcelButton', 'paymentTxtButton'].map(id => document.getElementById(id)).filter(Boolean);
     if (required && stats.required !== undefined) required.textContent = String(stats.required);
     if (pending && stats.pending !== undefined) pending.textContent = String(stats.pending);
     if (readiness && stats.pending !== undefined) {
@@ -211,11 +211,13 @@
         ? `还有 ${stats.pending} 项金额未核对`
         : '本月应缴业务金额已全部核对';
     }
-    if (txt && stats.txt_ready !== undefined) {
-      txt.classList.toggle('disabled', !stats.txt_ready);
-      txt.classList.toggle('primary', !!stats.txt_ready);
-      txt.classList.toggle('secondary', !stats.txt_ready);
-      txt.setAttribute('aria-disabled', stats.txt_ready ? 'false' : 'true');
+    if (stats.txt_ready !== undefined) {
+      exportButtons.forEach(button => {
+        button.classList.toggle('disabled', !stats.txt_ready);
+        button.classList.toggle('primary', !!stats.txt_ready);
+        button.classList.toggle('secondary', !stats.txt_ready);
+        button.setAttribute('aria-disabled', stats.txt_ready ? 'false' : 'true');
+      });
     }
     lastPendingText = pendingCount?.textContent || '';
     lastTotalText = totalNode?.textContent || '';

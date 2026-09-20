@@ -61,7 +61,7 @@ def main():
 
     # v0.3.3 keeps the runtime's two-step external-action state model, but the
     # late-loaded patch removes all payment-stage alert/confirm dialogs and owns
-    # deterministic browser TXT downloading.
+    # deterministic browser TXT/EXCEL downloading.
     nonblocking = (ROOT / 'app' / 'static' / 'v033_payment_flow_patch.js').read_text(encoding='utf-8')
     for token in (
         'window.confirm = message =>', 'window.alert = message =>',
@@ -70,7 +70,8 @@ def main():
         '确认同事已收到邮件，并且你已经完成本次实际支付',
         '撤回“完成缴费”并恢复本次缴费前的周期状态',
         '该客户已经发起缴费。修改金额后',
-        'URL.createObjectURL(blob)', 'download.download =', '缴费TXT已下载',
+        'URL.createObjectURL(blob)', 'download.download =', 'toast(`缴费${label}已下载`)',
+        "id: 'paymentExcelButton', label: 'EXCEL'", "id: 'paymentTxtButton', label: 'TXT'",
     ):
         assert token in nonblocking, token
 
@@ -134,7 +135,7 @@ def main():
     assert '/static/v031_workflow_actions.js?v=0316' in base
     assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
     assert '/static/v031_workflow_dom_guard.js?v=0315' in base
-    assert '/static/v033_payment_flow_patch.js?v=0331' in base
+    assert '/static/v033_payment_flow_patch.js?v=1560' in base
     assert '/static/v031_payment_workflow.css?v=0314' in base
     assert base.index('/static/v031_workflow_actions.js') > base.index('/static/v031_payment_workflow.js')
     assert base.index('/static/v031_workflow_runtime_fix.js') > base.index('/static/v031_workflow_actions.js')

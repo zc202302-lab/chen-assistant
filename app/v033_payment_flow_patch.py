@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import base64
+from io import BytesIO
 from urllib.parse import quote
+
+import xlsxwriter
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
@@ -11,6 +14,7 @@ from .payment_v02 import current_period, format_fee
 from .v025_routes import customer_or_404
 from .v026_routes import check_csrf
 from . import v0212_routes as core
+from . import v028_routes as workspace
 from . import v031_payment_workflow_routes as workflow
 from .v03_mail_draft_routes import _build_eml, _clean_attachment_filename, _clean_header, _safe_filename
 
@@ -161,6 +165,86 @@ def payment_txt_current_workflow_v033(customer_id: int):
     }
     return PlainTextResponse(body, media_type='text/plain; charset=utf-8', headers=headers)
 
+
+def _payment_xlsx_filename(txt_filename: str) -> str:
+    base = txt_filename[:-4] if txt_filename.lower().endswith('.txt') else txt_filename
+    return f'{base}.xlsx'
+
+
+def _current_payment_display_table(conn, customer_id: int, period: str):
+    customer = customer_or_404(conn, customer_id)
+    items, stats = core.payment_snapshot_v0212(conn, customer_id, period)
+    if stats['pending']:
+        raise HTTPException(409, f"还有{stats['pending']}项金额未核对，不能生成正式缴费EXCEL")
+
+    template = workspace._template(conn)
+    display1, display2 = workspace._display_pair(conn, customer, template)
+    labels = {item['key']: item['label'] for item in template}
+    service_ids = [int(item['row']['id']) for item in items]
+    custom = workspace._custom_map(conn, service_ids)
+    services = conn.execute(
+        '''SELECT s.*,g.name invoice_group_name FROM services s
+           LEFT JOIN invoice_groups g ON g.id=s.invoice_group_id
+           WHERE s.customer_id=?''',
+        (customer_id,),
+    ).fetchall()
+    full_by_id = {int(row['id']): row for row in services}
+
+    headers = [labels.get(display1, '属性一'), labels.get(display2, '属性二'), '号码', '账号', '金额']
+    rows = []
+    for item in items:
+        amount = float(item['payment']['amount'] or 0)
+        if amount <= 0:
+            continue
+        service = full_by_id.get(int(item['row']['id']), item['row'])
+        rows.append([
+            workspace._display_attr(service, display1, custom[int(service['id'])]) if display1 else '—',
+            workspace._display_attr(service, display2, custom[int(service['id'])]) if display2 else '—',
+            (service['number'] or '').strip(),
+            (service['account'] or '').strip(),
+            amount,
+        ])
+    if not rows:
+        raise HTTPException(409, '当前客户没有可生成EXCEL的非0元缴费数据')
+    return headers, rows
+
+
+def _payment_xlsx_bytes(headers: list[str], rows: list[list]) -> bytes:
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    worksheet = workbook.add_worksheet('缴费')
+    amount_format = workbook.add_format({'num_format': '0.##'})
+    worksheet.set_column(0, 1, 18)
+    worksheet.set_column(2, 3, 20)
+    worksheet.set_column(4, 4, 12, amount_format)
+    worksheet.freeze_panes(1, 0)
+    worksheet.add_table(0, 0, len(rows), len(headers) - 1, {
+        'name': 'PaymentTable',
+        'style': 'Table Style Medium 2',
+        'columns': [{'header': header} for header in headers],
+        'data': rows,
+    })
+    workbook.close()
+    return output.getvalue()
+
+
+@router.get('/customers/{customer_id}/payment.xlsx')
+def payment_xlsx_current_workflow_v156(customer_id: int):
+    period = current_period()
+    with db() as conn:
+        headers, rows = _current_payment_display_table(conn, customer_id, period)
+        filename = _payment_xlsx_filename(
+            _require_attachment_filename(_get_customer_template(conn, customer_id))
+        )
+    response_headers = {
+        'Content-Disposition': f"attachment; filename=\"payment.xlsx\"; filename*=UTF-8''{quote(filename)}",
+        'Cache-Control': 'no-store, max-age=0',
+    }
+    return Response(
+        content=_payment_xlsx_bytes(headers, rows),
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers=response_headers,
+    )
 
 @router.get('/customers/{customer_id}/payment-mail-compose-v031')
 def payment_mail_compose_customer_scoped_v033(customer_id: int):

@@ -35,7 +35,9 @@ def main():
     assert 'URL.createObjectURL(blob)' in patch_js
     assert 'download.download =' in patch_js
     assert 'Content-Disposition' in patch_js
-    assert '缴费TXT已下载' in patch_js
+    assert 'toast(`缴费${label}已下载`)' in patch_js
+    assert "id: 'paymentExcelButton', label: 'EXCEL'" in patch_js
+    assert "id: 'paymentTxtButton', label: 'TXT'" in patch_js
     assert 'TXT文件名只取这里保存的值' in patch_js
     assert '不与其他客户共用' in patch_js
     assert '生成TXT和邮件附件都只使用此名称；必填' in patch_js
@@ -59,7 +61,7 @@ def main():
     # v1.4.3 updates the DOM guard while retaining the same legacy safety behavior;
     # keep the contract tied to the currently shipped cache-busted asset version.
     assert '/static/v031_workflow_dom_guard.js?v=0315' in base
-    assert '/static/v033_payment_flow_patch.js?v=0331' in base
+    assert '/static/v033_payment_flow_patch.js?v=1560' in base
     assert base.index('/static/v033_payment_flow_patch.js') > base.index('/static/v031_workflow_runtime_fix.js')
 
     helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')

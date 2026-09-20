@@ -66,7 +66,7 @@
           {% endfor %}
         </div>
         {% else %}<p class="empty">本月没有需要缴费的业务。</p>{% endif %}
-        <div class="payment-footer v023-payment-footer"><span id="paymentReadiness">{% if payment_stats.pending %}还有 {{ payment_stats.pending }} 项金额未核对{% else %}本月应缴业务金额已全部核对{% endif %}</span>{% if payment_stats.txt_ready %}<a class="button primary" id="paymentTxtButton" href="/customers/{{ customer.id }}/payment.txt">生成缴费TXT</a>{% else %}<a class="button secondary disabled" id="paymentTxtButton" href="/customers/{{ customer.id }}/payment.txt" aria-disabled="true">生成缴费TXT</a>{% endif %}</div>
+        <div class="payment-footer v023-payment-footer"><span id="paymentReadiness">{% if payment_stats.pending %}还有 {{ payment_stats.pending }} 项金额未核对{% else %}本月应缴业务金额已全部核对{% endif %}</span><div class="payment-export-actions">{% if payment_stats.txt_ready %}<a class="button primary" id="paymentExcelButton" href="/customers/{{ customer.id }}/payment.xlsx">生成缴费EXCEL</a><a class="button primary" id="paymentTxtButton" href="/customers/{{ customer.id }}/payment.txt">生成缴费TXT</a>{% else %}<a class="button secondary disabled" id="paymentExcelButton" href="/customers/{{ customer.id }}/payment.xlsx" aria-disabled="true">生成缴费EXCEL</a><a class="button secondary disabled" id="paymentTxtButton" href="/customers/{{ customer.id }}/payment.txt" aria-disabled="true">生成缴费TXT</a>{% endif %}</div></div>
       </div>
     </section>
 

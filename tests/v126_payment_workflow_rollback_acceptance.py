@@ -120,8 +120,11 @@ def main():
                 ).fetchone()
                 assert not row['notified_at'] and not row['initiated_at'] and not row['paid_at']
 
-            # The stage can be completed again after rollback.
-            notify.click(); notify.click()
+            # The stage can be completed again after rollback. Wait for the
+            # prepared state before confirming so the test is runner-speed independent.
+            notify.click()
+            expect(notify).to_contain_text('待确认', timeout=5000)
+            notify.click()
             expect(notify).to_have_attribute('aria-pressed', 'true', timeout=5000)
 
             # Complete stage 3. Stage 2 is now protected by dependency order.
