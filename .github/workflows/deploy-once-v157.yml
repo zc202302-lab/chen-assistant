@@ -7,14 +7,21 @@ on:
       - '.github/workflows/deploy-once-v157.yml'
 
 jobs:
-  deploy:
+  inspect-deploy-path:
     runs-on: [self-hosted, linux, x64, chen-assistant]
     steps:
-      - name: Deploy production
+      - name: Inspect safe deployment connectivity metadata
         shell: bash
         run: |
           set -Eeuo pipefail
-          cd /opt/chen-assistant
-          bash deploy.sh
-          echo "DEPLOYED_SHA=$(git rev-parse HEAD)"
-          curl -fsS http://172.19.0.1:8010/health
+          echo "HOST=$(hostname)"
+          echo "USER=$(whoami)"
+          echo "HOME=$HOME"
+          echo "SSH_FILES:"
+          if [[ -d "$HOME/.ssh" ]]; then find "$HOME/.ssh" -maxdepth 1 -type f -printf '%f\n' | sort; else echo "(none)"; fi
+          echo "SSH_CONFIG_HOSTS:"
+          if [[ -f "$HOME/.ssh/config" ]]; then awk '/^[[:space:]]*Host[[:space:]]+/{for(i=2;i<=NF;i++) print $i}' "$HOME/.ssh/config"; else echo "(no config)"; fi
+          echo "SSH_ENV_NAMES:"
+          env | cut -d= -f1 | grep -Ei 'ssh|deploy|host' | sort || true
+          echo "OPT_DIRS:"
+          find /opt -maxdepth 1 -mindepth 1 -type d -printf '%f\n' 2>/dev/null | sort || true
