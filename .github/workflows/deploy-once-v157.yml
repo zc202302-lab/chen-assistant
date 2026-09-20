@@ -1,0 +1,20 @@
+name: one-time deploy v1.5.7
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-once-v157.yml'
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, x64, chen-assistant]
+    steps:
+      - name: Deploy production
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd /opt/chen-assistant
+          bash deploy.sh
+          echo "DEPLOYED_SHA=$(git rev-parse HEAD)"
+          curl -fsS http://172.19.0.1:8010/health
