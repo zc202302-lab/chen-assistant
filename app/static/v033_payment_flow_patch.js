@@ -131,7 +131,7 @@
 
   const filenameFromDisposition = (disposition, fallback) => {
     const value = String(disposition || '');
-    const utf8 = value.match(/filename\\*=UTF-8''([^;]+)/i);
+    const utf8 = value.match(/filename\*=UTF-8''([^;]+)/i);
     if (utf8?.[1]) { try { return decodeURIComponent(utf8[1].replace(/^"|"$/g, '')); } catch (_) {} }
     const plain = value.match(/filename="?([^";]+)"?/i);
     return plain?.[1] || fallback;
