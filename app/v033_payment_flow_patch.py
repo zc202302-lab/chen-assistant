@@ -248,7 +248,7 @@ def _payment_xlsx_bytes(headers: list[str], rows: list[list]) -> bytes:
         worksheet.write_string(0, col, str(header))
     for row_index, row in enumerate(rows, start=1):
         for col, value in enumerate(row):
-            if col == len(headers) - 1:
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
                 worksheet.write_number(row_index, col, float(value))
             else:
                 worksheet.write_string(row_index, col, '' if value is None else str(value))
