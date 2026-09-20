@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import subprocess
 import sys
 import tempfile
@@ -49,6 +50,10 @@ def seed():
                (customer_id,recipient,subject,body,attachment_filename,updated_at)
                VALUES(?,?,?,?,?,?)''',
             (cid, 'test@example.com', '测试缴费邮件', '请处理附件缴费明细。', '验收客户缴费清单.txt', now),
+        )
+        conn.execute(
+            'INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)',
+            (f'payment_columns_v0211:{cid}', json.dumps(['number', 'account', 'payment_amount'])),
         )
         ids = []
         for idx, amount in enumerate((100, 120), 1):
@@ -179,8 +184,10 @@ def main():
                 shared = archive.read('xl/sharedStrings.xml').decode('utf-8')
                 sheet = archive.read('xl/worksheets/sheet1.xml').decode('utf-8')
                 styles = archive.read('xl/styles.xml').decode('utf-8')
-            for value in ('类型', '姓名/属性', '号码', '账号', '金额', '成员1', '成员2', '13800000001', '13800000002', 'A001', 'A002'):
+            for value in ('号码', '账号', '缴费金额', '13800000001', '13800000002', 'A001', 'A002'):
                 assert value in shared, value
+            for hidden_value in ('类型', '姓名/属性', '成员1', '成员2'):
+                assert hidden_value not in shared, hidden_value
             assert '<v>100</v>' in sheet and '<v>120</v>' in sheet
             assert 'xl/tables/table1.xml' not in names
             assert '<pane' not in sheet

@@ -96,7 +96,7 @@ def test_ui_contracts():
     assert 'repeat(var(--v03-payment-count,1),minmax(0,1fr))' in css and 'repeat(var(--business-visible-count,var(--v03-business-count,1)),minmax(0,1fr))' in css and 'text-align:center' in css and 'v03-home-search' in css
     assert 'v03-readable-filters' in local_mail_js and '更多筛选' in local_mail_js and 'mail-template-v03' in local_mail_js and 'payment-mail-draft-v03' in local_mail_js
     assert 'v03-mail-template-dialog' in local_mail_css and 'customer_mail_templates_v03' in local_mail_routes and "msg['X-Unsent'] = '1'" in local_mail_routes and 'business_display' in local_mail_routes
-    assert 'customer_scoped' in v033_patch and 'payment_txt_current_workflow_v033' in v033_patch and 'payment_xlsx_current_workflow_v157' in v033_patch and 'payment_mail_compose_customer_scoped_v033' in v033_patch and '当前客户缴费模板未填写' in v033_patch
+    assert 'customer_scoped' in v033_patch and 'payment_txt_current_workflow_v033' in v033_patch and 'payment_xlsx_current_workflow_v158' in v033_patch and 'payment_mail_compose_customer_scoped_v033' in v033_patch and '当前客户缴费模板未填写' in v033_patch
     assert 'window.confirm = message =>' in v033_js and 'window.alert = message =>' in v033_js
     assert 'bindFastBusinessSort' in drag and "bindPointerSort(paymentList, '.drag-handle'" not in drag
     assert 'payment_run_service_snapshots_v03' in routes and "action == 'review'" in routes and "action == 'paid'" in routes
