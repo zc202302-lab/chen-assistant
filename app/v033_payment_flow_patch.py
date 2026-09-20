@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import base64
+from io import BytesIO
 from urllib.parse import quote
+
+import xlsxwriter
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
@@ -160,6 +163,48 @@ def payment_txt_current_workflow_v033(customer_id: int):
         'Cache-Control': 'no-store, max-age=0',
     }
     return PlainTextResponse(body, media_type='text/plain; charset=utf-8', headers=headers)
+
+
+def _payment_xlsx_filename(txt_filename: str) -> str:
+    base = txt_filename[:-4] if txt_filename.lower().endswith('.txt') else txt_filename
+    return f'{base}.xlsx'
+
+
+def _payment_xlsx_bytes(txt_content: str) -> bytes:
+    rows = [line.split('|', 1) for line in txt_content.splitlines() if line]
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    worksheet = workbook.add_worksheet('缴费')
+    amount_format = workbook.add_format({'num_format': '0.##'})
+    worksheet.set_column('A:A', 20)
+    worksheet.set_column('B:B', 12, amount_format)
+    worksheet.add_table(0, 0, len(rows), 1, {
+        'name': 'PaymentTable',
+        'style': 'Table Style Medium 2',
+        'columns': [{'header': '号码'}, {'header': '金额'}],
+        'data': [[number, float(amount)] for number, amount in rows],
+    })
+    workbook.close()
+    return output.getvalue()
+
+
+@router.get('/customers/{customer_id}/payment.xlsx')
+def payment_xlsx_current_workflow_v156(customer_id: int):
+    period = current_period()
+    with db() as conn:
+        _, body, _ = _current_payment_txt_content(conn, customer_id, period)
+        filename = _payment_xlsx_filename(
+            _require_attachment_filename(_get_customer_template(conn, customer_id))
+        )
+    headers = {
+        'Content-Disposition': f"attachment; filename=\"payment.xlsx\"; filename*=UTF-8''{quote(filename)}",
+        'Cache-Control': 'no-store, max-age=0',
+    }
+    return Response(
+        content=_payment_xlsx_bytes(body),
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers=headers,
+    )
 
 
 @router.get('/customers/{customer_id}/payment-mail-compose-v031')
