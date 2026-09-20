@@ -165,8 +165,9 @@ def main():
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
             # Export availability is updated asynchronously with the row review.
             # Wait for both controls before clicking on slower self-hosted runners.
-            expect(excel_button).to_have_attribute('aria-disabled', 'false', timeout=5000)
-            expect(txt_button).to_have_attribute('aria-disabled', 'false', timeout=5000)
+            ready_button = __import__('re').compile(r'\bprimary\b')
+            expect(excel_button).to_have_class(ready_button, timeout=5000)
+            expect(txt_button).to_have_class(ready_button, timeout=5000)
 
             with page.expect_download(timeout=3000) as excel_download_info:
                 assert_no_dialog_while(page, lambda: excel_button.click(), 120)
