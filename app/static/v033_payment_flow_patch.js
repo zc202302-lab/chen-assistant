@@ -129,44 +129,52 @@
     actions.prepareInitiate = stablePrepareInitiate;
   }
 
-  const txtButton = document.getElementById('paymentTxtButton');
-  if (txtButton) {
-    const filenameFromDisposition = disposition => {
-      const value = String(disposition || '');
-      const utf8 = value.match(/filename\*=UTF-8''([^;]+)/i);
-      if (utf8?.[1]) { try { return decodeURIComponent(utf8[1].replace(/^"|"$/g, '')); } catch (_) {} }
-      const plain = value.match(/filename="?([^";]+)"?/i);
-      return plain?.[1] || '缴费.txt';
-    };
-    txtButton.addEventListener('click', async event => {
+  const filenameFromDisposition = (disposition, fallback) => {
+    const value = String(disposition || '');
+    const utf8 = value.match(/filename\\*=UTF-8''([^;]+)/i);
+    if (utf8?.[1]) { try { return decodeURIComponent(utf8[1].replace(/^"|"$/g, '')); } catch (_) {} }
+    const plain = value.match(/filename="?([^";]+)"?/i);
+    return plain?.[1] || fallback;
+  };
+  const responseErrorForExport = async response => {
+    const type = response.headers.get('content-type') || '';
+    if (type.includes('application/json')) {
+      const data = await response.json().catch(() => ({}));
+      return data.detail || data.error || `生成失败（${response.status}）`;
+    }
+    return (await response.text().catch(() => '')).trim() || `生成失败（${response.status}）`;
+  };
+  const bindPaymentExport = ({id, label, fallback, accept}) => {
+    const button = document.getElementById(id);
+    if (!button) return;
+    button.addEventListener('click', async event => {
       event.preventDefault(); event.stopImmediatePropagation();
-      if (txtButton.dataset.downloading === '1') return;
-      if (txtButton.classList.contains('disabled') || txtButton.getAttribute('aria-disabled') === 'true') { toast('请先完成本月全部金额核对，再生成缴费TXT'); return; }
-      const href = txtButton.getAttribute('href');
-      if (!href) { toast('缴费TXT下载地址不存在'); return; }
-      txtButton.dataset.downloading = '1'; txtButton.setAttribute('aria-busy', 'true');
+      if (button.dataset.downloading === '1') return;
+      if (button.classList.contains('disabled') || button.getAttribute('aria-disabled') === 'true') {
+        toast(`请先完成本月全部金额核对，再生成缴费${label}`);
+        return;
+      }
+      const href = button.getAttribute('href');
+      if (!href) { toast(`缴费${label}下载地址不存在`); return; }
+      button.dataset.downloading = '1'; button.setAttribute('aria-busy', 'true');
       try {
-        const response = await fetch(href, {credentials: 'same-origin', cache: 'no-store', headers: {'Accept': 'text/plain'}});
-        if (!response.ok) throw new Error(await responseErrorForTxt(response));
+        const response = await fetch(href, {credentials: 'same-origin', cache: 'no-store', headers: {'Accept': accept}});
+        if (!response.ok) throw new Error(await responseErrorForExport(response));
         const blob = await response.blob();
-        if (!blob.size) throw new Error('服务器返回了空TXT文件');
-        const filename = filenameFromDisposition(response.headers.get('Content-Disposition'));
+        if (!blob.size) throw new Error(`服务器返回了空${label}文件`);
+        const filename = filenameFromDisposition(response.headers.get('Content-Disposition'), fallback);
         const url = URL.createObjectURL(blob);
         const download = document.createElement('a');
         download.href = url; download.download = filename; download.style.display = 'none';
-        document.body.appendChild(download); download.click(); download.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500);
-        toast('缴费TXT已下载');
-      } catch (err) { toast(`缴费TXT生成失败：${err.message || '未知错误'}`); }
-      finally { delete txtButton.dataset.downloading; txtButton.removeAttribute('aria-busy'); }
+        document.body.appendChild(download); download.click(); download.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+        toast(`缴费${label}已下载`);
+      } catch (err) { toast(`缴费${label}生成失败：${err.message || '未知错误'}`); }
+      finally { delete button.dataset.downloading; button.removeAttribute('aria-busy'); }
     }, true);
-    async function responseErrorForTxt(response) {
-      const type = response.headers.get('content-type') || '';
-      if (type.includes('application/json')) {
-        const data = await response.json().catch(() => ({})); return data.detail || data.error || `生成失败（${response.status}）`;
-      }
-      return (await response.text().catch(() => '')).trim() || `生成失败（${response.status}）`;
-    }
-  }
+  };
+  bindPaymentExport({id: 'paymentExcelButton', label: 'EXCEL', fallback: '缴费.xlsx', accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  bindPaymentExport({id: 'paymentTxtButton', label: 'TXT', fallback: '缴费.txt', accept: 'text/plain'});
 
   const dialog = document.querySelector('.v03-mail-template-dialog');
   if (!dialog) return;
