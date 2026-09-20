@@ -10,6 +10,7 @@ import threading
 import time
 import tkinter as tk
 from tkinter import messagebox, ttk
+import winreg
 
 if sys.platform != "win32":
     raise SystemExit("仅支持 Windows。")
@@ -49,8 +50,10 @@ PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 TARGET_PROCESS = "uSmartView_VDI_Client.exe"
 TARGET_TITLE_FALLBACK = "我的电脑"
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "cloud_workspace_config.json"
+AUTOSTART_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+AUTOSTART_NAME = "ChenCloudWorkspace"
 
 DEFAULT_CONFIG = {
     "toggle": "Ctrl+Alt+Space",
@@ -59,6 +62,7 @@ DEFAULT_CONFIG = {
     "dock_left": "Ctrl+Alt+Left",
     "minimize": "Ctrl+Alt+Esc",
     "start_minimized": True,
+    "start_with_windows": False,
 }
 
 HOTKEYS = {
@@ -191,6 +195,50 @@ def save_config(cfg: dict) -> None:
         json.dumps(cfg, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+
+
+def _autostart_command() -> str:
+    if getattr(sys, "frozen", False):
+        return f'"{Path(sys.executable).resolve()}"'
+    pythonw = Path(sys.executable).with_name("pythonw.exe")
+    exe = pythonw if pythonw.exists() else Path(sys.executable)
+    return f'"{exe}" "{Path(__file__).resolve()}"'
+
+
+def set_autostart(enabled: bool) -> None:
+    with winreg.OpenKey(
+        winreg.HKEY_CURRENT_USER,
+        AUTOSTART_KEY,
+        0,
+        winreg.KEY_SET_VALUE,
+    ) as key:
+        if enabled:
+            winreg.SetValueEx(
+                key,
+                AUTOSTART_NAME,
+                0,
+                winreg.REG_SZ,
+                _autostart_command(),
+            )
+        else:
+            try:
+                winreg.DeleteValue(key, AUTOSTART_NAME)
+            except FileNotFoundError:
+                pass
+
+
+def autostart_enabled() -> bool:
+    try:
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            AUTOSTART_KEY,
+            0,
+            winreg.KEY_QUERY_VALUE,
+        ) as key:
+            value, _ = winreg.QueryValueEx(key, AUTOSTART_NAME)
+            return bool(value)
+    except FileNotFoundError:
+        return False
 
 
 def normalize_hotkey(text: str) -> str:
@@ -487,7 +535,16 @@ class SettingsApp:
             frame,
             text="启动后隐藏到系统托盘",
             variable=self.start_minimized_var,
-        ).pack(anchor="w", pady=(14, 6))
+        ).pack(anchor="w", pady=(14, 4))
+
+        self.start_with_windows_var = tk.BooleanVar(
+            value=bool(self.config.get("start_with_windows", False) or autostart_enabled())
+        )
+        ttk.Checkbutton(
+            frame,
+            text="Windows 登录后自动启动",
+            variable=self.start_with_windows_var,
+        ).pack(anchor="w", pady=(2, 6))
 
         buttons = ttk.Frame(frame)
         buttons.pack(fill="x", pady=(14, 8))
@@ -553,6 +610,7 @@ class SettingsApp:
                 seen.add(signature)
                 new_cfg[key] = normalized
             new_cfg["start_minimized"] = bool(self.start_minimized_var.get())
+            new_cfg["start_with_windows"] = bool(self.start_with_windows_var.get())
         except Exception as exc:
             messagebox.showerror("快捷键设置错误", str(exc), parent=self.root)
             return
@@ -560,6 +618,10 @@ class SettingsApp:
         self.engine.stop()
         self.config = new_cfg
         save_config(self.config)
+        try:
+            set_autostart(bool(self.config.get("start_with_windows")))
+        except OSError as exc:
+            messagebox.showerror("开机启动设置失败", str(exc), parent=self.root)
         self.engine.start(self.config)
         self.status_var.set("设置已保存，正在重新启用快捷键…")
 
