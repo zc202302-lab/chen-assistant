@@ -485,13 +485,18 @@ class HotkeyEngine:
 class SettingsApp:
     def __init__(self):
         self.config = load_config()
+        if self.config.get("start_with_windows"):
+            try:
+                set_autostart(True)
+            except OSError:
+                pass
         self.switcher = Switcher()
         self.events: queue.Queue = queue.Queue()
         self.engine = HotkeyEngine(self.switcher, self.events)
         self.root = tk.Tk()
         self.root.title("晨的小助手 · 云电脑快捷切换")
-        self.root.geometry("510x410")
-        self.root.minsize(480, 390)
+        self.root.geometry("520x445")
+        self.root.minsize(490, 420)
         self.root.protocol("WM_DELETE_WINDOW", self.hide_window)
         self.status_var = tk.StringVar(value="正在启动…")
         self.vars: dict[str, tk.StringVar] = {}
