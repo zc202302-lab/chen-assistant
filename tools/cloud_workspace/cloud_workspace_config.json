@@ -3,5 +3,7 @@
   "maximize": "Ctrl+Alt+Enter",
   "dock_right": "Ctrl+Alt+Right",
   "dock_left": "Ctrl+Alt+Left",
-  "minimize": "Ctrl+Alt+Esc"
+  "minimize": "Ctrl+Alt+Esc",
+  "start_minimized": true,
+  "start_with_windows": false
 }
