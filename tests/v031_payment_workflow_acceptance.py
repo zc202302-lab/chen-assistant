@@ -6,6 +6,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -153,6 +154,7 @@ def main():
             variable_state = variable_row.locator('[data-row-state]')
             variable_input = variable_row.locator('.quick-amount')
             fixed_input = fixed_row.locator('.quick-amount')
+            excel_button = page.locator('#paymentExcelButton')
             txt_button = page.locator('#paymentTxtButton')
 
             assert fixed_row.get_attribute('data-confirmed') == '1'
@@ -161,6 +163,19 @@ def main():
             variable_state.click()
             expect(page.locator('#pendingCount')).to_have_text('0', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
+
+            with page.expect_download(timeout=3000) as excel_download_info:
+                assert_no_dialog_while(page, lambda: excel_button.click(), 120)
+            excel_download = excel_download_info.value
+            assert excel_download.suggested_filename == '验收客户缴费清单.xlsx', excel_download.suggested_filename
+            excel_path = excel_download.path(); assert excel_path is not None
+            with zipfile.ZipFile(excel_path) as archive:
+                shared = archive.read('xl/sharedStrings.xml').decode('utf-8')
+                sheet = archive.read('xl/worksheets/sheet1.xml').decode('utf-8')
+            for value in ('类型', '姓名/属性', '号码', '账号', '金额', '成员1', '成员2', '13800000001', '13800000002', 'A001', 'A002'):
+                assert value in shared, value
+            assert '<v>100</v>' in sheet and '<v>120</v>' in sheet
+            assert page.locator('.payment-export-actions a').all_inner_texts() == ['生成缴费EXCEL', '生成缴费TXT']
 
             with page.expect_download(timeout=3000) as download_info:
                 assert_no_dialog_while(page, lambda: txt_button.click(), 120)
