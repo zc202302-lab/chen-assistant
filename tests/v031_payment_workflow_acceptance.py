@@ -163,6 +163,10 @@ def main():
             variable_state.click()
             expect(page.locator('#pendingCount')).to_have_text('0', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
+            # Export availability is updated asynchronously with the row review.
+            # Wait for both controls before clicking on slower self-hosted runners.
+            expect(excel_button).to_have_attribute('aria-disabled', 'false', timeout=5000)
+            expect(txt_button).to_have_attribute('aria-disabled', 'false', timeout=5000)
 
             with page.expect_download(timeout=3000) as excel_download_info:
                 assert_no_dialog_while(page, lambda: excel_button.click(), 120)
