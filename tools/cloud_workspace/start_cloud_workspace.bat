@@ -10,12 +10,16 @@ if errorlevel 1 (
   exit /b 1
 )
 
-start "晨的小助手-云电脑工作区" /min python cloud_workspace_switcher.py
-echo 已启动云电脑工作区切换器。
-echo.
-echo Ctrl+Alt+Space   切到云电脑 / 返回
-echo Ctrl+Alt+Enter   最大化云电脑
-echo Ctrl+Alt+Right   停靠右侧
-echo Ctrl+Alt+Left    停靠左侧
-echo Ctrl+Alt+Esc     最小化云电脑并返回
-timeout /t 4 >nul
+python -c "import pystray, PIL" >nul 2>nul
+if errorlevel 1 (
+  echo 首次运行需要安装托盘组件...
+  python -m pip install -r requirements-cloud-workspace.txt
+  if errorlevel 1 (
+    echo 托盘组件安装失败。程序仍可运行，但不会显示系统托盘图标。
+  )
+)
+
+start "晨的小助手-云电脑工作区" pythonw cloud_workspace_switcher.py
+if errorlevel 1 (
+  python cloud_workspace_switcher.py
+)
