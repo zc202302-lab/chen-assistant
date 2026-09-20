@@ -4,6 +4,8 @@ import base64
 from io import BytesIO
 from urllib.parse import quote
 
+import unicodedata
+
 import xlsxwriter
 
 from fastapi import APIRouter, Form, HTTPException, Request
@@ -209,27 +211,41 @@ def _current_payment_display_table(conn, customer_id: int, period: str):
     return headers, rows
 
 
+def _excel_display_width(value) -> int:
+    text = '' if value is None else str(value)
+    width = 0
+    for char in text:
+        width += 2 if unicodedata.east_asian_width(char) in {'W', 'F'} else 1
+    return width
+
+
 def _payment_xlsx_bytes(headers: list[str], rows: list[list]) -> bytes:
     output = BytesIO()
     workbook = xlsxwriter.Workbook(output, {'in_memory': True})
     worksheet = workbook.add_worksheet('缴费')
-    amount_format = workbook.add_format({'num_format': '0.##'})
-    worksheet.set_column(0, 1, 18)
-    worksheet.set_column(2, 3, 20)
-    worksheet.set_column(4, 4, 12, amount_format)
-    worksheet.freeze_panes(1, 0)
-    worksheet.add_table(0, 0, len(rows), len(headers) - 1, {
-        'name': 'PaymentTable',
-        'style': 'Table Style Medium 2',
-        'columns': [{'header': header} for header in headers],
-        'data': rows,
-    })
+
+    # 用户要求导出保持“纯数据”：不套表格样式、不冻结窗格、不加颜色或边框。
+    # 只根据实际内容调整列宽，并给数据行一个舒适的默认行高。
+    all_rows = [headers, *rows]
+    worksheet.set_default_row(20)
+    for col, header in enumerate(headers):
+        values = [row[col] for row in all_rows if col < len(row)]
+        width = min(max(10, max((_excel_display_width(value) for value in values), default=0) + 2), 36)
+        worksheet.set_column(col, col, width)
+        worksheet.write_string(0, col, str(header))
+    for row_index, row in enumerate(rows, start=1):
+        for col, value in enumerate(row):
+            if col == len(headers) - 1:
+                worksheet.write_number(row_index, col, float(value))
+            else:
+                worksheet.write_string(row_index, col, '' if value is None else str(value))
+
     workbook.close()
     return output.getvalue()
 
 
 @router.get('/customers/{customer_id}/payment.xlsx')
-def payment_xlsx_current_workflow_v156(customer_id: int):
+def payment_xlsx_current_workflow_v157(customer_id: int):
     period = current_period()
     with db() as conn:
         headers, rows = _current_payment_display_table(conn, customer_id, period)
