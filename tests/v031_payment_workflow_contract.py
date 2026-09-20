@@ -61,7 +61,7 @@ def main():
 
     # v0.3.3 keeps the runtime's two-step external-action state model, but the
     # late-loaded patch removes all payment-stage alert/confirm dialogs and owns
-    # deterministic browser TXT downloading.
+    # deterministic browser TXT/EXCEL downloading.
     nonblocking = (ROOT / 'app' / 'static' / 'v033_payment_flow_patch.js').read_text(encoding='utf-8')
     for token in (
         'window.confirm = message =>', 'window.alert = message =>',
@@ -70,7 +70,8 @@ def main():
         '确认同事已收到邮件，并且你已经完成本次实际支付',
         '撤回“完成缴费”并恢复本次缴费前的周期状态',
         '该客户已经发起缴费。修改金额后',
-        'URL.createObjectURL(blob)', 'download.download =', '缴费TXT已下载',
+        'URL.createObjectURL(blob)', 'download.download =', 'toast(`缴费${label}已下载`)',
+        "id: 'paymentExcelButton', label: 'EXCEL'", "id: 'paymentTxtButton', label: 'TXT'",
     ):
         assert token in nonblocking, token
 
