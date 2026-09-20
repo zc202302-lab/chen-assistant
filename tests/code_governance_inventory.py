@@ -13,6 +13,56 @@ from app.main import app  # noqa: E402
 METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
 STATIC_REF_RE = re.compile(r"""(?:src|href)=["'](/static/[^"'?]+)""")
 
+KNOWN_DUPLICATE_SIGNATURES = {
+    ("GET", "/customers"),
+    ("GET", "/customers/new"),
+    ("GET", "/customers/{customer_id}/contacts"),
+    ("GET", "/customers/{customer_id}/payment"),
+    ("GET", "/customers/{customer_id}/services"),
+    ("GET", "/customers/{customer_id}/tasks"),
+    ("GET", "/customers/{customer_id}/visits"),
+    ("GET", "/life"),
+    ("GET", "/life/knowledge"),
+    ("GET", "/life/recipes"),
+    ("GET", "/products"),
+    ("GET", "/services/{service_id}/promotions-editor-v029"),
+    ("POST", "/contacts/{contact_id}/delete"),
+    ("POST", "/customers/new"),
+    ("POST", "/customers/{customer_id}/contacts"),
+    ("POST", "/customers/{customer_id}/display-attributes"),
+    ("POST", "/customers/{customer_id}/documents-v13"),
+    ("POST", "/customers/{customer_id}/invoice-groups"),
+    ("POST", "/customers/{customer_id}/payment-status"),
+    ("POST", "/customers/{customer_id}/promotions"),
+    ("POST", "/customers/{customer_id}/services"),
+    ("POST", "/customers/{customer_id}/services/reorder"),
+    ("POST", "/customers/{customer_id}/tasks"),
+    ("POST", "/customers/{customer_id}/visits"),
+    ("POST", "/invoice-groups/{group_id}/delete"),
+    ("POST", "/life/knowledge/new"),
+    ("POST", "/life/knowledge/{item_id}/edit"),
+    ("POST", "/life/recipes/new"),
+    ("POST", "/life/recipes/{recipe_id}/cook/start"),
+    ("POST", "/life/recipes/{recipe_id}/edit"),
+    ("POST", "/promotions/{promotion_id}/close-editor-v029"),
+    ("POST", "/promotions/{promotion_id}/name-v030"),
+    ("POST", "/promotions/{promotion_id}/renew"),
+    ("POST", "/services/{service_id}/attributes"),
+    ("POST", "/services/{service_id}/delete"),
+    ("POST", "/services/{service_id}/edit"),
+    ("POST", "/services/{service_id}/payment-current"),
+    ("POST", "/services/{service_id}/payment-review-toggle"),
+    ("POST", "/services/{service_id}/payment-status-v03"),
+    ("POST", "/services/{service_id}/promotions-editor-v029"),
+    ("POST", "/services/{service_id}/runtime-v0212"),
+    ("POST", "/services/{service_id}/status-v03"),
+    ("POST", "/services/{service_id}/toggle-fixed"),
+    ("POST", "/tasks/{task_id}/toggle"),
+}
+
+TEXT_SUFFIXES = {".py", ".html", ".js", ".css", ".ps1", ".md", ".sh", ".yml", ".yaml"}
+
+
 
 def route_inventory():
     owners = defaultdict(list)
