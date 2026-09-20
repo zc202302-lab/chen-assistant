@@ -172,14 +172,13 @@ def _payment_xlsx_filename(txt_filename: str) -> str:
 
 
 def _current_payment_display_table(conn, customer_id: int, period: str):
-    customer = customer_or_404(conn, customer_id)
+    customer_or_404(conn, customer_id)
     items, stats = core.payment_snapshot_v0212(conn, customer_id, period)
     if stats['pending']:
         raise HTTPException(409, f"还有{stats['pending']}项金额未核对，不能生成正式缴费EXCEL")
 
     template = workspace._template(conn)
-    display1, display2 = workspace._display_pair(conn, customer, template)
-    labels = {item['key']: item['label'] for item in template}
+    payment_columns = core._payment_columns(conn, customer_id, template)
     service_ids = [int(item['row']['id']) for item in items]
     custom = workspace._custom_map(conn, service_ids)
     services = conn.execute(
@@ -190,19 +189,24 @@ def _current_payment_display_table(conn, customer_id: int, period: str):
     ).fetchall()
     full_by_id = {int(row['id']): row for row in services}
 
-    headers = [labels.get(display1, '属性一'), labels.get(display2, '属性二'), '号码', '账号', '金额']
+    headers = [column['label'] for column in payment_columns]
     rows = []
     for item in items:
         amount = float(item['payment']['amount'] or 0)
         if amount <= 0:
             continue
         service = full_by_id.get(int(item['row']['id']), item['row'])
+        cells = core._payment_cells(
+            service,
+            custom[int(service['id'])],
+            template,
+            payment_columns,
+            item['payment'],
+            item.get('delta'),
+        )
         rows.append([
-            workspace._display_attr(service, display1, custom[int(service['id'])]) if display1 else '—',
-            workspace._display_attr(service, display2, custom[int(service['id'])]) if display2 else '—',
-            (service['number'] or '').strip(),
-            (service['account'] or '').strip(),
-            amount,
+            amount if cell['key'] == 'payment_amount' else cell['value']
+            for cell in cells
         ])
     if not rows:
         raise HTTPException(409, '当前客户没有可生成EXCEL的非0元缴费数据')
@@ -213,17 +217,18 @@ def _payment_xlsx_bytes(headers: list[str], rows: list[list]) -> bytes:
     output = BytesIO()
     workbook = xlsxwriter.Workbook(output, {'in_memory': True})
     worksheet = workbook.add_worksheet('缴费')
-    amount_format = workbook.add_format({'num_format': '0.##'})
-    worksheet.set_column(0, 1, 18)
-    worksheet.set_column(2, 3, 20)
-    worksheet.set_column(4, 4, 12, amount_format)
-    worksheet.freeze_panes(1, 0)
-    worksheet.add_table(0, 0, len(rows), len(headers) - 1, {
-        'name': 'PaymentTable',
-        'style': 'Table Style Medium 2',
-        'columns': [{'header': header} for header in headers],
-        'data': rows,
-    })
+    worksheet.write_row(0, 0, headers)
+    for row_index, row in enumerate(rows, 1):
+        worksheet.write_row(row_index, 0, row)
+
+    # Keep the export deliberately plain. Only size populated rows and columns
+    # so identifiers and values remain readable without adding table styling.
+    worksheet.set_default_row(20)
+    worksheet.set_row(0, 22)
+    for column_index, header in enumerate(headers):
+        values = [header, *(row[column_index] for row in rows)]
+        width = max(len(str(value or '')) for value in values) + 2
+        worksheet.set_column(column_index, column_index, max(10, min(width, 36)))
     workbook.close()
     return output.getvalue()
 
