@@ -642,3 +642,5 @@
   .v023-payment-footer>a,
   .v023-payment-footer>button{flex:1 1 auto;text-align:center;justify-content:center}
 }
+
+.payment-export-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
