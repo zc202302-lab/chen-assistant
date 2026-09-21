@@ -2,13 +2,13 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前应用版本：`v1.5.8`（main / 生产）；`v1.5.9` 发起缴费可靠性加固正在开发验证
-- 当前 `main`：`291a1419318db5707fb15159551502cead33c1d0`（v1.5.8；代码治理第八阶段与接管文档已同步）
+- 当前应用版本：`v1.5.9`（main）；生产仍为 `v1.5.8`
+- 当前 `main`：`d2ff6432538538206d4a4ad404b3f825b97af0fe`（PR #56 已合并，v1.5.9）
 - 当前生产：`985ac41`（v1.5.8，2026-09-20 已部署成功）
-- 当前差异：生产仍为 `985ac41`；main 领先内容为代码治理/文档。v1.5.9 产品开发已建立 PR #56（`feat/v159-payment-initiate-hardening`），尚未合并、尚未部署
-- 当前已完成：v1.5.8 稳定生产；代码治理第八阶段模板引用清单；v1.5.9 已实现“发起缴费待确认持久化”、Foxmail TXT 文件剪贴板交接、TXT/EXCEL 文件名独立、正式 TXT 号码↔金额完整性校验，正在等待完整回归
-- 当前未完成：PR #56（v1.5.9）完整 Linux validation 与 stability 已出现全绿结果，当前最新提交正在做重复全回归；Windows Foxmail 专项 GitHub-hosted runner 连续出现 0 step / 0 log 的基础设施失败，未观察到 PowerShell 代码测试失败；PR #56 尚未合并、尚未部署。PR #55 仍为独立治理 PR；工作资料 CRUD 主线尚未开始
-- 下一步建议：等待 PR #56 最新完整 validation / stability 结束；Windows 专项仅在真正启动 PowerShell 5.1 steps 后才作为代码门禁判定依据，0-step runner 失败不得通过修改业务代码规避。满足合并条件后合并并部署验证；生产部署完成前继续以 `985ac41` / v1.5.8 为线上基准
+- 当前差异：生产仍为 `985ac41` / v1.5.8；main 已升级到 v1.5.9，包含发起缴费可靠性加固，尚未部署
+- 当前已完成：PR #56 已合并；v1.5.9 已实现“发起缴费待确认持久化”、Foxmail TXT 文件剪贴板交接、TXT/EXCEL 文件名独立、正式 TXT 号码↔金额完整性校验；完整 validation、stability、历史浏览器验收全绿
+- 当前未完成：v1.5.9 尚未部署生产；Windows Foxmail 专项 GitHub-hosted runner 仍有 0 step / 0 log 的基础设施故障，尚未获得真实 PowerShell 5.1 执行结果；PR #55 仍为独立治理 PR；工作资料 CRUD 主线尚未开始
+- 下一步建议：优先部署并验证 v1.5.9；部署成功前生产基准继续保持 `985ac41` / v1.5.8。部署完成后再处理独立治理 PR #55，并继续工作资料 CRUD 主线
 
 ### 新聊天接管协议
 
@@ -36,8 +36,8 @@ AI 接管时必须遵循：
 
 - 项目名称：晨的小助手（Chen Assistant）
 - GitHub：`zc202302-lab/chen-assistant`
-- 当前应用版本：`v1.5.8`
-- 当前线上代码基准：`985ac41`（2026-09-20 已部署成功；当前 `main` 已领先到 `c15a9e55`，仅含治理清理）
+- 当前应用版本：`v1.5.9`
+- 当前线上代码基准：`985ac41`（2026-09-20 已部署成功，v1.5.8）；当前 `main` 为 `d2ff643` / v1.5.9，尚未部署
 - 生产服务器应用目录：`/opt/chen-assistant`
 - systemd 服务名：`chen-assistant`
 - 技术形态：FastAPI / Starlette + SQLite + Jinja 模板 + 原生 JS/CSS + systemd
@@ -757,3 +757,10 @@ v1.5.8 修正为：
 - `stability gate` 在同一提交已全绿。
 - `Windows Foxmail helper validation` 自本阶段起在 GitHub-hosted Windows runner 上连续出现 job `steps=null`、无日志、任务创建后立即 failure；将 runner 从 `windows-latest` 固定到 `windows-2022` 后仍为相同行为，说明当前可观察证据指向 runner/Actions 基础设施而非脚本 parse/test 失败。
 - 不允许为了消除该基础设施红灯删除或弱化 Windows PowerShell 5.1 解析测试；需要真正启动 steps 后才能判断脚本是否通过。
+
+### 20.7 PR #56 已合并
+
+- PR #56 已于 2026-09-21 合并到 `main`，merge commit：`d2ff6432538538206d4a4ad404b3f825b97af0fe`。
+- 合并前 `v1.2 validation` 全绿，包含成熟工作系统兼容、production regressions、全部历史浏览器验收；`stability gate` 全绿。
+- Windows Foxmail 专项 workflow 仍是 GitHub-hosted runner 0-step / 无日志基础设施失败；未观察到 PowerShell 代码级失败。该问题不得通过弱化测试来规避。
+- 合并不代表已部署。生产仍是 `985ac41` / v1.5.8，下一步必须执行标准 `deploy.sh` 并验证 `/health`、静态资源、远程存储和实际 Foxmail/TXT 交接。
