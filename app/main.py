@@ -6,21 +6,14 @@ from . import config
 from .legacy_main import app
 from .v02_routes import router as v02_router
 from .v021_routes import router as v021_router
-from .v022_routes import router as v022_router
 from .v023_routes import router as v023_router
-from .v024_routes import router as v024_router
 from .v025_routes import router as v025_router
-from .v025_home import router as v025_home_router
 from .v026_routes import router as v026_router
-from .v026_home import router as v026_home_router
 from .v027_routes import router as v027_router
-from .v027_home import router as v027_home_router
 from .v028_routes import router as v028_router
-from .v029_routes import router as v029_router
 from .v0211_routes import router as v0211_router
 from .v0211_promotion_routes import router as v0211_promotion_router
 from .v0212_routes import router as v0212_router
-from .v0212_payment_routes import router as v0212_payment_router
 from .v0212_business_display_routes import router as v0212_business_display_router
 from .v03_routes import router as v03_router
 from .v03_payment_routes import router as v03_payment_router
@@ -46,21 +39,14 @@ def _include(router):
 
 _v02_routes = _include(v02_router)
 _v021_routes = _include(v021_router)
-_v022_routes = _include(v022_router)
 _v023_routes = _include(v023_router)
-_v024_routes = _include(v024_router)
 _v025_routes = _include(v025_router)
-_v025_home_routes = _include(v025_home_router)
 _v026_routes = _include(v026_router)
-_v026_home_routes = _include(v026_home_router)
 _v027_routes = _include(v027_router)
-_v027_home_routes = _include(v027_home_router)
 _v028_routes = _include(v028_router)
-_v029_routes = _include(v029_router)
 _v0211_routes = _include(v0211_router)
 _v0211_promotion_routes = _include(v0211_promotion_router)
 _v0212_routes = _include(v0212_router)
-_v0212_payment_routes = _include(v0212_payment_router)
 _v0212_business_display_routes = _include(v0212_business_display_router)
 _v03_routes = _include(v03_router)
 _v03_payment_routes = _include(v03_payment_router)
@@ -86,10 +72,9 @@ _ordered = (
     _v032_customer_exchange_routes + _v032_customer_import_routes + _v031_review_sync_routes +
     _v031_payment_workflow_routes + _v03_mail_draft_routes + _v031_runtime_routes +
     _v03_payment_routes + _v03_routes + _v0212_business_display_routes +
-    _v0212_payment_routes + _v0212_routes + _v0211_promotion_routes + _v0211_routes +
-    _v029_routes + _v028_routes + _v027_home_routes + _v027_routes +
-    _v026_home_routes + _v026_routes + _v025_home_routes + _v025_routes +
-    _v024_routes + _v023_routes + _v022_routes + _v021_routes + _v02_routes +
+    _v0212_routes + _v0211_promotion_routes + _v0211_routes +
+    _v028_routes + _v027_routes + _v026_routes + _v025_routes +
+    _v023_routes + _v021_routes + _v02_routes +
     _legacy_routes
 )
 # Historical routers are still imported for compatibility, but Starlette resolves
