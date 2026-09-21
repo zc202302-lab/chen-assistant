@@ -36,7 +36,12 @@
   window.confirm = message => silentConfirm(String(message ?? '')) ? true : nativeConfirm(message);
   window.alert = message => {
     const text = String(message ?? '');
-    if (text.includes('缴费图片已生成并复制到剪贴板') || text.includes('缴费图片已生成，但自动复制到剪贴板失败') || text.includes('Foxmail写邮件窗口已打开，并已带入收件人、主题、正文和TXT附件')) {
+    if (
+      text.includes('缴费图片已生成并复制到剪贴板') ||
+      text.includes('缴费图片已生成，但自动复制到剪贴板失败') ||
+      text.includes('Foxmail写邮件窗口已打开，并已带入收件人、主题、正文和TXT附件') ||
+      text.includes('Foxmail写邮件窗口已打开，缴费TXT已放入文件剪贴板')
+    ) {
       if (text.includes('Foxmail写邮件窗口')) toast('邮箱草稿已打开；发送后再次点击“发起缴费”即可确认');
       else toast('缴费图片已准备；发送后再次点击“通知客户”即可确认');
       return;
@@ -179,7 +184,7 @@
   const dialog = document.querySelector('.v03-mail-template-dialog');
   if (!dialog) return;
   const note = dialog.querySelector('.v03-mail-template-note span');
-  if (note) note.textContent = '收件人、邮件主题、正文和TXT附件文件名都只属于当前客户；TXT文件名只取这里保存的值，未填写时不会自动生成。';
+  if (note) note.textContent = '收件人、邮件主题、正文、TXT附件文件名和EXCEL附件文件名都只属于当前客户；TXT与EXCEL完全分离，任一未填写都不会互相推导。';
   const recipient = dialog.querySelector('[data-v03-mail-recipient]');
   const recipientCaption = recipient?.closest('.v03-mail-field')?.querySelector('span');
   if (recipientCaption) recipientCaption.innerHTML = '收件人 <small>按当前客户长期保存，不与其他客户共用</small>';

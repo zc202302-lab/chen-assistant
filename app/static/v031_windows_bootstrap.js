@@ -9,6 +9,6 @@
 
   const note = document.querySelector('.v03-mail-template-note span');
   if (note) {
-    note.textContent = '邮件主题、正文和TXT附件文件名长期绑定当前客户；Windows助手安装一次后自动更新，并在意外退出时自动恢复运行。';
+    note.textContent = 'TXT与EXCEL文件名分别保存；Windows助手会把核对后的TXT放入文件剪贴板，在Foxmail中按 Ctrl+V 即可添加附件，不再打开文件夹。';
   }
 })();

@@ -22,8 +22,8 @@ def main():
     assert 'view-transition-name:app-page' in css
     assert '.topbar-actions' in css
     assert 'position:static' in css
-    assert 'APP_VERSION = "1.5.8"' in config
-    print('v1.5.4 global top navigation contract passed on app v1.5.8')
+    assert 'APP_VERSION = "1.5.9"' in config
+    print('v1.5.4 global top navigation contract passed on app v1.5.9')
 
 
 if __name__ == '__main__':

@@ -38,9 +38,9 @@ def main():
     assert 'toast(`缴费${label}已下载`)' in patch_js
     assert "id: 'paymentExcelButton', label: 'EXCEL'" in patch_js
     assert "id: 'paymentTxtButton', label: 'TXT'" in patch_js
-    assert 'TXT文件名只取这里保存的值' in patch_js
+    assert 'TXT附件文件名和EXCEL附件文件名都只属于当前客户' in patch_js
     assert '不与其他客户共用' in patch_js
-    assert '生成TXT和邮件附件都只使用此名称；必填' in patch_js
+    assert 'TXT与EXCEL完全分离' in patch_js
 
     # v1.2.2 primary path: complete RFC822 draft -> local helper /open -> Windows Shell.
     # Simple MAPI is retained only as fallback, removing window-count detection from
@@ -56,12 +56,12 @@ def main():
     assert 'throw err;' in patch_js
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-    assert '/static/v031_workflow_actions.js?v=0316' in base
-    assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
+    assert '/static/v031_workflow_actions.js?v=1590' in base
+    assert '/static/v031_workflow_runtime_fix.js?v=1590' in base
     # v1.4.3 updates the DOM guard while retaining the same legacy safety behavior;
     # keep the contract tied to the currently shipped cache-busted asset version.
     assert '/static/v031_workflow_dom_guard.js?v=0315' in base
-    assert '/static/v033_payment_flow_patch.js?v=1560' in base
+    assert '/static/v033_payment_flow_patch.js?v=1590' in base
     assert base.index('/static/v033_payment_flow_patch.js') > base.index('/static/v031_workflow_runtime_fix.js')
 
     helper = (ROOT / 'app' / 'static' / 'chen_foxmail_helper.ps1').read_text(encoding='utf-8')

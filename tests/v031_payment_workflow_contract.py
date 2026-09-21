@@ -32,15 +32,17 @@ def main():
         ensure_v031(conn)
         cols = {row['name'] for row in conn.execute('PRAGMA table_info(customer_payment_runs)')}
         assert 'initiated_at' in cols
-        row = conn.execute('SELECT initiated_at,paid_at FROM customer_payment_runs WHERE id=?', (rid,)).fetchone()
+        assert 'initiate_prepared_at' in cols
+        row = conn.execute('SELECT initiated_at,initiate_prepared_at,paid_at FROM customer_payment_runs WHERE id=?', (rid,)).fetchone()
         assert row['initiated_at'] == row['paid_at'] == now
+        assert row['initiate_prepared_at'] == ''
 
     actions = (ROOT / 'app' / 'static' / 'v031_workflow_actions.js').read_text(encoding='utf-8')
     for token in (
         'prepareNotice', 'prepareInitiate', 'navigator.clipboard.write', 'ClipboardItem',
         'payment-mail-compose-v031', '127.0.0.1:18763', 'attachment_filename_b64',
         "bridgeFetch('/compose'", '22000', 'Windows Foxmail助手响应超时',
-        'verified !== true', 'stable, foreground Foxmail compose window',
+        'verified !== true', 'attachment_integrity_verified !== true', 'Windows file-drop clipboard',
     ):
         assert token in actions, token
     prepare_initiate = actions.split('const prepareInitiate = async () => {', 1)[1].split('\n  };', 1)[0]
@@ -50,6 +52,7 @@ def main():
     runtime_owner = (ROOT / 'app' / 'static' / 'v031_workflow_runtime_fix.js').read_text(encoding='utf-8')
     for token in (
         "['notify', '通知客户'", '待确认 ·', 'notifyPrepared', 'initiatePrepared',
+        'state.initiate_prepared', "postAction('prepare_initiate')",
         'prepareNotify', 'prepareInitiate', 'event.stopImmediatePropagation()',
         '确认缴费图片已经通过微信发送给客户', '确认缴费邮件已经在Foxmail中发送给同事',
         "root.querySelectorAll('[data-v031-payment-image],[data-v03-foxmail-draft]')",
@@ -95,7 +98,7 @@ def main():
         'core.payment_snapshot_v0212 = _review_snapshot',
         'workflow._run_v031 = _auto_review_run',
         'workflow._paint_review_reset = _fixed_amount_review',
-        "reviewed_at='',notified_at='',initiated_at='',paid_at=''",
+        "reviewed_at='',notified_at='',initiated_at='',initiate_prepared_at='',paid_at=''",
     ):
         assert token in patch, token
 
@@ -110,7 +113,7 @@ def main():
 
     routes = (ROOT / 'app' / 'v031_payment_workflow_routes.py').read_text(encoding='utf-8')
     for token in (
-        'initiated_at', "action == 'initiate'", "action == 'invalidate'",
+        'initiated_at', 'initiate_prepared_at', "action == 'prepare_initiate'", "action == 'initiate'", "action == 'invalidate'",
         '_invalidate_after_amount_change', '请先完成“发起缴费”',
         'payment-mail-compose-v031', "'version': config.APP_VERSION",
     ):
@@ -132,10 +135,10 @@ def main():
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert 'v{{ request.app.version }}' in base
-    assert '/static/v031_workflow_actions.js?v=0316' in base
-    assert '/static/v031_workflow_runtime_fix.js?v=0314' in base
+    assert '/static/v031_workflow_actions.js?v=1590' in base
+    assert '/static/v031_workflow_runtime_fix.js?v=1590' in base
     assert '/static/v031_workflow_dom_guard.js?v=0315' in base
-    assert '/static/v033_payment_flow_patch.js?v=1560' in base
+    assert '/static/v033_payment_flow_patch.js?v=1590' in base
     assert '/static/v031_payment_workflow.css?v=0314' in base
     assert base.index('/static/v031_workflow_actions.js') > base.index('/static/v031_payment_workflow.js')
     assert base.index('/static/v031_workflow_runtime_fix.js') > base.index('/static/v031_workflow_actions.js')
@@ -146,7 +149,7 @@ def main():
     for token in ('.awaiting-confirm', '.current', '.done', '.v031-fixed-auto-confirmed'):
         assert token in css, token
 
-    print('v0.3.3 automatic review + fully nonblocking workflow + real TXT download contract passed')
+    print('v1.5.9 persisted initiate-awaiting + payment workflow contract passed')
 
 
 if __name__ == '__main__':

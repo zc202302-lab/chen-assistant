@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import math
 from io import BytesIO
 from urllib.parse import quote
 
@@ -32,6 +34,7 @@ def _ensure_customer_payment_template(conn):
                subject TEXT NOT NULL DEFAULT '',
                body TEXT NOT NULL DEFAULT '',
                attachment_filename TEXT NOT NULL DEFAULT '',
+               excel_attachment_filename TEXT NOT NULL DEFAULT '',
                updated_at TEXT NOT NULL DEFAULT ''
            )"""
     )
@@ -40,6 +43,8 @@ def _ensure_customer_payment_template(conn):
         conn.execute("ALTER TABLE customer_mail_templates_v03 ADD COLUMN recipient TEXT NOT NULL DEFAULT ''")
     if 'attachment_filename' not in columns:
         conn.execute("ALTER TABLE customer_mail_templates_v03 ADD COLUMN attachment_filename TEXT NOT NULL DEFAULT ''")
+    if 'excel_attachment_filename' not in columns:
+        conn.execute("ALTER TABLE customer_mail_templates_v03 ADD COLUMN excel_attachment_filename TEXT NOT NULL DEFAULT ''")
 
 
 def _clean_recipient(value: str) -> str:
@@ -55,25 +60,42 @@ def _clean_recipient(value: str) -> str:
 def _get_customer_template(conn, customer_id: int) -> dict:
     _ensure_customer_payment_template(conn)
     row = conn.execute(
-        """SELECT recipient,subject,body,attachment_filename,updated_at
+        """SELECT recipient,subject,body,attachment_filename,excel_attachment_filename,updated_at
            FROM customer_mail_templates_v03 WHERE customer_id=?""",
         (customer_id,),
     ).fetchone()
     if not row:
-        return {'recipient': '', 'subject': '', 'body': '', 'attachment_filename': '', 'updated_at': ''}
+        return {'recipient': '', 'subject': '', 'body': '', 'attachment_filename': '', 'excel_attachment_filename': '', 'updated_at': ''}
     return {
         'recipient': row['recipient'] or '',
         'subject': row['subject'] or '',
         'body': row['body'] or '',
         'attachment_filename': row['attachment_filename'] or '',
+        'excel_attachment_filename': row['excel_attachment_filename'] or '',
         'updated_at': row['updated_at'] or '',
     }
 
 
-def _save_customer_template(conn, customer_id: int, recipient: str, subject: str, body: str, attachment_filename: str) -> dict:
+def _clean_excel_attachment_filename(value: str) -> str:
+    name = (value or '').replace('\r', ' ').replace('\n', ' ').strip()
+    if not name:
+        return ''
+    if len(name) > 160:
+        raise HTTPException(400, 'EXCEL附件文件名不能超过160个字符')
+    if any(ch in '/\\:*?"<>|' for ch in name):
+        raise HTTPException(400, 'EXCEL附件文件名不能包含 / \\ : * ? " < > |')
+    if name in {'.', '..'} or name.endswith('.'):
+        raise HTTPException(400, 'EXCEL附件文件名无效')
+    if not name.lower().endswith('.xlsx'):
+        name += '.xlsx'
+    return name
+
+
+def _save_customer_template(conn, customer_id: int, recipient: str, subject: str, body: str, attachment_filename: str, excel_attachment_filename: str = '') -> dict:
     recipient = _clean_recipient(recipient)
     subject = _clean_header(subject)
     attachment_filename = _clean_attachment_filename(attachment_filename)
+    excel_attachment_filename = _clean_excel_attachment_filename(excel_attachment_filename)
     if len(subject) > 300:
         raise HTTPException(400, '邮件主题不能超过300个字符')
     if len(body or '') > 10000:
@@ -82,23 +104,38 @@ def _save_customer_template(conn, customer_id: int, recipient: str, subject: str
     _ensure_customer_payment_template(conn)
     conn.execute(
         """INSERT INTO customer_mail_templates_v03
-           (customer_id,recipient,subject,body,attachment_filename,updated_at)
-           VALUES(?,?,?,?,?,?)
+           (customer_id,recipient,subject,body,attachment_filename,excel_attachment_filename,updated_at)
+           VALUES(?,?,?,?,?,?,?)
            ON CONFLICT(customer_id) DO UPDATE SET
              recipient=excluded.recipient,
              subject=excluded.subject,
              body=excluded.body,
              attachment_filename=excluded.attachment_filename,
+             excel_attachment_filename=excluded.excel_attachment_filename,
              updated_at=excluded.updated_at""",
-        (customer_id, recipient, subject, body or '', attachment_filename, now),
+        (customer_id, recipient, subject, body or '', attachment_filename, excel_attachment_filename, now),
     )
-    return {'recipient': recipient, 'subject': subject, 'body': body or '', 'attachment_filename': attachment_filename, 'updated_at': now}
+    return {
+        'recipient': recipient,
+        'subject': subject,
+        'body': body or '',
+        'attachment_filename': attachment_filename,
+        'excel_attachment_filename': excel_attachment_filename,
+        'updated_at': now,
+    }
 
 
 def _require_attachment_filename(template: dict) -> str:
     filename = _clean_attachment_filename(template.get('attachment_filename') or '')
     if not filename:
         raise HTTPException(400, '当前客户缴费模板未填写：TXT附件文件名。请先填写并保存缴费模板。')
+    return filename
+
+
+def _require_excel_attachment_filename(template: dict) -> str:
+    filename = _clean_excel_attachment_filename(template.get('excel_attachment_filename') or '')
+    if not filename:
+        raise HTTPException(400, '当前客户缴费模板未填写：EXCEL附件文件名。请先填写并保存缴费模板。')
     return filename
 
 
@@ -115,22 +152,55 @@ def _require_template(template: dict) -> dict:
 
 
 def _current_payment_txt_content(conn, customer_id: int, period: str):
+    """Build the formal payment TXT from the same reviewed rows used by the workbench.
+
+    Every output line is derived from one payment snapshot item, keeping number and
+    amount paired. Formal TXT generation rejects any positive row that is unreviewed,
+    malformed or missing a number; it never silently drops a payable row.
+    """
     customer = customer_or_404(conn, customer_id)
     items, stats = core.payment_snapshot_v0212(conn, customer_id, period)
-    if stats['pending']:
-        raise HTTPException(409, f"还有{stats['pending']}项金额未核对，不能生成正式缴费TXT")
-    missing_number = [item for item in items if float(item['payment']['amount'] or 0) > 0 and not (item['row']['number'] or '').strip()]
-    if missing_number:
-        raise HTTPException(409, '存在非0元缴费业务未填写号码，请先补充号码')
-    lines = []
+    positive_items = []
     for item in items:
         amount = float(item['payment']['amount'] or 0)
+        if not math.isfinite(amount) or amount < 0:
+            raise HTTPException(409, '存在非法缴费金额，不能生成正式缴费TXT')
+        if amount <= 0:
+            continue
+        positive_items.append(item)
+
+    unconfirmed = [item for item in positive_items if not bool(item['payment']['confirmed'])]
+    if stats['pending'] or unconfirmed:
+        pending = max(int(stats.get('pending', 0)), len(unconfirmed))
+        raise HTTPException(409, f"还有{pending}项金额未核对，不能生成正式缴费TXT")
+
+    lines = []
+    for item in positive_items:
         number = (item['row']['number'] or '').strip()
-        if amount > 0 and number:
-            lines.append(f'{number}|{format_fee(amount)}')
+        if not number:
+            raise HTTPException(409, '存在非0元缴费业务未填写号码，请先补充号码')
+        if any(ch in number for ch in ('\r', '\n', '|')):
+            raise HTTPException(409, f'缴费号码格式异常：{number!r}')
+        amount = float(item['payment']['amount'] or 0)
+        lines.append(f'{number}|{format_fee(amount)}')
+
     if not lines:
         raise HTTPException(409, '当前客户没有可生成TXT的非0元缴费数据')
-    return customer, '\r\n'.join(lines), stats
+    if len(lines) != len(positive_items):
+        raise HTTPException(500, '缴费TXT生成完整性校验失败')
+
+    body = '\r\n'.join(lines)
+    # Parse back the final bytes before release. This locks the external contract to
+    # exactly two fields per line and ensures row order/count survived formatting.
+    parsed = [line.split('|') for line in body.split('\r\n')]
+    if len(parsed) != len(positive_items) or any(len(parts) != 2 for parts in parsed):
+        raise HTTPException(500, '缴费TXT格式校验失败')
+    for parts, item in zip(parsed, positive_items):
+        expected_number = (item['row']['number'] or '').strip()
+        expected_amount = format_fee(float(item['payment']['amount'] or 0))
+        if parts != [expected_number, expected_amount]:
+            raise HTTPException(500, '缴费TXT号码与金额对应关系校验失败')
+    return customer, body, stats
 
 
 def _attachment_payload(conn, customer_id: int, period: str):
@@ -148,11 +218,11 @@ def get_customer_payment_template_v033(customer_id: int):
 
 
 @router.post('/customers/{customer_id}/mail-template-v03')
-def save_customer_payment_template_v033(request: Request, customer_id: int, csrf: str = Form(...), subject: str = Form(''), body: str = Form(''), recipient: str = Form(''), attachment_filename: str = Form('')):
+def save_customer_payment_template_v033(request: Request, customer_id: int, csrf: str = Form(...), subject: str = Form(''), body: str = Form(''), recipient: str = Form(''), attachment_filename: str = Form(''), excel_attachment_filename: str = Form('')):
     check_csrf(request, csrf)
     with db() as conn:
         customer_or_404(conn, customer_id)
-        template = _save_customer_template(conn, customer_id, recipient, subject, body, attachment_filename)
+        template = _save_customer_template(conn, customer_id, recipient, subject, body, attachment_filename, excel_attachment_filename)
     return JSONResponse({'ok': True, 'template': template, 'recipient': template['recipient'], 'recipient_configured': bool(template['recipient']), 'customer_scoped': True})
 
 
@@ -167,11 +237,6 @@ def payment_txt_current_workflow_v033(customer_id: int):
         'Cache-Control': 'no-store, max-age=0',
     }
     return PlainTextResponse(body, media_type='text/plain; charset=utf-8', headers=headers)
-
-
-def _payment_xlsx_filename(txt_filename: str) -> str:
-    base = txt_filename[:-4] if txt_filename.lower().endswith('.txt') else txt_filename
-    return f'{base}.xlsx'
 
 
 def _current_payment_display_table(conn, customer_id: int, period: str):
@@ -262,9 +327,7 @@ def payment_xlsx_current_workflow_v158(customer_id: int):
     period = current_period()
     with db() as conn:
         headers, rows = _current_payment_display_table(conn, customer_id, period)
-        filename = _payment_xlsx_filename(
-            _require_attachment_filename(_get_customer_template(conn, customer_id))
-        )
+        filename = _require_excel_attachment_filename(_get_customer_template(conn, customer_id))
     response_headers = {
         'Content-Disposition': f"attachment; filename=\"payment.xlsx\"; filename*=UTF-8''{quote(filename)}",
         'Cache-Control': 'no-store, max-age=0',
@@ -283,13 +346,17 @@ def payment_mail_compose_customer_scoped_v033(customer_id: int):
         if not run['notified']:
             raise HTTPException(400, '请先完成“通知客户”，再调用邮箱')
         _, txt_content, _, template = _attachment_payload(conn, customer_id, period)
+    attachment_bytes = txt_content.encode('utf-8')
+    attachment_sha256 = hashlib.sha256(attachment_bytes).hexdigest()
     return JSONResponse({
         'ok': True,
         'recipient_b64': base64.b64encode(template['recipient'].encode('utf-8')).decode('ascii'),
         'subject_b64': base64.b64encode(template['subject'].encode('utf-8')).decode('ascii'),
         'body_b64': base64.b64encode(template['body'].encode('utf-8')).decode('ascii'),
         'attachment_filename_b64': base64.b64encode(template['attachment_filename'].encode('utf-8')).decode('ascii'),
-        'attachment_content_base64': base64.b64encode(txt_content.encode('utf-8')).decode('ascii'),
+        'attachment_content_base64': base64.b64encode(attachment_bytes).decode('ascii'),
+        'attachment_sha256': attachment_sha256,
+        'attachment_line_count': len(txt_content.split('\r\n')),
         'period': period, 'customer_scoped': True, 'attachment_required': True,
     })
 

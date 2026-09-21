@@ -43,13 +43,13 @@ def seed():
             customer_id INTEGER PRIMARY KEY REFERENCES customers(id) ON DELETE CASCADE,
             recipient TEXT NOT NULL DEFAULT '', subject TEXT NOT NULL DEFAULT '',
             body TEXT NOT NULL DEFAULT '', attachment_filename TEXT NOT NULL DEFAULT '',
-            updated_at TEXT NOT NULL DEFAULT ''
+            excel_attachment_filename TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT ''
         )''')
         conn.execute(
             '''INSERT INTO customer_mail_templates_v03
-               (customer_id,recipient,subject,body,attachment_filename,updated_at)
-               VALUES(?,?,?,?,?,?)''',
-            (cid, 'test@example.com', '测试缴费邮件', '请处理附件缴费明细。', '验收客户缴费清单.txt', now),
+               (customer_id,recipient,subject,body,attachment_filename,excel_attachment_filename,updated_at)
+               VALUES(?,?,?,?,?,?,?)''',
+            (cid, 'test@example.com', '测试缴费邮件', '请处理附件缴费明细。', '验收客户缴费清单.txt', '验收客户缴费表.xlsx', now),
         )
         conn.execute(
             'INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)',
@@ -128,21 +128,21 @@ def main():
             page = context.new_page()
 
             # CI has no real Windows desktop/Foxmail process. Stub the current v0.9
-            # helper contract faithfully: Foxmail draft verified, exact TXT prepared,
-            # Explorer selection dispatched, but attachment/send remain manual.
+            # helper contract faithfully: Foxmail draft verified, exact TXT hash checked,
+            # file-drop clipboard prepared, but attachment/send remain manual.
             page.route('http://127.0.0.1:18763/health', lambda route: route.fulfill(
                 status=200, content_type='application/json',
-                body='{"ok":true,"version":"0.9","launch_mode":"foxmail-exe-mailto-file-ready","attachment_mode":"manual-file-selection","auto_send":false,"mapi_required":false}',
+                body='{"ok":true,"version":"0.9","launch_mode":"foxmail-exe-mailto-clipboard-ready","attachment_mode":"clipboard-file-drop","auto_send":false,"mapi_required":false}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route('http://127.0.0.1:18763/compose', lambda route: route.fulfill(
                 status=200, content_type='application/json',
-                body='{"ok":true,"mode":"foxmail-exe-mailto-file-ready","verified":true,"launch_verified":true,"attachment_file_verified":true,"explorer_dispatched":true,"attachment_filename_exact":true,"state":"draft-open-file-selected"}',
+                body='{"ok":true,"mode":"foxmail-exe-mailto-clipboard-ready","verified":true,"launch_verified":true,"attachment_file_verified":true,"attachment_clipboard_verified":true,"attachment_integrity_verified":true,"explorer_dispatched":false,"attachment_filename_exact":true,"state":"draft-open-clipboard-ready"}',
                 headers={'Access-Control-Allow-Origin': 'http://127.0.0.1:8136'},
             ))
             page.route(f'**/customers/{cid}/payment-mail-compose-v031', lambda route: route.fulfill(
                 status=200, content_type='application/json',
-                body='{"ok":true,"recipient_b64":"dGVzdEBleGFtcGxlLmNvbQ==","subject_b64":"dGVzdA==","body_b64":"","attachment_filename_b64":"dGVzdC50eHQ=","attachment_content_base64":"MTM4MDAwMDAwMDF8MTA1"}',
+                body='{"ok":true,"recipient_b64":"dGVzdEBleGFtcGxlLmNvbQ==","subject_b64":"dGVzdA==","body_b64":"","attachment_filename_b64":"dGVzdC50eHQ=","attachment_content_base64":"MTM4MDAwMDAwMDF8MTA1","attachment_sha256":"5c676b8913f7a0968bddb148789e924fa7c4479f13bd6cc4bc9c9319eb8734d9","attachment_line_count":1}',
             ))
 
             page.goto(f'http://127.0.0.1:8136/customers/{cid}', wait_until='networkidle')
@@ -177,7 +177,7 @@ def main():
             with page.expect_download(timeout=3000) as excel_download_info:
                 assert_no_dialog_while(page, lambda: excel_button.click(), 120)
             excel_download = excel_download_info.value
-            assert excel_download.suggested_filename == '验收客户缴费清单.xlsx', excel_download.suggested_filename
+            assert excel_download.suggested_filename == '验收客户缴费表.xlsx', excel_download.suggested_filename
             excel_path = excel_download.path(); assert excel_path is not None
             with zipfile.ZipFile(excel_path) as archive:
                 names = set(archive.namelist())
@@ -215,6 +215,14 @@ def main():
             assert_no_dialog_while(page, lambda: initiate.click(), 700)
             expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=3000)
             expect(initiate).to_contain_text('待确认', timeout=3000)
+            # v1.5.9: pending confirmation is a server state, not a browser variable.
+            # A reload or a long gap before actual payment must not revert stage 3.
+            page.reload(wait_until='networkidle')
+            flow = page.locator('[data-v031-payment-flow]'); flow.wait_for(state='visible')
+            initiate = flow.locator('[data-v031-flow-action="initiate"]')
+            paid = flow.locator('[data-v031-flow-action="paid"]')
+            expect(initiate).to_have_attribute('aria-pressed', 'false', timeout=5000)
+            expect(initiate).to_contain_text('待确认', timeout=5000)
             assert_no_dialog_while(page, lambda: initiate.click()); expect(initiate).to_have_attribute('aria-pressed', 'true', timeout=5000)
             expect(paid).to_be_enabled(timeout=5000)
 

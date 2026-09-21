@@ -121,7 +121,7 @@ def _auto_review_run(conn, customer_id: int, period: str | None = None):
         now = now_iso()
         conn.execute(
             """UPDATE customer_payment_runs
-               SET reviewed_at='',notified_at='',initiated_at='',updated_at=?
+               SET reviewed_at='',notified_at='',initiated_at='',initiate_prepared_at='',updated_at=?
                WHERE id=?""",
             (now, int(run['id'])),
         )
@@ -132,9 +132,11 @@ def _auto_review_run(conn, customer_id: int, period: str | None = None):
         run['reviewed'] = False
         run['notified'] = False
         run['initiated'] = False
+        run['initiate_prepared'] = False
         run['reviewed_at'] = ''
         run['notified_at'] = ''
         run['initiated_at'] = ''
+        run['initiate_prepared_at'] = ''
         run['stage'] = 'checking'
         run['label'] = '存在未核对金额，待重新确认'
 
@@ -243,7 +245,7 @@ def _rollback_completed_payment(conn, customer_id: int, period: str, run):
     now = now_iso()
     conn.execute(
         '''UPDATE customer_payment_runs
-           SET reviewed_at='',notified_at='',initiated_at='',paid_at='',
+           SET reviewed_at='',notified_at='',initiated_at='',initiate_prepared_at='',paid_at='',
                emailed_at='',email_to='',email_subject='',updated_at=?
            WHERE id=?''',
         (now, run_id),

@@ -67,7 +67,7 @@
 
   const note = dialog.querySelector('.v03-mail-template-note span');
   if (note) {
-    note.textContent = '邮件主题、正文和TXT附件文件名长期绑定当前客户；收件人全局共用。调用Foxmail时自动带入当前客户的缴费TXT附件。';
+    note.textContent = '邮件主题、正文、TXT文件名和EXCEL文件名长期绑定当前客户；TXT与EXCEL文件名完全独立。';
   }
 
   const subjectInput = dialog.querySelector('[data-v03-mail-subject]');
@@ -87,10 +87,23 @@
     attachmentInput = field.querySelector('[data-v03-mail-attachment-filename]');
   }
 
+  let excelAttachmentInput = dialog.querySelector('[data-v03-mail-excel-attachment-filename]');
+  if (!excelAttachmentInput && attachmentInput) {
+    const field = document.createElement('label');
+    field.className = 'v03-mail-field v03-payment-excel-attachment-field';
+    field.innerHTML = `
+      <span>EXCEL附件文件名 <small>仅用于“生成缴费EXCEL”；与TXT完全独立</small></span>
+      <input type="text" maxlength="160" data-v03-mail-excel-attachment-filename
+             placeholder="例如：淄博润泰物流缴费明细.xlsx">`;
+    attachmentInput.closest('.v03-mail-field')?.insertAdjacentElement('afterend', field);
+    excelAttachmentInput = field.querySelector('[data-v03-mail-excel-attachment-filename]');
+  }
+
   const loadPaymentTemplate = async () => {
     const data = await fetchJson(`/customers/${customerId}/mail-template-v03`);
     const template = data.template || {};
     if (attachmentInput) attachmentInput.value = template.attachment_filename || '';
+    if (excelAttachmentInput) excelAttachmentInput.value = template.excel_attachment_filename || '';
     return data;
   };
 
@@ -115,6 +128,7 @@
     fd.append('subject', subjectInput?.value.trim() || '');
     fd.append('body', bodyInput?.value || '');
     fd.append('attachment_filename', attachmentInput?.value.trim() || '');
+    fd.append('excel_attachment_filename', excelAttachmentInput?.value.trim() || '');
 
     try {
       const data = await fetchJson(`/customers/${customerId}/mail-template-v03`, {method: 'POST', body: fd});
@@ -123,6 +137,7 @@
       if (subjectInput) subjectInput.value = template.subject || '';
       if (bodyInput) bodyInput.value = template.body || '';
       if (attachmentInput) attachmentInput.value = template.attachment_filename || '';
+      if (excelAttachmentInput) excelAttachmentInput.value = template.excel_attachment_filename || '';
       if (dialog.open) dialog.close();
       toast('当前客户缴费模板已保存');
     } catch (err) {
