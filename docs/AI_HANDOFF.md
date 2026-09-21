@@ -612,3 +612,17 @@ v1.5.8 修正为：
 - 额外标记“整个来源组没有任何 live route”的 FULLY_DEAD_GROUP，作为以后删除整组 import/include 的候选。
 - 当前阶段仍只做清单，不删除 Python 历史实现；下一步必须以该清单 + 全仓库直接引用检查 + 完整浏览器验收三者共同确认后再清理。
 - 运行时路由唯一 owner 仍是硬性 CI 契约。
+
+### 19.4 解除整组已不可达路由的运行时挂载
+
+历史路由源码清单确认 7 个来源组已经没有任何 live route：
+
+- _v0212_payment_routes
+- _v022_routes
+- _v024_routes
+- _v025_home_routes
+- _v026_home_routes
+- _v027_home_routes
+- _v029_routes
+
+本阶段只从 app/main.py 移除这些组的 router import / include / _ordered 挂载，不删除对应 Python 源文件。这样可降低启动时加载和后续误判旧实现的概率，同时保留源码供历史测试、直接 import 和回滚使用。任何功能或测试如果仍依赖这些模块本身，文件仍然存在；只是它们不再参与生产运行时路由表。
