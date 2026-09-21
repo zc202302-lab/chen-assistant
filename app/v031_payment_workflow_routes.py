@@ -81,6 +81,8 @@ def _run_v031(conn, customer_id: int, period: str | None = None):
         stage, label = 'paid', '已完成缴费'
     elif initiated:
         stage, label = 'initiated', '已发起缴费，待完成支付'
+    elif initiate_prepared:
+        stage, label = 'initiate_prepared', '缴费邮件已准备，待确认发起缴费'
     elif notified:
         stage, label = 'notified', '已通知客户，待发起缴费'
     elif reviewed:
