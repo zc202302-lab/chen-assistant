@@ -2,13 +2,13 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前应用版本：`v1.5.9`（main）；生产仍为 `v1.5.8`
+- 当前应用版本：`v1.5.9`（main）；`v1.5.10` Windows 助手自更新热修正在验证
 - 当前 `main`：`d2ff6432538538206d4a4ad404b3f825b97af0fe`（PR #56 已合并，v1.5.9）
 - 当前生产：`985ac41`（v1.5.8，2026-09-20 已部署成功）
 - 当前差异：生产仍为 `985ac41` / v1.5.8；main 已升级到 v1.5.9，包含发起缴费可靠性加固，尚未部署
 - 当前已完成：PR #56 已合并；v1.5.9 已实现“发起缴费待确认持久化”、Foxmail TXT 文件剪贴板交接、TXT/EXCEL 文件名独立、正式 TXT 号码↔金额完整性校验；完整 validation、stability、历史浏览器验收全绿
-- 当前未完成：v1.5.9 尚未部署生产；Windows Foxmail 专项 GitHub-hosted runner 仍有 0 step / 0 log 的基础设施故障，尚未获得真实 PowerShell 5.1 执行结果；PR #55 仍为独立治理 PR；工作资料 CRUD 主线尚未开始
-- 下一步建议：优先部署并验证 v1.5.9；部署成功前生产基准继续保持 `985ac41` / v1.5.8。部署完成后再处理独立治理 PR #55，并继续工作资料 CRUD 主线
+- 当前未完成：用户实际 v1.5.9 页面检测到本机旧版 Windows 邮箱助手；已确认根因是旧 bootstrap 不会自更新 bootstrap，且旧安装最长 30 分钟才检查 helper。v1.5.10 热修正在验证 bootstrap 自更新与 5 分钟检查；PR #55 为独立治理 PR；工作资料 CRUD 主线尚未开始
+- 下一步建议：优先完成 v1.5.10 热修完整 CI，解决 Windows 助手升级链后再继续治理/工作资料。现有 v1.5.9 旧安装可等待原 30 分钟自动检查，或为立即使用重新安装一次当前 bootstrap；v1.5.10 之后 bootstrap 本身也会自动更新
 
 ### 新聊天接管协议
 
@@ -764,3 +764,26 @@ v1.5.8 修正为：
 - 合并前 `v1.2 validation` 全绿，包含成熟工作系统兼容、production regressions、全部历史浏览器验收；`stability gate` 全绿。
 - Windows Foxmail 专项 workflow 仍是 GitHub-hosted runner 0-step / 无日志基础设施失败；未观察到 PowerShell 代码级失败。该问题不得通过弱化测试来规避。
 - 合并不代表已部署。生产仍是 `985ac41` / v1.5.8，下一步必须执行标准 `deploy.sh` 并验证 `/health`、静态资源、远程存储和实际 Foxmail/TXT 交接。
+
+---
+
+## 21. 2026-09-21 v1.5.10 Windows 助手自更新热修
+
+### 21.1 实际故障
+
+用户在 v1.5.9 页面点击“发起缴费”时，被安全门禁提示“检测到旧版 Windows 邮箱助手”。页面升级成功，但本机 bridge 仍返回旧协议。
+
+代码审计确认：旧版 `chen_foxmail_bootstrap.ps1` 只会周期性更新 helper，不会更新 bootstrap 自身；并且旧安装的 helper 检查周期为 30 分钟。因此服务端 helper 行为切换后，会出现“网页已更新、本机 helper 仍旧”的窗口期。v1.5.9 新 helper 已保留旧 bootstrap 所需的兼容标记，所以旧安装最终可以接受新 helper，但不能保证立即升级。
+
+### 21.2 v1.5.10 决策
+
+- bootstrap 增加独立版本 `1.0`。
+- Watch 模式同时检查 bootstrap 与 helper；bootstrap 有新版本时先下载、ASCII/PowerShell 语法/关键标记校验、SHA256 比较，再原子覆盖安装文件。
+- bootstrap 更新后启动新 bootstrap Watch 进程并退出旧进程，使新的更新逻辑真正生效。
+- 自动检查周期从 30 分钟缩短到 5 分钟。
+- helper 的 SHA256、协议、附件剪贴板与缴费安全规则不降低。
+- 浏览器检测到旧助手时继续阻止真实缴费，不允许为了兼容而绕过版本/协议检查；提示中明确旧安装可能有 30 分钟窗口期，急用时可重新安装一次最新版。完成 v1.5.10 bootstrap 后，后续无需因 bootstrap 升级重复手工安装。
+
+### 21.3 合并条件
+
+应用候选版本为 `v1.5.10`。必须通过完整 validation、stability gate、Windows bootstrap/helper 合同和全部历史浏览器验收后才能合并。Windows GitHub-hosted runner 若仍是 0-step / 0-log 基础设施失败，应继续与代码级失败区分，不能删除或弱化 PowerShell 5.1 校验。
