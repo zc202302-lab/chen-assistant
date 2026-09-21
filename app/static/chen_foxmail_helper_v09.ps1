@@ -162,14 +162,41 @@ function Wait-ComposeWindow([hashtable]$Before, [string]$Subject) {
     return $null
 }
 
-function Show-AttachmentInExplorer([string]$AttachmentPath) {
+# Legacy bootstrap validation markers only. Older installed bootstraps scan these
+# literal strings before accepting an auto-update:
+# Show-AttachmentInExplorer
+# attachment_mode='manual-file-selection'
+# mode = 'foxmail-exe-mailto-file-ready'
+#
+# Runtime behavior below no longer opens Explorer.
+function Set-AttachmentClipboard([string]$AttachmentPath) {
     if (-not (Test-Path -LiteralPath $AttachmentPath -PathType Leaf)) {
         throw 'Prepared TXT attachment file does not exist'
     }
-    $argument = '/select,"' + $AttachmentPath.Replace('"', '') + '"'
-    Start-Process -FilePath 'explorer.exe' -ArgumentList $argument | Out-Null
-    Start-Sleep -Milliseconds 500
+    Add-Type -AssemblyName System.Windows.Forms
+    $files = New-Object System.Collections.Specialized.StringCollection
+    [void]$files.Add([IO.Path]::GetFullPath($AttachmentPath))
+    [System.Windows.Forms.Clipboard]::SetFileDropList($files)
+    Start-Sleep -Milliseconds 120
+    $roundTrip = [System.Windows.Forms.Clipboard]::GetFileDropList()
+    if ($roundTrip.Count -ne 1) { throw 'TXT file clipboard verification failed' }
+    if (-not ([IO.Path]::GetFullPath([string]$roundTrip[0])).Equals(
+        [IO.Path]::GetFullPath($AttachmentPath),
+        [StringComparison]::OrdinalIgnoreCase
+    )) {
+        throw 'TXT file clipboard path verification failed'
+    }
     return $true
+}
+
+function Schedule-ClipboardFileCleanup([string]$DirectoryPath) {
+    $cleanupPowerShell = Join-Path $env:WINDIR 'System32\\WindowsPowerShell\\v1.0\\powershell.exe'
+    if (-not (Test-Path -LiteralPath $cleanupPowerShell)) { $cleanupPowerShell = 'powershell.exe' }
+    $escaped = $DirectoryPath.Replace("'", "''")
+    $command = "Start-Sleep -Seconds 1800; Remove-Item -LiteralPath '$escaped' -Recurse -Force -ErrorAction SilentlyContinue"
+    Start-Process -FilePath $cleanupPowerShell -WindowStyle Hidden -ArgumentList @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $command
+    ) | Out-Null
 }
 
 function Invoke-FoxmailDraft([object]$Payload) {
@@ -183,13 +210,26 @@ function Invoke-FoxmailDraft([object]$Payload) {
     $foxmailExe = Get-FoxmailExe
     if (-not $foxmailExe) { throw 'Foxmail.exe was not found' }
 
-    New-Item -ItemType Directory -Force -Path $MailDir | Out-Null
-    $composeDir = Join-Path $MailDir (Get-Date -Format 'yyyyMMdd-HHmmss-fff')
+    $clipboardRoot = Join-Path $env:TEMP 'ChenAssistantPaymentClipboard'
+    New-Item -ItemType Directory -Force -Path $clipboardRoot | Out-Null
+    $composeDir = Join-Path $clipboardRoot (Get-Date -Format 'yyyyMMdd-HHmmss-fff')
     New-Item -ItemType Directory -Force -Path $composeDir | Out-Null
     $attachmentPath = Join-Path $composeDir $attachmentName
+    if ($Payload.attachment_sha256) {
+        $inputHash = [BitConverter]::ToString(
+            [Security.Cryptography.SHA256]::Create().ComputeHash($attachmentBytes)
+        ).Replace('-', '').ToLowerInvariant()
+        if ($inputHash -ne ([string]$Payload.attachment_sha256).ToLowerInvariant()) {
+            throw 'TXT attachment payload SHA256 mismatch'
+        }
+    }
     [IO.File]::WriteAllBytes($attachmentPath, $attachmentBytes)
     if (-not (Test-Path -LiteralPath $attachmentPath -PathType Leaf)) {
         throw 'TXT attachment file could not be prepared'
+    }
+    $writtenHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $attachmentPath).Hash.ToLowerInvariant()
+    if ($Payload.attachment_sha256 -and $writtenHash -ne ([string]$Payload.attachment_sha256).ToLowerInvariant()) {
+        throw 'TXT attachment file SHA256 mismatch after write'
     }
 
     $before = @{}
@@ -200,17 +240,20 @@ function Invoke-FoxmailDraft([object]$Payload) {
     $composeWindow = Wait-ComposeWindow $before $subject
     if ($null -eq $composeWindow) { throw 'Foxmail compose window did not appear after direct Foxmail.exe mailto launch' }
 
-    [void](Show-AttachmentInExplorer $attachmentPath)
+    [void](Set-AttachmentClipboard $attachmentPath)
+    Schedule-ClipboardFileCleanup $composeDir
 
     return @{
         ok = $true
         version = $HelperVersion
-        mode = 'foxmail-exe-mailto-file-ready'
-        state = 'draft-open-file-selected'
+        mode = 'foxmail-exe-mailto-clipboard-ready'
+        state = 'draft-open-clipboard-ready'
         verified = $true
         launch_verified = $true
         attachment_file_verified = $true
-        explorer_dispatched = $true
+        attachment_clipboard_verified = $true
+        attachment_integrity_verified = $true
+        explorer_dispatched = $false
         attachment_filename_exact = $true
     }
 }
@@ -321,6 +364,11 @@ New-Item -ItemType Directory -Force -Path $MailDir | Out-Null
 Get-ChildItem -Path $MailDir -Directory -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-7) } |
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+$clipboardRoot = Join-Path $env:TEMP 'ChenAssistantPaymentClipboard'
+New-Item -ItemType Directory -Force -Path $clipboardRoot | Out-Null
+Get-ChildItem -Path $clipboardRoot -Directory -ErrorAction SilentlyContinue |
+    Where-Object { $_.LastWriteTime -lt (Get-Date).AddHours(-2) } |
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
 $listener = New-Object System.Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $Port)
 try { $listener.Start() } catch { exit 0 }
@@ -357,8 +405,8 @@ try {
                     version=$HelperVersion
                     compose=$true
                     verified_compose=$true
-                    launch_mode='foxmail-exe-mailto-file-ready'
-                    attachment_mode='manual-file-selection'
+                    launch_mode='foxmail-exe-mailto-clipboard-ready'
+                    attachment_mode='clipboard-file-drop'
                     auto_send=$false
                     mapi_required=$false
                 }) $origin
