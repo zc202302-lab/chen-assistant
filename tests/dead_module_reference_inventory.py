@@ -7,11 +7,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 CANDIDATES = {
     "v0212_payment_routes": ROOT / "app" / "v0212_payment_routes.py",
-    "v022_routes": ROOT / "app" / "v022_routes.py",
-    "v024_routes": ROOT / "app" / "v024_routes.py",
     "v025_home": ROOT / "app" / "v025_home.py",
     "v026_home": ROOT / "app" / "v026_home.py",
     "v027_home": ROOT / "app" / "v027_home.py",
+}
+
+REMOVED_MODULES = {
+    "v022_routes": ROOT / "app" / "v022_routes.py",
+    "v024_routes": ROOT / "app" / "v024_routes.py",
     "v029_routes": ROOT / "app" / "v029_routes.py",
 }
 
@@ -47,6 +50,10 @@ def classify(refs):
 
 def main():
     print("=== DEAD MODULE REFERENCE INVENTORY ===")
+    for name, path in REMOVED_MODULES.items():
+        assert not path.exists(), f"historical module unexpectedly restored: {name}"
+        print(f"REMOVED_MODULE {name}")
+
     for name, path in CANDIDATES.items():
         assert path.is_file(), path
         refs = references_to(name, path)

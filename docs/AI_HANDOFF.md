@@ -632,3 +632,27 @@ v1.5.8 修正为：
 7 个整组不可达 router 已经从 app/main.py 解除挂载并通过完整回归，但对应 Python 源文件仍保留。本阶段新增 tests/dead_module_reference_inventory.py，扫描这些模块在 app/tests/docs/workflows 中是否还有直接引用，并把引用分为 runtime / tests / other。
 
 只有 runtime_refs=0 的模块才可进入后续“源码删除候选”；即便 runtime 为 0，如果仍有 tests 或文档引用，也必须先判断这些引用是历史合同、直接函数复用还是仅说明文字，不能直接删除文件。
+
+### 19.6 删除首批零运行时/零测试引用的历史路由模块
+
+基于 detached module reference inventory，确认以下 3 个历史模块已经同时满足：
+
+- 不再挂载到 app/main.py；
+- runtime_refs=0；
+- 除治理清单自身外没有测试直接依赖；
+- 没有文档/工作流/部署直接引用。
+
+因此本批正式删除：
+
+- app/v022_routes.py
+- app/v024_routes.py
+- app/v029_routes.py
+
+同时在 tests/dead_module_reference_inventory.py 中把它们加入 REMOVED_MODULES，CI 会断言这些历史模块不能被无意重新引入。
+
+以下模块暂不删除：
+
+- v0212_payment_routes：虽无运行时引用，但 ui_v0212_contract.py 仍直接导入其中的周期计算函数；需先迁移该公共逻辑再处理。
+- v025_home / v026_home / v027_home：仍被当前运行时代码直接 import/动态 patch，其中 v027_home 还是 /work/customers 的实际页面实现，不能删除。
+
+本阶段没有用户可见功能、路由 owner、数据库或页面变化，应用版本继续保持 v1.5.8。
