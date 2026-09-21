@@ -1,7 +1,7 @@
 (() => {
   const root = document.querySelector('.v0211-workspace');
   const actions = window.ChenPaymentWorkflowActionsV031;
-  if (!root || !actions?.prepareInitiate || actions.prepareInitiate.__v147FoxmailManualAttachment) return;
+  if (!root || !actions?.prepareInitiate || actions.prepareInitiate.__v159FoxmailClipboardAttachment) return;
 
   const customerId = root.dataset.customerId || '';
   if (!customerId) return;
@@ -46,8 +46,8 @@
     }
     if (
       health?.version !== '0.9' ||
-      health?.launch_mode !== 'foxmail-exe-mailto-file-ready' ||
-      health?.attachment_mode !== 'manual-file-selection' ||
+      health?.launch_mode !== 'foxmail-exe-mailto-clipboard-ready' ||
+      health?.attachment_mode !== 'clipboard-file-drop' ||
       health?.auto_send !== false ||
       health?.mapi_required !== false
     ) {
@@ -81,16 +81,24 @@
       result?.verified !== true ||
       result?.launch_verified !== true ||
       result?.attachment_file_verified !== true ||
-      result?.explorer_dispatched !== true ||
-      result?.state !== 'draft-open-file-selected' ||
-      result?.mode !== 'foxmail-exe-mailto-file-ready'
+      result?.attachment_clipboard_verified !== true ||
+      result?.attachment_integrity_verified !== true ||
+      result?.explorer_dispatched !== false ||
+      result?.state !== 'draft-open-clipboard-ready' ||
+      result?.mode !== 'foxmail-exe-mailto-clipboard-ready'
     ) {
       const message = String(result?.error || '');
       if (message.includes('compose window did not appear')) {
         throw new Error('Foxmail 没有真正打开写信窗口。请确认 Foxmail 已正常登录，然后重试。');
       }
+      if (message.includes('clipboard')) {
+        throw new Error('缴费 TXT 没有成功放入文件剪贴板，请重试。');
+      }
+      if (message.includes('SHA256')) {
+        throw new Error('缴费 TXT 完整性校验失败，已停止发起缴费。');
+      }
       if (message.includes('TXT attachment')) {
-        throw new Error('缴费 TXT 没有成功准备到本机，请重试。');
+        throw new Error('缴费 TXT 没有成功准备，请重试。');
       }
       throw new Error(message || `Foxmail 草稿或 TXT 准备失败（${response.status}）`);
     }
@@ -100,12 +108,12 @@
       state: result.state,
       verified: true,
       attachmentReady: true,
-      manualAttachment: true,
+      clipboardAttachment: true,
     };
   };
 
   const verifiedPrimary = async () => prepareFoxmailDraft();
-  verifiedPrimary.__v147FoxmailManualAttachment = true;
+  verifiedPrimary.__v159FoxmailClipboardAttachment = true;
   actions.prepareInitiate = verifiedPrimary;
 
   const previousAlert = window.alert.bind(window);
@@ -113,7 +121,7 @@
     const text = String(message ?? '');
     if (text.includes('Foxmail写邮件窗口已打开，并已带入收件人、主题、正文和TXT附件')) {
       if (window.ChenToast) {
-        window.ChenToast('Foxmail草稿已打开，TXT已在资源管理器中选中；请手动加入附件并检查发送');
+        window.ChenToast('Foxmail草稿已打开，TXT已复制到文件剪贴板；在邮件窗口按 Ctrl+V 添加附件');
       }
       return;
     }
@@ -128,8 +136,8 @@
     const nextTitle = done
       ? '已确认缴费邮件发送完成；点击可撤回此状态'
       : awaiting
-        ? 'Foxmail草稿和TXT已准备；手动把资源管理器中选中的TXT加入邮件，检查并发送后再次点击确认'
-        : '准备Foxmail草稿和TXT文件；附件由你手动加入，系统不会自动发送邮件';
+        ? 'Foxmail草稿和TXT已准备；在邮件窗口按 Ctrl+V 加入TXT，检查并发送后再次点击确认'
+        : '准备Foxmail草稿并把TXT放入文件剪贴板；系统不会自动发送邮件';
     if (button.title !== nextTitle) button.title = nextTitle;
   };
 
