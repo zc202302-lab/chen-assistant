@@ -91,6 +91,10 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: python tests/code_governance_inventory.py
 
+      - name: Dead route source inventory
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/dead_route_source_inventory.py
+
       - name: Existing feature compatibility audit policy
         if: steps.scope.outputs.mode == 'full'
         run: |
