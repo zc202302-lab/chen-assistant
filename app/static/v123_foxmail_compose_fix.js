@@ -119,7 +119,10 @@
   const previousAlert = window.alert.bind(window);
   window.alert = message => {
     const text = String(message ?? '');
-    if (text.includes('Foxmail写邮件窗口已打开，并已带入收件人、主题、正文和TXT附件')) {
+    if (
+      text.includes('Foxmail写邮件窗口已打开，并已带入收件人、主题、正文和TXT附件') ||
+      text.includes('Foxmail写邮件窗口已打开，缴费TXT已放入文件剪贴板')
+    ) {
       if (window.ChenToast) {
         window.ChenToast('Foxmail草稿已打开，TXT已复制到文件剪贴板；在邮件窗口按 Ctrl+V 添加附件');
       }
