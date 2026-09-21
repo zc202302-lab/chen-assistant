@@ -42,7 +42,7 @@ def main():
         'prepareNotice', 'prepareInitiate', 'navigator.clipboard.write', 'ClipboardItem',
         'payment-mail-compose-v031', '127.0.0.1:18763', 'attachment_filename_b64',
         "bridgeFetch('/compose'", '22000', 'Windows Foxmail助手响应超时',
-        'verified !== true', 'stable, foreground Foxmail compose window',
+        'verified !== true', 'attachment_integrity_verified !== true', 'Windows file-drop clipboard',
     ):
         assert token in actions, token
     prepare_initiate = actions.split('const prepareInitiate = async () => {', 1)[1].split('\n  };', 1)[0]
@@ -98,7 +98,7 @@ def main():
         'core.payment_snapshot_v0212 = _review_snapshot',
         'workflow._run_v031 = _auto_review_run',
         'workflow._paint_review_reset = _fixed_amount_review',
-        "reviewed_at='',notified_at='',initiated_at='',paid_at=''",
+        "reviewed_at='',notified_at='',initiated_at='',initiate_prepared_at='',paid_at=''",
     ):
         assert token in patch, token
 
