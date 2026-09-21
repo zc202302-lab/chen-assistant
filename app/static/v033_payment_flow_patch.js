@@ -179,7 +179,7 @@
   const dialog = document.querySelector('.v03-mail-template-dialog');
   if (!dialog) return;
   const note = dialog.querySelector('.v03-mail-template-note span');
-  if (note) note.textContent = '收件人、邮件主题、正文和TXT附件文件名都只属于当前客户；TXT文件名只取这里保存的值，未填写时不会自动生成。';
+  if (note) note.textContent = '收件人、邮件主题、正文、TXT附件文件名和EXCEL附件文件名都只属于当前客户；TXT与EXCEL完全分离，任一未填写都不会互相推导。';
   const recipient = dialog.querySelector('[data-v03-mail-recipient]');
   const recipientCaption = recipient?.closest('.v03-mail-field')?.querySelector('span');
   if (recipientCaption) recipientCaption.innerHTML = '收件人 <small>按当前客户长期保存，不与其他客户共用</small>';
