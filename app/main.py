@@ -92,28 +92,20 @@ _ordered = (
     _v024_routes + _v023_routes + _v022_routes + _v021_routes + _v02_routes +
     _legacy_routes
 )
-_unique_paths = {
-    '/',
-    '/work',
-    '/search',
-    '/global-search',
-    '/customers/{customer_id}',
-    '/health',
-    '/customers/{customer_id}/payment-run',
-    '/customers/{customer_id}/payment.txt',
-    '/customers/{customer_id}/mail-template-v03',
-    '/customers/{customer_id}/payment-mail-compose-v031',
-    '/customers/{customer_id}/payment-mail-draft-v03',
-}
-_seen = set()
+# Historical routers are still imported for compatibility, but Starlette resolves
+# the first matching route. Keep that exact winner and drop every later route with
+# the same path + method set from the live router table. This makes historical
+# fallback implementations unreachable at runtime without deleting their source
+# code yet, so each cleanup batch remains easy to roll back.
+_seen_route_signatures = set()
 _final = []
 for route in _ordered:
     path = getattr(route, 'path', None)
-    if path in _unique_paths:
-        key = (path, tuple(sorted(getattr(route, 'methods', set()))))
-        if key in _seen:
-            continue
-        _seen.add(key)
+    methods = tuple(sorted(getattr(route, 'methods', set())))
+    key = (path, methods)
+    if key in _seen_route_signatures:
+        continue
+    _seen_route_signatures.add(key)
     _final.append(route)
 app.router.routes[:] = _final
 
