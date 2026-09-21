@@ -51,7 +51,7 @@
       health?.auto_send !== false ||
       health?.mapi_required !== false
     ) {
-      throw new Error('检测到旧版 Windows 邮箱助手。请重新安装最新版助手后再准备缴费邮件。');
+      throw new Error('检测到旧版 Windows 邮箱助手，已停止本次缴费准备。旧安装会自动检查更新；v1.5.9 以前安装的助手最长可能等待约30分钟。若需立即使用，请重新安装一次最新版，之后 bootstrap 会自行更新。');
     }
   };
 
