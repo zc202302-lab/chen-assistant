@@ -82,11 +82,11 @@
 
   const normalizePrepared = () => {
     if (!state) return;
-    // Preserve a prepared external action while its prerequisite remains valid.
-    // Amount changes or a server-side rollback clear the prerequisite and therefore
-    // also clear the transient "待确认" state.
+    // Customer notification preparation remains browser-local. Payment initiation
+    // preparation is server-authoritative because the user may leave/reload the page
+    // for a long time before the actual payment completes.
     if (!state.reviewed || state.notified) notifyPrepared = false;
-    if (!state.notified || state.initiated) initiatePrepared = false;
+    initiatePrepared = !!state.initiate_prepared && !!state.notified && !state.initiated;
   };
 
   const render = () => {
@@ -153,6 +153,7 @@
     try {
       const data = await fetchJson(`/customers/${customerId}/payment-workflow-v031`);
       state = data.run || {};
+      initiatePrepared = !!state.initiate_prepared;
       render();
       root.dataset.v031WorkflowReady = '1';
       return true;
@@ -224,10 +225,12 @@
     render();
     try {
       await actions.prepareInitiate();
-      initiatePrepared = true;
+      const prepared = await postAction('prepare_initiate');
+      state = prepared.run || state;
+      initiatePrepared = !!state.initiate_prepared;
       render();
-      alert('Foxmail写邮件窗口已打开，并已带入收件人、主题、正文和TXT附件。\n\n请在Foxmail中检查并发送；发送完成后回到本页面，再点击“待确认 · 3 发起缴费”确认已发送。\n\n在你确认前，本环节不会标记为完成。');
-      toast('Foxmail已打开；发送邮件后回来确认“发起缴费”');
+      alert('Foxmail写邮件窗口已打开，缴费TXT已放入文件剪贴板。\n\n请在Foxmail邮件窗口中按 Ctrl+V 添加TXT附件，检查后发送；发送完成后回到本页面，再点击“待确认 · 3 发起缴费”确认已发送。\n\n“待确认”状态已经保存，刷新或稍后回来都不会丢失。');
+      toast('Foxmail已打开，TXT已复制；Ctrl+V添加附件后发送');
     } finally {
       busy = false;
       render();
