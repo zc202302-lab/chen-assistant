@@ -17,13 +17,18 @@ def main():
         "throw 'Downloaded bootstrap is not ASCII-safe.'",
         "throw 'Downloaded bootstrap failed PowerShell syntax validation.'",
         'Copy-Item -Force -LiteralPath $download -Destination $BootstrapPath',
+        "$BootstrapVersion = '1.0'",
+        'function Update-Bootstrap',
+        "chen_foxmail_bootstrap.update.ps1",
+        "$uri = $BootstrapUrl + '?autoupdate=' + [DateTime]::UtcNow.Ticks",
+        'UpdateIntervalMinutes = 5',
     )
     for token in required:
         assert token in text, token
 
     assert text.index('if ($PSCommandPath -and') < text.index('[IO.Path]::GetFullPath($PSCommandPath)')
     assert all(b < 128 for b in path.read_bytes())
-    print('Foxmail bootstrap irm-pipe-iex install contract passed')
+    print('Foxmail bootstrap install + self-update contract passed')
 
 
 if __name__ == '__main__':
