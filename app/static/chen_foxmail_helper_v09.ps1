@@ -215,6 +215,7 @@ function Invoke-FoxmailDraft([object]$Payload) {
     $composeDir = Join-Path $clipboardRoot (Get-Date -Format 'yyyyMMdd-HHmmss-fff')
     New-Item -ItemType Directory -Force -Path $composeDir | Out-Null
     $attachmentPath = Join-Path $composeDir $attachmentName
+    if (-not $Payload.attachment_sha256) { throw 'missing TXT attachment SHA256' }
     if ($Payload.attachment_sha256) {
         $sha = [Security.Cryptography.SHA256]::Create()
         try {
@@ -419,7 +420,7 @@ try {
             if ($req.Method -eq 'POST' -and $req.Path -eq '/compose') {
                 try {
                     $payload = $req.Body | ConvertFrom-Json
-                    foreach ($name in @('subject_b64','attachment_filename_b64','attachment_content_base64')) {
+                    foreach ($name in @('subject_b64','attachment_filename_b64','attachment_content_base64','attachment_sha256')) {
                         if (-not $payload.$name) { throw "missing $name" }
                     }
                     $result = Invoke-FoxmailDraft $payload
