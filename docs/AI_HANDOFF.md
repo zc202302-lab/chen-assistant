@@ -7,7 +7,7 @@
 - 当前生产：`985ac41`（v1.5.8，2026-09-20 已部署成功）
 - 当前差异：生产仍为 `985ac41` / v1.5.8；main 已升级到 v1.5.9，包含发起缴费可靠性加固，尚未部署
 - 当前已完成：PR #56 已合并；v1.5.9 已实现“发起缴费待确认持久化”、Foxmail TXT 文件剪贴板交接、TXT/EXCEL 文件名独立、正式 TXT 号码↔金额完整性校验；完整 validation、stability、历史浏览器验收全绿
-- 当前未完成：v1.5.9 尚未部署生产；Windows Foxmail 专项 GitHub-hosted runner 仍有 0 step / 0 log 的基础设施故障，尚未获得真实 PowerShell 5.1 执行结果；PR #55 已重新基于当前 v1.5.9 main 验证删除 2 个零引用历史模板；工作资料 CRUD 主线尚未开始
+- 当前未完成：v1.5.9 尚未部署生产；Windows Foxmail 专项 GitHub-hosted runner 仍有 0 step / 0 log 的基础设施故障，尚未获得真实 PowerShell 5.1 执行结果；PR #55 已重新基于当前 v1.5.9 main，正在重新跑完整 CI 验证 2 个零引用历史模板删除；工作资料 CRUD 主线尚未开始
 - 下一步建议：生产仍优先部署并验证 v1.5.9；同时等待 PR #55 在当前 v1.5.9 main 上重新完成完整 CI。PR #55 全绿后可独立合并；之后继续工作资料 CRUD 主线
 
 ### 新聊天接管协议
