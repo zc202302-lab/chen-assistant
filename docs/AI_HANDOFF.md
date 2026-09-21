@@ -626,3 +626,9 @@ v1.5.8 修正为：
 - _v029_routes
 
 本阶段只从 app/main.py 移除这些组的 router import / include / _ordered 挂载，不删除对应 Python 源文件。这样可降低启动时加载和后续误判旧实现的概率，同时保留源码供历史测试、直接 import 和回滚使用。任何功能或测试如果仍依赖这些模块本身，文件仍然存在；只是它们不再参与生产运行时路由表。
+
+### 19.5 已解除挂载模块的源码删除前置检查
+
+7 个整组不可达 router 已经从 app/main.py 解除挂载并通过完整回归，但对应 Python 源文件仍保留。本阶段新增 tests/dead_module_reference_inventory.py，扫描这些模块在 app/tests/docs/workflows 中是否还有直接引用，并把引用分为 runtime / tests / other。
+
+只有 runtime_refs=0 的模块才可进入后续“源码删除候选”；即便 runtime 为 0，如果仍有 tests 或文档引用，也必须先判断这些引用是历史合同、直接函数复用还是仅说明文字，不能直接删除文件。
