@@ -602,3 +602,13 @@ v1.5.8 修正为：
 - 客户页、缴费 Excel/TXT、金额核对、搜索等关键 owner 继续单独锁定。
 - 只有完整 validation、历史浏览器验收全部通过后才允许合并；若任何历史流程依赖后置重复路由，应视为治理方案有误并停止合并。
 - 本阶段仍不改变页面、数据库结构和业务规则，应用版本保持 v1.5.8。
+
+### 19.3 历史路由源码清理前置清单
+
+运行时 44 个重复路由签名已经在上一阶段消除，但对应旧 Python 实现源码仍然保留。为了避免直接按版本号删除旧模块，本阶段新增 `tests/dead_route_source_inventory.py`：
+
+- 按 `app/main.py` 中每个历史路由来源组统计 total / live / dead。
+- 只把已经不在最终 `app.router.routes` 中的 route object 标记为 DEAD。
+- 额外标记“整个来源组没有任何 live route”的 FULLY_DEAD_GROUP，作为以后删除整组 import/include 的候选。
+- 当前阶段仍只做清单，不删除 Python 历史实现；下一步必须以该清单 + 全仓库直接引用检查 + 完整浏览器验收三者共同确认后再清理。
+- 运行时路由唯一 owner 仍是硬性 CI 契约。
