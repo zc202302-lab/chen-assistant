@@ -7,8 +7,8 @@
 - 当前生产：`985ac41`（v1.5.8，2026-09-20 已部署成功）
 - 当前差异：生产仍为 `985ac41` / v1.5.8；main 已升级到 v1.5.9，包含发起缴费可靠性加固，尚未部署
 - 当前已完成：PR #56 已合并；v1.5.9 已实现“发起缴费待确认持久化”、Foxmail TXT 文件剪贴板交接、TXT/EXCEL 文件名独立、正式 TXT 号码↔金额完整性校验；完整 validation、stability、历史浏览器验收全绿
-- 当前未完成：v1.5.9 尚未部署生产；Windows Foxmail 专项 GitHub-hosted runner 仍有 0 step / 0 log 的基础设施故障，尚未获得真实 PowerShell 5.1 执行结果；PR #55 仍为独立治理 PR；工作资料 CRUD 主线尚未开始
-- 下一步建议：优先部署并验证 v1.5.9；部署成功前生产基准继续保持 `985ac41` / v1.5.8。部署完成后再处理独立治理 PR #55，并继续工作资料 CRUD 主线
+- 当前未完成：v1.5.9 尚未部署生产；Windows Foxmail 专项 GitHub-hosted runner 仍有 0 step / 0 log 的基础设施故障，尚未获得真实 PowerShell 5.1 执行结果；PR #55 已重新基于当前 v1.5.9 main，正在重新跑完整 CI 验证 2 个零引用历史模板删除；工作资料 CRUD 主线尚未开始
+- 下一步建议：生产仍优先部署并验证 v1.5.9；同时等待 PR #55 在当前 v1.5.9 main 上重新完成完整 CI。PR #55 全绿后可独立合并；之后继续工作资料 CRUD 主线
 
 ### 新聊天接管协议
 
@@ -764,3 +764,13 @@ v1.5.8 修正为：
 - 合并前 `v1.2 validation` 全绿，包含成熟工作系统兼容、production regressions、全部历史浏览器验收；`stability gate` 全绿。
 - Windows Foxmail 专项 workflow 仍是 GitHub-hosted runner 0-step / 无日志基础设施失败；未观察到 PowerShell 代码级失败。该问题不得通过弱化测试来规避。
 - 合并不代表已部署。生产仍是 `985ac41` / v1.5.8，下一步必须执行标准 `deploy.sh` 并验证 `/health`、静态资源、远程存储和实际 Foxmail/TXT 交接。
+
+### 20.8 PR #55 重新基于 v1.5.9 main 验证
+
+PR #55 原分支已落后于 v1.5.9，并与最新 main 分叉，因此不得直接合并。现已将该治理分支重新基于 `cef19ab7`（v1.5.9 main + 最新接力文档），只重新应用以下既有治理改动：
+
+- 删除 `customer_workspace_v022.html`
+- 删除 `customer_workspace_v029.html`
+- 在 `tests/template_reference_inventory.py` 中保留 `REMOVED_TEMPLATES` 防回流断言
+
+本阶段不改业务功能、不改应用版本。必须重新通过当前 v1.5.9 的完整 validation、stability 和历史浏览器验收后才能合并。

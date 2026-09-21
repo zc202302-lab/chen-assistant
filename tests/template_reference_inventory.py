@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_DIR = ROOT / "app" / "templates"
 TEXT_SUFFIXES = {".py", ".html", ".js", ".css", ".md", ".sh", ".yml", ".yaml", ".ps1"}
+REMOVED_TEMPLATES = {"customer_workspace_v022.html", "customer_workspace_v029.html"}
 
 
 def references_to(template_name: str, own_path: Path):
@@ -32,6 +33,9 @@ def classify(refs):
 
 
 def main():
+    for template_name in sorted(REMOVED_TEMPLATES):
+        assert not (TEMPLATE_DIR / template_name).exists(), f"removed template reintroduced: {template_name}"
+
     templates = sorted(TEMPLATE_DIR.glob("*.html"))
     print("=== TEMPLATE REFERENCE INVENTORY ===")
     orphans = []
