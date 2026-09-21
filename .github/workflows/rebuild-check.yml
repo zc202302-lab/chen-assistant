@@ -95,6 +95,10 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: python tests/dead_route_source_inventory.py
 
+      - name: Detached module reference inventory
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/dead_module_reference_inventory.py
+
       - name: Existing feature compatibility audit policy
         if: steps.scope.outputs.mode == 'full'
         run: |
