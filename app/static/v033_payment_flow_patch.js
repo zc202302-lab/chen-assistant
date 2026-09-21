@@ -36,7 +36,12 @@
   window.confirm = message => silentConfirm(String(message ?? '')) ? true : nativeConfirm(message);
   window.alert = message => {
     const text = String(message ?? '');
-    if (text.includes('缴费图片已生成并复制到剪贴板') || text.includes('缴费图片已生成，但自动复制到剪贴板失败') || text.includes('Foxmail写邮件窗口已打开，并已带入收件人、主题、正文和TXT附件')) {
+    if (
+      text.includes('缴费图片已生成并复制到剪贴板') ||
+      text.includes('缴费图片已生成，但自动复制到剪贴板失败') ||
+      text.includes('Foxmail写邮件窗口已打开，并已带入收件人、主题、正文和TXT附件') ||
+      text.includes('Foxmail写邮件窗口已打开，缴费TXT已放入文件剪贴板')
+    ) {
       if (text.includes('Foxmail写邮件窗口')) toast('邮箱草稿已打开；发送后再次点击“发起缴费”即可确认');
       else toast('缴费图片已准备；发送后再次点击“通知客户”即可确认');
       return;
