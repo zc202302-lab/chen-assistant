@@ -41,6 +41,8 @@ def ensure_v031(conn):
     if not _has_column(conn, 'customer_payment_runs', 'initiated_at'):
         conn.execute("ALTER TABLE customer_payment_runs ADD COLUMN initiated_at TEXT DEFAULT ''")
         added_initiated = True
+    if not _has_column(conn, 'customer_payment_runs', 'initiate_prepared_at'):
+        conn.execute("ALTER TABLE customer_payment_runs ADD COLUMN initiate_prepared_at TEXT DEFAULT ''")
 
     # Migration backfill must run only when the column is first introduced.
     # Re-running it on every state read would recreate a deliberately withdrawn
@@ -72,6 +74,7 @@ def _run_v031(conn, customer_id: int, period: str | None = None):
     reviewed = bool((row['reviewed_at'] or '').strip())
     notified = bool((row['notified_at'] or '').strip())
     initiated = bool((row['initiated_at'] or '').strip())
+    initiate_prepared = bool((row['initiate_prepared_at'] or '').strip()) and notified and not initiated
     paid = bool((row['paid_at'] or '').strip())
 
     if paid:
@@ -96,11 +99,13 @@ def _run_v031(conn, customer_id: int, period: str | None = None):
         'reviewed': reviewed,
         'notified': notified,
         'initiated': initiated,
+        'initiate_prepared': initiate_prepared,
         'paid': paid,
         'pending': int(stats.get('pending', 0)),
         'reviewed_at': row['reviewed_at'] or '',
         'notified_at': row['notified_at'] or '',
         'initiated_at': row['initiated_at'] or '',
+        'initiate_prepared_at': row['initiate_prepared_at'] or '',
         'paid_at': row['paid_at'] or '',
     }
     return run, stats
@@ -168,7 +173,7 @@ def _set_notify(conn, customer_id: int, period: str, run, stats):
         if run['initiated'] or run['paid']:
             raise HTTPException(409, '请先撤回“发起缴费”，再撤回通知客户')
         conn.execute(
-            "UPDATE customer_payment_runs SET notified_at='',updated_at=? WHERE id=?",
+            "UPDATE customer_payment_runs SET notified_at='',initiate_prepared_at='',updated_at=? WHERE id=?",
             (now, run_id),
         )
         conn.execute(
@@ -191,6 +196,19 @@ def _set_notify(conn, customer_id: int, period: str, run, stats):
     )
 
 
+def _set_initiate_prepared(conn, customer_id: int, period: str, run):
+    """Persist the external-mail handoff so refresh/restart cannot lose '待确认'."""
+    if run['initiated']:
+        return
+    if not run['notified']:
+        raise HTTPException(400, '请先完成“通知客户”')
+    now = now_iso()
+    conn.execute(
+        'UPDATE customer_payment_runs SET initiate_prepared_at=?,updated_at=? WHERE id=?',
+        (now, now, int(run['id'])),
+    )
+
+
 def _set_initiated(conn, customer_id: int, period: str, run):
     now = now_iso()
     run_id = int(run['id'])
@@ -198,14 +216,14 @@ def _set_initiated(conn, customer_id: int, period: str, run):
         if run['paid']:
             raise HTTPException(409, '请先撤回“完成缴费”，再撤回发起缴费')
         conn.execute(
-            "UPDATE customer_payment_runs SET initiated_at='',updated_at=? WHERE id=?",
+            "UPDATE customer_payment_runs SET initiated_at='',initiate_prepared_at='',updated_at=? WHERE id=?",
             (now, run_id),
         )
         return
     if not run['notified']:
         raise HTTPException(400, '请先完成“通知客户”')
     conn.execute(
-        'UPDATE customer_payment_runs SET initiated_at=?,updated_at=? WHERE id=?',
+        "UPDATE customer_payment_runs SET initiated_at=?,initiate_prepared_at='',updated_at=? WHERE id=?",
         (now, now, run_id),
     )
 
@@ -217,7 +235,7 @@ def _invalidate_after_amount_change(conn, customer_id: int, period: str, run):
     now = now_iso()
     conn.execute(
         """UPDATE customer_payment_runs
-           SET reviewed_at='',notified_at='',initiated_at='',updated_at=?
+           SET reviewed_at='',notified_at='',initiated_at='',initiate_prepared_at='',updated_at=?
            WHERE id=?""",
         (now, int(run['id'])),
     )
@@ -394,6 +412,8 @@ def update_payment_workflow_v031(
             extra = _paint_review_reset(conn, customer_id, period, run, items, stats)
         elif action == 'notify':
             _set_notify(conn, customer_id, period, run, stats)
+        elif action == 'prepare_initiate':
+            _set_initiate_prepared(conn, customer_id, period, run)
         elif action == 'initiate':
             _set_initiated(conn, customer_id, period, run)
         elif action == 'invalidate':
