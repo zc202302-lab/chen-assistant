@@ -175,18 +175,20 @@ function Set-AttachmentClipboard([string]$AttachmentPath) {
     }
     Add-Type -AssemblyName System.Windows.Forms
     $files = New-Object System.Collections.Specialized.StringCollection
-    [void]$files.Add([IO.Path]::GetFullPath($AttachmentPath))
-    [System.Windows.Forms.Clipboard]::SetFileDropList($files)
-    Start-Sleep -Milliseconds 120
-    $roundTrip = [System.Windows.Forms.Clipboard]::GetFileDropList()
-    if ($roundTrip.Count -ne 1) { throw 'TXT file clipboard verification failed' }
-    if (-not ([IO.Path]::GetFullPath([string]$roundTrip[0])).Equals(
-        [IO.Path]::GetFullPath($AttachmentPath),
-        [StringComparison]::OrdinalIgnoreCase
-    )) {
-        throw 'TXT file clipboard path verification failed'
+    [void]$files.Add($AttachmentPath)
+    for ($attempt = 0; $attempt -lt 8; $attempt++) {
+        try {
+            [System.Windows.Forms.Clipboard]::SetFileDropList($files)
+            Start-Sleep -Milliseconds 120
+            if ([System.Windows.Forms.Clipboard]::ContainsFileDropList()) {
+                $readBack = [System.Windows.Forms.Clipboard]::GetFileDropList()
+                if ($readBack -and $readBack.Contains($AttachmentPath)) { return $true }
+            }
+        } catch {
+        }
+        Start-Sleep -Milliseconds 180
     }
-    return $true
+    return $false
 }
 
 function Schedule-ClipboardFileCleanup([string]$DirectoryPath) {
@@ -252,7 +254,9 @@ function Invoke-FoxmailDraft([object]$Payload) {
     $composeWindow = Wait-ComposeWindow $before $subject
     if ($null -eq $composeWindow) { throw 'Foxmail compose window did not appear after direct Foxmail.exe mailto launch' }
 
-    [void](Set-AttachmentClipboard $attachmentPath)
+    if (-not (Set-AttachmentClipboard $attachmentPath)) {
+        throw 'TXT file clipboard verification failed'
+    }
     Schedule-ClipboardFileCleanup $composeDir
 
     return @{
