@@ -86,9 +86,9 @@ function Test-HelperFile([string]$Path) {
             "AllowedRootDomain = 'ziboxiaozhushou.cn'",
             "Path -eq '/compose'",
             'Build-MailtoUri',
-            'Show-AttachmentInExplorer',
-            "attachment_mode='manual-file-selection'",
-            "mode = 'foxmail-exe-mailto-file-ready'"
+            'Set-AttachmentClipboard',
+            "attachment_mode='clipboard-file-drop'",
+            "mode = 'foxmail-exe-mailto-clipboard-ready'"
         )) {
             if (-not $text.Contains($marker)) { return $false }
         }
@@ -185,8 +185,9 @@ if (-not $Watch) {
     Write-Host ('Latest helper downloaded: ' + $(if ($updated) { 'yes' } else { 'already current or network unavailable' }))
     Write-Host ('Helper running: ' + $(if ($started) { 'yes' } else { 'no' }))
     Write-Host ('Bridge PowerShell: ' + (Get-BridgePowerShell))
-    Write-Host 'Foxmail launch mode: direct Foxmail.exe + mailto; TXT is prepared and selected in Explorer for manual attachment.'
-    Write-Host 'The helper never auto-attaches and never sends mail.'
+    Write-Host 'Foxmail launch mode: direct Foxmail.exe + mailto; TXT is placed on the Windows file clipboard.'
+    Write-Host 'In the Foxmail compose window, press Ctrl+V to add the TXT attachment. Explorer is not opened.'
+    Write-Host 'The helper never auto-sends mail.'
     Write-Host ''
     Write-Host 'Return to Chen Assistant and refresh the page.'
     Read-Host 'Press Enter to close'
