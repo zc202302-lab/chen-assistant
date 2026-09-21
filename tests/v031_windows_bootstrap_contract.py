@@ -60,9 +60,9 @@ def main():
     assert '自动恢复运行' in ui
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-    assert '/static/v031_windows_bootstrap.js?v=0317' in base
+    assert '/static/v031_windows_bootstrap.js?v=1590' in base
     assert base.index('/static/v031_windows_bootstrap.js') > base.index('/static/v03_business_mail.js')
-    assert '/static/v123_foxmail_compose_fix.js?v=1470' in base
+    assert '/static/v123_foxmail_compose_fix.js?v=1590' in base
 
     main_py = (ROOT / 'app' / 'main.py').read_text(encoding='utf-8')
     assert "('.js', '.css', '.ps1')" in main_py
