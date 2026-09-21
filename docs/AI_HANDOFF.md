@@ -682,3 +682,14 @@ v1.5.8 修正为：
 - v025_home / v026_home / v027_home：仍被当前运行时代码直接 import/动态 patch，其中 v027_home 还是 /work/customers 的实际页面实现，不能删除。
 
 本阶段没有用户可见功能、路由 owner、数据库或页面变化，应用版本继续保持 v1.5.8。
+
+### 19.7 模板引用治理清单
+
+在首批历史 Python 路由模块删除后，继续治理与这些旧页面配套的 Jinja 模板。新增 tests/template_reference_inventory.py：
+
+- 扫描 app/templates 顶层所有 HTML；
+- 统计每个模板在 app / tests / docs / workflow 等文本中的直接引用；
+- runtime_refs=0 且 test_refs=0 且 other_refs=0 的模板只标记为 ORPHAN_TEMPLATE，不立即删除；
+- 必须先跑完整 validation，确认清单本身不会漏掉 Jinja extends/include、Python TemplateResponse、测试静态合同等引用，再进入下一批实际删除。
+
+本阶段仍不改变产品功能、页面布局或数据库，应用版本保持 v1.5.8。
