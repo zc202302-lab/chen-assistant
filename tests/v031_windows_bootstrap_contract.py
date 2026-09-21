@@ -19,9 +19,11 @@ def main():
         "$uri = $BootstrapUrl + '?install='",
         'Copy-Item -Force -LiteralPath $download -Destination $BootstrapPath',
         "ChenAssistant-Foxmail-Helper.lnk", "-Watch",
-        "HelperVersion = '0.9'", 'Build-MailtoUri', 'Show-AttachmentInExplorer',
-        "attachment_mode='manual-file-selection'",
-        'The helper never auto-attaches and never sends mail.',
+        "HelperVersion = '0.9'", 'Build-MailtoUri', 'Set-AttachmentClipboard',
+        "attachment_mode='clipboard-file-drop'",
+        "mode = 'foxmail-exe-mailto-clipboard-ready'",
+        'Explorer is not opened.',
+        'The helper never auto-sends mail.',
     ):
         assert token in bootstrap, token
     assert 'GetFullPath($PSCommandPath)' in bootstrap
@@ -34,12 +36,14 @@ def main():
         "$HelperVersion = '0.9'",
         "launch_mode='foxmail-exe-mailto-file-ready'",
         "attachment_mode='manual-file-selection'",
-        'Build-MailtoUri', 'Show-AttachmentInExplorer',
+        'Build-MailtoUri', 'Set-AttachmentClipboard',
         'Start-Process -FilePath $foxmailExe -ArgumentList @($mailto)',
-        "mode = 'foxmail-exe-mailto-file-ready'",
-        "state = 'draft-open-file-selected'",
+        "mode = 'foxmail-exe-mailto-clipboard-ready'",
+        "state = 'draft-open-clipboard-ready'",
         'attachment_file_verified = $true',
-        'explorer_dispatched = $true',
+        'attachment_clipboard_verified = $true',
+        'attachment_integrity_verified = $true',
+        'explorer_dispatched = $false',
         'auto_send=$false',
         'mapi_required=$false',
     ):
@@ -63,7 +67,7 @@ def main():
     main_py = (ROOT / 'app' / 'main.py').read_text(encoding='utf-8')
     assert "('.js', '.css', '.ps1')" in main_py
 
-    print('v0.3.1/v0.9 Windows helper bootstrap contract passed')
+    print('v1.5.9 Windows helper clipboard bootstrap contract passed')
 
 
 if __name__ == '__main__':
