@@ -34,8 +34,6 @@ def main():
     helper = helper_path.read_text(encoding='ascii')
     for token in (
         "$HelperVersion = '0.9'",
-        "launch_mode='foxmail-exe-mailto-file-ready'",
-        "attachment_mode='manual-file-selection'",
         'Build-MailtoUri', 'Set-AttachmentClipboard',
         'Start-Process -FilePath $foxmailExe -ArgumentList @($mailto)',
         "mode = 'foxmail-exe-mailto-clipboard-ready'",
