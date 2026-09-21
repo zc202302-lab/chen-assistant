@@ -208,8 +208,8 @@
   };
 
   const prepareInitiate = async () => {
-    // The local helper now waits for a stable, foreground Foxmail compose window,
-    // verifies the file-drop clipboard, and only then sends the single paste.
+    // The local helper opens Foxmail, verifies the exact TXT bytes, and places the
+    // prepared file on the Windows file-drop clipboard for a manual Ctrl+V.
     const payload = await fetchJson(`/customers/${customerId}/payment-mail-compose-v031`);
     const response = await bridgeFetch('/compose', {
       method: 'POST',
@@ -220,11 +220,13 @@
         body_b64: payload.body_b64 || '',
         attachment_filename_b64: payload.attachment_filename_b64 || '',
         attachment_content_base64: payload.attachment_content_base64 || '',
+        attachment_sha256: payload.attachment_sha256 || '',
+        attachment_line_count: payload.attachment_line_count || 0,
       }),
     }, 22000);
     const result = await response.json().catch(() => ({}));
-    if (!response.ok || result.ok !== true || result.verified !== true) {
-      throw new Error(result.error || 'Foxmail写邮件窗口未确认打开');
+    if (!response.ok || result.ok !== true || result.verified !== true || result.attachment_integrity_verified !== true) {
+      throw new Error(result.error || 'Foxmail写邮件窗口或TXT完整性未确认');
     }
     return {mode: result.mode || 'foxmail'};
   };
