@@ -87,6 +87,10 @@ jobs:
           pip-audit -r requirements.txt
           bandit -q -r app storage_node -lll
 
+      - name: Code governance inventory
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/code_governance_inventory.py
+
       - name: Existing feature compatibility audit policy
         if: steps.scope.outputs.mode == 'full'
         run: |
