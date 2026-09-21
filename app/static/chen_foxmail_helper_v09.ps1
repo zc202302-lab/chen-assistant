@@ -216,9 +216,13 @@ function Invoke-FoxmailDraft([object]$Payload) {
     New-Item -ItemType Directory -Force -Path $composeDir | Out-Null
     $attachmentPath = Join-Path $composeDir $attachmentName
     if ($Payload.attachment_sha256) {
-        $inputHash = [BitConverter]::ToString(
-            [Security.Cryptography.SHA256]::Create().ComputeHash($attachmentBytes)
-        ).Replace('-', '').ToLowerInvariant()
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try {
+            $digest = $sha.ComputeHash($attachmentBytes)
+        } finally {
+            $sha.Dispose()
+        }
+        $inputHash = [BitConverter]::ToString($digest).Replace('-', '').ToLowerInvariant()
         if ($inputHash -ne ([string]$Payload.attachment_sha256).ToLowerInvariant()) {
             throw 'TXT attachment payload SHA256 mismatch'
         }
