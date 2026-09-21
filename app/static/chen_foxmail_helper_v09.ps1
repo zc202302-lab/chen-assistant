@@ -223,8 +223,12 @@ function Invoke-FoxmailDraft([object]$Payload) {
         } finally {
             $sha.Dispose()
         }
-        $inputHash = [BitConverter]::ToString($digest).Replace('-', '').ToLowerInvariant()
-        if ($inputHash -ne ([string]$Payload.attachment_sha256).ToLowerInvariant()) {
+        $inputHash = [BitConverter]::ToString($digest)
+        $inputHash = $inputHash.Replace('-', '')
+        $inputHash = $inputHash.ToLowerInvariant()
+        $expectedHash = [string]$Payload.attachment_sha256
+        $expectedHash = $expectedHash.ToLowerInvariant()
+        if ($inputHash -ne $expectedHash) {
             throw 'TXT attachment payload SHA256 mismatch'
         }
     }
@@ -232,8 +236,11 @@ function Invoke-FoxmailDraft([object]$Payload) {
     if (-not (Test-Path -LiteralPath $attachmentPath -PathType Leaf)) {
         throw 'TXT attachment file could not be prepared'
     }
-    $writtenHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $attachmentPath).Hash.ToLowerInvariant()
-    if ($Payload.attachment_sha256 -and $writtenHash -ne ([string]$Payload.attachment_sha256).ToLowerInvariant()) {
+    $writtenHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $attachmentPath).Hash
+    $writtenHash = $writtenHash.ToLowerInvariant()
+    $expectedHash = [string]$Payload.attachment_sha256
+    $expectedHash = $expectedHash.ToLowerInvariant()
+    if ($writtenHash -ne $expectedHash) {
         throw 'TXT attachment file SHA256 mismatch after write'
     }
 
