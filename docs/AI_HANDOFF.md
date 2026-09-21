@@ -7,8 +7,8 @@
 - 当前生产：`985ac41`（v1.5.8，2026-09-20 已部署成功）
 - 当前差异：生产仍为 `985ac41`；main 领先内容为代码治理/文档。v1.5.9 产品开发已建立 PR #56（`feat/v159-payment-initiate-hardening`），尚未合并、尚未部署
 - 当前已完成：v1.5.8 稳定生产；代码治理第八阶段模板引用清单；v1.5.9 已实现“发起缴费待确认持久化”、Foxmail TXT 文件剪贴板交接、TXT/EXCEL 文件名独立、正式 TXT 号码↔金额完整性校验，正在等待完整回归
-- 当前未完成：PR #56（v1.5.9）尚需完整 CI / 历史浏览器回归并合并、部署；PR #55（删除 2 个零引用历史模板）仍为独立治理 PR，不能与本次支付功能改动混合判断；工作资料 CRUD 主线尚未开始
-- 下一步建议：先完成 PR #56 的支付关键链路审计与完整回归；全绿后合并并部署验证。生产部署完成前继续以 `985ac41` / v1.5.8 为线上基准；之后再处理独立治理 PR #55 和工作资料 CRUD
+- 当前未完成：PR #56（v1.5.9）完整 Linux validation 与 stability 已出现全绿结果，当前最新提交正在做重复全回归；Windows Foxmail 专项 GitHub-hosted runner 连续出现 0 step / 0 log 的基础设施失败，未观察到 PowerShell 代码测试失败；PR #56 尚未合并、尚未部署。PR #55 仍为独立治理 PR；工作资料 CRUD 主线尚未开始
+- 下一步建议：等待 PR #56 最新完整 validation / stability 结束；Windows 专项仅在真正启动 PowerShell 5.1 steps 后才作为代码门禁判定依据，0-step runner 失败不得通过修改业务代码规避。满足合并条件后合并并部署验证；生产部署完成前继续以 `985ac41` / v1.5.8 为线上基准
 
 ### 新聊天接管协议
 
@@ -750,3 +750,10 @@ v1.5.8 修正为：
 - 候选版本：`v1.5.9`。
 - 当前生产仍是 `v1.5.8 / 985ac41`。
 - 合并不等于部署；生产必须继续通过标准 `deploy.sh` 完整自检后，才能把生产基准更新为 v1.5.9。
+
+### 20.6 CI 当前门禁记录
+
+- `v1.2 validation` 在提交 `469a105` 已完整全绿：包含安全审计、代码治理、成熟工作系统兼容、生产回归与全部历史浏览器验收。
+- `stability gate` 在同一提交已全绿。
+- `Windows Foxmail helper validation` 自本阶段起在 GitHub-hosted Windows runner 上连续出现 job `steps=null`、无日志、任务创建后立即 failure；将 runner 从 `windows-latest` 固定到 `windows-2022` 后仍为相同行为，说明当前可观察证据指向 runner/Actions 基础设施而非脚本 parse/test 失败。
+- 不允许为了消除该基础设施红灯删除或弱化 Windows PowerShell 5.1 解析测试；需要真正启动 steps 后才能判断脚本是否通过。
