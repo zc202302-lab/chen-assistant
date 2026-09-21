@@ -205,7 +205,11 @@ function Invoke-FoxmailDraft([object]$Payload) {
     $recipient = Decode-B64Text ([string]$Payload.recipient_b64)
     $subject = Decode-B64Text ([string]$Payload.subject_b64)
     $body = Decode-B64Text ([string]$Payload.body_b64)
-    $attachmentName = Safe-AttachmentName (Decode-B64Text ([string]$Payload.attachment_filename_b64))
+    $requestedAttachmentName = Decode-B64Text ([string]$Payload.attachment_filename_b64)
+    $attachmentName = Safe-AttachmentName $requestedAttachmentName
+    if ($attachmentName -ne $requestedAttachmentName) {
+        throw 'TXT attachment filename changed during local safety normalization'
+    }
     $attachmentBytes = [Convert]::FromBase64String([string]$Payload.attachment_content_base64)
     if ($attachmentBytes.Length -lt 1) { throw 'TXT attachment payload is empty' }
 
