@@ -57,7 +57,7 @@ py -m unittest discover -s tests -v
 .\build.ps1
 ```
 
-产物为 `dist\win-assistants.exe`。拉取请求也会在 Windows runner 上验证并生成同名构建产物。
+产物为 `dist\win-assistants.exe`。拉取请求会先运行平台无关测试，再通过 Wine 中的官方 Windows Python 运行同一组测试并生成 PE 格式 EXE。Wine 构建用于绕过当前 GitHub-hosted Windows runner 的 0-step 基础设施故障，不替代最终 Windows 实机验收。
 
 ## 后续迁移顺序
 

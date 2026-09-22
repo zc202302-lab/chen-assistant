@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  validate-and-build:
-    runs-on: windows-2022
+  source-validation:
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: windows/win-assistants
@@ -18,19 +18,58 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - name: Install dependencies
-        run: python -m pip install --disable-pip-version-check -r requirements.txt
       - name: Compile and test
         run: |
           python -m compileall -q main.py win_assistants tests
           python -m unittest discover -s tests -v
-      - name: Build executable
+
+  build-windows-exe:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: windows/win-assistants
+    env:
+      WINEDEBUG: -all
+      WINEPREFIX: ${{ runner.temp }}/wine-win-assistants
+      WINDOWS_PYTHON: C:\\Python312\\python.exe
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Wine
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y wine64 xvfb
+          wine --version
+      - name: Install official Windows Python in Wine
+        run: |
+          curl --fail --location --retry 3 \
+            --output "${RUNNER_TEMP}/python-3.12.10-amd64.exe" \
+            "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe"
+          xvfb-run -a wine "${RUNNER_TEMP}/python-3.12.10-amd64.exe" \
+            /quiet InstallAllUsers=0 TargetDir=C:\\Python312 \
+            Include_pip=1 Include_test=0 Include_launcher=0 Shortcuts=0
+          wine "$WINDOWS_PYTHON" --version
+      - name: Install Windows build dependencies
+        run: |
+          wine "$WINDOWS_PYTHON" -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Test with Windows Python
+        run: |
+          wine "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants tests
+          wine "$WINDOWS_PYTHON" -m unittest discover -s tests -v
+      - name: Build Windows executable
         run: >-
-          python -m PyInstaller --noconfirm --clean --onefile --windowed
+          xvfb-run -a wine "$WINDOWS_PYTHON" -m PyInstaller --noconfirm --clean --onefile --windowed
           --name win-assistants --collect-submodules pystray
           --hidden-import PIL.Image --hidden-import PIL.ImageDraw main.py
+      - name: Verify PE executable
+        run: |
+          test -s dist/win-assistants.exe
+          file dist/win-assistants.exe | tee dist/file-type.txt
+          grep -q "PE32" dist/file-type.txt
+          sha256sum dist/win-assistants.exe | tee dist/win-assistants.exe.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: win-assistants-windows
-          path: windows/win-assistants/dist/win-assistants.exe
+          path: |
+            windows/win-assistants/dist/win-assistants.exe
+            windows/win-assistants/dist/win-assistants.exe.sha256
           if-no-files-found: error
