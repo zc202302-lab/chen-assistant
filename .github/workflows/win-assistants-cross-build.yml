@@ -1,10 +1,10 @@
-name: win-assistants validation
+name: win-assistants cross build
 
 on:
   pull_request:
     paths:
       - "windows/win-assistants/**"
-      - ".github/workflows/win-assistants.yml"
+      - ".github/workflows/win-assistants-cross-build.yml"
   workflow_dispatch:
 
 jobs:
@@ -49,8 +49,7 @@ jobs:
             Include_pip=1 Include_test=0 Include_launcher=0 Shortcuts=0
           wine "$WINDOWS_PYTHON" --version
       - name: Install Windows build dependencies
-        run: |
-          wine "$WINDOWS_PYTHON" -m pip install --disable-pip-version-check -r requirements.txt
+        run: wine "$WINDOWS_PYTHON" -m pip install --disable-pip-version-check -r requirements.txt
       - name: Test with Windows Python
         run: |
           wine "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants tests
