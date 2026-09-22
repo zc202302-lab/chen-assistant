@@ -30,7 +30,7 @@ jobs:
         working-directory: windows/win-assistants
     env:
       WINEDEBUG: -all
-      WINEPREFIX: ${{ runner.temp }}/wine-win-assistants
+      WINEPREFIX: /tmp/wine-win-assistants
       WINDOWS_PYTHON: C:\\Python312\\python.exe
     steps:
       - uses: actions/checkout@v4
