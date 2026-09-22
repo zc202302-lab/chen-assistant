@@ -29,39 +29,52 @@ jobs:
 
   build-windows-exe:
     runs-on: [self-hosted, linux, x64, chen-assistant]
-    container: ubuntu:24.04
     defaults:
       run:
         working-directory: windows/win-assistants
     env:
       WINEDEBUG: -all
-      WINEPREFIX: /tmp/wine-win-assistants
-      WINDOWS_PYTHON: C:\\Python312\\python.exe
     steps:
-      - name: Prepare build container
-        run: |
-          apt-get update
-          apt-get install --no-install-recommends -y ca-certificates curl file git wine wine64 xvfb
       - uses: actions/checkout@v4
-      - name: Install official Windows Python in Wine
+      - name: Prepare portable Wine
         run: |
-          wine --version
+          wine_root="${RUNNER_TEMP}/win-assistants-wine"
+          mkdir -p "${wine_root}/debs" "${wine_root}/root"
+          cd "${wine_root}/debs"
+          apt-get download wine64 libwine
+          for package in ./*.deb; do
+            dpkg-deb --extract "${package}" "${wine_root}/root"
+          done
+          wine_bin="$(find "${wine_root}/root/usr/lib/wine" -type f -name wine64 -print -quit)"
+          test -x "${wine_bin}"
+          echo "WINE_BIN=${wine_bin}" >> "${GITHUB_ENV}"
+          echo "WINEPREFIX=${RUNNER_TEMP}/win-assistants-wine-prefix" >> "${GITHUB_ENV}"
+          echo "LD_LIBRARY_PATH=${wine_root}/root/usr/lib/x86_64-linux-gnu:${wine_root}/root/lib/x86_64-linux-gnu" >> "${GITHUB_ENV}"
+      - name: Prepare embedded Windows Python
+        run: |
+          windows_python="${RUNNER_TEMP}/win-assistants-python"
+          mkdir -p "${windows_python}"
           curl --fail --location --retry 3 \
-            --output "${RUNNER_TEMP}/python-3.12.10-amd64.exe" \
-            "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe"
-          xvfb-run -a wine "${RUNNER_TEMP}/python-3.12.10-amd64.exe" \
-            /quiet InstallAllUsers=0 TargetDir=C:\\Python312 \
-            Include_pip=1 Include_test=0 Include_launcher=0 Shortcuts=0
-          wine "$WINDOWS_PYTHON" --version
+            --output "${RUNNER_TEMP}/python-3.12.10-embed-amd64.zip" \
+            "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip"
+          python3 -m zipfile -e "${RUNNER_TEMP}/python-3.12.10-embed-amd64.zip" "${windows_python}"
+          sed -i 's/^#import site/import site/' "${windows_python}/python312._pth"
+          curl --fail --location --retry 3 \
+            --output "${windows_python}/get-pip.py" \
+            "https://bootstrap.pypa.io/get-pip.py"
+          echo "WINDOWS_PYTHON=${windows_python}/python.exe" >> "${GITHUB_ENV}"
+          "$WINE_BIN" --version
+          "$WINE_BIN" "${windows_python}/python.exe" "${windows_python}/get-pip.py"
+          "$WINE_BIN" "${windows_python}/python.exe" --version
       - name: Install Windows build dependencies
-        run: wine "$WINDOWS_PYTHON" -m pip install --disable-pip-version-check -r requirements.txt
+        run: "$WINE_BIN" "$WINDOWS_PYTHON" -m pip install --disable-pip-version-check -r requirements.txt
       - name: Test with Windows Python
         run: |
-          wine "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants tests
-          wine "$WINDOWS_PYTHON" -m unittest discover -s tests -v
+          "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants tests
+          "$WINE_BIN" "$WINDOWS_PYTHON" -m unittest discover -s tests -v
       - name: Build Windows executable
         run: >-
-          xvfb-run -a wine "$WINDOWS_PYTHON" -m PyInstaller --noconfirm --clean --onefile --windowed
+          "$WINE_BIN" "$WINDOWS_PYTHON" -m PyInstaller --noconfirm --clean --onefile --windowed
           --name win-assistants --collect-submodules pystray
           --hidden-import PIL.Image --hidden-import PIL.ImageDraw main.py
       - name: Verify PE executable

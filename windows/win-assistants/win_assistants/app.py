@@ -3,13 +3,12 @@ from __future__ import annotations
 import argparse
 import queue
 import re
-import sys
 import tkinter as tk
 from urllib.parse import urlparse
-from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from . import __version__
+from .commands import command_for_path, display_path
 from .config import AppConfig
 from .modules import MODULES, ModuleManager, default_module_configs
 from .single_instance import SingleInstance
@@ -24,27 +23,6 @@ TEXT = "#18332E"
 MUTED = "#61736F"
 
 
-def _display_path(command: list[str]) -> str:
-    if not command:
-        return ""
-    for value in command:
-        if value.lower().endswith((".exe", ".py", ".ps1")) and not value.lower().endswith(("python.exe", "pythonw.exe", "powershell.exe")):
-            return value
-    return command[0]
-
-
-def _command_for_path(key: str, path: str) -> list[str]:
-    suffix = Path(path).suffix.lower()
-    if key == "sms":
-        return [path, "--background"]
-    if suffix == ".py":
-        pythonw = Path(sys.executable).with_name("pythonw.exe")
-        return [str(pythonw if pythonw.exists() else Path(sys.executable)), path, "--startup"]
-    if suffix == ".ps1":
-        return ["powershell.exe", "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", path, "-Watch"]
-    return [path, "--startup"] if key == "sedentary" else [path]
-
-
 class WinAssistantsApp:
     def __init__(self, root: tk.Tk, start_hidden: bool = False) -> None:
         self.root = root
@@ -57,7 +35,7 @@ class WinAssistantsApp:
         self.status_vars = {item.key: tk.StringVar(value="等待启动") for item in MODULES}
         self.enabled_vars = {item.key: tk.BooleanVar(value=self.config.modules[item.key].enabled) for item in MODULES}
         self.path_vars = {
-            item.key: tk.StringVar(value=_display_path(self.config.modules[item.key].command))
+            item.key: tk.StringVar(value=display_path(self.config.modules[item.key].command))
             for item in MODULES
         }
         self.startup_var = tk.BooleanVar(value=is_startup_enabled())
@@ -128,8 +106,8 @@ class WinAssistantsApp:
                 continue
             path = self.path_vars[item.key].get().strip()
             if path:
-                if path != _display_path(cfg.command):
-                    cfg.command = _command_for_path(item.key, path)
+                if path != display_path(cfg.command):
+                    cfg.command = command_for_path(item.key, path)
             elif cfg.command:
                 cfg.command = []
         self.config.save()
@@ -141,7 +119,7 @@ class WinAssistantsApp:
         if not path:
             return
         cfg = self.config.modules[key]
-        cfg.command = _command_for_path(key, path)
+        cfg.command = command_for_path(key, path)
         self.path_vars[key].set(path)
         self.config.save()
 
