@@ -61,7 +61,11 @@
     return rows.slice(index + 1).find(item => item.dataset.confirmed === '0') || null;
   };
 
-  const accountValue = row => row?.querySelector('.identifier-copy[data-kind="账号"][data-copy]')?.dataset.copy || '';
+  const accountValue = row => String(
+    row?.dataset.paymentAccount ||
+    row?.querySelector('.identifier-copy[data-kind="账号"][data-copy]')?.dataset.copy ||
+    ''
+  ).trim();
 
   const focusAmountAndCopyAccount = async row => {
     if (!row) return;
