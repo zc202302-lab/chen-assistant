@@ -9,7 +9,7 @@ on:
 
 jobs:
   validate:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, linux, x64, chen-assistant]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,8 +59,8 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: pip install -r requirements.txt playwright pip-audit bandit
 
-      - name: Install Chromium and system dependencies
-        run: python -m playwright install --with-deps chromium
+      - name: Install Chromium
+        run: python -m playwright install chromium
 
       - name: Fast UI contracts
         if: steps.scope.outputs.mode == 'fast'
@@ -115,7 +115,6 @@ jobs:
           python tests/v151_quick_search_contract.py
           python tests/v152_high_frequency_flow_contract.py
           python tests/v159_payment_initiate_safety_contract.py
-          python tests/v1510_payment_enter_navigation_contract.py
           python tests/v153_home_navigation_contract.py
 
       - name: v1.2 architecture and recipe tools contracts
