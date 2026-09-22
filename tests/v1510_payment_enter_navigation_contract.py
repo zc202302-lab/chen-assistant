@@ -12,9 +12,8 @@ def main():
     routes = (ROOT / 'app/v0212_routes.py').read_text(encoding='utf-8')
 
     # All live customer detail pages share one runtime owner/template.
-    assert "('GET', '/customers/{customer_id}'): ('app.v0212_routes', 'customer_workspace_v0212')" in (
-        ROOT / 'tests/code_governance_inventory.py'
-    ).read_text(encoding='utf-8')
+    inventory = (ROOT / 'tests/code_governance_inventory.py').read_text(encoding='utf-8')
+    assert '("GET", "/customers/{customer_id}"): ("app.v0212_routes", "customer_workspace_v0212")' in inventory
     assert "'customer_workspace_v0211.html'" in routes
     assert "getattr(_route, 'path', '') == '/customers/{customer_id}'" in main_py
     assert 'class="customer-workspace v028-workspace' in template
