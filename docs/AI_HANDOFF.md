@@ -3,7 +3,7 @@
 ## 0. 当前接力状态（新聊天先看这里）
 
 - 当前应用版本：`v1.5.9`（main）；生产仍为 `v1.5.8`
-- 当前 `main`：`d2ff6432538538206d4a4ad404b3f825b97af0fe`（PR #56 已合并，v1.5.9）
+- 当前 `main`：`cef19ab7c45e2676200aa721a6e227fa78dedfbc`（PR #56 已合并，v1.5.9；随后同步接力文档）
 - 当前生产：`985ac41`（v1.5.8，2026-09-20 已部署成功）
 - 当前差异：生产仍为 `985ac41` / v1.5.8；main 已升级到 v1.5.9，包含发起缴费可靠性加固，尚未部署
 - 当前已完成：PR #56 已合并；v1.5.9 已实现“发起缴费待确认持久化”、Foxmail TXT 文件剪贴板交接、TXT/EXCEL 文件名独立、正式 TXT 号码↔金额完整性校验；完整 validation、stability、历史浏览器验收全绿
@@ -792,7 +792,7 @@ v1.5.8 修正为：
 
 - 分支：`feat/win-assistants-shell`
 - 首个实现提交：`380158866c0105b48ee3c06dffffc991e5f9d9c7`
-- 当前分支最新功能提交：`63f5c8df997c9ddcbff57b9d2a9bb9811307b45d`。
+- 当前分支最新功能提交：`4463c327127bb2c753c5124fdf83abd5c8d129c6`。
 - 本地 Python 编译检查通过，12 个标准库单元测试通过。
 - 尚未合并到 main，尚未发布安装包，不改变晨的小助手 v1.5.9 / 生产 v1.5.8 的现有基准。
 
@@ -805,3 +805,15 @@ v1.5.8 修正为：
 - 保留原规则：服务器必须是 HTTPS；主题只允许字母、数字、横线、下划线；验证码优先匹配带语义标签的 4～8 位数字，再使用通用数字回退。
 - 接收线程加入 generation 隔离；快速重连后，旧阻塞线程即使稍后返回也不能继续投递消息或覆盖新连接。
 - Windows runner 仍存在 0 step / 0 log 基础设施故障；Linux `v1.2 validation` 与 `stability gate` 已通过，Windows EXE 尚未生成。
+
+
+### 21.5 v0.3.0 Foxmail 本地桥接已内置
+
+- Foxmail 本地 HTTP 桥接已迁入 `win-assistants` 进程，不再需要独立 PowerShell helper/watchdog 维持服务。
+- 继续只绑定 `127.0.0.1:18763`，拒绝无 Origin、非本机以及非 `ziboxiaozhushou.cn` 根域/子域来源。
+- 保持 v0.9 网页兼容协议：`/health`、`/compose`、直接 Foxmail.exe + mailto、写信窗口检测、TXT 文件剪贴板，以及 `auto_send=false`。
+- TXT 请求限制 12 MB；附件文件名必须安全归一化前后完全一致；输入字节和落盘文件均校验服务器提供的 SHA256。
+- 并发 compose 请求串行处理，避免两个缴费任务争抢文件剪贴板。
+- 旧 PowerShell 文件和配置不删除。端口已由兼容独立版占用时，统一程序识别并复用；只有用户明确点击“接管旧工具的开机启动”后，才停止精确匹配的旧 bridge/watchdog 并切换到内置桥接。
+- 版本更新为 `win-assistants v0.3.0`；本地全量编译和 16 个标准库单元测试通过。
+- 当前 CI 的 `v1.2 validation` 与 `stability gate` 已通过；自托管 runner 随后离线，新的跨平台源码验证/Windows EXE 构建仍在排队，尚不能声称 EXE 已生成或 Windows 实机验收完成。
