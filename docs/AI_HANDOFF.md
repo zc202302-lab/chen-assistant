@@ -2,13 +2,13 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前应用版本：`v1.5.9`（main）；生产仍为 `v1.5.8`
+- 当前应用版本：`v1.5.9`（main）；`v1.5.10` Windows 助手自更新热修正在验证
 - 当前 `main`：`d2ff6432538538206d4a4ad404b3f825b97af0fe`（PR #56 已合并，v1.5.9）
 - 当前生产：`985ac41`（v1.5.8，2026-09-20 已部署成功）
 - 当前差异：生产仍为 `985ac41` / v1.5.8；main 已升级到 v1.5.9，包含发起缴费可靠性加固，尚未部署
 - 当前已完成：PR #56 已合并；v1.5.9 已实现“发起缴费待确认持久化”、Foxmail TXT 文件剪贴板交接、TXT/EXCEL 文件名独立、正式 TXT 号码↔金额完整性校验；完整 validation、stability、历史浏览器验收全绿
-- 当前未完成：v1.5.9 尚未部署生产；Windows Foxmail 专项 GitHub-hosted runner 仍有 0 step / 0 log 的基础设施故障，尚未获得真实 PowerShell 5.1 执行结果；PR #55 仍为独立治理 PR；工作资料 CRUD 主线尚未开始
-- 下一步建议：优先部署并验证 v1.5.9；部署成功前生产基准继续保持 `985ac41` / v1.5.8。部署完成后再处理独立治理 PR #55，并继续工作资料 CRUD 主线
+- 当前未完成：PR #57 / v1.5.10 已完成 Windows 助手自更新链、历史 helper 占端口清理、全部客户统一的“金额 Enter→下一条未核对→复制账号→聚焦金额”修复，并新增浏览器/静态合同；金额 Enter 已收敛为 `v028.js` 唯一 owner。当前真正阻塞是 GitHub Actions 基础设施：self-hosted Linux runner 长时间不接单，GitHub-hosted Linux/Windows 也出现 0-step/无日志 provisioning 失败。CI 架构已恢复既有 self-hosted，仅新增 PR 级 concurrency 去重；PR #55 为独立治理 PR；工作资料 CRUD 主线尚未开始
+- 下一步建议：先恢复 GitHub Actions runner 执行能力并让 PR #57 最新 head 完成真实 validation / stability / Windows PowerShell 5.1 验证；门禁通过后再合并 v1.5.10。不要因为 0-step runner 故障降低或绕过测试。之后部署验证 v1.5.10，再处理 PR #55 和工作资料 CRUD
 
 ### 新聊天接管协议
 
@@ -764,3 +764,75 @@ v1.5.8 修正为：
 - 合并前 `v1.2 validation` 全绿，包含成熟工作系统兼容、production regressions、全部历史浏览器验收；`stability gate` 全绿。
 - Windows Foxmail 专项 workflow 仍是 GitHub-hosted runner 0-step / 无日志基础设施失败；未观察到 PowerShell 代码级失败。该问题不得通过弱化测试来规避。
 - 合并不代表已部署。生产仍是 `985ac41` / v1.5.8，下一步必须执行标准 `deploy.sh` 并验证 `/health`、静态资源、远程存储和实际 Foxmail/TXT 交接。
+
+---
+
+## 21. 2026-09-21 v1.5.10 Windows 助手自更新热修
+
+### 21.1 实际故障
+
+用户在 v1.5.9 页面点击“发起缴费”时，被安全门禁提示“检测到旧版 Windows 邮箱助手”。页面升级成功，但本机 bridge 仍返回旧协议。
+
+代码审计确认：旧版 `chen_foxmail_bootstrap.ps1` 只会周期性更新 helper，不会更新 bootstrap 自身；并且旧安装的 helper 检查周期为 30 分钟。因此服务端 helper 行为切换后，会出现“网页已更新、本机 helper 仍旧”的窗口期。v1.5.9 新 helper 已保留旧 bootstrap 所需的兼容标记，所以旧安装最终可以接受新 helper，但不能保证立即升级。
+
+### 21.2 v1.5.10 决策
+
+- bootstrap 增加独立版本 `1.0`。
+- Watch 模式同时检查 bootstrap 与 helper；bootstrap 有新版本时先下载、ASCII/PowerShell 语法/关键标记校验、SHA256 比较，再原子覆盖安装文件。
+- bootstrap 更新后启动新 bootstrap Watch 进程并退出旧进程，使新的更新逻辑真正生效。
+- 自动检查周期从 30 分钟缩短到 5 分钟。
+- helper 的 SHA256、协议、附件剪贴板与缴费安全规则不降低。
+- 浏览器检测到旧助手时继续阻止真实缴费，不允许为了兼容而绕过版本/协议检查；提示中明确旧安装可能有 30 分钟窗口期，急用时可重新安装一次最新版。完成 v1.5.10 bootstrap 后，后续无需因 bootstrap 升级重复手工安装。
+
+### 21.3 合并条件
+
+应用候选版本为 `v1.5.10`。必须通过完整 validation、stability gate、Windows bootstrap/helper 合同和全部历史浏览器验收后才能合并。Windows GitHub-hosted runner 若仍是 0-step / 0-log 基础设施失败，应继续与代码级失败区分，不能删除或弱化 PowerShell 5.1 校验。
+
+### 21.4 实机启动失败补充修复
+
+用户重新运行安装器后输出 `Helper running: no`。该结果说明不是浏览器缓存问题，而是本机 bridge 未成功启动。审计发现历史 helper 曾直接从 `chen_foxmail_helper_v07.ps1` / `v08.ps1` 等版本化文件启动；旧 bootstrap 的 `Get-BridgeProcesses` 只匹配 `chen_foxmail_helper.ps1`，因此可能漏掉历史 bridge，旧进程继续占用 18763，新 v0.9 listener 随即退出。
+
+v1.5.10 进一步加固：
+
+- `Get-BridgeProcesses` 改为识别 `chen_foxmail_helper*.ps1` + `-BridgeMode`，覆盖版本化历史 helper；
+- `Stop-Bridge` 额外检查 127.0.0.1:18763 listener，但只有 owner 命令行明确属于晨的小助手 Foxmail helper 时才终止，禁止误杀其他应用；
+- `Start-Bridge` 不再只看进程存在，而是在最多约 3 秒内请求 `http://127.0.0.1:18763/health`，确认 `ok=true` 且 `version=0.9` 才报告 Helper running=yes。
+
+这部分属于真实缴费前置安全门禁，必须保留严格验证，不允许用“只要进程在就算成功”的方式回退。
+
+### 21.5 缴费金额 Enter 导航全客户一致性修复
+
+实机反馈发现：部分客户页面在缴费金额按 Enter 保存后，没有按预期跳到下一条未核对金额并复制下一条账号。核查当前运行时确认所有 `/customers/{id}` 实际由同一个 owner `app.v0212_routes.customer_workspace_v0212` 渲染 `customer_workspace_v0211.html`，不是不同客户使用了不同页面模板。
+
+根因有两处：
+
+1. `v028.js` 的 `nextPendingBelow()` 仍使用旧条件 `mode === 'variable' && confirmed === '0'`。成熟规则已允许固定金额行手动取消核对，因此固定行也可能是真实待核对项；旧条件会在这类客户上跳过它。
+2. 自动复制账号没有稳定的数据源；若客户隐藏“账号”显示列，DOM 中可能没有账号单元格，不能依赖可见列完成自动复制。
+
+修复契约：
+
+- 回车保存后，下一条候选只看 `data-confirmed='0'`，不再按 fixed/variable 排除；
+- 每个缴费行始终携带 `data-payment-account`，独立于当前显示列；
+- 找到下一条后，先把该行账号写入剪贴板，再聚焦并全选该行金额；
+- 固定金额行的视觉/DOM 核对状态严格跟随后端 `confirmed`，不再因为 `mode='fixed'` 强制显示成已确认；
+- 浏览器验收增加“固定金额手动取消核对 + 账号列被移除/隐藏 + 上一行 Enter 保存”的场景，要求焦点准确跳到固定待核对行且剪贴板得到该行账号。
+
+由于当前所有客户共用同一运行时模板和同一 `v028.js`，该修复覆盖全部客户页面，而不是对单个客户打补丁。
+
+补充审计：后加载的 `high-frequency-v152.js` 也维护了金额 Enter / 手动核对后的高频跳转辅助逻辑。其下一条筛选已按 `data-confirmed=0`，但账号读取仍依赖可见 `.identifier-copy[data-kind="账号"]` 单元格。现已统一优先读取行级 `data-payment-account`，并刷新静态资源版本，确保隐藏账号列时主链路与高频辅助链路行为一致。
+
+为避免双 owner 竞态，已删除 `high-frequency-v152.js` 对金额 Enter / focusin 的二次监听。金额 Enter 的唯一 owner 现在是 `v028.js`；`high-frequency-v152.js` 只负责手动点击行级核对按钮后的自动前进。这样实时刷新、新增行、隐藏列和不同客户配置均复用同一 Enter 保存链路。
+
+### 21.6 Linux CI runner 可靠性修复
+
+2026-09-22 实际观察到 `v1.2 validation` 与 `stability gate` 长时间保持 queued，job steps 为空；两者 workflow 均写死 `runs-on: [self-hosted, linux, x64, chen-assistant]`。对比 2026-09-21 同一 workflow 的成功执行记录，确认当前阻塞是自托管 Linux runner 未接单，而不是测试代码失败。
+
+为避免开发/合并门禁依赖单台自托管机器，本分支将 Linux `v1.2 validation` 与 `stability gate` 改为 GitHub 托管 `ubuntu-24.04`。测试集合、完整 validation、历史浏览器验收、稳定性合同均不删减；Playwright 改为 `python -m playwright install --with-deps chromium`，显式安装浏览器系统依赖。Windows PowerShell 5.1 专项仍保持独立 Windows workflow，不以 Linux 测试替代。
+
+### 21.7 Actions 基础设施诊断补充
+
+为区分自托管 runner 离线与测试代码失败，曾在 PR #57 临时将 Linux validation/stability 切到 GitHub 托管 `ubuntu-24.04`。实际结果：托管 Linux validation 与 Windows PowerShell workflow 一样，在任何 step 启动前直接 failure，steps 为空且无日志。因此当前同时存在：自托管 Linux runner 不接单，以及 GitHub 托管 runner 无法正常 provision 的仓库/账号级 Actions 基础设施问题。由于托管切换没有提供有效测试能力，已立即恢复仓库既有 self-hosted Linux workflow，不保留 CI 架构变化。产品代码与测试合同不因此降级或绕过。
+
+### 21.8 CI 排队去重
+
+由于 PR #57 在 runner 故障期间产生了多轮 queued validation/stability，若自托管 runner 恢复，可能先执行已过时提交。现为 `v1.2 validation` 与 `stability gate` 增加 PR 级 `concurrency`，`cancel-in-progress: true`：同一 PR 只保留最新提交对应的一轮门禁，旧 queued/running 任务自动取消。测试步骤、覆盖范围和合并标准不变，仅减少 runner 恢复后的无效排队。

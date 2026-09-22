@@ -191,7 +191,7 @@
     if (!row) return;
     row.dataset.confirmed = data.confirmed ? '1' : '0';
     row.dataset.mode = data.mode;
-    const done = data.mode === 'fixed' || !!data.confirmed;
+    const done = !!data.confirmed;
     row.classList.toggle('is-pending', !done);
     row.classList.toggle('is-confirmed', done);
     const state = row.querySelector('[data-row-state]');
@@ -222,7 +222,7 @@
   const nextPendingBelow = row => {
     const rows = [...workbench.querySelectorAll('[data-payment-row]')];
     const idx = rows.indexOf(row);
-    return idx < 0 ? null : rows.slice(idx + 1).find(r => r.dataset.mode === 'variable' && r.dataset.confirmed === '0') || null;
+    return idx < 0 ? null : rows.slice(idx + 1).find(r => r.dataset.confirmed === '0') || null;
   };
   const savePayment = async input => {
     if (!input || input.dataset.saving === '1') return;
@@ -237,8 +237,14 @@
       if (!r.ok || !data.ok) { notifyError(data.error || '保存失败'); return selectAmount(input); }
       updatePaymentRow(row, data); updateSummary(data);
       const next = nextPendingBelow(row);
-      if (next) revealAndSelect(next.querySelector('.quick-amount'));
-      else { activeAmount = null; input.blur(); }
+      if (next) {
+        const account = String(next.dataset.paymentAccount || '').trim();
+        if (account) await copyText(account);
+        revealAndSelect(next.querySelector('.quick-amount'));
+      } else {
+        activeAmount = null;
+        input.blur();
+      }
     } catch (_) { notifyError('网络异常，未保存'); selectAmount(input); }
     finally { delete input.dataset.saving; row.classList.remove('is-saving'); }
   };

@@ -20,18 +20,19 @@ def main():
     assert 'href="/work/customers">进入客户管理' in home
     assert 'href="/work/customers" class="nav-item">◎<span>客户</span>' in base
     assert 'high-frequency-v152.css?v=1525' in base
-    assert 'high-frequency-v152.js?v=1522' in base
+    assert 'high-frequency-v152.js?v=15101' in base
     assert 'payment-total-row-v152' in js
     assert "document.querySelector('[data-payment-workbench]')" in js
     assert "event.target.closest?.('[data-payment-workbench] [data-review-toggle]')" in js
-    assert "event.target.closest?.('[data-payment-workbench] .quick-amount')" in js
     assert 'ensurePaymentTotalRow' in js
     assert "window.addEventListener('chen:live-refresh'" in js
     assert 'focusAmountAndCopyAccount' in js
+    assert "arm('amount'" not in js
     assert 'currentRowByServiceId' in js
     assert 'waitForReviewedRow' in js
     assert 'nextPendingBelow(pending.serviceId)' in js
     assert '.identifier-copy[data-kind="账号"][data-copy]' in js
+    assert 'dataset.paymentAccount' in js
     assert "item.dataset.confirmed === '0'" in js
     assert 'display:flex!important' in css
     assert 'justify-content:center' in css

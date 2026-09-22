@@ -9,11 +9,12 @@ def main():
     for token in (
         "https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_bootstrap.ps1",
         "https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_helper_v09.ps1",
-        'Update-Helper', 'Start-Watchdog', 'Start-Bridge', 'Get-WatchProcesses',
+        'Update-Bootstrap', 'Test-BootstrapFile', 'Update-Helper', 'Start-Watchdog', 'Start-Bridge', 'Get-WatchProcesses',
+        "*chen_foxmail_helper*.ps1*", 'Get-NetTCPConnection', "http://127.0.0.1:18763/health",
         'Get-BridgePowerShell', 'System32\\WindowsPowerShell\\v1.0\\powershell.exe',
-        'UpdateIntervalMinutes = 30', 'WatchIntervalSeconds = 20',
+        'BootstrapVersion = \'1.0\'', 'UpdateIntervalMinutes = 5', 'WatchIntervalSeconds = 20',
         'Invoke-WebRequest', 'Get-FileHash', 'Parser]::ParseFile',
-        "chen_foxmail_bootstrap.download.ps1",
+        "chen_foxmail_bootstrap.download.ps1", "chen_foxmail_bootstrap.update.ps1",
         "chen_foxmail_helper.download.ps1", "chen_foxmail_helper.new.ps1",
         "if ($PSCommandPath -and (Test-Path -LiteralPath $PSCommandPath))",
         "$uri = $BootstrapUrl + '?install='",
@@ -58,14 +59,14 @@ def main():
     assert '自动恢复运行' in ui
 
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
-    assert '/static/v031_windows_bootstrap.js?v=1590' in base
+    assert '/static/v031_windows_bootstrap.js?v=15100' in base
     assert base.index('/static/v031_windows_bootstrap.js') > base.index('/static/v03_business_mail.js')
-    assert '/static/v123_foxmail_compose_fix.js?v=1590' in base
+    assert '/static/v123_foxmail_compose_fix.js?v=15100' in base
 
     main_py = (ROOT / 'app' / 'main.py').read_text(encoding='utf-8')
     assert "('.js', '.css', '.ps1')" in main_py
 
-    print('v1.5.9 Windows helper clipboard bootstrap contract passed')
+    print('v1.5.10 Windows helper self-updating bootstrap contract passed')
 
 
 if __name__ == '__main__':

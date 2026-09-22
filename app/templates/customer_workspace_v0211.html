@@ -65,13 +65,13 @@
             <span class="payment-action-head-v0211">操作</span>
           </div>
           {% for item in payment_items %}{% set s=item.row %}{% set pe=item.payment %}
-          <article class="dense-payment-row v028-payment-row v0211-payment-row {% if item.rule.mode=='variable' and not pe.confirmed %}is-pending{% else %}is-confirmed{% endif %}" data-payment-row data-service-id="{{ s.id }}" data-confirmed="{{ 1 if pe.confirmed else 0 }}" data-mode="{{ item.rule.mode }}">
+          <article class="dense-payment-row v028-payment-row v0211-payment-row {% if not pe.confirmed %}is-pending{% else %}is-confirmed{% endif %}" data-payment-row data-service-id="{{ s.id }}" data-confirmed="{{ 1 if pe.confirmed else 0 }}" data-mode="{{ item.rule.mode }}" data-payment-account="{{ s.account|e }}">
             <button type="button" class="drag-handle" draggable="false" title="按住拖动改变位置">⠿</button>
             {% for cell in item.payment_cells %}
               {% if cell.key == 'payment_amount' %}
               <div class="dense-amount payment-amount-cell-v0211" data-payment-cell data-payment-attr-key="payment_amount">
                 <input class="quick-amount" type="text" inputmode="decimal" autocomplete="off" value="{{ cell.value }}" data-service-id="{{ s.id }}">
-                <button type="button" class="row-state state-button {% if item.rule.mode=='variable' and not pe.confirmed %}pending{% else %}confirmed{% endif %}" data-row-state data-review-toggle>{% if item.rule.mode=='variable' and not pe.confirmed %}○{% else %}✓{% endif %}</button>
+                <button type="button" class="row-state state-button {% if not pe.confirmed %}pending{% else %}confirmed{% endif %}" data-row-state data-review-toggle>{% if not pe.confirmed %}○{% else %}✓{% endif %}</button>
                 <span class="amount-feedback">{% if item.delta is not none %}<em class="delta-badge {% if item.delta>0 %}up{% else %}down{% endif %}">{% if item.delta>0 %}+{% endif %}{{ '%.2f'|format(item.delta)|replace('.00','') }}</em>{% endif %}</span>
               </div>
               {% else %}
