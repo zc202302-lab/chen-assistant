@@ -2,13 +2,13 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前应用版本：`v1.5.9`（main）；`v1.5.10` Windows 助手自更新热修正在验证
-- 当前 `main`：`d2ff6432538538206d4a4ad404b3f825b97af0fe`（PR #56 已合并，v1.5.9）
-- 当前生产：`985ac41`（v1.5.8，2026-09-20 已部署成功）
-- 当前差异：生产仍为 `985ac41` / v1.5.8；main 已升级到 v1.5.9，包含发起缴费可靠性加固，尚未部署
-- 当前已完成：PR #56 已合并；v1.5.9 已实现“发起缴费待确认持久化”、Foxmail TXT 文件剪贴板交接、TXT/EXCEL 文件名独立、正式 TXT 号码↔金额完整性校验；完整 validation、stability、历史浏览器验收全绿
-- 当前未完成：PR #57 / v1.5.10 已完成 Windows 助手自更新链、历史 helper 占端口清理、全部客户统一的“金额 Enter→下一条未核对→复制账号→聚焦金额”修复，并新增浏览器/静态合同；金额 Enter 已收敛为 `v028.js` 唯一 owner。当前真正阻塞是 GitHub Actions 基础设施：self-hosted Linux runner 长时间不接单，GitHub-hosted Linux/Windows 也出现 0-step/无日志 provisioning 失败。CI 架构已恢复既有 self-hosted，仅新增 PR 级 concurrency 去重；PR #55 为独立治理 PR；工作资料 CRUD 主线尚未开始
-- 下一步建议：先恢复 GitHub Actions runner 执行能力并让 PR #57 最新 head 完成真实 validation / stability / Windows PowerShell 5.1 验证；门禁通过后再合并 v1.5.10。不要因为 0-step runner 故障降低或绕过测试。之后部署验证 v1.5.10，再处理 PR #55 和工作资料 CRUD
+- 当前应用版本：`v1.5.10`（main）；生产基准仍待用户确认
+- 当前 `main`：`1d1fe26deaec0acf31fab7538ba57afa9c8d3ed0`（PR #57 已合并，v1.5.10）
+- 当前生产：接力文档此前记录为 `985ac41` / v1.5.8；本次未直接连接生产服务器，不能据此声称已部署 v1.5.10
+- 当前已完成：PR #57 已合并。v1.5.10 完成 Windows Foxmail bootstrap 自更新、历史 helper 进程/18763 端口清理、bridge /health 真健康检查；完成全部客户统一“缴费金额 Enter 保存 → 下一条未核对 → 自动复制账号 → 聚焦并全选金额”，固定金额手动取消核对后也会进入下一条，隐藏账号列仍可复制；金额 Enter owner 收敛为 `v028.js`。最新 head `9dfafdc` 的完整 `v1.2 validation` 与 `stability gate` 均通过，包含历史浏览器验收与 v1.5.10 静态合同
+- 已知基础设施问题：Windows Foxmail PowerShell 5.1 GitHub-hosted workflow 仍为 0-step / 无日志 failure，没有得到真实 PowerShell 5.1 CI 执行结果；该异常未被当作代码测试失败，也没有通过删减测试规避
+- 当前未完成：需要部署并实机验证 v1.5.10，重点验证 Windows helper `/health`、发起缴费 TXT 剪贴板附件、以及金额 Enter 跨全部客户页面自动前进/复制账号；PR #55 仍为独立治理 PR；工作资料 CRUD 主线尚未开始
+- 下一步建议：优先部署 v1.5.10 并做一次 Windows 实机验收；确认生产版本与关键流程正常后，再继续 PR #55 和工作资料 CRUD
 
 ### 新聊天接管协议
 
