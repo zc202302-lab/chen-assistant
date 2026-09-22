@@ -10,6 +10,7 @@ def main():
         "https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_bootstrap.ps1",
         "https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_helper_v09.ps1",
         'Update-Bootstrap', 'Test-BootstrapFile', 'Update-Helper', 'Start-Watchdog', 'Start-Bridge', 'Get-WatchProcesses',
+        "*chen_foxmail_helper*.ps1*", 'Get-NetTCPConnection', "http://127.0.0.1:18763/health",
         'Get-BridgePowerShell', 'System32\\WindowsPowerShell\\v1.0\\powershell.exe',
         'BootstrapVersion = \'1.0\'', 'UpdateIntervalMinutes = 5', 'WatchIntervalSeconds = 20',
         'Invoke-WebRequest', 'Get-FileHash', 'Parser]::ParseFile',
