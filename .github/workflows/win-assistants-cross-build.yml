@@ -9,7 +9,7 @@ on:
 
 jobs:
   source-validation:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, linux, x64, chen-assistant]
     defaults:
       run:
         working-directory: windows/win-assistants
@@ -24,7 +24,8 @@ jobs:
           python -m unittest discover -s tests -v
 
   build-windows-exe:
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, linux, x64, chen-assistant]
+    container: ubuntu:24.04
     defaults:
       run:
         working-directory: windows/win-assistants
@@ -33,14 +34,14 @@ jobs:
       WINEPREFIX: /tmp/wine-win-assistants
       WINDOWS_PYTHON: C:\\Python312\\python.exe
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Wine
+      - name: Prepare build container
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y wine64 xvfb
-          wine --version
+          apt-get update
+          apt-get install --no-install-recommends -y ca-certificates curl file git wine wine64 xvfb
+      - uses: actions/checkout@v4
       - name: Install official Windows Python in Wine
         run: |
+          wine --version
           curl --fail --location --retry 3 \
             --output "${RUNNER_TEMP}/python-3.12.10-amd64.exe" \
             "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe"
