@@ -49,6 +49,7 @@ jobs:
           wineserver_bin="$(find "${wine_root}/root/usr/lib/wine" -type f -name wineserver64 -print -quit)"
           test -x "${wine_bin}"
           test -x "${wineserver_bin}"
+          ln -sfn "$(basename "${wineserver_bin}")" "$(dirname "${wine_bin}")/wineserver"
           echo "WINE_BIN=${wine_bin}" >> "${GITHUB_ENV}"
           echo "WINESERVER=${wineserver_bin}" >> "${GITHUB_ENV}"
           echo "WINEPREFIX=${RUNNER_TEMP}/win-assistants-wine-prefix" >> "${GITHUB_ENV}"
