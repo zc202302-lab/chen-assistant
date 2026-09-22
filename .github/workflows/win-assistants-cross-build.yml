@@ -120,7 +120,7 @@ jobs:
       - name: Test with Windows Python
         run: |
           "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants tests
-          "$WINE_BIN" "$WINDOWS_PYTHON" -m unittest discover -s tests -v
+          "$WINE_BIN" "$WINDOWS_PYTHON" -m unittest discover -s tests -t . -v
       - name: Build Windows executable
         run: >-
           "$WINE_BIN" "$WINDOWS_PYTHON" -m PyInstaller --noconfirm --clean --onefile --windowed
