@@ -46,8 +46,11 @@ jobs:
             dpkg-deb --extract "${package}" "${wine_root}/root"
           done
           wine_bin="$(find "${wine_root}/root/usr/lib/wine" -type f -name wine64 -print -quit)"
+          wineserver_bin="$(find "${wine_root}/root/usr/lib/wine" -type f -name wineserver64 -print -quit)"
           test -x "${wine_bin}"
+          test -x "${wineserver_bin}"
           echo "WINE_BIN=${wine_bin}" >> "${GITHUB_ENV}"
+          echo "WINESERVER=${wineserver_bin}" >> "${GITHUB_ENV}"
           echo "WINEPREFIX=${RUNNER_TEMP}/win-assistants-wine-prefix" >> "${GITHUB_ENV}"
           echo "LD_LIBRARY_PATH=${wine_root}/root/usr/lib/x86_64-linux-gnu:${wine_root}/root/lib/x86_64-linux-gnu" >> "${GITHUB_ENV}"
       - name: Prepare embedded Windows Python
