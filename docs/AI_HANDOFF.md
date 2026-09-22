@@ -792,6 +792,16 @@ v1.5.8 修正为：
 
 - 分支：`feat/win-assistants-shell`
 - 首个实现提交：`380158866c0105b48ee3c06dffffc991e5f9d9c7`
-- 当前分支最新提交：`d51da9427bcfb2d020f8f264ab75071499781dde`；已加固 Windows 64 位互斥锁句柄。
-- 本地 Python 编译检查通过，7 个标准库单元测试通过。
+- 当前分支最新功能提交：`63f5c8df997c9ddcbff57b9d2a9bb9811307b45d`。
+- 本地 Python 编译检查通过，12 个标准库单元测试通过。
 - 尚未合并到 main，尚未发布安装包，不改变晨的小助手 v1.5.9 / 生产 v1.5.8 的现有基准。
+
+
+### 21.4 v0.2.0 短信模块已内置
+
+- 短信助手不再作为独立 EXE 子进程启动，ntfy JSON 流接收、验证码识别、测试发送和剪贴板复制已迁入 `win-assistants` 进程。
+- 首次启动会只读导入 `%APPDATA%\\iPhoneSmsBridgeNoServer\\config.json`；旧令牌由当前 Windows 用户通过 PowerShell 解密，再使用 `win-assistants` 自己的 Windows DPAPI 密文保存。
+- 旧配置和旧 EXE 不删除，实机验证完成前始终可回退。
+- 保留原规则：服务器必须是 HTTPS；主题只允许字母、数字、横线、下划线；验证码优先匹配带语义标签的 4～8 位数字，再使用通用数字回退。
+- 接收线程加入 generation 隔离；快速重连后，旧阻塞线程即使稍后返回也不能继续投递消息或覆盖新连接。
+- Windows runner 仍存在 0 step / 0 log 基础设施故障；Linux `v1.2 validation` 与 `stability gate` 已通过，Windows EXE 尚未生成。
