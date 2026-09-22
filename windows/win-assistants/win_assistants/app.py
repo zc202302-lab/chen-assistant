@@ -10,10 +10,11 @@ from tkinter import filedialog, messagebox, ttk
 from . import __version__
 from .commands import command_for_path, display_path
 from .config import AppConfig
+from .foxmail import FoxmailBridge
 from .modules import MODULES, ModuleManager, default_module_configs
 from .single_instance import SingleInstance
 from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
-from .startup import is_startup_enabled, set_startup, take_over_legacy_startup
+from .startup import is_startup_enabled, set_startup, stop_legacy_foxmail_processes, take_over_legacy_startup
 
 
 BG = "#F4F7F6"
@@ -30,6 +31,7 @@ class WinAssistantsApp:
         migrate_legacy_config(self.config)
         self.manager = ModuleManager(self._set_status)
         self.sms_receiver = SmsReceiver()
+        self.foxmail_bridge = FoxmailBridge()
         self.tray_icon = None
         self.sms_code_var = tk.StringVar(value="尚未收到验证码")
         self.status_vars = {item.key: tk.StringVar(value="等待启动") for item in MODULES}
@@ -86,6 +88,9 @@ class WinAssistantsApp:
                 ttk.Label(row, textvariable=self.sms_code_var, style="Card.TLabel").pack(side="left", padx=(18, 0))
                 ttk.Button(row, text="复制验证码", command=self._copy_sms_code).pack(side="right", padx=(8, 0))
                 ttk.Button(row, text="设置", command=self._show_sms_settings).pack(side="right")
+            elif item.key == "chen_helper":
+                ttk.Label(row, text="内置模块 · 仅监听 127.0.0.1:18763 · 不自动发送邮件", style="Card.TLabel").pack(side="left")
+                ttk.Button(row, text="重新启动", command=lambda: self._start_one("chen_helper")).pack(side="right")
             else:
                 ttk.Entry(row, textvariable=self.path_vars[item.key]).pack(side="left", fill="x", expand=True)
                 ttk.Button(row, text="选择", command=lambda key=item.key: self._choose_path(key)).pack(side="left", padx=(8, 0))
@@ -95,13 +100,13 @@ class WinAssistantsApp:
         controls.pack(fill="x", pady=(6, 0))
         ttk.Checkbutton(controls, text="win-assistants 随 Windows 登录启动", variable=self.startup_var, command=self._toggle_startup).pack(side="left")
         ttk.Button(controls, text="接管旧工具的开机启动", command=self._take_over).pack(side="right")
-        ttk.Label(outer, text=f"v{__version__} · 短信助手已内置；久坐与小助手连接继续渐进迁移。", style="Sub.TLabel").pack(anchor="w", pady=(14, 0))
+        ttk.Label(outer, text=f"v{__version__} · 短信与 Foxmail 本地桥接已内置；久坐能力继续渐进迁移。", style="Sub.TLabel").pack(anchor="w", pady=(14, 0))
 
     def _save_ui(self) -> None:
         for item in MODULES:
             cfg = self.config.modules[item.key]
             cfg.enabled = bool(self.enabled_vars[item.key].get())
-            if item.key == "sms":
+            if item.key in ("sms", "chen_helper"):
                 cfg.command = []
                 continue
             path = self.path_vars[item.key].get().strip()
@@ -113,7 +118,7 @@ class WinAssistantsApp:
         self.config.save()
 
     def _choose_path(self, key: str) -> None:
-        if key == "sms":
+        if key in ("sms", "chen_helper"):
             return
         path = filedialog.askopenfilename(title="选择模块程序", filetypes=[("程序或脚本", "*.exe *.py *.ps1"), ("所有文件", "*.*")])
         if not path:
@@ -139,6 +144,8 @@ class WinAssistantsApp:
         else:
             if key == "sms":
                 self.sms_receiver.stop()
+            elif key == "chen_helper":
+                self.foxmail_bridge.stop()
             self.status_vars[key].set("已停用")
 
     def _start_one(self, key: str) -> None:
@@ -154,6 +161,11 @@ class WinAssistantsApp:
                 return
             self.sms_receiver.start(self.config.sms, token)
             self.status_vars[key].set("正在连接")
+            return
+        if key == "chen_helper":
+            self.foxmail_bridge.stop()
+            ok, detail = self.foxmail_bridge.start()
+            self.status_vars[key].set(detail if ok else f"启动失败：{detail}")
             return
         ok, detail = self.manager.start(key, self.config.modules[key])
         self.status_vars[key].set(detail)
@@ -276,9 +288,15 @@ class WinAssistantsApp:
             return
         try:
             removed = take_over_legacy_startup()
+            stopped = stop_legacy_foxmail_processes()
+            if self.enabled_vars["chen_helper"].get():
+                self.foxmail_bridge.stop()
+                _ok, bridge_detail = self.foxmail_bridge.start()
+                self.status_vars["chen_helper"].set(bridge_detail)
             self.startup_var.set(True)
             detail = "、".join(removed) if removed else "未发现旧入口"
-            messagebox.showinfo("接管完成", f"win-assistants 已设为开机启动。\n处理结果：{detail}")
+            running = f"；已停止 {stopped} 个旧 Foxmail 进程" if stopped else ""
+            messagebox.showinfo("接管完成", f"win-assistants 已设为开机启动。\n处理结果：{detail}{running}")
         except Exception as exc:
             messagebox.showerror("接管失败", str(exc))
 
@@ -309,6 +327,7 @@ class WinAssistantsApp:
 
     def _exit(self) -> None:
         self.sms_receiver.stop()
+        self.foxmail_bridge.stop()
         if self.tray_icon is not None:
             try:
                 self.tray_icon.stop()

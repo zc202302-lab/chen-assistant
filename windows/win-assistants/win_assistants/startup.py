@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -74,3 +76,32 @@ def take_over_legacy_startup() -> list[str]:
             removed.append(name)
     set_startup(True)
     return removed
+
+
+def stop_legacy_foxmail_processes() -> int:
+    """Stop only the known PowerShell bridge/watchdog after explicit takeover."""
+    if sys.platform != "win32":
+        return 0
+    script = (
+        "$p = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { "
+        "$_.ProcessId -ne $PID -and $_.CommandLine -and ((($_.CommandLine -like '*chen_foxmail_helper.ps1*') -and "
+        "($_.CommandLine -like '*-BridgeMode*')) -or (($_.CommandLine -like '*chen_foxmail_bootstrap.ps1*') -and "
+        "($_.CommandLine -like '*-Watch*'))) }); "
+        "$p | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; "
+        "[Console]::Out.Write($p.Count)"
+    )
+    try:
+        result = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            check=False,
+        )
+        count = int(result.stdout.strip() or "0") if result.returncode == 0 else 0
+        if count:
+            time.sleep(0.5)
+        return count
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return 0

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -50,21 +49,11 @@ def _sedentary_command() -> list[str]:
     return []
 
 
-def _chen_helper_command() -> list[str]:
-    local = Path(os.getenv("LOCALAPPDATA", ""))
-    script = local / "ChenAssistant" / "chen_foxmail_bootstrap.ps1"
-    if not script.exists():
-        return []
-    powershell = Path(os.getenv("WINDIR", r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
-    executable = str(powershell) if powershell.exists() else "powershell.exe"
-    return [executable, "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", str(script), "-Watch"]
-
-
 def default_module_configs() -> dict[str, ModuleConfig]:
     commands = {
         "sms": [],
         "sedentary": _sedentary_command(),
-        "chen_helper": _chen_helper_command(),
+        "chen_helper": [],
     }
     return {
         item.key: ModuleConfig(enabled=True, command=commands[item.key], delay_seconds=item.default_delay)
