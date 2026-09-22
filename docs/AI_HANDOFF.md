@@ -2,13 +2,13 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前应用版本：`v1.5.10`（main）；生产基准仍待用户确认
-- 当前 `main`：`1d1fe26deaec0acf31fab7538ba57afa9c8d3ed0`（PR #57 已合并，v1.5.10）
-- 当前生产：接力文档此前记录为 `985ac41` / v1.5.8；本次未直接连接生产服务器，不能据此声称已部署 v1.5.10
-- 当前已完成：PR #57 已合并。v1.5.10 完成 Windows Foxmail bootstrap 自更新、历史 helper 进程/18763 端口清理、bridge /health 真健康检查；完成全部客户统一“缴费金额 Enter 保存 → 下一条未核对 → 自动复制账号 → 聚焦并全选金额”，固定金额手动取消核对后也会进入下一条，隐藏账号列仍可复制；金额 Enter owner 收敛为 `v028.js`。最新 head `9dfafdc` 的完整 `v1.2 validation` 与 `stability gate` 均通过，包含历史浏览器验收与 v1.5.10 静态合同
-- 已知基础设施问题：Windows Foxmail PowerShell 5.1 GitHub-hosted workflow 仍为 0-step / 无日志 failure，没有得到真实 PowerShell 5.1 CI 执行结果；该异常未被当作代码测试失败，也没有通过删减测试规避
-- 当前未完成：需要部署并实机验证 v1.5.10，重点验证 Windows helper `/health`、发起缴费 TXT 剪贴板附件、以及金额 Enter 跨全部客户页面自动前进/复制账号；PR #55 仍为独立治理 PR；工作资料 CRUD 主线尚未开始
-- 下一步建议：优先部署 v1.5.10 并做一次 Windows 实机验收；确认生产版本与关键流程正常后，再继续 PR #55 和工作资料 CRUD
+- 当前应用版本：`v1.5.10`（main）；`win-assistants v0.3.0` 已合并进入 main；生产基准仍待用户确认
+- 当前 `main`：`2825f31d3b9e584c84742534b00ad9d8878f12d5`（PR #58 已合并；该合并包含 `win-assistants v0.3.0` 与最终 Artifact 接力记录）
+- 当前生产：接力文档此前记录为 `985ac41` / v1.5.8；本次没有重新部署 Web 主站或服务器，不能据此声称生产已部署 v1.5.10
+- 当前已完成：PR #58 已合并。GitHub Actions `win-assistants cross build` run #23 成功，Artifact `win-assistants-windows` 已生成并完成 ZIP/EXE SHA-256、PE32+ x86-64、ASLR/DEP/CFG 与未签名状态静态复核；详细产物信息见 22.6。此前 v1.5.10 的客户缴费金额 Enter 自动前进/复制账号等改动仍保留。
+- 已知基础设施问题：Windows Foxmail PowerShell 5.1 GitHub-hosted workflow run #115 仍为 0-step / 无日志 failure；任务没有执行代码，不能解释为业务代码或测试失败。当前 EXE 未做 Authenticode 代码签名，因此首次运行可能触发 Windows SmartScreen“未知发布者”提示。
+- 当前未完成：`win-assistants v0.3.0` 仍需用户真实 Windows 机器验收，重点验证单实例/托盘、短信 ntfy、`127.0.0.1:18763/health`、严格 Origin、Foxmail 写信窗口与 TXT 文件剪贴板交接，以及程序绝不自动发送邮件。Web v1.5.10 的生产部署/实机验收仍是独立事项；PR #55 和工作资料 CRUD 主线尚未开始。
+- 下一步建议：先在真实 Windows 电脑验收 `win-assistants.exe`；验收通过后再决定是否创建正式 GitHub Release/签名分发。不要因为本次 Windows 产物收尾顺便部署 Web 主站。
 
 ### 新聊天接管协议
 
