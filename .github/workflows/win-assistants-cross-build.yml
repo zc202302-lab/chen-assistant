@@ -67,7 +67,9 @@ jobs:
           "$WINE_BIN" "${windows_python}/python.exe" "${windows_python}/get-pip.py"
           "$WINE_BIN" "${windows_python}/python.exe" --version
       - name: Install Windows build dependencies
-        run: "$WINE_BIN" "$WINDOWS_PYTHON" -m pip install --disable-pip-version-check -r requirements.txt
+        run: >-
+          "$WINE_BIN" "$WINDOWS_PYTHON" -m pip install
+          --disable-pip-version-check -r requirements.txt
       - name: Test with Windows Python
         run: |
           "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants tests
