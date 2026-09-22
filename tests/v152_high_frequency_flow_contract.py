@@ -42,3 +42,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# v1.5.10 account copy must not depend on a visible account column.
+assert "dataset.paymentAccount" in (ROOT / "app/static/high-frequency-v152.js").read_text(encoding="utf-8")
