@@ -172,6 +172,11 @@ def main():
             fixed_row.locator('[data-review-toggle]').click()
             expect(fixed_row).to_have_attribute('data-confirmed', '0', timeout=3000)
             assert fixed_row.get_attribute('data-payment-account') == 'A002'
+            # Simulate a customer configuration where the account column is hidden:
+            # automatic copy must use the row's authoritative account, not a visible cell.
+            account_cell = fixed_row.locator('[data-payment-attr-key="account"]')
+            expect(account_cell).to_have_count(1)
+            account_cell.evaluate("el => el.remove()")
             await_account = page.evaluate("navigator.clipboard.readText().catch(() => '')")
             assert isinstance(await_account, str)
             assert_no_dialog_while(page, lambda: variable_input.fill('101'))
