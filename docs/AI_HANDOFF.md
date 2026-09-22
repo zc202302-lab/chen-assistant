@@ -7,8 +7,8 @@
 - 当前生产：`985ac41`（v1.5.8，2026-09-20 已部署成功）
 - 当前差异：生产仍为 `985ac41` / v1.5.8；main 已升级到 v1.5.9，包含发起缴费可靠性加固，尚未部署
 - 当前已完成：PR #56 已合并；v1.5.9 已实现“发起缴费待确认持久化”、Foxmail TXT 文件剪贴板交接、TXT/EXCEL 文件名独立、正式 TXT 号码↔金额完整性校验；完整 validation、stability、历史浏览器验收全绿
-- 当前未完成：v1.5.10 正在同时验证 Windows 助手启动链和缴费金额回车流程。新发现回车后“下一条未核对”旧逻辑只识别 variable 行，导致固定金额被手动取消核对时会被跳过；另外自动复制账号此前依赖可见账号列，不适用于隐藏账号列的客户。现已改为所有 `data-confirmed=0` 行均可作为下一条，并从每行稳定 `data-payment-account` 复制账号；PR #55 为独立治理 PR；工作资料 CRUD 主线尚未开始
-- 下一步建议：优先完成 v1.5.10 热修完整 CI，解决 Windows 助手升级链后再继续治理/工作资料。现有 v1.5.9 旧安装可等待原 30 分钟自动检查，或为立即使用重新安装一次当前 bootstrap；v1.5.10 之后 bootstrap 本身也会自动更新
+- 当前未完成：PR #57 / v1.5.10 已完成 Windows 助手自更新链、历史 helper 占端口清理、全部客户统一的“金额 Enter→下一条未核对→复制账号→聚焦金额”修复，并新增浏览器/静态合同；金额 Enter 已收敛为 `v028.js` 唯一 owner。当前真正阻塞是 GitHub Actions 基础设施：self-hosted Linux runner 长时间不接单，GitHub-hosted Linux/Windows 也出现 0-step/无日志 provisioning 失败。CI 架构已恢复既有 self-hosted，仅新增 PR 级 concurrency 去重；PR #55 为独立治理 PR；工作资料 CRUD 主线尚未开始
+- 下一步建议：先恢复 GitHub Actions runner 执行能力并让 PR #57 最新 head 完成真实 validation / stability / Windows PowerShell 5.1 验证；门禁通过后再合并 v1.5.10。不要因为 0-step runner 故障降低或绕过测试。之后部署验证 v1.5.10，再处理 PR #55 和工作资料 CRUD
 
 ### 新聊天接管协议
 
