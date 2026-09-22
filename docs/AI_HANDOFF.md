@@ -764,3 +764,33 @@ v1.5.8 修正为：
 - 合并前 `v1.2 validation` 全绿，包含成熟工作系统兼容、production regressions、全部历史浏览器验收；`stability gate` 全绿。
 - Windows Foxmail 专项 workflow 仍是 GitHub-hosted runner 0-step / 无日志基础设施失败；未观察到 PowerShell 代码级失败。该问题不得通过弱化测试来规避。
 - 合并不代表已部署。生产仍是 `985ac41` / v1.5.8，下一步必须执行标准 `deploy.sh` 并验证 `/health`、静态资源、远程存储和实际 Foxmail/TXT 交接。
+
+
+---
+
+## 21. 2026-09-22 win-assistants 统一 Windows 客户端启动
+
+用户将统一客户端正式命名为 `win-assistants`。第一阶段采用“统一壳 + 成熟模块子进程”的渐进迁移方案，不直接重写短信、久坐或 Foxmail 已验证逻辑。
+
+### 21.1 第一阶段范围
+
+- 新增目录：`windows/win-assistants`。
+- 统一管理三个模块：短信助手、久坐助手、“晨的小助手”本地连接。
+- 提供统一窗口、统一托盘、单实例保护、模块启停、延迟启动和程序路径选择。
+- 配置保存在 `%APPDATA%\\win-assistants\\config.json`；现有三个工具的数据目录暂不迁移。
+- “接管旧工具的开机启动”只能在用户明确点击后执行；只删除已知旧启动入口，不删除程序或设置，并把 `win-assistants` 设为唯一开机入口。
+- 新增 Windows 构建脚本和 GitHub Actions，目标产物为 `win-assistants.exe`。
+
+### 21.2 迁移约束
+
+- 久坐模块必须以 `chen-sit-guard v2.8.0` 当前人体存在检测、摄像头异常暂停、强制休息状态机为基线，不能重写后退。
+- 短信模块迁入统一进程时，保留当前 ntfy 长连接、DPAPI/用户级令牌保护、4～8 位验证码识别、单实例和托盘行为。
+- Foxmail 模块迁入统一进程时，保留仅监听 `127.0.0.1`、来源限制、FileDrop 剪贴板、TXT SHA256/号码金额校验及绝不自动发送邮件的边界。
+- 第一阶段允许子进程存在；只有各模块内置并通过真实 Windows 验收后，才能退出原独立版。
+
+### 21.3 当前分支状态
+
+- 分支：`feat/win-assistants-shell`
+- 首个实现提交：`380158866c0105b48ee3c06dffffc991e5f9d9c7`
+- 本地 Python 编译检查通过，4 个标准库单元测试通过。
+- 尚未合并到 main，尚未发布安装包，不改变晨的小助手 v1.5.9 / 生产 v1.5.8 的现有基准。
