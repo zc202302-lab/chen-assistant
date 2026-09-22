@@ -101,6 +101,9 @@ jobs:
           python3 -m pip download --disable-pip-version-check --only-binary=:all: \
             --platform win_amd64 --python-version 312 --implementation cp --abi cp312 \
             --dest "${windows_wheels}" -r requirements.txt
+          for wheel in "${windows_wheels}"/*.whl; do
+            python3 -m zipfile -e "${wheel}" "${windows_python}/Lib/site-packages"
+          done
           echo "WINDOWS_PYTHON=${windows_python}/python.exe" >> "${GITHUB_ENV}"
           echo "WINDOWS_WHEELS=${windows_wheels}" >> "${GITHUB_ENV}"
           "$WINE_BIN" --version
@@ -110,11 +113,10 @@ jobs:
             tail -n 300 "${RUNNER_TEMP}/win-assistants-wine-module.log"
             exit 1
           fi
-      - name: Install Windows build dependencies
+      - name: Verify Windows build dependencies
         run: >-
-          timeout 180s "$WINE_BIN" "$WINDOWS_PYTHON" -m pip install
-          --disable-pip-version-check --no-index --find-links "$WINDOWS_WHEELS"
-          -r requirements.txt
+          timeout 120s "$WINE_BIN" "$WINDOWS_PYTHON" -c
+          "import PIL, PyInstaller, pystray; print('Windows build dependencies ready')"
       - name: Test with Windows Python
         run: |
           "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants tests
