@@ -822,3 +822,9 @@ v1.5.10 进一步加固：
 补充审计：后加载的 `high-frequency-v152.js` 也维护了金额 Enter / 手动核对后的高频跳转辅助逻辑。其下一条筛选已按 `data-confirmed=0`，但账号读取仍依赖可见 `.identifier-copy[data-kind="账号"]` 单元格。现已统一优先读取行级 `data-payment-account`，并刷新静态资源版本，确保隐藏账号列时主链路与高频辅助链路行为一致。
 
 为避免双 owner 竞态，已删除 `high-frequency-v152.js` 对金额 Enter / focusin 的二次监听。金额 Enter 的唯一 owner 现在是 `v028.js`；`high-frequency-v152.js` 只负责手动点击行级核对按钮后的自动前进。这样实时刷新、新增行、隐藏列和不同客户配置均复用同一 Enter 保存链路。
+
+### 21.6 Linux CI runner 可靠性修复
+
+2026-09-22 实际观察到 `v1.2 validation` 与 `stability gate` 长时间保持 queued，job steps 为空；两者 workflow 均写死 `runs-on: [self-hosted, linux, x64, chen-assistant]`。对比 2026-09-21 同一 workflow 的成功执行记录，确认当前阻塞是自托管 Linux runner 未接单，而不是测试代码失败。
+
+为避免开发/合并门禁依赖单台自托管机器，本分支将 Linux `v1.2 validation` 与 `stability gate` 改为 GitHub 托管 `ubuntu-24.04`。测试集合、完整 validation、历史浏览器验收、稳定性合同均不删减；Playwright 改为 `python -m playwright install --with-deps chromium`，显式安装浏览器系统依赖。Windows PowerShell 5.1 专项仍保持独立 Windows workflow，不以 Linux 测试替代。
