@@ -24,10 +24,10 @@ def main():
     assert 'payment-total-row-v152' in js
     assert "document.querySelector('[data-payment-workbench]')" in js
     assert "event.target.closest?.('[data-payment-workbench] [data-review-toggle]')" in js
-    assert "event.target.closest?.('[data-payment-workbench] .quick-amount')" in js
     assert 'ensurePaymentTotalRow' in js
     assert "window.addEventListener('chen:live-refresh'" in js
     assert 'focusAmountAndCopyAccount' in js
+    assert "arm('amount'" not in js
     assert 'currentRowByServiceId' in js
     assert 'waitForReviewedRow' in js
     assert 'nextPendingBelow(pending.serviceId)' in js
