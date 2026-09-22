@@ -117,7 +117,8 @@ jobs:
       - name: Verify Windows build dependencies
         run: >-
           timeout 120s "$WINE_BIN" "$WINDOWS_PYTHON" -c
-          "import PIL, PyInstaller, pystray; print('Windows build dependencies ready')"
+          "import PIL, pystray; from win32ctypes.pywin32 import pywintypes, win32api;
+          import PyInstaller; print('Windows build dependencies ready')"
       - name: Test with Windows Python
         run: |
           "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants tests
