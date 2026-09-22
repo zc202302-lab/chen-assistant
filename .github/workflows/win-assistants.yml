@@ -1,0 +1,36 @@
+name: win-assistants validation
+
+on:
+  pull_request:
+    paths:
+      - "windows/win-assistants/**"
+      - ".github/workflows/win-assistants.yml"
+  workflow_dispatch:
+
+jobs:
+  validate-and-build:
+    runs-on: windows-2022
+    defaults:
+      run:
+        working-directory: windows/win-assistants
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Compile and test
+        run: |
+          python -m compileall -q main.py win_assistants tests
+          python -m unittest discover -s tests -v
+      - name: Build executable
+        run: >-
+          python -m PyInstaller --noconfirm --clean --onefile --windowed
+          --name win-assistants --collect-submodules pystray
+          --hidden-import PIL.Image --hidden-import PIL.ImageDraw main.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-assistants-windows
+          path: windows/win-assistants/dist/win-assistants.exe
+          if-no-files-found: error
