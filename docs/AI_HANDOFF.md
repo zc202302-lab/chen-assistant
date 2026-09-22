@@ -828,3 +828,7 @@ v1.5.10 进一步加固：
 2026-09-22 实际观察到 `v1.2 validation` 与 `stability gate` 长时间保持 queued，job steps 为空；两者 workflow 均写死 `runs-on: [self-hosted, linux, x64, chen-assistant]`。对比 2026-09-21 同一 workflow 的成功执行记录，确认当前阻塞是自托管 Linux runner 未接单，而不是测试代码失败。
 
 为避免开发/合并门禁依赖单台自托管机器，本分支将 Linux `v1.2 validation` 与 `stability gate` 改为 GitHub 托管 `ubuntu-24.04`。测试集合、完整 validation、历史浏览器验收、稳定性合同均不删减；Playwright 改为 `python -m playwright install --with-deps chromium`，显式安装浏览器系统依赖。Windows PowerShell 5.1 专项仍保持独立 Windows workflow，不以 Linux 测试替代。
+
+### 21.7 Actions 基础设施诊断补充
+
+为区分自托管 runner 离线与测试代码失败，曾在 PR #57 临时将 Linux validation/stability 切到 GitHub 托管 `ubuntu-24.04`。实际结果：托管 Linux validation 与 Windows PowerShell workflow 一样，在任何 step 启动前直接 failure，steps 为空且无日志。因此当前同时存在：自托管 Linux runner 不接单，以及 GitHub 托管 runner 无法正常 provision 的仓库/账号级 Actions 基础设施问题。由于托管切换没有提供有效测试能力，已立即恢复仓库既有 self-hosted Linux workflow，不保留 CI 架构变化。产品代码与测试合同不因此降级或绕过。
