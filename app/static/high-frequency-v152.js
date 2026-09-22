@@ -61,7 +61,11 @@
     return rows.slice(index + 1).find(item => item.dataset.confirmed === '0') || null;
   };
 
-  const accountValue = row => row?.querySelector('.identifier-copy[data-kind="账号"][data-copy]')?.dataset.copy || '';
+  const accountValue = row => String(
+    row?.dataset.paymentAccount ||
+    row?.querySelector('.identifier-copy[data-kind="账号"][data-copy]')?.dataset.copy ||
+    ''
+  ).trim();
 
   const focusAmountAndCopyAccount = async row => {
     if (!row) return;
@@ -92,26 +96,6 @@
     armed = {kind, serial: ++serial, serviceId: String(row.dataset.serviceId || '')};
     return armed;
   };
-
-  window.addEventListener('keydown', event => {
-    if (event.key !== 'Enter') return;
-    const input = event.target.closest?.('[data-payment-workbench] .quick-amount');
-    if (!input) return;
-    arm('amount', input.closest('[data-payment-row]'));
-  }, true);
-
-  workbench.addEventListener('focusin', event => {
-    const input = event.target.closest?.('.quick-amount');
-    if (!input || armed?.kind !== 'amount') return;
-    const row = input.closest('[data-payment-row]');
-    if (!row) return;
-    const targetId = String(row.dataset.serviceId || '');
-    if (!targetId || targetId === armed.serviceId) return;
-    const pending = armed;
-    armed = null;
-    void copyText(accountValue(row));
-    if (pending.serial !== serial) return;
-  });
 
   const waitForReviewedRow = (pending, attemptsLeft = 160) => {
     if (!pending || pending.kind !== 'review') return;

@@ -108,7 +108,7 @@ def main():
     assert '_assert_payment_flow_v033_guard' in main_py
 
     bootstrap = (ROOT / 'app' / 'static' / 'chen_foxmail_bootstrap.ps1').read_text(encoding='utf-8')
-    assert 'UpdateIntervalMinutes = 30' in bootstrap
+    assert 'UpdateIntervalMinutes = 5' in bootstrap
     assert 'chen_foxmail_helper.ps1' in bootstrap
     assert "Path -eq '/compose'" in bootstrap
 

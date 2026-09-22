@@ -9,7 +9,8 @@ $HelperPath = Join-Path $InstallDir 'chen_foxmail_helper.ps1'
 $BootstrapUrl = 'https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_bootstrap.ps1'
 $HelperUrl = 'https://assistant.ziboxiaozhushou.cn/static/chen_foxmail_helper_v09.ps1'
 $StartupName = 'ChenAssistant-Foxmail-Helper.lnk'
-$UpdateIntervalMinutes = 30
+$BootstrapVersion = '1.0'
+$UpdateIntervalMinutes = 5
 $WatchIntervalSeconds = 20
 
 try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
@@ -17,7 +18,7 @@ try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::
 function Get-BridgeProcesses {
     return @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
         $_.CommandLine -and
-        $_.CommandLine -like '*chen_foxmail_helper.ps1*' -and
+        $_.CommandLine -like '*chen_foxmail_helper*.ps1*' -and
         $_.CommandLine -like '*-BridgeMode*'
     })
 }
@@ -35,7 +36,24 @@ function Stop-Bridge {
     foreach ($proc in (Get-BridgeProcesses)) {
         Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
     }
-    Start-Sleep -Milliseconds 350
+    Start-Sleep -Milliseconds 500
+
+    # Historical helpers were sometimes launched directly from versioned files such
+    # as chen_foxmail_helper_v07.ps1 / v08.ps1. If one of those still owns 18763,
+    # terminate only when the listener process command line is clearly one of our
+    # Chen Foxmail helper scripts.
+    try {
+        $listeners = @(Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort 18763 -State Listen -ErrorAction SilentlyContinue)
+        foreach ($listener in $listeners) {
+            $owner = Get-CimInstance Win32_Process -Filter ("ProcessId=" + [int]$listener.OwningProcess) -ErrorAction SilentlyContinue
+            if ($owner -and $owner.CommandLine -and
+                $owner.CommandLine -like '*chen_foxmail_helper*.ps1*' -and
+                $owner.CommandLine -like '*-BridgeMode*') {
+                Stop-Process -Id $owner.ProcessId -Force -ErrorAction SilentlyContinue
+            }
+        }
+    } catch {}
+    Start-Sleep -Milliseconds 500
 }
 
 function Get-BridgePowerShell {
@@ -51,8 +69,16 @@ function Start-Bridge {
     Start-Process -FilePath $bridgePowerShell -WindowStyle Hidden -ArgumentList @(
         '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', "`"$HelperPath`"", '-BridgeMode'
     )
-    Start-Sleep -Milliseconds 1000
-    return ((Get-BridgeProcesses).Count -gt 0)
+    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+        Start-Sleep -Milliseconds 150
+        if ((Get-BridgeProcesses).Count -gt 0) {
+            try {
+                $health = Invoke-RestMethod -UseBasicParsing -Uri 'http://127.0.0.1:18763/health' -Headers @{Origin='https://assistant.ziboxiaozhushou.cn'} -TimeoutSec 2
+                if ($health.ok -eq $true -and $health.version -eq '0.9') { return $true }
+            } catch {}
+        }
+    }
+    return $false
 }
 
 function Start-Watchdog {
@@ -65,6 +91,61 @@ function Start-Watchdog {
     )
 }
 
+function Test-BootstrapFile([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path)) { return $false }
+    try {
+        $bytes = [IO.File]::ReadAllBytes($Path)
+        if ($bytes.Length -lt 1000) { return $false }
+        if (($bytes | Where-Object { $_ -gt 127 }).Count -gt 0) { return $false }
+        $tokens = $null
+        $errors = $null
+        [System.Management.Automation.Language.Parser]::ParseFile(
+            $Path,
+            [ref]$tokens,
+            [ref]$errors
+        ) | Out-Null
+        if ($errors.Count -gt 0) { return $false }
+        $text = [IO.File]::ReadAllText($Path, [Text.Encoding]::ASCII)
+        foreach ($required in @(
+            '$BootstrapVersion',
+            'function Update-Bootstrap',
+            'function Update-Helper',
+            'function Start-Bridge',
+            'chen_foxmail_helper_v09.ps1'
+        )) {
+            if (-not $text.Contains($required)) { return $false }
+        }
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function Update-Bootstrap {
+    New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+    $download = Join-Path $InstallDir 'chen_foxmail_bootstrap.update.ps1'
+    Remove-Item -Force -ErrorAction SilentlyContinue $download
+    try {
+        $uri = $BootstrapUrl + '?autoupdate=' + [DateTime]::UtcNow.Ticks
+        Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $download -TimeoutSec 20
+        if (-not (Test-BootstrapFile $download)) { throw 'Downloaded bootstrap failed validation.' }
+        $newHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $download).Hash
+        $oldHash = ''
+        if (Test-Path -LiteralPath $BootstrapPath) {
+            try { $oldHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $BootstrapPath).Hash } catch {}
+        }
+        if ($newHash -eq $oldHash -and $oldHash) {
+            Remove-Item -Force -ErrorAction SilentlyContinue $download
+            return $false
+        }
+        Copy-Item -Force -LiteralPath $download -Destination $BootstrapPath
+        Remove-Item -Force -ErrorAction SilentlyContinue $download
+        return $true
+    } catch {
+        Remove-Item -Force -ErrorAction SilentlyContinue $download
+        return $false
+    }
+}
 function Test-HelperFile([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path)) { return $false }
     try {
@@ -180,7 +261,7 @@ if (-not $Watch) {
     $started = Start-Bridge
     Start-Watchdog
     Write-Host ''
-    Write-Host 'Chen Assistant Windows helper v0.9 bootstrap installed.' -ForegroundColor Green
+    Write-Host ('Chen Assistant Windows helper bootstrap v' + $BootstrapVersion + ' installed.') -ForegroundColor Green
     Write-Host "Install directory: $InstallDir"
     Write-Host ('Latest helper downloaded: ' + $(if ($updated) { 'yes' } else { 'already current or network unavailable' }))
     Write-Host ('Helper running: ' + $(if ($started) { 'yes' } else { 'no' }))
@@ -198,9 +279,16 @@ $lastUpdate = [DateTime]::MinValue
 while ($true) {
     try {
         if (((Get-Date) - $lastUpdate).TotalMinutes -ge $UpdateIntervalMinutes) {
-            $changed = Update-Helper
+            $bootstrapChanged = Update-Bootstrap
+            if ($bootstrapChanged) {
+                Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -ArgumentList @(
+                    '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $BootstrapPath + '"'), '-Watch'
+                )
+                exit 0
+            }
+            $helperChanged = Update-Helper
             $lastUpdate = Get-Date
-            if ($changed) { Stop-Bridge }
+            if ($helperChanged) { Stop-Bridge }
         }
     } catch {}
     try { [void](Start-Bridge) } catch {}
