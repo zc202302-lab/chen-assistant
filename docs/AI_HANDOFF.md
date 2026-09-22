@@ -7,7 +7,7 @@
 - 当前生产：`985ac41`（v1.5.8，2026-09-20 已部署成功）
 - 当前差异：生产仍为 `985ac41` / v1.5.8；main 已升级到 v1.5.9，包含发起缴费可靠性加固，尚未部署
 - 当前已完成：PR #56 已合并；v1.5.9 已实现“发起缴费待确认持久化”、Foxmail TXT 文件剪贴板交接、TXT/EXCEL 文件名独立、正式 TXT 号码↔金额完整性校验；完整 validation、stability、历史浏览器验收全绿
-- 当前未完成：用户实际 v1.5.9 页面检测到本机旧版 Windows 邮箱助手；已确认根因是旧 bootstrap 不会自更新 bootstrap，且旧安装最长 30 分钟才检查 helper。v1.5.10 热修正在验证 bootstrap 自更新与 5 分钟检查；PR #55 为独立治理 PR；工作资料 CRUD 主线尚未开始
+- 当前未完成：用户重新安装后安装器显示 `Helper running: no`。进一步确认启动链还存在历史版本 helper 进程识别过窄问题：旧的 `chen_foxmail_helper_v07/v08...ps1 -BridgeMode` 可能继续占用 18763，而 bootstrap 只匹配无版本号文件，导致新 v0.9 bridge 启动即退出。v1.5.10 已继续修复为识别全部 `chen_foxmail_helper*.ps1` 历史进程、仅在确认属于晨的小助手 helper 时清理 18763 owner，并在启动后实际请求 /health 验证；PR #55 为独立治理 PR；工作资料 CRUD 主线尚未开始
 - 下一步建议：优先完成 v1.5.10 热修完整 CI，解决 Windows 助手升级链后再继续治理/工作资料。现有 v1.5.9 旧安装可等待原 30 分钟自动检查，或为立即使用重新安装一次当前 bootstrap；v1.5.10 之后 bootstrap 本身也会自动更新
 
 ### 新聊天接管协议
@@ -787,3 +787,15 @@ v1.5.8 修正为：
 ### 21.3 合并条件
 
 应用候选版本为 `v1.5.10`。必须通过完整 validation、stability gate、Windows bootstrap/helper 合同和全部历史浏览器验收后才能合并。Windows GitHub-hosted runner 若仍是 0-step / 0-log 基础设施失败，应继续与代码级失败区分，不能删除或弱化 PowerShell 5.1 校验。
+
+### 21.4 实机启动失败补充修复
+
+用户重新运行安装器后输出 `Helper running: no`。该结果说明不是浏览器缓存问题，而是本机 bridge 未成功启动。审计发现历史 helper 曾直接从 `chen_foxmail_helper_v07.ps1` / `v08.ps1` 等版本化文件启动；旧 bootstrap 的 `Get-BridgeProcesses` 只匹配 `chen_foxmail_helper.ps1`，因此可能漏掉历史 bridge，旧进程继续占用 18763，新 v0.9 listener 随即退出。
+
+v1.5.10 进一步加固：
+
+- `Get-BridgeProcesses` 改为识别 `chen_foxmail_helper*.ps1` + `-BridgeMode`，覆盖版本化历史 helper；
+- `Stop-Bridge` 额外检查 127.0.0.1:18763 listener，但只有 owner 命令行明确属于晨的小助手 Foxmail helper 时才终止，禁止误杀其他应用；
+- `Start-Bridge` 不再只看进程存在，而是在最多约 3 秒内请求 `http://127.0.0.1:18763/health`，确认 `ok=true` 且 `version=0.9` 才报告 Helper running=yes。
+
+这部分属于真实缴费前置安全门禁，必须保留严格验证，不允许用“只要进程在就算成功”的方式回退。
