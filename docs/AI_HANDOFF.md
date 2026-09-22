@@ -832,3 +832,7 @@ v1.5.10 进一步加固：
 ### 21.7 Actions 基础设施诊断补充
 
 为区分自托管 runner 离线与测试代码失败，曾在 PR #57 临时将 Linux validation/stability 切到 GitHub 托管 `ubuntu-24.04`。实际结果：托管 Linux validation 与 Windows PowerShell workflow 一样，在任何 step 启动前直接 failure，steps 为空且无日志。因此当前同时存在：自托管 Linux runner 不接单，以及 GitHub 托管 runner 无法正常 provision 的仓库/账号级 Actions 基础设施问题。由于托管切换没有提供有效测试能力，已立即恢复仓库既有 self-hosted Linux workflow，不保留 CI 架构变化。产品代码与测试合同不因此降级或绕过。
+
+### 21.8 CI 排队去重
+
+由于 PR #57 在 runner 故障期间产生了多轮 queued validation/stability，若自托管 runner 恢复，可能先执行已过时提交。现为 `v1.2 validation` 与 `stability gate` 增加 PR 级 `concurrency`，`cancel-in-progress: true`：同一 PR 只保留最新提交对应的一轮门禁，旧 queued/running 任务自动取消。测试步骤、覆盖范围和合并标准不变，仅减少 runner 恢复后的无效排队。
