@@ -119,6 +119,7 @@ jobs:
           python tests/v151_quick_search_contract.py
           python tests/v152_high_frequency_flow_contract.py
           python tests/v159_payment_initiate_safety_contract.py
+          python tests/v1510_payment_enter_navigation_contract.py
           python tests/v153_home_navigation_contract.py
 
       - name: v1.2 architecture and recipe tools contracts
