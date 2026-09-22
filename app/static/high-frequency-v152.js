@@ -97,26 +97,6 @@
     return armed;
   };
 
-  window.addEventListener('keydown', event => {
-    if (event.key !== 'Enter') return;
-    const input = event.target.closest?.('[data-payment-workbench] .quick-amount');
-    if (!input) return;
-    arm('amount', input.closest('[data-payment-row]'));
-  }, true);
-
-  workbench.addEventListener('focusin', event => {
-    const input = event.target.closest?.('.quick-amount');
-    if (!input || armed?.kind !== 'amount') return;
-    const row = input.closest('[data-payment-row]');
-    if (!row) return;
-    const targetId = String(row.dataset.serviceId || '');
-    if (!targetId || targetId === armed.serviceId) return;
-    const pending = armed;
-    armed = null;
-    void copyText(accountValue(row));
-    if (pending.serial !== serial) return;
-  });
-
   const waitForReviewedRow = (pending, attemptsLeft = 160) => {
     if (!pending || pending.kind !== 'review') return;
     if (armed?.serial !== pending.serial) return;
