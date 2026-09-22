@@ -18,7 +18,7 @@ try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::
 function Get-BridgeProcesses {
     return @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
         $_.CommandLine -and
-        $_.CommandLine -like '*chen_foxmail_helper.ps1*' -and
+        $_.CommandLine -like '*chen_foxmail_helper*.ps1*' -and
         $_.CommandLine -like '*-BridgeMode*'
     })
 }
@@ -36,7 +36,24 @@ function Stop-Bridge {
     foreach ($proc in (Get-BridgeProcesses)) {
         Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
     }
-    Start-Sleep -Milliseconds 350
+    Start-Sleep -Milliseconds 500
+
+    # Historical helpers were sometimes launched directly from versioned files such
+    # as chen_foxmail_helper_v07.ps1 / v08.ps1. If one of those still owns 18763,
+    # terminate only when the listener process command line is clearly one of our
+    # Chen Foxmail helper scripts.
+    try {
+        $listeners = @(Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort 18763 -State Listen -ErrorAction SilentlyContinue)
+        foreach ($listener in $listeners) {
+            $owner = Get-CimInstance Win32_Process -Filter ("ProcessId=" + [int]$listener.OwningProcess) -ErrorAction SilentlyContinue
+            if ($owner -and $owner.CommandLine -and
+                $owner.CommandLine -like '*chen_foxmail_helper*.ps1*' -and
+                $owner.CommandLine -like '*-BridgeMode*') {
+                Stop-Process -Id $owner.ProcessId -Force -ErrorAction SilentlyContinue
+            }
+        }
+    } catch {}
+    Start-Sleep -Milliseconds 500
 }
 
 function Get-BridgePowerShell {
@@ -52,8 +69,16 @@ function Start-Bridge {
     Start-Process -FilePath $bridgePowerShell -WindowStyle Hidden -ArgumentList @(
         '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', "`"$HelperPath`"", '-BridgeMode'
     )
-    Start-Sleep -Milliseconds 1000
-    return ((Get-BridgeProcesses).Count -gt 0)
+    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+        Start-Sleep -Milliseconds 150
+        if ((Get-BridgeProcesses).Count -gt 0) {
+            try {
+                $health = Invoke-RestMethod -UseBasicParsing -Uri 'http://127.0.0.1:18763/health' -Headers @{Origin='https://assistant.ziboxiaozhushou.cn'} -TimeoutSec 2
+                if ($health.ok -eq $true -and $health.version -eq '0.9') { return $true }
+            } catch {}
+        }
+    }
+    return $false
 }
 
 function Start-Watchdog {
