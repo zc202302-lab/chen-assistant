@@ -33,18 +33,6 @@ def _existing(*paths: Path) -> Path | None:
     return next((path for path in paths if path.exists()), None)
 
 
-def _sms_command() -> list[str]:
-    home = Path.home()
-    candidates = [
-        Path.cwd() / "iPhone验证码助手-图标版.exe",
-        home / "Desktop" / "iPhone验证码助手-图标版.exe",
-        home / "Downloads" / "iPhone验证码助手-图标版.exe",
-        home / "桌面" / "iPhone验证码助手-图标版.exe",
-    ]
-    executable = _existing(*candidates)
-    return [str(executable), "--background"] if executable else []
-
-
 def _sedentary_command() -> list[str]:
     roots = [
         Path(r"D:\Tools\chen-sit-guard"),
@@ -74,7 +62,7 @@ def _chen_helper_command() -> list[str]:
 
 def default_module_configs() -> dict[str, ModuleConfig]:
     commands = {
-        "sms": _sms_command(),
+        "sms": [],
         "sedentary": _sedentary_command(),
         "chen_helper": _chen_helper_command(),
     }

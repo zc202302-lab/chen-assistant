@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import queue
+import re
 import sys
 import tkinter as tk
+from urllib.parse import urlparse
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
@@ -10,6 +13,7 @@ from . import __version__
 from .config import AppConfig
 from .modules import MODULES, ModuleManager, default_module_configs
 from .single_instance import SingleInstance
+from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
 from .startup import is_startup_enabled, set_startup, take_over_legacy_startup
 
 
@@ -45,8 +49,11 @@ class WinAssistantsApp:
     def __init__(self, root: tk.Tk, start_hidden: bool = False) -> None:
         self.root = root
         self.config = AppConfig.load(default_module_configs())
+        migrate_legacy_config(self.config)
         self.manager = ModuleManager(self._set_status)
+        self.sms_receiver = SmsReceiver()
         self.tray_icon = None
+        self.sms_code_var = tk.StringVar(value="尚未收到验证码")
         self.status_vars = {item.key: tk.StringVar(value="等待启动") for item in MODULES}
         self.enabled_vars = {item.key: tk.BooleanVar(value=self.config.modules[item.key].enabled) for item in MODULES}
         self.path_vars = {
@@ -90,26 +97,35 @@ class WinAssistantsApp:
             card.pack(fill="x", pady=(0, 10))
             head = ttk.Frame(card, style="Card.TFrame")
             head.pack(fill="x")
-            ttk.Checkbutton(head, variable=self.enabled_vars[item.key], command=self._save_ui).pack(side="left")
+            ttk.Checkbutton(head, variable=self.enabled_vars[item.key], command=lambda key=item.key: self._toggle_module(key)).pack(side="left")
             ttk.Label(head, text=item.name, style="Module.TLabel").pack(side="left")
             ttk.Label(head, textvariable=self.status_vars[item.key], style="Card.TLabel").pack(side="right")
             ttk.Label(card, text=item.description, style="Card.TLabel").pack(anchor="w", padx=(28, 0), pady=(3, 8))
             row = ttk.Frame(card, style="Card.TFrame")
             row.pack(fill="x", padx=(28, 0))
-            ttk.Entry(row, textvariable=self.path_vars[item.key]).pack(side="left", fill="x", expand=True)
-            ttk.Button(row, text="选择", command=lambda key=item.key: self._choose_path(key)).pack(side="left", padx=(8, 0))
-            ttk.Button(row, text="立即启动", command=lambda key=item.key: self._start_one(key)).pack(side="left", padx=(8, 0))
+            if item.key == "sms":
+                ttk.Label(row, text="内置模块 · 不再启动独立短信 EXE", style="Card.TLabel").pack(side="left")
+                ttk.Label(row, textvariable=self.sms_code_var, style="Card.TLabel").pack(side="left", padx=(18, 0))
+                ttk.Button(row, text="复制验证码", command=self._copy_sms_code).pack(side="right", padx=(8, 0))
+                ttk.Button(row, text="设置", command=self._show_sms_settings).pack(side="right")
+            else:
+                ttk.Entry(row, textvariable=self.path_vars[item.key]).pack(side="left", fill="x", expand=True)
+                ttk.Button(row, text="选择", command=lambda key=item.key: self._choose_path(key)).pack(side="left", padx=(8, 0))
+                ttk.Button(row, text="立即启动", command=lambda key=item.key: self._start_one(key)).pack(side="left", padx=(8, 0))
 
         controls = ttk.Frame(outer)
         controls.pack(fill="x", pady=(6, 0))
         ttk.Checkbutton(controls, text="win-assistants 随 Windows 登录启动", variable=self.startup_var, command=self._toggle_startup).pack(side="left")
         ttk.Button(controls, text="接管旧工具的开机启动", command=self._take_over).pack(side="right")
-        ttk.Label(outer, text=f"v{__version__} · 第一阶段统一壳：功能逻辑保持原样，后续逐步内置为同一进程。", style="Sub.TLabel").pack(anchor="w", pady=(14, 0))
+        ttk.Label(outer, text=f"v{__version__} · 短信助手已内置；久坐与小助手连接继续渐进迁移。", style="Sub.TLabel").pack(anchor="w", pady=(14, 0))
 
     def _save_ui(self) -> None:
         for item in MODULES:
             cfg = self.config.modules[item.key]
             cfg.enabled = bool(self.enabled_vars[item.key].get())
+            if item.key == "sms":
+                cfg.command = []
+                continue
             path = self.path_vars[item.key].get().strip()
             if path:
                 if path != _display_path(cfg.command):
@@ -119,6 +135,8 @@ class WinAssistantsApp:
         self.config.save()
 
     def _choose_path(self, key: str) -> None:
+        if key == "sms":
+            return
         path = filedialog.askopenfilename(title="选择模块程序", filetypes=[("程序或脚本", "*.exe *.py *.ps1"), ("所有文件", "*.*")])
         if not path:
             return
@@ -136,8 +154,29 @@ class WinAssistantsApp:
             self.status_vars[item.key].set(f"{cfg.delay_seconds} 秒后启动")
             self.root.after(cfg.delay_seconds * 1000, lambda key=item.key: self._start_one(key))
 
+    def _toggle_module(self, key: str) -> None:
+        self._save_ui()
+        if self.enabled_vars[key].get():
+            self._start_one(key)
+        else:
+            if key == "sms":
+                self.sms_receiver.stop()
+            self.status_vars[key].set("已停用")
+
     def _start_one(self, key: str) -> None:
         self._save_ui()
+        if key == "sms":
+            try:
+                token = unprotect_secret(self.config.sms.protected_token)
+            except Exception as exc:
+                self.status_vars[key].set(f"令牌读取失败：{exc}")
+                return
+            if not token:
+                self.status_vars[key].set("请先完成设置")
+                return
+            self.sms_receiver.start(self.config.sms, token)
+            self.status_vars[key].set("正在连接")
+            return
         ok, detail = self.manager.start(key, self.config.modules[key])
         self.status_vars[key].set(detail)
 
@@ -148,7 +187,104 @@ class WinAssistantsApp:
 
     def _poll(self) -> None:
         self.manager.refresh()
+        while True:
+            try:
+                event = self.sms_receiver.events.get_nowait()
+            except queue.Empty:
+                break
+            self.status_vars["sms"].set(event.message)
+            if event.kind == "message":
+                if event.code:
+                    self.sms_code_var.set(event.code)
+                    self.root.bell()
+                    self._show_window()
+                if event.marker:
+                    self.config.sms.marker = event.marker
+                    self.config.save()
         self.root.after(1500, self._poll)
+
+    def _copy_sms_code(self) -> None:
+        code = self.sms_code_var.get().strip()
+        if not re.fullmatch(r"\d{4,8}", code):
+            messagebox.showinfo("短信助手", "目前没有可复制的验证码。")
+            return
+        self.root.clipboard_clear()
+        self.root.clipboard_append(code)
+        self.status_vars["sms"].set("验证码已复制")
+        self.root.withdraw()
+
+    def _show_sms_settings(self) -> None:
+        window = tk.Toplevel(self.root)
+        window.title("短信助手设置")
+        window.geometry("610x370")
+        window.resizable(False, False)
+        frame = ttk.Frame(window, padding=20)
+        frame.pack(fill="both", expand=True)
+
+        server_var = tk.StringVar(value=self.config.sms.server_base)
+        channel_var = tk.StringVar(value=self.config.sms.channel)
+        try:
+            current_token = unprotect_secret(self.config.sms.protected_token)
+        except Exception:
+            current_token = ""
+        token_var = tk.StringVar(value=current_token)
+        interval_var = tk.IntVar(value=self.config.sms.interval_seconds)
+
+        fields = (("服务器地址", server_var, False), ("接收主题", channel_var, False), ("访问令牌", token_var, True))
+        for row, (label, variable, secret) in enumerate(fields):
+            ttk.Label(frame, text=label).grid(row=row, column=0, sticky="w", pady=7)
+            ttk.Entry(frame, textvariable=variable, show="●" if secret else "", width=53).grid(row=row, column=1, sticky="ew", padx=(12, 0), pady=7)
+        ttk.Label(frame, text="重连间隔（秒）").grid(row=3, column=0, sticky="w", pady=7)
+        ttk.Spinbox(frame, from_=5, to=30, textvariable=interval_var, width=8).grid(row=3, column=1, sticky="w", padx=(12, 0), pady=7)
+        ttk.Label(frame, text="旧版短信助手配置会在首次运行时自动迁移；令牌继续使用 Windows 用户级加密保存。", style="Sub.TLabel", wraplength=540).grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 16))
+        frame.columnconfigure(1, weight=1)
+
+        def save_and_connect() -> None:
+            server = server_var.get().strip().rstrip("/")
+            channel = channel_var.get().strip().strip("/")
+            token = token_var.get().strip()
+            parsed = urlparse(server)
+            if parsed.scheme.lower() != "https" or not parsed.netloc or parsed.path not in ("", "/"):
+                messagebox.showerror("短信助手", "服务器地址应为 HTTPS 域名，例如 https://sms.example.com。", parent=window)
+                return
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", channel):
+                messagebox.showerror("短信助手", "接收主题只能包含字母、数字、横线或下划线。", parent=window)
+                return
+            if not token:
+                messagebox.showerror("短信助手", "请填写访问令牌。", parent=window)
+                return
+            try:
+                interval = max(5, min(30, int(interval_var.get())))
+                protected = protect_secret(token)
+            except Exception as exc:
+                messagebox.showerror("短信助手", f"保存令牌失败：{exc}", parent=window)
+                return
+            self.config.sms.server_base = server
+            self.config.sms.channel = channel
+            self.config.sms.protected_token = protected
+            self.config.sms.marker = "latest"
+            self.config.sms.interval_seconds = interval
+            self.config.save()
+            window.destroy()
+            if self.enabled_vars["sms"].get():
+                self._start_one("sms")
+
+        buttons = ttk.Frame(frame)
+        buttons.grid(row=5, column=0, columnspan=2, sticky="e")
+        ttk.Button(buttons, text="发送测试", command=lambda: self._send_sms_test(server_var.get(), channel_var.get(), token_var.get())).pack(side="left", padx=(0, 8))
+        ttk.Button(buttons, text="保存并连接", command=save_and_connect).pack(side="left")
+
+    def _send_sms_test(self, server: str, channel: str, token: str) -> None:
+        if not token.strip():
+            messagebox.showinfo("短信助手", "请先填写访问令牌。")
+            return
+        settings = type(self.config.sms)(
+            server_base=server.strip().rstrip("/"),
+            channel=channel.strip().strip("/"),
+            interval_seconds=self.config.sms.interval_seconds,
+        )
+        self.sms_receiver.publish_test(settings, token.strip())
+        self.status_vars["sms"].set("正在发送测试短信")
 
     def _toggle_startup(self) -> None:
         try:
@@ -194,6 +330,7 @@ class WinAssistantsApp:
         self.root.focus_force()
 
     def _exit(self) -> None:
+        self.sms_receiver.stop()
         if self.tray_icon is not None:
             try:
                 self.tray_icon.stop()
