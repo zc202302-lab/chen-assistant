@@ -888,3 +888,29 @@ v1.5.10 进一步加固：
 - 旧 PowerShell 文件和配置不删除。端口已由兼容独立版占用时，统一程序识别并复用；只有用户明确点击“接管旧工具的开机启动”后，才停止精确匹配的旧 bridge/watchdog 并切换到内置桥接。
 - 版本更新为 `win-assistants v0.3.0`；本地全量编译和 16 个标准库单元测试通过。
 - 提交 `5b515a4` 的跨平台源码验证、`v1.2 validation` 与 `stability gate` 均通过。Windows EXE 构建已实际运行，便携 Wine 与运行库下载成功，首次因未显式指定同包内 `wineserver64` 失败；`e1a7871` 已设置 `WINESERVER`，合入最新 main 后重新验证。尚不能声称 EXE 已生成或 Windows 实机验收完成。
+
+
+### 22.6 v0.3.0 Windows 构建产物已生成并完成静态验收
+
+- PR：#58，分支：`feat/win-assistants-shell`。
+- 已确认用于构建的 head：`21fa5d7b67f1114b07f76a1539cee59cd314bd30`。
+- GitHub Actions `win-assistants cross build` run #23（Run ID `35707202191`）已成功；其中 `source-validation` 和 `build-windows-exe` 均实际执行并成功，PE 校验步骤成功。
+- 同阶段 `v1.2 validation` run #775 与 `stability gate` run #393 已成功。
+- `Windows Foxmail helper validation` run #115 仍是 GitHub 托管 Windows runner 的 0 steps / 无日志基础设施失败；没有代码执行证据，因此不得把它解释成业务代码或测试失败，也不得因此弱化测试。
+- Artifact：`win-assistants-windows`，Artifact ID `10684494468`，ZIP 大小 `15,380,215` 字节，过期时间 2026-12-21。
+- Artifact ZIP SHA-256：`e073406889f8f5f306d78b4f9d196ed8c18d3847356d9a5e4a3a5e4b91b89155`；已重新下载并验证与 GitHub Artifact digest 完全一致，ZIP 完整性通过。
+- ZIP 内仅包含：`win-assistants.exe` 与 `win-assistants.exe.sha256`。
+- `win-assistants.exe` 大小：`15,585,024` 字节；SHA-256：`9d54f5376443f32e6e0f76430e72104fa75ea80105fc16c768d5600e8ef91c37`，与包内校验文件一致。
+- 静态 PE 检查：文件为标准 `PE32+` / x86-64 Windows GUI 可执行文件，7 个节；启用 `HIGH_ENTROPY_VA`、`DYNAMIC_BASE`、`NX_COMPAT`、`GUARD_CF`。Security Directory 为空，当前产物未做 Authenticode 代码签名，因此首次运行出现 Windows SmartScreen“未知发布者”提示属于预期现象。
+- 源码复核继续满足安全边界：Foxmail bridge 仅绑定 `127.0.0.1:18763`；严格 Origin 限制；附件 Base64 与 SHA256 校验；写盘后二次 SHA256 校验；通过 CF_HDROP 文件剪贴板交接；`/health` 明确 `auto_send=false`；只打开 Foxmail 写信/草稿窗口，不自动发送邮件。
+
+**重要状态区分：**以上只代表 CI 构建、源码测试、Artifact 完整性与静态检查通过。尚未完成真实 Windows 机器运行验收，不能写成“Windows 实机验证成功”。
+
+真实 Windows 验收剩余事项：
+
+1. 在用户真实 Windows 电脑直接启动 `win-assistants.exe`，确认单实例、窗口/托盘、配置目录和旧启动项接管行为。
+2. 验证内置短信助手真实 ntfy 接收、验证码识别、剪贴板复制。
+3. 验证 `127.0.0.1:18763/health` 与网页来源限制。
+4. 从“晨的小助手”网页实际执行一次“发起缴费”：只应打开 Foxmail 写信窗口，把校验后的 TXT 放入文件剪贴板；用户手动 `Ctrl+V` 添加附件并人工发送，程序不得自动发送。
+5. 验证 TXT 文件名、内容、SHA256、临时目录自动清理，以及旧 PowerShell Foxmail helper/旧短信启动项接管与回退。
+6. 久坐助手当前仍按既定成熟子进程方案运行；其内置迁移继续放在真实 Windows 验收之后。
