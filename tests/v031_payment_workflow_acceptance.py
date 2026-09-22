@@ -165,6 +165,31 @@ def main():
             assert fixed_row.get_attribute('data-confirmed') == '1'
             assert variable_row.get_attribute('data-confirmed') == '0'
             expect(page.locator('#pendingCount')).to_have_text('1')
+
+            # v1.5.10: Enter navigation must treat any unreviewed row as pending,
+            # including a fixed row manually unchecked. Account copy must not depend
+            # on whether the account column is visible.
+            fixed_row.locator('[data-review-toggle]').click()
+            expect(fixed_row).to_have_attribute('data-confirmed', '0', timeout=3000)
+            assert fixed_row.get_attribute('data-payment-account') == 'A002'
+            await_account = page.evaluate("navigator.clipboard.readText().catch(() => '')")
+            assert isinstance(await_account, str)
+            assert_no_dialog_while(page, lambda: variable_input.fill('101'))
+            variable_input.press('Enter')
+            expect(fixed_input).to_be_focused(timeout=3000)
+            expect(page.locator('#pendingCount')).to_have_text('1', timeout=3000)
+            page.wait_for_timeout(150)
+            assert page.evaluate("navigator.clipboard.readText()") == 'A002'
+
+            # Restore the original amount/state so the existing workflow acceptance
+            # below keeps exercising its historical baseline.
+            fixed_row.locator('[data-review-toggle]').click()
+            expect(fixed_row).to_have_attribute('data-confirmed', '1', timeout=3000)
+            variable_input.fill('100'); variable_input.press('Enter')
+            expect(variable_row).to_have_attribute('data-confirmed', '1', timeout=3000)
+            variable_state.click()
+            expect(variable_row).to_have_attribute('data-confirmed', '0', timeout=3000)
+            expect(page.locator('#pendingCount')).to_have_text('1', timeout=3000)
             variable_state.click()
             expect(page.locator('#pendingCount')).to_have_text('0', timeout=3000)
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=3000)
