@@ -1,0 +1,142 @@
+name: win-assistants cross build
+
+on:
+  pull_request:
+    paths:
+      - "windows/win-assistants/**"
+      - ".github/workflows/win-assistants-cross-build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-validation:
+    runs-on: [self-hosted, linux, x64, chen-assistant]
+    defaults:
+      run:
+        working-directory: windows/win-assistants
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Compile and test
+        run: |
+          python -m compileall -q main.py win_assistants tests
+          python -m unittest discover -s tests -v
+
+  build-windows-exe:
+    runs-on: [self-hosted, linux, x64, chen-assistant]
+    defaults:
+      run:
+        working-directory: windows/win-assistants
+    env:
+      WINEDEBUG: -all
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare portable Wine
+        run: |
+          wine_root="${RUNNER_TEMP}/win-assistants-wine"
+          mkdir -p "${wine_root}/debs" "${wine_root}/root"
+          cd "${wine_root}/debs"
+          apt-get download xvfb xserver-common
+          for package in ./*.deb; do
+            dpkg-deb --extract "${package}" "${wine_root}/root"
+          done
+          wine_archive="${wine_root}/wine-11.18-staging-tkg-amd64-wow64.tar.xz"
+          curl --fail --location --retry 3 --output "${wine_archive}" \
+            "https://github.com/Kron4ek/Wine-Builds/releases/download/11.18/wine-11.18-staging-tkg-amd64-wow64.tar.xz"
+          echo "a903e2c6f555ee897e764b3525f1163c8ca129fd257933ea570d4070bf47e1c3  ${wine_archive}" \
+            | sha256sum --check
+          tar -xJf "${wine_archive}" -C "${wine_root}/root"
+          wine_bin="$(find "${wine_root}/root" -path '*/bin/wine' -type f -print -quit)"
+          wineserver_bin="$(find "${wine_root}/root" -path '*/bin/wineserver' -type f -print -quit)"
+          wineboot_bin="$(find "${wine_root}/root" -path '*/bin/wineboot' -print -quit)"
+          wine_prefix="${RUNNER_TEMP}/win-assistants-wine-prefix"
+          xvfb_bin="${wine_root}/root/usr/bin/Xvfb"
+          test -x "${wine_bin}"
+          test -x "${wineserver_bin}"
+          test -x "${wineboot_bin}"
+          test -x "${xvfb_bin}"
+          echo "WINE_BIN=${wine_bin}" >> "${GITHUB_ENV}"
+          echo "WINESERVER=${wineserver_bin}" >> "${GITHUB_ENV}"
+          echo "WINEARCH=win64" >> "${GITHUB_ENV}"
+          echo 'WINEDLLOVERRIDES=winemenubuilder.exe=d;mscoree,mshtml=' >> "${GITHUB_ENV}"
+          echo "WINEPREFIX=${wine_prefix}" >> "${GITHUB_ENV}"
+          "${xvfb_bin}" :99 -screen 0 1024x768x24 -nolisten tcp \
+            > "${RUNNER_TEMP}/win-assistants-xvfb.log" 2>&1 &
+          echo "DISPLAY=:99" >> "${GITHUB_ENV}"
+          for attempt in {1..20}; do
+            test -S /tmp/.X11-unix/X99 && break
+            sleep 0.25
+          done
+          test -S /tmp/.X11-unix/X99
+          export DISPLAY=:99
+          export WINEPREFIX="${wine_prefix}"
+          export WINEARCH=win64
+          export WINESERVER="${wineserver_bin}"
+          export WINEDLLOVERRIDES='winemenubuilder.exe=d;mscoree,mshtml='
+          timeout 180s "${wineboot_bin}" --init
+          timeout 30s "${wineserver_bin}" -w || true
+      - name: Prepare embedded Windows Python
+        run: |
+          windows_python="${RUNNER_TEMP}/win-assistants-python"
+          mkdir -p "${windows_python}"
+          curl --fail --location --retry 3 \
+            --output "${RUNNER_TEMP}/python-3.12.10-embed-amd64.zip" \
+            "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip"
+          python3 -m zipfile -e "${RUNNER_TEMP}/python-3.12.10-embed-amd64.zip" "${windows_python}"
+          sed -i 's/^#import site/import site/' "${windows_python}/python312._pth"
+          windows_wheels="${RUNNER_TEMP}/win-assistants-wheels"
+          mkdir -p "${windows_python}/Lib/site-packages" "${windows_wheels}"
+          python3 -m pip download --disable-pip-version-check --only-binary=:all: \
+            --dest "${windows_wheels}" "pip>=24,<26"
+          pip_wheel="$(find "${windows_wheels}" -maxdepth 1 -name 'pip-*.whl' -print -quit)"
+          test -f "${pip_wheel}"
+          python3 -m zipfile -e "${pip_wheel}" "${windows_python}/Lib/site-packages"
+          python3 -m pip download --disable-pip-version-check --only-binary=:all: \
+            --platform win_amd64 --python-version 312 --implementation cp --abi cp312 \
+            --dest "${windows_wheels}" -r requirements.txt \
+            "pefile>=2022.5.30" "pywin32-ctypes>=0.2.1"
+          for wheel in "${windows_wheels}"/*.whl; do
+            python3 -m zipfile -e "${wheel}" "${windows_python}/Lib/site-packages"
+          done
+          cp -R win_assistants "${windows_python}/win_assistants"
+          echo "WINDOWS_PYTHON=${windows_python}/python.exe" >> "${GITHUB_ENV}"
+          echo "WINDOWS_WHEELS=${windows_wheels}" >> "${GITHUB_ENV}"
+          "$WINE_BIN" --version
+          if ! timeout 120s "$WINE_BIN" "${windows_python}/python.exe" --version; then
+            timeout 30s env WINEDEBUG=+module "$WINE_BIN" "${windows_python}/python.exe" --version \
+              > "${RUNNER_TEMP}/win-assistants-wine-module.log" 2>&1 || true
+            tail -n 300 "${RUNNER_TEMP}/win-assistants-wine-module.log"
+            exit 1
+          fi
+      - name: Verify Windows build dependencies
+        run: >-
+          timeout 120s "$WINE_BIN" "$WINDOWS_PYTHON" -c
+          "import PIL, pystray; from win32ctypes.pywin32 import pywintypes, win32api;
+          import PyInstaller; print('Windows build dependencies ready')"
+      - name: Test with Windows Python
+        run: |
+          "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants tests
+          "$WINE_BIN" "$WINDOWS_PYTHON" -m unittest discover -s tests -v
+      - name: Build Windows executable
+        run: >-
+          "$WINE_BIN" "$WINDOWS_PYTHON" -m PyInstaller --noconfirm --clean --onefile --windowed
+          --name win-assistants --collect-submodules pystray
+          --hidden-import PIL.Image --hidden-import PIL.ImageDraw main.py
+      - name: Verify PE executable
+        run: |
+          test -s dist/win-assistants.exe
+          file dist/win-assistants.exe | tee dist/file-type.txt
+          grep -q "PE32" dist/file-type.txt
+          sha256sum dist/win-assistants.exe | tee dist/win-assistants.exe.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-assistants-windows
+          path: |
+            windows/win-assistants/dist/win-assistants.exe
+            windows/win-assistants/dist/win-assistants.exe.sha256
+          if-no-files-found: error

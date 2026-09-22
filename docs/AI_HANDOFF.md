@@ -836,3 +836,81 @@ v1.5.10 进一步加固：
 ### 21.8 CI 排队去重
 
 由于 PR #57 在 runner 故障期间产生了多轮 queued validation/stability，若自托管 runner 恢复，可能先执行已过时提交。现为 `v1.2 validation` 与 `stability gate` 增加 PR 级 `concurrency`，`cancel-in-progress: true`：同一 PR 只保留最新提交对应的一轮门禁，旧 queued/running 任务自动取消。测试步骤、覆盖范围和合并标准不变，仅减少 runner 恢复后的无效排队。
+
+---
+
+## 22. 2026-09-22 win-assistants 统一 Windows 客户端启动
+
+用户将统一客户端正式命名为 `win-assistants`。第一阶段采用“统一壳 + 成熟模块子进程”的渐进迁移方案，不直接重写短信、久坐或 Foxmail 已验证逻辑。
+
+### 22.1 第一阶段范围
+
+- 新增目录：`windows/win-assistants`。
+- 统一管理三个模块：短信助手、久坐助手、“晨的小助手”本地连接。
+- 提供统一窗口、统一托盘、单实例保护、模块启停、延迟启动和程序路径选择。
+- 配置保存在 `%APPDATA%\\win-assistants\\config.json`；现有三个工具的数据目录暂不迁移。
+- “接管旧工具的开机启动”只能在用户明确点击后执行；只删除已知旧启动入口，不删除程序或设置，并把 `win-assistants` 设为唯一开机入口。
+- 新增 Windows 构建脚本和 GitHub Actions，目标产物为 `win-assistants.exe`。
+
+### 22.2 迁移约束
+
+- 久坐模块必须以 `chen-sit-guard v2.8.0` 当前人体存在检测、摄像头异常暂停、强制休息状态机为基线，不能重写后退。
+- 短信模块迁入统一进程时，保留当前 ntfy 长连接、DPAPI/用户级令牌保护、4～8 位验证码识别、单实例和托盘行为。
+- Foxmail 模块迁入统一进程时，保留仅监听 `127.0.0.1`、来源限制、FileDrop 剪贴板、TXT SHA256/号码金额校验及绝不自动发送邮件的边界。
+- 第一阶段允许子进程存在；只有各模块内置并通过真实 Windows 验收后，才能退出原独立版。
+
+### 22.3 当前分支状态
+
+- 分支：`feat/win-assistants-shell`
+- 首个实现提交：`380158866c0105b48ee3c06dffffc991e5f9d9c7`
+- 当前分支最新功能提交：`4463c327127bb2c753c5124fdf83abd5c8d129c6`。
+- 本地 Python 编译检查通过，16 个标准库单元测试通过。
+- 尚未合并到 main，尚未发布安装包，不改变晨的小助手 v1.5.9 / 生产 v1.5.8 的现有基准。
+
+
+### 22.4 v0.2.0 短信模块已内置
+
+- 短信助手不再作为独立 EXE 子进程启动，ntfy JSON 流接收、验证码识别、测试发送和剪贴板复制已迁入 `win-assistants` 进程。
+- 首次启动会只读导入 `%APPDATA%\\iPhoneSmsBridgeNoServer\\config.json`；旧令牌由当前 Windows 用户通过 PowerShell 解密，再使用 `win-assistants` 自己的 Windows DPAPI 密文保存。
+- 旧配置和旧 EXE 不删除，实机验证完成前始终可回退。
+- 保留原规则：服务器必须是 HTTPS；主题只允许字母、数字、横线、下划线；验证码优先匹配带语义标签的 4～8 位数字，再使用通用数字回退。
+- 接收线程加入 generation 隔离；快速重连后，旧阻塞线程即使稍后返回也不能继续投递消息或覆盖新连接。
+- Windows runner 仍存在 0 step / 0 log 基础设施故障；Linux `v1.2 validation` 与 `stability gate` 已通过，Windows EXE 尚未生成。
+
+
+### 22.5 v0.3.0 Foxmail 本地桥接已内置
+
+- Foxmail 本地 HTTP 桥接已迁入 `win-assistants` 进程，不再需要独立 PowerShell helper/watchdog 维持服务。
+- 继续只绑定 `127.0.0.1:18763`，拒绝无 Origin、非本机以及非 `ziboxiaozhushou.cn` 根域/子域来源。
+- 保持 v0.9 网页兼容协议：`/health`、`/compose`、直接 Foxmail.exe + mailto、写信窗口检测、TXT 文件剪贴板，以及 `auto_send=false`。
+- TXT 请求限制 12 MB；附件文件名必须安全归一化前后完全一致；输入字节和落盘文件均校验服务器提供的 SHA256。
+- 并发 compose 请求串行处理，避免两个缴费任务争抢文件剪贴板。
+- 旧 PowerShell 文件和配置不删除。端口已由兼容独立版占用时，统一程序识别并复用；只有用户明确点击“接管旧工具的开机启动”后，才停止精确匹配的旧 bridge/watchdog 并切换到内置桥接。
+- 版本更新为 `win-assistants v0.3.0`；本地全量编译和 16 个标准库单元测试通过。
+- 提交 `5b515a4` 的跨平台源码验证、`v1.2 validation` 与 `stability gate` 均通过。Windows EXE 构建已实际运行，便携 Wine 与运行库下载成功，首次因未显式指定同包内 `wineserver64` 失败；`e1a7871` 已设置 `WINESERVER`，合入最新 main 后重新验证。尚不能声称 EXE 已生成或 Windows 实机验收完成。
+
+
+### 22.6 v0.3.0 Windows 构建产物已生成并完成静态验收
+
+- PR：#58，分支：`feat/win-assistants-shell`。
+- 已确认用于构建的 head：`21fa5d7b67f1114b07f76a1539cee59cd314bd30`。
+- GitHub Actions `win-assistants cross build` run #23（Run ID `35707202191`）已成功；其中 `source-validation` 和 `build-windows-exe` 均实际执行并成功，PE 校验步骤成功。
+- 同阶段 `v1.2 validation` run #775 与 `stability gate` run #393 已成功。
+- `Windows Foxmail helper validation` run #115 仍是 GitHub 托管 Windows runner 的 0 steps / 无日志基础设施失败；没有代码执行证据，因此不得把它解释成业务代码或测试失败，也不得因此弱化测试。
+- Artifact：`win-assistants-windows`，Artifact ID `10684494468`，ZIP 大小 `15,380,215` 字节，过期时间 2026-12-21。
+- Artifact ZIP SHA-256：`e073406889f8f5f306d78b4f9d196ed8c18d3847356d9a5e4a3a5e4b91b89155`；已重新下载并验证与 GitHub Artifact digest 完全一致，ZIP 完整性通过。
+- ZIP 内仅包含：`win-assistants.exe` 与 `win-assistants.exe.sha256`。
+- `win-assistants.exe` 大小：`15,585,024` 字节；SHA-256：`9d54f5376443f32e6e0f76430e72104fa75ea80105fc16c768d5600e8ef91c37`，与包内校验文件一致。
+- 静态 PE 检查：文件为标准 `PE32+` / x86-64 Windows GUI 可执行文件，7 个节；启用 `HIGH_ENTROPY_VA`、`DYNAMIC_BASE`、`NX_COMPAT`、`GUARD_CF`。Security Directory 为空，当前产物未做 Authenticode 代码签名，因此首次运行出现 Windows SmartScreen“未知发布者”提示属于预期现象。
+- 源码复核继续满足安全边界：Foxmail bridge 仅绑定 `127.0.0.1:18763`；严格 Origin 限制；附件 Base64 与 SHA256 校验；写盘后二次 SHA256 校验；通过 CF_HDROP 文件剪贴板交接；`/health` 明确 `auto_send=false`；只打开 Foxmail 写信/草稿窗口，不自动发送邮件。
+
+**重要状态区分：**以上只代表 CI 构建、源码测试、Artifact 完整性与静态检查通过。尚未完成真实 Windows 机器运行验收，不能写成“Windows 实机验证成功”。
+
+真实 Windows 验收剩余事项：
+
+1. 在用户真实 Windows 电脑直接启动 `win-assistants.exe`，确认单实例、窗口/托盘、配置目录和旧启动项接管行为。
+2. 验证内置短信助手真实 ntfy 接收、验证码识别、剪贴板复制。
+3. 验证 `127.0.0.1:18763/health` 与网页来源限制。
+4. 从“晨的小助手”网页实际执行一次“发起缴费”：只应打开 Foxmail 写信窗口，把校验后的 TXT 放入文件剪贴板；用户手动 `Ctrl+V` 添加附件并人工发送，程序不得自动发送。
+5. 验证 TXT 文件名、内容、SHA256、临时目录自动清理，以及旧 PowerShell Foxmail helper/旧短信启动项接管与回退。
+6. 久坐助手当前仍按既定成熟子进程方案运行；其内置迁移继续放在真实 Windows 验收之后。
