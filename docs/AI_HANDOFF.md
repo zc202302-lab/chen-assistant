@@ -820,3 +820,5 @@ v1.5.10 进一步加固：
 由于当前所有客户共用同一运行时模板和同一 `v028.js`，该修复覆盖全部客户页面，而不是对单个客户打补丁。
 
 补充审计：后加载的 `high-frequency-v152.js` 也维护了金额 Enter / 手动核对后的高频跳转辅助逻辑。其下一条筛选已按 `data-confirmed=0`，但账号读取仍依赖可见 `.identifier-copy[data-kind="账号"]` 单元格。现已统一优先读取行级 `data-payment-account`，并刷新静态资源版本，确保隐藏账号列时主链路与高频辅助链路行为一致。
+
+为避免双 owner 竞态，已删除 `high-frequency-v152.js` 对金额 Enter / focusin 的二次监听。金额 Enter 的唯一 owner 现在是 `v028.js`；`high-frequency-v152.js` 只负责手动点击行级核对按钮后的自动前进。这样实时刷新、新增行、隐藏列和不同客户配置均复用同一 Enter 保存链路。
