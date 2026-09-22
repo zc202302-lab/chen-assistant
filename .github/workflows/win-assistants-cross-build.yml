@@ -100,7 +100,8 @@ jobs:
           python3 -m zipfile -e "${pip_wheel}" "${windows_python}/Lib/site-packages"
           python3 -m pip download --disable-pip-version-check --only-binary=:all: \
             --platform win_amd64 --python-version 312 --implementation cp --abi cp312 \
-            --dest "${windows_wheels}" -r requirements.txt
+            --dest "${windows_wheels}" -r requirements.txt \
+            "pefile>=2022.5.30" "pywin32-ctypes>=0.2.1"
           for wheel in "${windows_wheels}"/*.whl; do
             python3 -m zipfile -e "${wheel}" "${windows_python}/Lib/site-packages"
           done
