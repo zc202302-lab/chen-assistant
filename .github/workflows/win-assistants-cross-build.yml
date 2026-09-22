@@ -103,6 +103,7 @@ jobs:
           for wheel in "${windows_wheels}"/*.whl; do
             python3 -m zipfile -e "${wheel}" "${windows_python}/Lib/site-packages"
           done
+          cp -R win_assistants "${windows_python}/win_assistants"
           echo "WINDOWS_PYTHON=${windows_python}/python.exe" >> "${GITHUB_ENV}"
           echo "WINDOWS_WHEELS=${windows_wheels}" >> "${GITHUB_ENV}"
           "$WINE_BIN" --version
@@ -120,7 +121,7 @@ jobs:
       - name: Test with Windows Python
         run: |
           "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants tests
-          "$WINE_BIN" "$WINDOWS_PYTHON" -m unittest discover -s tests -t . -v
+          "$WINE_BIN" "$WINDOWS_PYTHON" -m unittest discover -s tests -v
       - name: Build Windows executable
         run: >-
           "$WINE_BIN" "$WINDOWS_PYTHON" -m PyInstaller --noconfirm --clean --onefile --windowed
