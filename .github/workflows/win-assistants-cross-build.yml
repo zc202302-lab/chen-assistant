@@ -56,6 +56,10 @@ jobs:
           test -x "${xvfb_bin}"
           ln -sfn "$(basename "${wineserver_bin}")" "$(dirname "${wine_bin}")/wineserver"
           mkdir -p "${wine_prefix}/drive_c/windows/system32"
+          mkdir -p \
+            "${wine_prefix}/drive_c/users/runner/AppData/Local" \
+            "${wine_prefix}/drive_c/users/runner/AppData/Roaming" \
+            "${wine_prefix}/drive_c/users/runner/Temp"
           find "${wine_dll_path}/x86_64-windows" -maxdepth 1 -type f \
             -exec ln -sfn {} "${wine_prefix}/drive_c/windows/system32/" \;
           echo "WINE_BIN=${wine_bin}" >> "${GITHUB_ENV}"
@@ -64,6 +68,11 @@ jobs:
           echo "WINEARCH=win64" >> "${GITHUB_ENV}"
           echo "WINEDLLOVERRIDES=winemenubuilder.exe=d" >> "${GITHUB_ENV}"
           echo "WINEPREFIX=${wine_prefix}" >> "${GITHUB_ENV}"
+          echo 'USERPROFILE=C:\users\runner' >> "${GITHUB_ENV}"
+          echo 'APPDATA=C:\users\runner\AppData\Roaming' >> "${GITHUB_ENV}"
+          echo 'LOCALAPPDATA=C:\users\runner\AppData\Local' >> "${GITHUB_ENV}"
+          echo 'TEMP=C:\users\runner\Temp' >> "${GITHUB_ENV}"
+          echo 'TMP=C:\users\runner\Temp' >> "${GITHUB_ENV}"
           echo "LD_LIBRARY_PATH=${wine_root}/root/usr/lib/x86_64-linux-gnu:${wine_root}/root/lib/x86_64-linux-gnu" >> "${GITHUB_ENV}"
           "${xvfb_bin}" :99 -screen 0 1024x768x24 -nolisten tcp \
             > "${RUNNER_TEMP}/win-assistants-xvfb.log" 2>&1 &
