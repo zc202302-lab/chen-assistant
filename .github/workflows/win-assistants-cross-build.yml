@@ -53,15 +53,17 @@ jobs:
           tar -xJf "${wine_archive}" -C "${wine_root}/root"
           wine_bin="$(find "${wine_root}/root" -path '*/bin/wine' -type f -print -quit)"
           wineserver_bin="$(find "${wine_root}/root" -path '*/bin/wineserver' -type f -print -quit)"
+          wineboot_bin="$(find "${wine_root}/root" -path '*/bin/wineboot' -print -quit)"
           wine_prefix="${RUNNER_TEMP}/win-assistants-wine-prefix"
           xvfb_bin="${wine_root}/root/usr/bin/Xvfb"
           test -x "${wine_bin}"
           test -x "${wineserver_bin}"
+          test -x "${wineboot_bin}"
           test -x "${xvfb_bin}"
           echo "WINE_BIN=${wine_bin}" >> "${GITHUB_ENV}"
           echo "WINESERVER=${wineserver_bin}" >> "${GITHUB_ENV}"
           echo "WINEARCH=win64" >> "${GITHUB_ENV}"
-          echo "WINEDLLOVERRIDES=winemenubuilder.exe=d" >> "${GITHUB_ENV}"
+          echo 'WINEDLLOVERRIDES=winemenubuilder.exe=d;mscoree,mshtml=' >> "${GITHUB_ENV}"
           echo "WINEPREFIX=${wine_prefix}" >> "${GITHUB_ENV}"
           "${xvfb_bin}" :99 -screen 0 1024x768x24 -nolisten tcp \
             > "${RUNNER_TEMP}/win-assistants-xvfb.log" 2>&1 &
@@ -71,6 +73,13 @@ jobs:
             sleep 0.25
           done
           test -S /tmp/.X11-unix/X99
+          export DISPLAY=:99
+          export WINEPREFIX="${wine_prefix}"
+          export WINEARCH=win64
+          export WINESERVER="${wineserver_bin}"
+          export WINEDLLOVERRIDES='winemenubuilder.exe=d;mscoree,mshtml='
+          timeout 180s "${wineboot_bin}" --init
+          timeout 30s "${wineserver_bin}" -w || true
       - name: Prepare embedded Windows Python
         run: |
           windows_python="${RUNNER_TEMP}/win-assistants-python"
