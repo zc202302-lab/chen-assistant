@@ -5,14 +5,26 @@
   <section class="home-v024-head"><div><p class="eyebrow">客户管理</p><h1>{{ today.strftime('%Y年%m月%d日') }}</h1></div><p>缴费是默认工作视图；其他事项按需切换。</p></section>
 
   <nav class="home-v024-tabs" aria-label="客户管理功能">
-    <button type="button" data-home-tab="payment" class="{% if active_home_tab=='payment' %}active{% endif %}">缴费 <b>{{ wait_notice|length + wait_payment|length }}</b></button>
+    <button type="button" data-home-tab="payment" class="{% if active_home_tab=='payment' %}active{% endif %}">缴费 <b>{{ wait_notice|length + wait_initiate|length + wait_payment|length }}</b></button>
     <button type="button" data-home-tab="tasks" class="{% if active_home_tab=='tasks' %}active{% endif %}">待办 <b>{{ tasks|length }}</b></button>
     <button type="button" data-home-tab="promos" class="{% if active_home_tab=='promos' %}active{% endif %}">优惠 <b>{{ promo_customers|length }}</b></button>
     <button type="button" data-home-tab="recent" class="{% if active_home_tab=='recent' %}active{% endif %}">最近客户</button>
   </nav>
 
   <div class="home-v024-panels">
-    <section class="home-v024-panel" data-home-panel="payment" {% if active_home_tab!='payment' %}hidden{% endif %}><div class="card home-v024-card"><div class="section-head"><h2>缴费</h2><span>{{ wait_notice|length + wait_payment|length }} 个客户待处理</span></div><div class="home-v024-payment-columns"><div class="home-v024-subsection"><h3>待通知 <span class="count">{{ wait_notice|length }}</span></h3>{% for c in wait_notice %}<a class="list-row link" href="/customers/{{ c.id }}"><span>{{ c.name }}</span><span>›</span></a>{% else %}<p class="empty">无</p>{% endfor %}</div><div class="home-v024-subsection"><h3>已通知未缴费 <span class="count">{{ wait_payment|length }}</span></h3>{% for c in wait_payment %}<a class="list-row link" href="/customers/{{ c.id }}"><span>{{ c.name }}</span><span>›</span></a>{% else %}<p class="empty">无</p>{% endfor %}</div></div></div></section>
+    <section class="home-v024-panel" data-home-panel="payment" {% if active_home_tab!='payment' %}hidden{% endif %}>
+      <div class="card home-v024-card">
+        <div class="section-head">
+          <div><h2>缴费</h2><small class="home-payment-helper-v1511">按流程阶段分组，优先处理已经发起但尚未完成的缴费。</small></div>
+          <span>{{ wait_notice|length + wait_initiate|length + wait_payment|length }} 个客户待处理</span>
+        </div>
+        <div class="home-v024-payment-columns home-payment-columns-v1511">
+          <div class="home-v024-subsection home-payment-stage-v1511 state-unnotified"><h3><i aria-hidden="true"></i>未通知 <span class="count">{{ wait_notice|length }}</span></h3><p class="home-payment-stage-note-v1511">还没通知客户</p>{% for c in wait_notice %}<a class="list-row link" href="/customers/{{ c.id }}"><span>{{ c.name }}</span><span>›</span></a>{% else %}<p class="empty">暂无客户</p>{% endfor %}</div>
+          <div class="home-v024-subsection home-payment-stage-v1511 state-notified"><h3><i aria-hidden="true"></i>已通知 <span class="count">{{ wait_initiate|length }}</span></h3><p class="home-payment-stage-note-v1511">已通知客户，尚未发起缴费</p>{% for c in wait_initiate %}<a class="list-row link" href="/customers/{{ c.id }}"><span>{{ c.name }}</span><span>›</span></a>{% else %}<p class="empty">暂无客户</p>{% endfor %}</div>
+          <div class="home-v024-subsection home-payment-stage-v1511 state-initiated"><h3><i aria-hidden="true"></i>待缴费 <span class="count">{{ wait_payment|length }}</span></h3><p class="home-payment-stage-note-v1511">已发起缴费，等待完成缴费</p>{% for c in wait_payment %}<a class="list-row link" href="/customers/{{ c.id }}"><span>{{ c.name }}</span><span>›</span></a>{% else %}<p class="empty">暂无客户</p>{% endfor %}</div>
+        </div>
+      </div>
+    </section>
 
     <section class="home-v024-panel" data-home-panel="tasks" {% if active_home_tab!='tasks' %}hidden{% endif %}><div class="card home-v024-card"><div class="section-head"><h2>待办</h2><span>{{ tasks|length }} 项</span></div>{% if tasks %}<div class="list">{% for t in tasks %}<div class="list-row"><div><b>{{ t.title }}</b><small>{{ t.customer_name or '个人待办' }}{% if t.remind_date %} · {{ t.remind_date|replace('-','/') }}{% endif %}</small>{% if t.note %}<small>{{ t.note }}</small>{% endif %}</div><form method="post" action="/tasks/{{ t.id }}/toggle"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small">完成</button></form></div>{% endfor %}</div>{% else %}<p class="empty">目前没有到期待办。</p>{% endif %}</div></section>
 
