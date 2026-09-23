@@ -80,22 +80,26 @@ jobs:
           export WINEDLLOVERRIDES='winemenubuilder.exe=d;mscoree,mshtml='
           timeout 180s "${wineboot_bin}" --init
           timeout 30s "${wineserver_bin}" -w || true
-      - name: Prepare embedded Windows Python
+      - name: Prepare full Windows Python with Tcl/Tk
         run: |
-          windows_python="${RUNNER_TEMP}/win-assistants-python"
-          mkdir -p "${windows_python}"
+          python_installer="${RUNNER_TEMP}/python-3.12.10-amd64.exe"
           curl --fail --location --retry 3 \
-            --output "${RUNNER_TEMP}/python-3.12.10-embed-amd64.zip" \
-            "https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip"
-          python3 -m zipfile -e "${RUNNER_TEMP}/python-3.12.10-embed-amd64.zip" "${windows_python}"
-          sed -i 's/^#import site/import site/' "${windows_python}/python312._pth"
+            --output "${python_installer}" \
+            "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe"
+          timeout 300s "$WINE_BIN" "${python_installer}" /quiet \
+            InstallAllUsers=0 \
+            TargetDir=C:\\win-assistants-python \
+            Include_launcher=0 Include_test=0 Include_doc=0 Include_debug=0 Include_symbols=0 \
+            Include_pip=0 Include_tcltk=1 PrependPath=0 Shortcuts=0
+          timeout 30s "$WINESERVER" -w || true
+
+          windows_python="${WINEPREFIX}/drive_c/win-assistants-python"
+          test -f "${windows_python}/python.exe"
+          test -f "${windows_python}/Lib/tkinter/__init__.py"
+          test -d "${windows_python}/tcl/tk8.6"
+
           windows_wheels="${RUNNER_TEMP}/win-assistants-wheels"
           mkdir -p "${windows_python}/Lib/site-packages" "${windows_wheels}"
-          python3 -m pip download --disable-pip-version-check --only-binary=:all: \
-            --dest "${windows_wheels}" "pip>=24,<26"
-          pip_wheel="$(find "${windows_wheels}" -maxdepth 1 -name 'pip-*.whl' -print -quit)"
-          test -f "${pip_wheel}"
-          python3 -m zipfile -e "${pip_wheel}" "${windows_python}/Lib/site-packages"
           python3 -m pip download --disable-pip-version-check --only-binary=:all: \
             --platform win_amd64 --python-version 312 --implementation cp --abi cp312 \
             --dest "${windows_wheels}" -r requirements.txt \
@@ -104,15 +108,13 @@ jobs:
             python3 -m zipfile -e "${wheel}" "${windows_python}/Lib/site-packages"
           done
           cp -R win_assistants "${windows_python}/win_assistants"
+
           echo "WINDOWS_PYTHON=${windows_python}/python.exe" >> "${GITHUB_ENV}"
           echo "WINDOWS_WHEELS=${windows_wheels}" >> "${GITHUB_ENV}"
           "$WINE_BIN" --version
-          if ! timeout 120s "$WINE_BIN" "${windows_python}/python.exe" --version; then
-            timeout 30s env WINEDEBUG=+module "$WINE_BIN" "${windows_python}/python.exe" --version \
-              > "${RUNNER_TEMP}/win-assistants-wine-module.log" 2>&1 || true
-            tail -n 300 "${RUNNER_TEMP}/win-assistants-wine-module.log"
-            exit 1
-          fi
+          timeout 120s "$WINE_BIN" "${windows_python}/python.exe" --version
+          timeout 120s "$WINE_BIN" "${windows_python}/python.exe" -c \
+            "import tkinter as tk; root=tk.Tk(); root.withdraw(); root.update_idletasks(); root.destroy(); print('Tk runtime ready')"
       - name: Verify Windows build dependencies
         run: >-
           timeout 120s "$WINE_BIN" "$WINDOWS_PYTHON" -c
@@ -127,6 +129,17 @@ jobs:
           "$WINE_BIN" "$WINDOWS_PYTHON" -m PyInstaller --noconfirm --clean --onefile --windowed
           --name win-assistants --collect-submodules pystray
           --hidden-import PIL.Image --hidden-import PIL.ImageDraw main.py
+      - name: Smoke launch built executable
+        run: |
+          set +e
+          timeout 8s "$WINE_BIN" dist/win-assistants.exe --background
+          status=$?
+          set -e
+          if [ "$status" -ne 124 ]; then
+            echo "win-assistants.exe exited during GUI smoke test (status=$status)"
+            exit 1
+          fi
+          timeout 30s "$WINESERVER" -k || true
       - name: Verify PE executable
         run: |
           test -s dist/win-assistants.exe
