@@ -5,10 +5,32 @@ cd "$APP_DIR"
 echo "===== 晨的助手 v${EXPECTED_VERSION} 一键更新 ====="
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then echo "✗ 检测到服务器受 Git 管理文件有本地修改，已停止更新。"; git status --short; exit 1; fi
 DEPLOY_FROM_REV="${CHEN_DEPLOY_FROM_REV:-$(git rev-parse HEAD)}"
-START_REV="$(git rev-parse HEAD)"; echo "当前代码：$(git rev-parse --short HEAD)"; git fetch origin main; git merge --ff-only origin/main; END_REV="$(git rev-parse HEAD)"
+TARGET_REV="${CHEN_DEPLOY_TARGET_REV:-}"
+START_REV="$(git rev-parse HEAD)"
+echo "当前代码：$(git rev-parse --short HEAD)"
+git fetch origin main
+if [[ -n "$TARGET_REV" ]]; then
+  git rev-parse --verify "$TARGET_REV^{commit}" >/dev/null 2>&1 || { echo "✗ 指定部署提交不存在：$TARGET_REV"; exit 1; }
+  git merge-base --is-ancestor "$TARGET_REV" origin/main || { echo "✗ 指定部署提交不属于当前 origin/main：$TARGET_REV"; exit 1; }
+  if git merge-base --is-ancestor "$TARGET_REV" "$START_REV"; then
+    if [[ "$TARGET_REV" != "$START_REV" ]]; then
+      echo "✓ 当前生产代码已经超过指定提交，跳过过时部署任务且不回退"
+      exit 0
+    fi
+    echo "✓ 当前生产代码正是指定提交，继续执行健康检查"
+  elif git merge-base --is-ancestor "$START_REV" "$TARGET_REV"; then
+    git merge --ff-only "$TARGET_REV"
+  else
+    echo "✗ 生产代码与指定部署提交无法快进合并，已停止更新"
+    exit 1
+  fi
+else
+  git merge --ff-only origin/main
+fi
+END_REV="$(git rev-parse HEAD)"
 if [[ "$START_REV" != "$END_REV" && "${CHEN_DEPLOY_REEXEC:-0}" != "1" ]]; then
   echo "✓ 已更新部署脚本与代码，使用新脚本继续部署"
-  exec env CHEN_DEPLOY_REEXEC=1 CHEN_DEPLOY_FROM_REV="$DEPLOY_FROM_REV" bash "$APP_DIR/deploy.sh"
+  exec env CHEN_DEPLOY_REEXEC=1 CHEN_DEPLOY_FROM_REV="$DEPLOY_FROM_REV" CHEN_DEPLOY_TARGET_REV="$TARGET_REV" bash "$APP_DIR/deploy.sh"
 fi
 CHANGED_FILE_LIST="$(mktemp)"
 trap 'rm -f "$CHANGED_FILE_LIST"' EXIT
