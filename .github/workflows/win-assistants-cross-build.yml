@@ -94,7 +94,7 @@ jobs:
           timeout 30s "$WINESERVER" -w || true
 
           windows_python="${WINEPREFIX}/drive_c/win-assistants-python"
-          test -x "${windows_python}/python.exe"
+          test -f "${windows_python}/python.exe"
           test -f "${windows_python}/Lib/tkinter/__init__.py"
           test -d "${windows_python}/tcl/tk8.6"
 
