@@ -46,7 +46,7 @@ def main():
             context.add_cookies([{'name':'session_token','value':token,'url':'http://127.0.0.1:8151'}])
             page=context.new_page(); page.goto('http://127.0.0.1:8151/work/customers?home=payment',wait_until='networkidle')
             cols=page.locator('.home-payment-stage-v1511'); expect(cols).to_have_count(3)
-            headings=[x.strip() for x in cols.locator('h3').all_inner_texts()]
+            headings=[' '.join(x.split()) for x in cols.locator('h3').all_inner_texts()]
             assert headings==['未通知 1','已通知 1','待缴费 1'],headings
             expect(cols.nth(0).get_by_text('甲公司-未通知',exact=True)).to_be_visible()
             expect(cols.nth(1).get_by_text('乙公司-已通知',exact=True)).to_be_visible()
