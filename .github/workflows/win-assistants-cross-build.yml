@@ -167,10 +167,6 @@ jobs:
         id: publish_updater
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.head_ref == 'deploy/win-assistants-v0.4.0')
         run: |
-          publish_root="/opt/chen-assistant/app/static/win-assistants"
-          test -d "/opt/chen-assistant/app/static"
-          mkdir -p "$publish_root"
-
           version="$(
             python3 - <<'PY'
           from pathlib import Path
@@ -185,16 +181,16 @@ jobs:
           sha="$(sha256sum dist/win-assistants.exe | awk '{print $1}')"
           size="$(stat -c '%s' dist/win-assistants.exe)"
 
-          temp_exe="$publish_root/win-assistants.exe.new"
-          install -m 0755 dist/win-assistants.exe "$temp_exe"
-          test "$(sha256sum "$temp_exe" | awk '{print $1}')" = "$sha"
-          mv -f "$temp_exe" "$publish_root/win-assistants.exe"
+          stage_dir="${RUNNER_TEMP}/win-assistants-publish"
+          rm -rf "$stage_dir"
+          mkdir -p "$stage_dir"
+          install -m 0755 dist/win-assistants.exe "$stage_dir/win-assistants.exe"
+          test "$(sha256sum "$stage_dir/win-assistants.exe" | awk '{print $1}')" = "$sha"
 
-          python3 - "$publish_root/update.json.new" "$version" "$sha" "$size" <<'PY'
+          python3 - "$stage_dir/update.json" "$version" "$sha" "$size" <<'PY'
           import json
           import sys
           from pathlib import Path
-
           target, version, sha256, size = sys.argv[1:]
           payload = {
               "version": version,
@@ -208,7 +204,28 @@ jobs:
               encoding="utf-8",
           )
           PY
-          mv -f "$publish_root/update.json.new" "$publish_root/update.json"
+
+          publish_root="/opt/chen-assistant/app/static/win-assistants"
+          if [ -d "/opt/chen-assistant/app/static" ]; then
+            mkdir -p "$publish_root"
+            install -m 0755 "$stage_dir/win-assistants.exe" "$publish_root/win-assistants.exe.new"
+            install -m 0644 "$stage_dir/update.json" "$publish_root/update.json.new"
+            mv -f "$publish_root/win-assistants.exe.new" "$publish_root/win-assistants.exe"
+            mv -f "$publish_root/update.json.new" "$publish_root/update.json"
+          else
+            remote=""
+            for candidate in root ubuntu deploy; do
+              if ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5                 "$candidate@assistant.ziboxiaozhushou.cn"                 "test -d /opt/chen-assistant/app/static" >/dev/null 2>&1; then
+                remote="$candidate@assistant.ziboxiaozhushou.cn"
+                break
+              fi
+            done
+            test -n "$remote"
+            remote_stage="/tmp/win-assistants-${GITHUB_SHA}"
+            ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$remote"               "rm -rf '$remote_stage' && mkdir -p '$remote_stage'"
+            scp -q -o BatchMode=yes -o StrictHostKeyChecking=accept-new               "$stage_dir/win-assistants.exe" "$stage_dir/update.json"               "$remote:$remote_stage/"
+            ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$remote"               "mkdir -p '$publish_root' &&                install -m 0755 '$remote_stage/win-assistants.exe' '$publish_root/win-assistants.exe.new' &&                install -m 0644 '$remote_stage/update.json' '$publish_root/update.json.new' &&                mv -f '$publish_root/win-assistants.exe.new' '$publish_root/win-assistants.exe' &&                mv -f '$publish_root/update.json.new' '$publish_root/update.json' &&                rm -rf '$remote_stage'"
+          fi
 
           curl --fail --silent --show-error --max-time 10             "https://assistant.ziboxiaozhushou.cn/static/win-assistants/update.json?verify=$GITHUB_SHA"             | python3 -c "import json,sys; p=json.load(sys.stdin); assert p['version']=='$version'; assert p['sha256']=='$sha'; assert int(p['size'])==$size"
 
