@@ -88,28 +88,46 @@ def launch_replacement(staged: Path) -> None:
     if not staged.is_file():
         raise RuntimeError("待安装更新文件不存在")
 
-    script = staged.parent / "apply-update.cmd"
-    body = (
-        "@echo off\r\n"
-        "setlocal\r\n"
-        f"set \"OLDPID={os.getpid()}\"\r\n"
-        f"set \"SOURCE={staged}\"\r\n"
-        f"set \"TARGET={target}\"\r\n"
-        ":waitloop\r\n"
-        "tasklist /FI \"PID eq %OLDPID%\" 2>NUL | findstr /R /C:\"[ ]%OLDPID%[ ]\" >NUL\r\n"
-        "if not errorlevel 1 (\r\n"
-        "  timeout /t 1 /nobreak >NUL\r\n"
-        "  goto waitloop\r\n"
-        ")\r\n"
-        "copy /Y \"%SOURCE%\" \"%TARGET%\" >NUL\r\n"
-        "if errorlevel 1 exit /b 1\r\n"
-        "start \"\" \"%TARGET%\" --background\r\n"
-        "del /Q \"%SOURCE%\" >NUL 2>&1\r\n"
-        "del /Q \"%~f0\" >NUL 2>&1\r\n"
-    )
-    script.write_text(body, encoding="ascii", errors="strict")
+    script = staged.parent / "apply-update.ps1"
+    source_text = str(staged).replace("'", "''")
+    target_text = str(target).replace("'", "''")
+    body = f"""$ErrorActionPreference = 'Stop'
+$oldPid = {os.getpid()}
+$source = '{source_text}'
+$target = '{target_text}'
+
+try {{
+    Wait-Process -Id $oldPid -Timeout 60 -ErrorAction SilentlyContinue
+}} catch {{}}
+
+for ($attempt = 0; $attempt -lt 30; $attempt++) {{
+    try {{
+        Copy-Item -LiteralPath $source -Destination $target -Force
+        break
+    }} catch {{
+        if ($attempt -ge 29) {{ throw }}
+        Start-Sleep -Milliseconds 500
+    }}
+}}
+
+Start-Process -FilePath $target -ArgumentList '--background'
+Remove-Item -LiteralPath $source -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
+"""
+    script.write_text(body, encoding="utf-8-sig")
+    powershell = Path(os.getenv("WINDIR", r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
+    executable = str(powershell if powershell.is_file() else Path("powershell.exe"))
     subprocess.Popen(
-        ["cmd.exe", "/c", str(script)],
+        [
+            executable,
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-WindowStyle",
+            "Hidden",
+            "-File",
+            str(script),
+        ],
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         close_fds=True,
     )
