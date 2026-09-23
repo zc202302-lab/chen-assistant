@@ -51,7 +51,8 @@ def main():
             expect(cols.nth(0).get_by_text('甲公司-未通知',exact=True)).to_be_visible()
             expect(cols.nth(1).get_by_text('乙公司-已通知',exact=True)).to_be_visible()
             expect(cols.nth(2).get_by_text('丙公司-待缴费',exact=True)).to_be_visible()
-            expect(page.get_by_text('丁公司-已完成',exact=True)).to_have_count(0)
+            payment_panel=page.locator('[data-home-panel="payment"]')
+            expect(payment_panel.get_by_text('丁公司-已完成',exact=True)).to_have_count(0)
             expect(page.locator('[data-home-tab="payment"] b')).to_have_text('3')
             expect(page.get_by_text('3 个客户待处理',exact=True)).to_be_visible()
             assert cols.nth(2).locator('a').get_attribute('href')==f"/customers/{ids['丙公司-待缴费']}"
