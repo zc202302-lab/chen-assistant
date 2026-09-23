@@ -1,5 +1,9 @@
 name: win-assistants cross build
 
+permissions:
+  contents: read
+  statuses: write
+
 on:
   pull_request:
     paths:
@@ -160,6 +164,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish updater files to production static directory
+        id: publish_updater
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           publish_root="/opt/chen-assistant/app/static/win-assistants"
@@ -212,3 +217,26 @@ jobs:
           )"
           test "$remote_sha" = "$sha"
           echo "Published win-assistants v$version ($sha)"
+
+      - name: Report updater publish status
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH_OUTCOME: ${{ steps.publish_updater.outcome }}
+        run: |
+          state="failure"
+          description="win-assistants updater publish failed"
+          if [ "$PUBLISH_OUTCOME" = "success" ]; then
+            state="success"
+            description="win-assistants updater published and verified"
+          fi
+          payload="$(python3 - "$state" "$description" <<'PY'
+          import json,sys
+          print(json.dumps({
+              "state": sys.argv[1],
+              "context": "win-assistants/publish",
+              "description": sys.argv[2],
+          }, separators=(",", ":")))
+          PY
+          )"
+          curl --fail --silent --show-error             -X POST             -H "Authorization: Bearer $GH_TOKEN"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"             -d "$payload"
