@@ -14,6 +14,7 @@ from .foxmail import FoxmailBridge
 from .modules import MODULES, ModuleManager, default_module_configs
 from .single_instance import SingleInstance
 from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
+from .sedentary import read_status as read_sedentary_status, send_command as send_sedentary_command, status_text as sedentary_status_text
 from .startup import is_startup_enabled, set_startup, stop_legacy_foxmail_processes, take_over_legacy_startup
 
 
@@ -91,6 +92,12 @@ class WinAssistantsApp:
             elif item.key == "chen_helper":
                 ttk.Label(row, text="内置模块 · 仅监听 127.0.0.1:18763 · 不自动发送邮件", style="Card.TLabel").pack(side="left")
                 ttk.Button(row, text="重新启动", command=lambda: self._start_one("chen_helper")).pack(side="right")
+            elif item.key == "sedentary":
+                ttk.Entry(row, textvariable=self.path_vars[item.key]).pack(side="left", fill="x", expand=True)
+                ttk.Button(row, text="选择", command=lambda key=item.key: self._choose_path(key)).pack(side="left", padx=(8, 0))
+                ttk.Button(row, text="打开状态", command=lambda: self._sedentary_command("show_status")).pack(side="left", padx=(8, 0))
+                ttk.Button(row, text="设置", command=lambda: self._sedentary_command("show_settings")).pack(side="left", padx=(8, 0))
+                ttk.Button(row, text="立即启动", command=lambda key=item.key: self._start_one(key)).pack(side="left", padx=(8, 0))
             else:
                 ttk.Entry(row, textvariable=self.path_vars[item.key]).pack(side="left", fill="x", expand=True)
                 ttk.Button(row, text="选择", command=lambda key=item.key: self._choose_path(key)).pack(side="left", padx=(8, 0))
@@ -177,6 +184,9 @@ class WinAssistantsApp:
 
     def _poll(self) -> None:
         self.manager.refresh()
+        status = read_sedentary_status()
+        if status:
+            self.status_vars["sedentary"].set(sedentary_status_text(status))
         while True:
             try:
                 event = self.sms_receiver.events.get_nowait()
@@ -192,6 +202,19 @@ class WinAssistantsApp:
                     self.config.sms.marker = event.marker
                     self.config.save()
         self.root.after(1500, self._poll)
+
+    def _sedentary_command(self, action: str) -> None:
+        status = read_sedentary_status()
+        if not status:
+            self._start_one("sedentary")
+            self.root.after(1200, lambda: self._sedentary_command(action))
+            return
+        try:
+            send_sedentary_command(action)
+        except OSError as exc:
+            messagebox.showerror("久坐助手", f"无法发送控制命令：{exc}")
+            return
+        self.status_vars["sedentary"].set(sedentary_status_text(status))
 
     def _copy_sms_code(self) -> None:
         code = self.sms_code_var.get().strip()
