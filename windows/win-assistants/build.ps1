@@ -11,6 +11,7 @@ $Python = Join-Path $Root '.venv\Scripts\python.exe'
 & $Python -m pip install --disable-pip-version-check -r requirements.txt
 & $Python -m compileall -q main.py win_assistants tests
 & $Python -m unittest discover -s tests -v
+& $Python -c "import tkinter as tk; root = tk.Tk(); root.withdraw(); root.update_idletasks(); root.destroy(); print('Tk runtime ready')"
 & $Python -m PyInstaller --noconfirm --clean --onefile --windowed `
     --name win-assistants `
     --collect-submodules pystray `
