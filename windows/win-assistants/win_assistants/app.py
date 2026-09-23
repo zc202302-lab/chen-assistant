@@ -206,8 +206,10 @@ class WinAssistantsApp:
     def _sedentary_command(self, action: str) -> None:
         status = read_sedentary_status()
         if not status:
-            self._start_one("sedentary")
-            self.root.after(1200, lambda: self._sedentary_command(action))
+            messagebox.showinfo(
+                "久坐助手",
+                "当前久坐助手尚未提供统一状态接口。请先在久坐助手托盘菜单中执行“检查更新”，更新完成并重启后即可从这里打开状态和设置。",
+            )
             return
         try:
             send_sedentary_command(action)
