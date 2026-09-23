@@ -2,13 +2,13 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前应用版本：`v1.5.10`（main）；`v1.5.11` 缴费看板三阶段改造正在开发；`win-assistants v0.3.1` 已合并进入 main
-- 当前 `main`：`4b97170c51852ec226aae732107d562a50b15e84`（PR #59 已合并；修复 `win-assistants v0.3.0` 实机启动缺少 `tkinter` 的构建缺陷，版本更新为 `v0.3.1`）
-- 当前生产：接力文档此前记录为 `985ac41` / v1.5.8；本次没有重新部署 Web 主站或服务器，不能据此声称生产已部署 v1.5.10
-- 当前已完成：PR #59 已合并。用户首次真实 Windows 验收发现 v0.3.0 启动即报 `ModuleNotFoundError: No module named 'tkinter'`；根因是旧交叉构建使用不含 Tcl/Tk 的 Python embeddable ZIP。v0.3.1 已改为完整 Windows Python + Tcl/Tk 构建，并新增 Tk 窗口创建测试及最终 EXE 真实启动 smoke test。`win-assistants cross build` run #26、`v1.2 validation` run #780、`stability gate` run #398 均成功；新 Artifact 已生成并重新校验。详细见 22.7。
-- 已知基础设施问题：Windows Foxmail PowerShell 5.1 GitHub-hosted workflow run #115 仍为 0-step / 无日志 failure；任务没有执行代码，不能解释为业务代码或测试失败。当前 EXE 未做 Authenticode 代码签名，因此首次运行可能触发 Windows SmartScreen“未知发布者”提示。
-- 当前未完成：v1.5.11 正在将缴费首页从“未通知 / 已通知未缴费”两列拆成“未通知 / 已通知 / 待缴费”三列，按本月真实 `notified_at / initiated_at / paid_at` 流程状态分类，并保持已完成缴费客户不出现在待处理看板；`win-assistants v0.3.1` 仍需继续真实 Windows 机器验收；PR #55 和工作资料 CRUD 主线尚未开始。
-- 下一步建议：先在真实 Windows 电脑验收 `win-assistants.exe`；验收通过后再决定是否创建正式 GitHub Release/签名分发。不要因为本次 Windows 产物收尾顺便部署 Web 主站。
+- 当前应用版本：Web 主线已进入 `v1.5.11`；`win-assistants v0.4.0` 已通过 PR #62 合并进入 main；久坐助手 `chen-sit-guard v2.8.2` 继续保持独立成熟代码并通过本地状态/控制桥接接入统一壳。
+- 当前 `main`：`6927b26185e469d887cacca8ad46fb09be8452c1`（包含 PR #62 的 `win-assistants v0.4.0`、后续发布状态报告，以及 v1.5.11 相关合并；后续接力仍以仓库实时 main 为准）。
+- 当前生产：本轮没有执行 Web 主站 `deploy.sh`，也没有重启生产 Web 服务；Windows 自更新线上发布尝试当前状态为 `win-assistants/publish = failure`，原因是现有 self-hosted runner 与生产 Web 主机分离，不能把“main 已合并”写成“更新服务器已发布成功”。
+- 当前已完成：`win-assistants v0.4.0` 已恢复久坐实时状态/“打开状态”/“设置”入口，并加入统一“检查更新”；短信和 Foxmail 继续内置，久坐助手通过本地文件桥接保留独立 owner。PR 最终 head `5160986a406f7abf3acc410ebbaf5afa8b37e180` 的 `win-assistants cross build` run #34、`v1.2 validation` run #795、`stability gate` run #413 均成功；最终 EXE 已实际启动 smoke test。用户已在真实 Windows 上确认 v0.3.1 可启动，且短信、Foxmail 功能验证无问题。
+- 已知基础设施问题：Windows Foxmail PowerShell 5.1 GitHub-hosted workflow 仍可能出现 0-step / 无日志 failure，不能当成业务代码失败；当前 EXE 仍未做 Authenticode 代码签名。另有 Windows 自更新发布链路未闭环：构建成功，但生产静态目录发布失败。
+- 当前未完成：需要把 `https://assistant.ziboxiaozhushou.cn/static/win-assistants/` 的 `update.json` 与正式 EXE 真正发布到线上；在该发布成功前，v0.4.0 的“检查更新”代码虽已就绪，但不能视为线上自更新可用。v0.3.1 → v0.4.0 仍需要最后一次手工替换；v0.4.0 之后目标是统一通过“检查更新”升级。
+- 下一步建议：优先完成 Windows 更新资产的独立发布通道，不顺带重启 Web 主站；随后让用户用最终 v0.4.0 EXE 做一次真实 Windows 验收，并验证“检查更新”能访问线上清单。
 
 ### 新聊天接管协议
 
@@ -954,3 +954,18 @@ v1.5.10 进一步加固：
 - **已完成缴费**：不进入缴费待处理看板。
 
 实现：`app/v027_home.py` 按当期 `customer_payment_runs` 分类；`dashboard_v027.html` 三列展示；`work-home-polish-v121.css` 桌面三列/平板 2+1/手机单列；新增静态合同和浏览器验收。候选版本 `v1.5.11`。
+
+
+### 22.9 v0.4.0 统一更新与久坐桥接
+
+- 用户确认短信与 Foxmail 在真实 Windows 上功能无问题；久坐助手继续保持独立成熟代码，不把摄像头、人体检测、状态机、强制休息和设置页重写进 `win-assistants`。
+- `chen-sit-guard v2.8.2` 增加本机同用户文件桥接：持续发布运行状态，并接受 `show_status`、`show_settings`、`check_update`。不新增网络端口，不改变 RTSP、检测算法、强制休息和隐私边界。
+- `win-assistants v0.4.0` 增加久坐实时“工作中 / 已休息 / 检测异常”与分钟数显示，并增加“打开状态”“设置”按钮。
+- 主窗口和托盘均增加“检查更新”。短信和 Foxmail 作为内置模块随主 EXE 更新；久坐助手由统一入口触发自身更新检查。
+- 自更新安全校验：HTTPS 更新清单、版本比较、文件大小、SHA-256、MZ 头校验；下载到 staging 后等待旧进程退出，原位替换 EXE，再自动以 `--background` 重启。替换脚本已改为 PowerShell，兼容包含中文/Unicode 的 Windows 路径。
+- PR #62 已合并；最终功能 head：`5160986a406f7abf3acc410ebbaf5afa8b37e180`。
+- 最终 PR CI：`win-assistants cross build` run #34（Run ID `35806853138`）成功；`v1.2 validation` run #795 成功；`stability gate` run #413 成功。Windows Foxmail helper 专项仍是既有托管 Windows runner 0-step 基础设施问题。
+- 最终 Artifact：`win-assistants-windows`，Artifact ID `10727779337`，ZIP 大小 `18,770,544` 字节，ZIP SHA-256 `b2962439b7aee4486e912cdc99020b0d1d41e0190d39a08de2531d15c336981b`。
+- 最终 EXE：`win-assistants.exe`，大小 `19,044,718` 字节，SHA-256 `fc9a0a1b23e56bd8b7c1a08e261578eec8e1bfdc28dad23ec7302ca0083faff3`；标准 `PE32+` / x86-64 Windows GUI，7 个节；包内 SHA-256 文件一致。
+- Windows 实机状态边界：v0.3.1 已在用户真实 Windows 上成功启动；短信与 Foxmail 已由用户确认功能无问题。v0.4.0 仍需用户真实 Windows 启动验证，尤其验证久坐状态/设置入口与自更新替换。
+- 在线更新发布：workflow 已加入生产静态目录发布与远端 SHA 验证，但当前 main 的 `win-assistants/publish` commit status 为 `failure`。现有 self-hosted runner 位于独立 RackNerd CI VPS，并非生产业务主机，因此 runner 本地 `/opt/chen-assistant` 发布方案不能作为最终通道。未解决前不得声称“检查更新已线上可用”。
