@@ -2,12 +2,12 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前应用版本：`v1.5.10`（main）；`win-assistants v0.3.0` 已合并进入 main；生产基准仍待用户确认
+- 当前应用版本：`v1.5.10`（main）；`v1.5.11` 缴费看板三阶段改造正在开发；`win-assistants v0.3.1` 已合并进入 main
 - 当前 `main`：`4b97170c51852ec226aae732107d562a50b15e84`（PR #59 已合并；修复 `win-assistants v0.3.0` 实机启动缺少 `tkinter` 的构建缺陷，版本更新为 `v0.3.1`）
 - 当前生产：接力文档此前记录为 `985ac41` / v1.5.8；本次没有重新部署 Web 主站或服务器，不能据此声称生产已部署 v1.5.10
 - 当前已完成：PR #59 已合并。用户首次真实 Windows 验收发现 v0.3.0 启动即报 `ModuleNotFoundError: No module named 'tkinter'`；根因是旧交叉构建使用不含 Tcl/Tk 的 Python embeddable ZIP。v0.3.1 已改为完整 Windows Python + Tcl/Tk 构建，并新增 Tk 窗口创建测试及最终 EXE 真实启动 smoke test。`win-assistants cross build` run #26、`v1.2 validation` run #780、`stability gate` run #398 均成功；新 Artifact 已生成并重新校验。详细见 22.7。
 - 已知基础设施问题：Windows Foxmail PowerShell 5.1 GitHub-hosted workflow run #115 仍为 0-step / 无日志 failure；任务没有执行代码，不能解释为业务代码或测试失败。当前 EXE 未做 Authenticode 代码签名，因此首次运行可能触发 Windows SmartScreen“未知发布者”提示。
-- 当前未完成：`win-assistants v0.3.1` 仍需用户继续真实 Windows 机器验收。当前已解决 v0.3.0 启动即缺 `tkinter` 的问题，但尚未得到用户对 v0.3.1 的实际启动确认；后续继续验证单实例/托盘、短信 ntfy、`127.0.0.1:18763/health`、严格 Origin、Foxmail 写信窗口与 TXT 文件剪贴板交接，以及程序绝不自动发送邮件。Web v1.5.10 的生产部署/实机验收仍是独立事项；PR #55 和工作资料 CRUD 主线尚未开始。
+- 当前未完成：v1.5.11 正在将缴费首页从“未通知 / 已通知未缴费”两列拆成“未通知 / 已通知 / 待缴费”三列，按本月真实 `notified_at / initiated_at / paid_at` 流程状态分类，并保持已完成缴费客户不出现在待处理看板；`win-assistants v0.3.1` 仍需继续真实 Windows 机器验收；PR #55 和工作资料 CRUD 主线尚未开始。
 - 下一步建议：先在真实 Windows 电脑验收 `win-assistants.exe`；验收通过后再决定是否创建正式 GitHub Release/签名分发。不要因为本次 Windows 产物收尾顺便部署 Web 主站。
 
 ### 新聊天接管协议
@@ -942,3 +942,15 @@ v1.5.10 进一步加固：
 - 久坐助手首次界面曾显示“已退出（0）”，用户随后手动点击“立即启动”后状态稳定为“运行中”；因此当前不把首次退出视为持续故障，后续继续观察开机自动启动场景。
 - Foxmail / 小助手连接当前显示“兼容独立版正在运行”，说明 127.0.0.1:18763 仍由旧兼容 helper 占用，统一程序尚未正式接管；这符合迁移设计。
 - 仍未完成：单实例明确确认、托盘退出/恢复、正式接管旧启动项、内置 Foxmail bridge /health、严格 Origin、真实“发起缴费”写信窗口 + TXT CF_HDROP 剪贴板、绝不自动发送邮件等验收。
+
+
+## 23. v1.5.11 缴费首页三阶段看板
+
+用户目标：解决原“已通知未缴费”把“已通知但尚未发起缴费”和“已经发起缴费、等待同事完成缴费”混在一起的问题。
+
+- **未通知**：本期应缴费，但尚未通知客户。
+- **已通知**：已通知客户，但 `initiated_at` 仍为空。
+- **待缴费**：`initiated_at` 已存在且 `paid_at` 为空。
+- **已完成缴费**：不进入缴费待处理看板。
+
+实现：`app/v027_home.py` 按当期 `customer_payment_runs` 分类；`dashboard_v027.html` 三列展示；`work-home-polish-v121.css` 桌面三列/平板 2+1/手机单列；新增静态合同和浏览器验收。候选版本 `v1.5.11`。
