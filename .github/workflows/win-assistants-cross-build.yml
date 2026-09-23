@@ -165,7 +165,7 @@ jobs:
 
       - name: Publish updater files to production static directory
         id: publish_updater
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.head_ref == 'deploy/win-assistants-v0.4.0')
         run: |
           publish_root="/opt/chen-assistant/app/static/win-assistants"
           test -d "/opt/chen-assistant/app/static"
@@ -219,7 +219,7 @@ jobs:
           echo "Published win-assistants v$version ($sha)"
 
       - name: Report updater publish status
-        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: always() && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.head_ref == 'deploy/win-assistants-v0.4.0'))
         env:
           GH_TOKEN: ${{ github.token }}
           PUBLISH_OUTCOME: ${{ steps.publish_updater.outcome }}
