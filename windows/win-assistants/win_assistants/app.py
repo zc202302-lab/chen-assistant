@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import queue
 import re
+import threading
 import tkinter as tk
 from urllib.parse import urlparse
 from tkinter import filedialog, messagebox, ttk
@@ -14,7 +15,9 @@ from .foxmail import FoxmailBridge
 from .modules import MODULES, ModuleManager, default_module_configs
 from .single_instance import SingleInstance
 from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
+from .sedentary import read_status as read_sedentary_status, send_command as send_sedentary_command, status_text as sedentary_status_text
 from .startup import is_startup_enabled, set_startup, stop_legacy_foxmail_processes, take_over_legacy_startup
+from .updater import fetch_manifest, launch_replacement, newer_version_available, stage_update
 
 
 BG = "#F4F7F6"
@@ -91,6 +94,12 @@ class WinAssistantsApp:
             elif item.key == "chen_helper":
                 ttk.Label(row, text="内置模块 · 仅监听 127.0.0.1:18763 · 不自动发送邮件", style="Card.TLabel").pack(side="left")
                 ttk.Button(row, text="重新启动", command=lambda: self._start_one("chen_helper")).pack(side="right")
+            elif item.key == "sedentary":
+                ttk.Entry(row, textvariable=self.path_vars[item.key]).pack(side="left", fill="x", expand=True)
+                ttk.Button(row, text="选择", command=lambda key=item.key: self._choose_path(key)).pack(side="left", padx=(8, 0))
+                ttk.Button(row, text="打开状态", command=lambda: self._sedentary_command("show_status")).pack(side="left", padx=(8, 0))
+                ttk.Button(row, text="设置", command=lambda: self._sedentary_command("show_settings")).pack(side="left", padx=(8, 0))
+                ttk.Button(row, text="立即启动", command=lambda key=item.key: self._start_one(key)).pack(side="left", padx=(8, 0))
             else:
                 ttk.Entry(row, textvariable=self.path_vars[item.key]).pack(side="left", fill="x", expand=True)
                 ttk.Button(row, text="选择", command=lambda key=item.key: self._choose_path(key)).pack(side="left", padx=(8, 0))
@@ -99,7 +108,8 @@ class WinAssistantsApp:
         controls = ttk.Frame(outer)
         controls.pack(fill="x", pady=(6, 0))
         ttk.Checkbutton(controls, text="win-assistants 随 Windows 登录启动", variable=self.startup_var, command=self._toggle_startup).pack(side="left")
-        ttk.Button(controls, text="接管旧工具的开机启动", command=self._take_over).pack(side="right")
+        ttk.Button(controls, text="检查更新", command=self._check_updates).pack(side="right")
+        ttk.Button(controls, text="接管旧工具的开机启动", command=self._take_over).pack(side="right", padx=(0, 8))
         ttk.Label(outer, text=f"v{__version__} · 短信与 Foxmail 本地桥接已内置；久坐能力继续渐进迁移。", style="Sub.TLabel").pack(anchor="w", pady=(14, 0))
 
     def _save_ui(self) -> None:
@@ -177,6 +187,9 @@ class WinAssistantsApp:
 
     def _poll(self) -> None:
         self.manager.refresh()
+        status = read_sedentary_status()
+        if status:
+            self.status_vars["sedentary"].set(sedentary_status_text(status))
         while True:
             try:
                 event = self.sms_receiver.events.get_nowait()
@@ -192,6 +205,21 @@ class WinAssistantsApp:
                     self.config.sms.marker = event.marker
                     self.config.save()
         self.root.after(1500, self._poll)
+
+    def _sedentary_command(self, action: str) -> None:
+        status = read_sedentary_status()
+        if not status:
+            messagebox.showinfo(
+                "久坐助手",
+                "当前久坐助手尚未提供统一状态接口。请先在久坐助手托盘菜单中执行“检查更新”，更新完成并重启后即可从这里打开状态和设置。",
+            )
+            return
+        try:
+            send_sedentary_command(action)
+        except OSError as exc:
+            messagebox.showerror("久坐助手", f"无法发送控制命令：{exc}")
+            return
+        self.status_vars["sedentary"].set(sedentary_status_text(status))
 
     def _copy_sms_code(self) -> None:
         code = self.sms_code_var.get().strip()
@@ -276,6 +304,61 @@ class WinAssistantsApp:
         self.sms_receiver.publish_test(settings, token.strip())
         self.status_vars["sms"].set("正在发送测试短信")
 
+    def _check_updates(self) -> None:
+        self.status_vars["sedentary"].set(self.status_vars["sedentary"].get())
+        def worker() -> None:
+            try:
+                manifest = fetch_manifest()
+                has_update = newer_version_available(__version__, manifest)
+            except Exception as exc:
+                self.root.after(0, lambda: messagebox.showwarning("检查更新", f"无法检查 win-assistants 更新：{exc}"))
+                return
+
+            if not has_update:
+                status = read_sedentary_status()
+                if status:
+                    try:
+                        send_sedentary_command("check_update")
+                    except OSError:
+                        pass
+                self.root.after(
+                    0,
+                    lambda: messagebox.showinfo(
+                        "检查更新",
+                        f"win-assistants v{__version__} 已是最新版。\n\n久坐助手也已发起更新检查。",
+                    ),
+                )
+                return
+
+            version = str(manifest.get("version", "")).strip()
+            notes = str(manifest.get("notes", "")).strip()
+            def confirm() -> None:
+                text = f"发现 win-assistants {version}。"
+                if notes:
+                    text += f"\n\n{notes}"
+                text += "\n\n是否现在下载并更新？更新完成后程序会自动重启。"
+                if not messagebox.askyesno("发现更新", text):
+                    return
+                threading.Thread(target=lambda: self._download_and_apply_update(manifest), name="win-assistants-updater", daemon=True).start()
+            self.root.after(0, confirm)
+
+        threading.Thread(target=worker, name="win-assistants-update-check", daemon=True).start()
+
+    def _download_and_apply_update(self, manifest: dict[str, object]) -> None:
+        status = read_sedentary_status()
+        if status:
+            try:
+                send_sedentary_command("check_update")
+            except OSError:
+                pass
+        try:
+            staged = stage_update(manifest)
+            launch_replacement(staged)
+        except Exception as exc:
+            self.root.after(0, lambda: messagebox.showerror("更新失败", str(exc)))
+            return
+        self.root.after(0, self._exit)
+
     def _toggle_startup(self) -> None:
         try:
             set_startup(bool(self.startup_var.get()))
@@ -311,6 +394,7 @@ class WinAssistantsApp:
             draw.text((18, 14), "W", fill="white")
             menu = pystray.Menu(
                 pystray.MenuItem("打开 win-assistants", lambda: self.root.after(0, self._show_window), default=True),
+                pystray.MenuItem("检查更新", lambda: self.root.after(0, self._check_updates)),
                 pystray.MenuItem("退出", lambda: self.root.after(0, self._exit)),
             )
             self.tray_icon = pystray.Icon("win-assistants", image, "win-assistants", menu)

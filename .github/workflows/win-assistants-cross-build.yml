@@ -5,6 +5,11 @@ on:
     paths:
       - "windows/win-assistants/**"
       - ".github/workflows/win-assistants-cross-build.yml"
+  push:
+    branches: [main]
+    paths:
+      - "windows/win-assistants/**"
+      - ".github/workflows/win-assistants-cross-build.yml"
   workflow_dispatch:
 
 concurrency:
@@ -153,3 +158,57 @@ jobs:
             windows/win-assistants/dist/win-assistants.exe
             windows/win-assistants/dist/win-assistants.exe.sha256
           if-no-files-found: error
+
+      - name: Publish updater files to production static directory
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          publish_root="/opt/chen-assistant/app/static/win-assistants"
+          test -d "/opt/chen-assistant/app/static"
+          mkdir -p "$publish_root"
+
+          version="$(
+            python3 - <<'PY'
+          from pathlib import Path
+          import re
+          text = Path("win_assistants/__init__.py").read_text(encoding="utf-8")
+          match = re.search(r'__version__\s*=\s*"([^"]+)"', text)
+          if not match:
+              raise SystemExit("version not found")
+          print(match.group(1))
+          PY
+          )"
+          sha="$(sha256sum dist/win-assistants.exe | awk '{print $1}')"
+          size="$(stat -c '%s' dist/win-assistants.exe)"
+
+          temp_exe="$publish_root/win-assistants.exe.new"
+          install -m 0755 dist/win-assistants.exe "$temp_exe"
+          test "$(sha256sum "$temp_exe" | awk '{print $1}')" = "$sha"
+          mv -f "$temp_exe" "$publish_root/win-assistants.exe"
+
+          python3 - "$publish_root/update.json.new" "$version" "$sha" "$size" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          target, version, sha256, size = sys.argv[1:]
+          payload = {
+              "version": version,
+              "exe_url": "https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe",
+              "sha256": sha256,
+              "size": int(size),
+              "notes": "统一更新：win-assistants、内置短信与 Foxmail；同时触发久坐助手更新检查。",
+          }
+          Path(target).write_text(
+              json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+              encoding="utf-8",
+          )
+          PY
+          mv -f "$publish_root/update.json.new" "$publish_root/update.json"
+
+          curl --fail --silent --show-error --max-time 10             "https://assistant.ziboxiaozhushou.cn/static/win-assistants/update.json?verify=$GITHUB_SHA"             | python3 -c "import json,sys; p=json.load(sys.stdin); assert p['version']=='$version'; assert p['sha256']=='$sha'; assert int(p['size'])==$size"
+
+          remote_sha="$(
+            curl --fail --silent --show-error --max-time 60               "https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?verify=$GITHUB_SHA"               | sha256sum | awk '{print $1}'
+          )"
+          test "$remote_sha" = "$sha"
+          echo "Published win-assistants v$version ($sha)"
