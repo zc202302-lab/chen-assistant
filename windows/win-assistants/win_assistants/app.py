@@ -345,6 +345,12 @@ class WinAssistantsApp:
         threading.Thread(target=worker, name="win-assistants-update-check", daemon=True).start()
 
     def _download_and_apply_update(self, manifest: dict[str, object]) -> None:
+        status = read_sedentary_status()
+        if status:
+            try:
+                send_sedentary_command("check_update")
+            except OSError:
+                pass
         try:
             staged = stage_update(manifest)
             launch_replacement(staged)
