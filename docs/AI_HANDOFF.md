@@ -3,12 +3,12 @@
 ## 0. 当前接力状态（新聊天先看这里）
 
 - 当前应用版本：Web 主线已进入 `v1.5.11`；`win-assistants v0.4.0` 已通过 PR #62 合并进入 main；久坐助手 `chen-sit-guard v2.8.2` 继续保持独立成熟代码并通过本地状态/控制桥接接入统一壳。
-- 当前 `main`：`6927b26185e469d887cacca8ad46fb09be8452c1`（包含 PR #62 的 `win-assistants v0.4.0`、后续发布状态报告，以及 v1.5.11 相关合并；后续接力仍以仓库实时 main 为准）。
-- 当前生产：本轮没有执行 Web 主站 `deploy.sh`，也没有重启生产 Web 服务；Windows 自更新线上发布尝试当前状态为 `win-assistants/publish = failure`，原因是现有 self-hosted runner 与生产 Web 主机分离，不能把“main 已合并”写成“更新服务器已发布成功”。
+- 当前 `main`：`ded806924102a80f2a632e000dd206edad767f85`（PR #65 已合并；Windows 更新资产已改为独立 `win-assistants-release` 分支发布，不再错误假设 CI runner 就是生产 Web 主机；后续接力仍以仓库实时 main 为准）。
+- 当前生产：本轮没有执行 Web 主站 `deploy.sh`，也没有重启生产 Web 服务。CI 已成功发布 `win-assistants-release` 私有资产分支；生产 Web 主机仍需一次性安装轻量同步 timer，才能把该分支的 EXE / update.json 自动同步到 `app/static/win-assistants`。
 - 当前已完成：`win-assistants v0.4.0` 已恢复久坐实时状态/“打开状态”/“设置”入口，并加入统一“检查更新”；短信和 Foxmail 继续内置，久坐助手通过本地文件桥接保留独立 owner。PR 最终 head `5160986a406f7abf3acc410ebbaf5afa8b37e180` 的 `win-assistants cross build` run #34、`v1.2 validation` run #795、`stability gate` run #413 均成功；最终 EXE 已实际启动 smoke test。用户已在真实 Windows 上确认 v0.3.1 可启动，且短信、Foxmail 功能验证无问题。
-- 已知基础设施问题：Windows Foxmail PowerShell 5.1 GitHub-hosted workflow 仍可能出现 0-step / 无日志 failure，不能当成业务代码失败；当前 EXE 仍未做 Authenticode 代码签名。另有 Windows 自更新发布链路未闭环：构建成功，但生产静态目录发布失败。
-- 当前未完成：需要把 `https://assistant.ziboxiaozhushou.cn/static/win-assistants/` 的 `update.json` 与正式 EXE 真正发布到线上；在该发布成功前，v0.4.0 的“检查更新”代码虽已就绪，但不能视为线上自更新可用。v0.3.1 → v0.4.0 仍需要最后一次手工替换；v0.4.0 之后目标是统一通过“检查更新”升级。
-- 下一步建议：优先完成 Windows 更新资产的独立发布通道，不顺带重启 Web 主站；随后让用户用最终 v0.4.0 EXE 做一次真实 Windows 验收，并验证“检查更新”能访问线上清单。
+- 已知基础设施问题：Windows Foxmail PowerShell 5.1 GitHub-hosted workflow 仍可能出现 0-step / 无日志 failure，不能当成业务代码失败；当前 EXE 仍未做 Authenticode 代码签名。Windows 更新资产的 CI→release 分支链路已经闭环，剩余生产机一次性 timer 安装。
+- 当前未完成：生产机需一次性安装 `chen-win-assistants-sync.timer`，安装后每 2 分钟从 `win-assistants-release` 拉取并校验 EXE / update.json，原子同步到公开静态目录；不 checkout Web main、不运行 deploy.sh、不重启 Web 服务。完成并验证线上 URL 后，才能把 v0.4.0 的“检查更新”写成线上可用。v0.3.1 → v0.4.0 仍需要最后一次手工替换。
+- 下一步建议：在生产机只执行一次 `scripts/install_win_assistants_asset_sync.sh` 安装轻量同步 timer，并立即验证公开 update.json / EXE；不要执行 Web deploy.sh。随后让用户用最终 v0.4.0 EXE 做一次真实 Windows 验收。
 
 ### 新聊天接管协议
 
@@ -969,3 +969,16 @@ v1.5.10 进一步加固：
 - 最终 EXE：`win-assistants.exe`，大小 `19,044,718` 字节，SHA-256 `fc9a0a1b23e56bd8b7c1a08e261578eec8e1bfdc28dad23ec7302ca0083faff3`；标准 `PE32+` / x86-64 Windows GUI，7 个节；包内 SHA-256 文件一致。
 - Windows 实机状态边界：v0.3.1 已在用户真实 Windows 上成功启动；短信与 Foxmail 已由用户确认功能无问题。v0.4.0 仍需用户真实 Windows 启动验证，尤其验证久坐状态/设置入口与自更新替换。
 - 在线更新发布：workflow 已加入生产静态目录发布与远端 SHA 验证，但当前 main 的 `win-assistants/publish` commit status 为 `failure`。现有 self-hosted runner 位于独立 RackNerd CI VPS，并非生产业务主机，因此 runner 本地 `/opt/chen-assistant` 发布方案不能作为最终通道。未解决前不得声称“检查更新已线上可用”。
+
+
+### 22.10 独立 release 分支与生产静态同步
+
+- PR #65 已合并，merge commit：`ded806924102a80f2a632e000dd206edad767f85`。
+- 原因：self-hosted runner 位于独立 RackNerd CI VPS，不是生产业务主机；直接写 runner 本地 `/opt/chen-assistant/app/static` 的发布设计无效。
+- 新设计：Windows 构建成功后，workflow 用 Git plumbing 把 `win-assistants.exe` 与 `update.json` 发布到私有分支 `win-assistants-release`。该分支不触发主构建循环。
+- PR #65 验证：`stability gate` run #432 成功；`v1.2 validation` run #814 成功；`win-assistants cross build` run #39 的 source-validation 与 build-windows-exe 均成功，包含 Tk runtime、Windows Python 测试、最终 EXE smoke launch、PE 校验与 Artifact 上传。
+- main 合并后 `win-assistants/release-assets` commit status 已为 `success`，并已实际创建 `win-assistants-release` 分支。
+- 当前 release manifest：version `0.4.0`；EXE SHA-256 `c3d23028c17b7a231eda4b65e5e7752269004bda0b0bfc63869e4d7ce50171a3`；size `19,044,627` 字节；目标公开 URL 仍为 `https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe`。
+- 新增 `scripts/sync_win_assistants_assets.sh`：生产机从 release 分支读取两个资产，验证版本清单、size、SHA-256 与 MZ 头后，原子替换到 `app/static/win-assistants`，并从公网 URL 复核 manifest；不会切换生产 Web main，也不会重启服务。
+- 新增 `scripts/install_win_assistants_asset_sync.sh`：安装 systemd oneshot + timer；开机后 45 秒首次运行，此后每 2 分钟同步。一次安装后，后续 Windows 新版本无需人工进入服务器复制文件。
+- 剩余唯一生产步骤：在生产主机执行一次 timer 安装并确认首轮同步成功。由于当前聊天没有生产 SSH/终端连接，本轮不能声称该服务器级步骤已经完成。
