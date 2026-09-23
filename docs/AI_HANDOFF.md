@@ -2,13 +2,14 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前应用版本：Web 主线已进入 `v1.5.11`；`win-assistants v0.4.0` 已通过 PR #62 合并进入 main；久坐助手 `chen-sit-guard v2.8.2` 继续保持独立成熟代码并通过本地状态/控制桥接接入统一壳。
-- 当前 `main`：`ded806924102a80f2a632e000dd206edad767f85`（PR #65 已合并；Windows 更新资产已改为独立 `win-assistants-release` 分支发布，不再错误假设 CI runner 就是生产 Web 主机；后续接力仍以仓库实时 main 为准）。
-- 当前生产：本轮没有执行 Web 主站 `deploy.sh`，也没有重启生产 Web 服务。CI 已成功发布 `win-assistants-release` 私有资产分支；生产 Web 主机仍需一次性安装轻量同步 timer，才能把该分支的 EXE / update.json 自动同步到 `app/static/win-assistants`。
-- 当前已完成：`win-assistants v0.4.0` 已恢复久坐实时状态/“打开状态”/“设置”入口，并加入统一“检查更新”；短信和 Foxmail 继续内置，久坐助手通过本地文件桥接保留独立 owner。PR 最终 head `5160986a406f7abf3acc410ebbaf5afa8b37e180` 的 `win-assistants cross build` run #34、`v1.2 validation` run #795、`stability gate` run #413 均成功；最终 EXE 已实际启动 smoke test。用户已在真实 Windows 上确认 v0.3.1 可启动，且短信、Foxmail 功能验证无问题。
-- 已知基础设施问题：Windows Foxmail PowerShell 5.1 GitHub-hosted workflow 仍可能出现 0-step / 无日志 failure，不能当成业务代码失败；当前 EXE 仍未做 Authenticode 代码签名。Windows 更新资产的 CI→release 分支链路已经闭环，剩余生产机一次性 timer 安装。
-- 当前未完成：生产机需一次性安装 `chen-win-assistants-sync.timer`，安装后每 2 分钟从 `win-assistants-release` 拉取并校验 EXE / update.json，原子同步到公开静态目录；不 checkout Web main、不运行 deploy.sh、不重启 Web 服务。完成并验证线上 URL 后，才能把 v0.4.0 的“检查更新”写成线上可用。v0.3.1 → v0.4.0 仍需要最后一次手工替换。
-- 下一步建议：在生产机只执行一次 `scripts/install_win_assistants_asset_sync.sh` 安装轻量同步 timer，并立即验证公开 update.json / EXE；不要执行 Web deploy.sh。随后让用户用最终 v0.4.0 EXE 做一次真实 Windows 验收。
+- 当前应用版本：Web 主线为 `v1.5.11`；`win-assistants v0.4.0` 已合并进入 main；久坐助手 `chen-sit-guard v2.8.2` 保持独立成熟代码。
+- 当前 `main`：`0354aff2347487a1d5b7a6689623b7380d062814`（PR #65 后续文档同步提交；Windows 更新资产已改走独立 `win-assistants-release` 分支）。
+- 当前生产：尚没有新的 Web `deploy.sh` 成功证据，生产 Web 基准不能据 main 合并自动推断；Windows 更新资产 release 分支链路与 Web 部署是两件独立事项。
+- 当前已完成：v1.5.11 缴费首页三阶段看板已合并；最新完整 validation / stability / 历史浏览器回归均已通过。Windows 统一客户端发布链路也已独立化。
+- 当前开发：PR #63 / 分支 `feat/production-auto-deploy` 正在加入 main 合并后的自动生产部署。PR #63 之前的完整 validation、stability gate、production deploy preflight 均成功；preflight 已确认 CI runner `racknerd-ci` **不是生产 Web 主机**，因此自动部署必须走 SSH。
+- 自动部署安全边界：仅 main push / main 手动 workflow 可部署；PR 永不部署；只部署 Web 运行时变更；部署目标必须是已经通过门禁的精确 main SHA；生产只允许快进，不 reset/force；远程 SSH 强制 known_hosts；部署仍复用 `deploy.sh` 的数据库备份、版本/健康检查和静态资源一致性校验。
+- 当前未完成：PR #63 正在重新基于最新 main 验证。由于 runner 与生产分离，真正首次自动部署前还需一次性在 GitHub Actions Secrets 配置 `PROD_HOST / PROD_USER / PROD_SSH_KEY / PROD_KNOWN_HOSTS`（`PROD_PORT` 可选）。
+- 下一步建议：让 PR #63 在最新 main 上重新全绿后合并；若 SSH Secrets 已配置，main 流水线会自动部署；若尚未配置，则先完成这一次性配置，再手动触发 main workflow，以后无需每次登录服务器。
 
 ### 新聊天接管协议
 
@@ -982,3 +983,16 @@ v1.5.10 进一步加固：
 - 新增 `scripts/sync_win_assistants_assets.sh`：生产机从 release 分支读取两个资产，验证版本清单、size、SHA-256 与 MZ 头后，原子替换到 `app/static/win-assistants`，并从公网 URL 复核 manifest；不会切换生产 Web main，也不会重启服务。
 - 新增 `scripts/install_win_assistants_asset_sync.sh`：安装 systemd oneshot + timer；开机后 45 秒首次运行，此后每 2 分钟同步。一次安装后，后续 Windows 新版本无需人工进入服务器复制文件。
 - 剩余唯一生产步骤：在生产主机执行一次 timer 安装并确认首轮同步成功。由于当前聊天没有生产 SSH/终端连接，本轮不能声称该服务器级步骤已经完成。
+
+
+## 24. main 自动生产部署
+
+目标：以后 Web 功能通过完整门禁并合并 main 后，不再要求用户每次 SSH 登录生产服务器手工执行 `cd /opt/chen-assistant && bash deploy.sh`。
+
+- 生产部署继续以 `deploy.sh` 为唯一业务部署入口。
+- workflow 在 main 上先完成 validation，再执行 production stability recheck，最后才允许 deploy production。
+- 自动触发只检查 Web 运行时范围：`app/**`、`storage_node/**`、`requirements.txt`、`deploy.sh`；纯文档、测试、Windows 客户端变更自动跳过。
+- `CHEN_DEPLOY_TARGET_REV` 锁定已验证 main SHA；目标必须属于 origin/main 且生产只允许快进。过时部署任务若目标已经被生产超过，会安全跳过而不是回退。
+- self-hosted runner 的 preflight 已实测 `LOCAL_PRODUCTION_AVAILABLE=no`，所以真实生产部署采用 SSH。
+- SSH 模式要求一次性 GitHub Secrets：`PROD_HOST`、`PROD_USER`、`PROD_SSH_KEY`、`PROD_KNOWN_HOSTS`，`PROD_PORT` 可选；固定 `BatchMode=yes`、`IdentitiesOnly=yes`、`StrictHostKeyChecking=yes`。
+- 生产部署 concurrency 固定串行，不取消已开始的生产部署。
