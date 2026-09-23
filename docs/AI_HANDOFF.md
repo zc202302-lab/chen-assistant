@@ -3,11 +3,11 @@
 ## 0. 当前接力状态（新聊天先看这里）
 
 - 当前应用版本：`v1.5.10`（main）；`win-assistants v0.3.0` 已合并进入 main；生产基准仍待用户确认
-- 当前 `main`：`2825f31d3b9e584c84742534b00ad9d8878f12d5`（PR #58 已合并；该合并包含 `win-assistants v0.3.0` 与最终 Artifact 接力记录）
+- 当前 `main`：`4b97170c51852ec226aae732107d562a50b15e84`（PR #59 已合并；修复 `win-assistants v0.3.0` 实机启动缺少 `tkinter` 的构建缺陷，版本更新为 `v0.3.1`）
 - 当前生产：接力文档此前记录为 `985ac41` / v1.5.8；本次没有重新部署 Web 主站或服务器，不能据此声称生产已部署 v1.5.10
-- 当前已完成：PR #58 已合并。GitHub Actions `win-assistants cross build` run #23 成功，Artifact `win-assistants-windows` 已生成并完成 ZIP/EXE SHA-256、PE32+ x86-64、ASLR/DEP/CFG 与未签名状态静态复核；详细产物信息见 22.6。此前 v1.5.10 的客户缴费金额 Enter 自动前进/复制账号等改动仍保留。
+- 当前已完成：PR #59 已合并。用户首次真实 Windows 验收发现 v0.3.0 启动即报 `ModuleNotFoundError: No module named 'tkinter'`；根因是旧交叉构建使用不含 Tcl/Tk 的 Python embeddable ZIP。v0.3.1 已改为完整 Windows Python + Tcl/Tk 构建，并新增 Tk 窗口创建测试及最终 EXE 真实启动 smoke test。`win-assistants cross build` run #26、`v1.2 validation` run #780、`stability gate` run #398 均成功；新 Artifact 已生成并重新校验。详细见 22.7。
 - 已知基础设施问题：Windows Foxmail PowerShell 5.1 GitHub-hosted workflow run #115 仍为 0-step / 无日志 failure；任务没有执行代码，不能解释为业务代码或测试失败。当前 EXE 未做 Authenticode 代码签名，因此首次运行可能触发 Windows SmartScreen“未知发布者”提示。
-- 当前未完成：`win-assistants v0.3.0` 仍需用户真实 Windows 机器验收，重点验证单实例/托盘、短信 ntfy、`127.0.0.1:18763/health`、严格 Origin、Foxmail 写信窗口与 TXT 文件剪贴板交接，以及程序绝不自动发送邮件。Web v1.5.10 的生产部署/实机验收仍是独立事项；PR #55 和工作资料 CRUD 主线尚未开始。
+- 当前未完成：`win-assistants v0.3.1` 仍需用户继续真实 Windows 机器验收。当前已解决 v0.3.0 启动即缺 `tkinter` 的问题，但尚未得到用户对 v0.3.1 的实际启动确认；后续继续验证单实例/托盘、短信 ntfy、`127.0.0.1:18763/health`、严格 Origin、Foxmail 写信窗口与 TXT 文件剪贴板交接，以及程序绝不自动发送邮件。Web v1.5.10 的生产部署/实机验收仍是独立事项；PR #55 和工作资料 CRUD 主线尚未开始。
 - 下一步建议：先在真实 Windows 电脑验收 `win-assistants.exe`；验收通过后再决定是否创建正式 GitHub Release/签名分发。不要因为本次 Windows 产物收尾顺便部署 Web 主站。
 
 ### 新聊天接管协议
@@ -914,3 +914,22 @@ v1.5.10 进一步加固：
 4. 从“晨的小助手”网页实际执行一次“发起缴费”：只应打开 Foxmail 写信窗口，把校验后的 TXT 放入文件剪贴板；用户手动 `Ctrl+V` 添加附件并人工发送，程序不得自动发送。
 5. 验证 TXT 文件名、内容、SHA256、临时目录自动清理，以及旧 PowerShell Foxmail helper/旧短信启动项接管与回退。
 6. 久坐助手当前仍按既定成熟子进程方案运行；其内置迁移继续放在真实 Windows 验收之后。
+
+
+### 22.7 v0.3.1 实机启动缺失 tkinter 修复
+
+- 用户首次在真实 Windows 机器启动 v0.3.0 Artifact 后，程序立即报错：`ModuleNotFoundError: No module named 'tkinter'`。这次反馈确认 v0.3.0 不能视为真实 Windows 可运行产物。
+- 根因：旧 `win-assistants cross build` 使用 Python 3.12 embeddable ZIP。该 Windows Python 发行包不包含 Tcl/Tk；此前 CI 只验证编译、测试、PyInstaller 生成 PE 与静态 PE 类型，没有实际启动最终 GUI EXE，因此漏掉运行时缺失。
+- 修复分支：`fix/win-assistants-tk-runtime`；PR #59；修复 head：`dc8252caa9b481e19e2cbe57e9474e96f684950a`；已合并到 main，merge commit：`4b97170c51852ec226aae732107d562a50b15e84`。
+- 版本更新：`win-assistants v0.3.1`。
+- 构建链路改为在 Wine 中静默安装完整 Windows Python 3.12.10，并显式包含 Tcl/Tk；构建前必须实际 `import tkinter`、创建/隐藏/销毁 Tk 窗口。
+- PyInstaller 构建后新增最终 EXE smoke launch：在 Wine/Xvfb 中启动 `win-assistants.exe --background`，程序必须持续运行到 smoke timeout；若像 v0.3.0 一样启动即异常退出，CI 直接失败。
+- `build.ps1` 同步增加 Tk runtime 创建窗口测试，避免本地构建与 CI 标准不一致。
+- CI：`win-assistants cross build` run #26（Run ID `35802617895`）成功；`source-validation` 与 `build-windows-exe` 均成功，其中 `Prepare full Windows Python with Tcl/Tk`、`Test with Windows Python`、`Build Windows executable`、`Smoke launch built executable`、`Verify PE executable` 全部实际执行成功。
+- 同提交 `v1.2 validation` run #780 成功；`stability gate` run #398 成功。
+- `Windows Foxmail helper validation` run #119 仍为既有 GitHub-hosted Windows runner 的 0-step / 无日志基础设施失败，没有执行代码，不得解释为业务代码失败。
+- 新 Artifact：`win-assistants-windows`，Artifact ID `10726063664`，ZIP 大小 `18,730,671` 字节，GitHub digest / 本地重算 SHA-256：`0aaca7c759c631884e5cfa12838d838334538e3cb22fdad984f9daf2881bdff4`。
+- ZIP 内包含：`win-assistants.exe` 与 `win-assistants.exe.sha256`。
+- 新 EXE 大小：`19,004,171` 字节；SHA-256：`9caf076ccbf39e53750cb7fbf2a0f10dd50aa44b5b1e49f7cf154f785faa9cc9`，与包内校验文件一致。
+- 静态文件类型：标准 `PE32+` / x86-64 Windows GUI，7 个节。
+- **状态边界：**v0.3.1 已通过 CI 中的实际 Tk 创建与最终 EXE 启动 smoke test，但仍不能写成“真实 Windows 机器验收成功”。必须等待用户在真实 Windows 上启动新 EXE 并继续验证功能。
