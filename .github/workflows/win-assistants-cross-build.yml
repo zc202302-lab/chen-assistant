@@ -1,7 +1,7 @@
 name: win-assistants cross build
 
 permissions:
-  contents: read
+  contents: write
   statuses: write
 
 on:
@@ -163,14 +163,10 @@ jobs:
             windows/win-assistants/dist/win-assistants.exe.sha256
           if-no-files-found: error
 
-      - name: Publish updater files to production static directory
-        id: publish_updater
+      - name: Publish updater release branch
+        id: publish_release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          publish_root="/opt/chen-assistant/app/static/win-assistants"
-          test -d "/opt/chen-assistant/app/static"
-          mkdir -p "$publish_root"
-
           version="$(
             python3 - <<'PY'
           from pathlib import Path
@@ -184,13 +180,12 @@ jobs:
           )"
           sha="$(sha256sum dist/win-assistants.exe | awk '{print $1}')"
           size="$(stat -c '%s' dist/win-assistants.exe)"
+          release_dir="$RUNNER_TEMP/win-assistants-release-assets"
+          rm -rf "$release_dir"
+          mkdir -p "$release_dir"
+          cp dist/win-assistants.exe "$release_dir/win-assistants.exe"
 
-          temp_exe="$publish_root/win-assistants.exe.new"
-          install -m 0755 dist/win-assistants.exe "$temp_exe"
-          test "$(sha256sum "$temp_exe" | awk '{print $1}')" = "$sha"
-          mv -f "$temp_exe" "$publish_root/win-assistants.exe"
-
-          python3 - "$publish_root/update.json.new" "$version" "$sha" "$size" <<'PY'
+          python3 - "$release_dir/update.json" "$version" "$sha" "$size" <<'PY'
           import json
           import sys
           from pathlib import Path
@@ -208,33 +203,48 @@ jobs:
               encoding="utf-8",
           )
           PY
-          mv -f "$publish_root/update.json.new" "$publish_root/update.json"
 
-          curl --fail --silent --show-error --max-time 10             "https://assistant.ziboxiaozhushou.cn/static/win-assistants/update.json?verify=$GITHUB_SHA"             | python3 -c "import json,sys; p=json.load(sys.stdin); assert p['version']=='$version'; assert p['sha256']=='$sha'; assert int(p['size'])==$size"
+          cd "$GITHUB_WORKSPACE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --quiet origin win-assistants-release || true
 
-          remote_sha="$(
-            curl --fail --silent --show-error --max-time 60               "https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?verify=$GITHUB_SHA"               | sha256sum | awk '{print $1}'
-          )"
-          test "$remote_sha" = "$sha"
-          echo "Published win-assistants v$version ($sha)"
+          export GIT_INDEX_FILE="$RUNNER_TEMP/win-assistants-release.index"
+          rm -f "$GIT_INDEX_FILE"
+          git read-tree --empty
+          exe_blob="$(git hash-object -w "$release_dir/win-assistants.exe")"
+          json_blob="$(git hash-object -w "$release_dir/update.json")"
+          git update-index --add --cacheinfo "100644,$exe_blob,win-assistants.exe"
+          git update-index --add --cacheinfo "100644,$json_blob,update.json"
+          tree="$(git write-tree)"
 
-      - name: Report updater publish status
+          parent_args=()
+          if git rev-parse --verify --quiet refs/remotes/origin/win-assistants-release >/dev/null; then
+            parent="$(git rev-parse refs/remotes/origin/win-assistants-release)"
+            parent_args=(-p "$parent")
+          fi
+          commit="$(printf 'release: win-assistants v%s\n' "$version" | git commit-tree "$tree" "${parent_args[@]}")"
+          git push origin "$commit:refs/heads/win-assistants-release"
+
+          echo "Published release branch win-assistants v$version ($sha)"
+
+      - name: Report updater release status
         if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
-          PUBLISH_OUTCOME: ${{ steps.publish_updater.outcome }}
+          PUBLISH_OUTCOME: ${{ steps.publish_release.outcome }}
         run: |
           state="failure"
-          description="win-assistants updater publish failed"
+          description="win-assistants release asset publish failed"
           if [ "$PUBLISH_OUTCOME" = "success" ]; then
             state="success"
-            description="win-assistants updater published and verified"
+            description="win-assistants release assets published"
           fi
           payload="$(python3 - "$state" "$description" <<'PY'
           import json,sys
           print(json.dumps({
               "state": sys.argv[1],
-              "context": "win-assistants/publish",
+              "context": "win-assistants/release-assets",
               "description": sys.argv[2],
           }, separators=(",", ":")))
           PY
