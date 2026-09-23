@@ -9,7 +9,8 @@ from fastapi.templating import Jinja2Templates
 
 from . import config
 from .db import db
-from .payment_v02 import customer_is_due, effective_status
+from .payment_v02 import customer_is_due, effective_status, current_period
+from .v031_payment_workflow_routes import ensure_v031
 from .v026_routes import promotion_bucket
 
 router = APIRouter()
@@ -35,16 +36,32 @@ def dashboard_v027(request: Request, home: str = 'payment'):
             (today_iso,),
         ).fetchall()
         customers = conn.execute('SELECT * FROM customers ORDER BY updated_at DESC').fetchall()
-        wait_notice, wait_payment, done_payment = [], [], []
+        ensure_v031(conn)
+        period = current_period()
+        payment_runs = {
+            int(row['customer_id']): row
+            for row in conn.execute(
+                '''SELECT customer_id,notified_at,initiated_at,paid_at
+                   FROM customer_payment_runs WHERE period=?''',
+                (period,),
+            ).fetchall()
+        }
+        wait_notice, wait_initiate, wait_payment, done_payment = [], [], [], []
         for c in customers:
             if not c['payment_enabled'] or not customer_is_due(conn, c['id']):
                 continue
             s = effective_status(c)
             item = {'id': c['id'], 'name': c['name']}
-            if s['completed']:
+            run = payment_runs.get(int(c['id']))
+            run_notified = bool(run and (run['notified_at'] or '').strip())
+            run_initiated = bool(run and (run['initiated_at'] or '').strip())
+            run_paid = bool(run and (run['paid_at'] or '').strip())
+            if s['completed'] or run_paid:
                 done_payment.append(item)
-            elif s['notified']:
+            elif run_initiated:
                 wait_payment.append(item)
+            elif s['notified'] or run_notified:
+                wait_initiate.append(item)
             else:
                 wait_notice.append(item)
 
@@ -96,6 +113,7 @@ def dashboard_v027(request: Request, home: str = 'payment'):
             active_home_tab=active_home_tab,
             tasks=tasks,
             wait_notice=wait_notice,
+            wait_initiate=wait_initiate,
             wait_payment=wait_payment,
             done_payment=done_payment,
             promo_customers=promo_customers,
