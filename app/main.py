@@ -27,6 +27,7 @@ from . import v031_fixed_review_patch as _v031_fixed_review_patch  # noqa: F401
 from .v033_payment_flow_patch import router as v033_payment_flow_patch_router
 from .v10_routes import router as v10_router, ensure_v10_schema
 from .v101_workspace_routes import router as v101_workspace_router
+from .v160_information_center import router as v160_information_center_router, ensure_v160_schema
 
 _legacy_routes = list(app.router.routes)
 
@@ -59,6 +60,7 @@ _v032_customer_exchange_routes = _include(v032_customer_exchange_router)
 _v033_payment_flow_patch_routes = _include(v033_payment_flow_patch_router)
 _v10_routes = _include(v10_router)
 _v101_workspace_routes = _include(v101_workspace_router)
+_v160_information_center_routes = _include(v160_information_center_router)
 
 # v1.0 adds a global shell and the life workspace, but the mature work workspace
 # must remain behaviorally independent. The compatibility layer restores the
@@ -66,6 +68,7 @@ _v101_workspace_routes = _include(v101_workspace_router)
 # lives at /global-search. Customer/payment/business/promotion routes keep their
 # existing owners exactly as before.
 _ordered = (
+    _v160_information_center_routes +
     _v101_workspace_routes +
     _v10_routes +
     _v033_payment_flow_patch_routes +
@@ -175,6 +178,7 @@ _assert_v10_route_guard()
 @app.on_event('startup')
 def startup_v10():
     ensure_v10_schema()
+    ensure_v160_schema()
 
 
 app.title = f'晨的助手 v{config.APP_VERSION}'
