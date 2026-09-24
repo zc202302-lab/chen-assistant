@@ -2,13 +2,14 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前应用版本：Web 主线已进入 `v1.5.11`；`win-assistants v0.4.0` 已通过 PR #62 合并进入 main；久坐助手 `chen-sit-guard v2.8.2` 继续保持独立成熟代码并通过本地状态/控制桥接接入统一壳。
-- 当前 `main`：`ded806924102a80f2a632e000dd206edad767f85`（PR #65 已合并；Windows 更新资产已改为独立 `win-assistants-release` 分支发布，不再错误假设 CI runner 就是生产 Web 主机；后续接力仍以仓库实时 main 为准）。
-- 当前生产：本轮没有执行 Web 主站 `deploy.sh`，也没有重启生产 Web 服务。CI 已成功发布 `win-assistants-release` 私有资产分支；生产 Web 主机仍需一次性安装轻量同步 timer，才能把该分支的 EXE / update.json 自动同步到 `app/static/win-assistants`。
-- 当前已完成：`win-assistants v0.4.0` 已恢复久坐实时状态/“打开状态”/“设置”入口，并加入统一“检查更新”；短信和 Foxmail 继续内置，久坐助手通过本地文件桥接保留独立 owner。PR 最终 head `5160986a406f7abf3acc410ebbaf5afa8b37e180` 的 `win-assistants cross build` run #34、`v1.2 validation` run #795、`stability gate` run #413 均成功；最终 EXE 已实际启动 smoke test。用户已在真实 Windows 上确认 v0.3.1 可启动，且短信、Foxmail 功能验证无问题。
-- 已知基础设施问题：Windows Foxmail PowerShell 5.1 GitHub-hosted workflow 仍可能出现 0-step / 无日志 failure，不能当成业务代码失败；当前 EXE 仍未做 Authenticode 代码签名。Windows 更新资产的 CI→release 分支链路已经闭环，剩余生产机一次性 timer 安装。
-- 当前未完成：生产机需一次性安装 `chen-win-assistants-sync.timer`，安装后每 2 分钟从 `win-assistants-release` 拉取并校验 EXE / update.json，原子同步到公开静态目录；不 checkout Web main、不运行 deploy.sh、不重启 Web 服务。完成并验证线上 URL 后，才能把 v0.4.0 的“检查更新”写成线上可用。v0.3.1 → v0.4.0 仍需要最后一次手工替换。
-- 下一步建议：在生产机只执行一次 `scripts/install_win_assistants_asset_sync.sh` 安装轻量同步 timer，并立即验证公开 update.json / EXE；不要执行 Web deploy.sh。随后让用户用最终 v0.4.0 EXE 做一次真实 Windows 验收。
+- 当前应用版本：Web 主线 `v1.5.11`；`win-assistants v0.4.0` 已在 main；久坐助手继续保持独立成熟代码并由统一壳桥接。
+- 当前 `main`：`4ee8d83e5fae4cb88d490dbba1742e3efcbb9d9f`（PR #67 已合并，加入 Web 主站自动生产部署能力；后续接力仍以仓库实时 main 为准）。
+- 当前生产：尚没有新的生产健康检查证据，因此不能声称 v1.5.11 已上线。已确认 self-hosted runner `racknerd-ci` 不是生产主机，仓库也未配置完整 `PROD_HOST / PROD_USER / PROD_SSH_KEY / PROD_KNOWN_HOSTS`，所以 PR #67 合并后的 main deploy job 正确地没有远程修改生产。
+- 当前已完成：PR #67 已合并。自动部署现在有两条受控路径：若未来配置完整生产 SSH secrets，main workflow 可直接部署；当前默认使用生产侧 `chen-assistant-auto-deploy.timer`，每 2 分钟检查 main，只对 Web 运行时变化执行标准 `deploy.sh`。部署支持精确目标 SHA、仅快进、防回退、数据库备份、版本/健康检查与静态资源校验。PR #67 head `b9c22ae` 的完整 validation、stability gate 全绿；合并后的 main validation、production stability recheck 与 deploy job 也均成功，其中 deploy job 明确记录为等待 production-side timer bootstrap。
+- 自动部署安全边界：PR 永不部署；main 变更先通过 validation + production stability recheck；纯 docs/tests/windows 变更不会重启 Web；生产 checkout 有本地受管文件修改或无法快进时自动停止；不使用 `git reset --hard` / force；过时部署目标不得让生产回退。
+- 当前未完成：生产机只差**一次性**安装 `chen-assistant-auto-deploy.timer`。安装后，此后 Web main 更新不再需要用户每次 SSH 登录执行 `cd /opt/chen-assistant && bash deploy.sh`。由于当前会话没有生产 SSH/终端权限，这一步不能伪称已执行。
+- 一次性生产安装命令：`cd /opt/chen-assistant && git fetch origin main && git merge --ff-only origin/main && sudo bash scripts/install_auto_deploy_timer.sh`。安装器会立即启动一次自动部署服务，随后每 2 分钟检查 main。
+- 下一步建议：用户只需在生产机执行上述一次性命令并把输出发回；确认 `chen-assistant-auto-deploy.service` 成功、`/health` 为 v1.5.11 后，更新生产基准。此后正常 Web 开发可由 main 自动部署，不再重复手工登录服务器。
 
 ### 新聊天接管协议
 
@@ -982,3 +983,38 @@ v1.5.10 进一步加固：
 - 新增 `scripts/sync_win_assistants_assets.sh`：生产机从 release 分支读取两个资产，验证版本清单、size、SHA-256 与 MZ 头后，原子替换到 `app/static/win-assistants`，并从公网 URL 复核 manifest；不会切换生产 Web main，也不会重启服务。
 - 新增 `scripts/install_win_assistants_asset_sync.sh`：安装 systemd oneshot + timer；开机后 45 秒首次运行，此后每 2 分钟同步。一次安装后，后续 Windows 新版本无需人工进入服务器复制文件。
 - 剩余唯一生产步骤：在生产主机执行一次 timer 安装并确认首轮同步成功。由于当前聊天没有生产 SSH/终端连接，本轮不能声称该服务器级步骤已经完成。
+
+
+## 25. 2026-09-24 Web 主站自动生产部署
+
+PR #67 已合并到 main，merge commit `4ee8d83e5fae4cb88d490dbba1742e3efcbb9d9f`。
+
+### 25.1 自动部署架构
+
+- `deploy.sh` 仍是唯一生产部署入口，新增 `CHEN_DEPLOY_TARGET_REV`，只允许部署属于 `origin/main` 的精确目标 SHA。
+- 若生产已经超过待部署目标，则安全跳过过时任务且不回退；若不能快进则失败停止；不使用 force/reset。
+- GitHub main workflow 在 validation 后再次执行 production stability contract；Web 运行时变更才进入 deploy job。
+- CI runner 若与生产同机可本地部署；若配置完整 SSH secrets 可严格 known_hosts 远程部署。
+- 当前实际 preflight 结果：`LOCAL_PRODUCTION_AVAILABLE=no`、`REMOTE_DEPLOY_SECRETS=incomplete`，所以不能从现有 runner 直接修改生产。
+
+### 25.2 无 SSH secrets 的默认生产侧方案
+
+新增：
+- `scripts/auto_deploy_main.sh`
+- `scripts/install_auto_deploy_timer.sh`
+
+生产侧 worker 每 2 分钟 fetch `origin/main`：
+- 没有新提交：退出；
+- 只有非 Web 变更：只快进 checkout，不重启服务；
+- Web 运行时有变化：从目标提交提取 `deploy.sh`，传入旧/新 SHA 后执行完整标准部署；
+- 生产受管文件有本地修改、分支不能快进等异常：停止，不覆盖现场。
+
+一次性安装：
+```bash
+cd /opt/chen-assistant
+git fetch origin main
+git merge --ff-only origin/main
+sudo bash scripts/install_auto_deploy_timer.sh
+```
+
+安装器会 enable/start `chen-assistant-auto-deploy.timer`，并立即运行一次 `chen-assistant-auto-deploy.service`。这是唯一仍需要人工进入生产机的一次 bootstrap；之后 Web main 更新自动部署。
