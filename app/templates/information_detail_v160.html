@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} · 资料中心{% endblock %}
+{% block content %}
+<section class="v10-shell info-center-v160">
+  <a class="v10-back" href="/info">← 返回资料中心</a>
+  <article class="info-detail-v160">
+    <header>
+      <div>
+        <div class="info-detail-kicker-v160">
+          {% if item.pinned %}<span class="info-pin-v160">置顶</span>{% endif %}
+          {% if item.category %}<span>{{ item.category }}</span>{% endif %}
+        </div>
+        <h1>{{ item.title }}</h1>
+        <div class="info-card-meta-v160">
+          {% if item.tags %}<span>{{ item.tags }}</span>{% endif %}
+          <span>更新 {{ item.updated_at[:16]|replace('T',' ') }}</span>
+        </div>
+      </div>
+      <a class="info-primary-v160 info-secondary-v160" href="/info/{{ item.id }}/edit">编辑</a>
+    </header>
+
+    {% if item.link_url %}
+    <section class="info-link-v160"><b>链接</b><a href="{{ item.link_url }}" target="_blank" rel="noopener noreferrer">{{ item.link_url }}</a></section>
+    {% endif %}
+
+    <section class="info-body-v160">
+      {% if item.decrypt_error %}
+      <p class="info-error-v160">正文解密失败，请检查 APP_ENCRYPTION_KEY。</p>
+      {% elif item.body %}
+      <pre>{{ item.body }}</pre>
+      {% else %}
+      <div class="v10-empty">这条资料还没有正文。</div>
+      {% endif %}
+    </section>
+
+    <form class="info-archive-v160" method="post" action="/info/{{ item.id }}/archive" onsubmit="return confirm('归档后将不再出现在资料中心列表中，确定继续吗？')">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit">归档资料</button>
+    </form>
+  </article>
+</section>
+{% endblock %}
