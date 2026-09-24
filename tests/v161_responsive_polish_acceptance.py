@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -98,7 +99,7 @@ def main():
             b1 = cards.nth(1).bounding_box()
             assert b0 and b1 and abs(b0['y'] - b1['y']) < 3
             assert b0['width'] > 450
-            expect(page.locator('.customer-filter-v161 .pill').first).to_have_class(/active/)
+            expect(page.locator('.customer-filter-v161 .pill').first).to_have_class(re.compile(r'active'))
 
             mobile = browser.new_context(viewport={'width': 390, 'height': 844})
             mobile.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8161'}])
