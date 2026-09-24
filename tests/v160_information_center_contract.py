@@ -10,6 +10,8 @@ def main():
     work = (ROOT / 'app' / 'templates' / 'work_shell_v14.html').read_text(encoding='utf-8')
     center = (ROOT / 'app' / 'templates' / 'information_center_v160.html').read_text(encoding='utf-8')
     search = (ROOT / 'app' / 'templates' / 'search_v10.html').read_text(encoding='utf-8')
+    work_search = (ROOT / 'app' / 'templates' / 'search.html').read_text(encoding='utf-8')
+    work_patch = (ROOT / 'app' / 'v124_work_patch.py').read_text(encoding='utf-8')
     config = (ROOT / 'app' / 'config.py').read_text(encoding='utf-8')
 
     assert 'CREATE TABLE IF NOT EXISTS information_records' in routes
@@ -32,6 +34,9 @@ def main():
     assert '账户密码仍保留为专用子功能，不再属于工作模块。' in center
     assert 'href="/accounts"' in center
     assert '<h2>资料 <small>{{ information|length }}</small></h2>' in search
+    assert '网址账户' not in work_search
+    assert '网站账户' not in work_search
+    assert "if scope == 'global':" in work_patch
     assert 'APP_VERSION = "1.6.0"' in config
 
     print('v1.6.0 information center contract passed')
