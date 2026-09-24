@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -82,7 +83,7 @@ def main():
             expect(page.get_by_role('heading', name='资料中心')).to_be_visible()
             expect(page.get_by_text('美国VPS', exact=True)).to_be_visible()
             expect(page.get_by_text('GitHub', exact=True)).to_have_count(0)
-            expect(page.locator('.global-primary-nav a[href="/info"]')).to_have_class(/active/)
+            expect(page.locator('.global-primary-nav a[href="/info"]')).to_have_class(re.compile(r'active'))
 
             page.goto('http://127.0.0.1:8160/info?q=生产节点', wait_until='networkidle')
             expect(page.get_by_text('美国VPS', exact=True)).to_be_visible()
