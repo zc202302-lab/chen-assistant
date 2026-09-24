@@ -7,7 +7,9 @@
   const results = overlay?.querySelector('[data-quick-search-results]');
   if (!trigger || !overlay || !form || !input) return;
 
-  const scope = overlay.dataset.searchScope === 'global' ? 'global' : 'work';
+  const requestedScope = overlay.dataset.searchScope || 'work';
+  const scope = requestedScope === 'global' ? 'global' : 'work';
+  const infoScope = requestedScope === 'info';
   let debounceTimer = null;
   let requestController = null;
   let requestSeq = 0;
@@ -107,6 +109,10 @@
 
   const scheduleSuggestions = () => {
     clearTimeout(debounceTimer);
+    if (infoScope) {
+      clearResults();
+      return;
+    }
     const q = input.value.trim();
     if (!q) {
       loadSuggestions('');
