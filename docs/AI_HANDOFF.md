@@ -2,14 +2,13 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前应用版本：Web 主线 `v1.5.11`；`win-assistants v0.4.0` 已在 main；久坐助手继续保持独立成熟代码并由统一壳桥接。
-- 当前 `main`：`4ee8d83e5fae4cb88d490dbba1742e3efcbb9d9f`（PR #67 已合并，加入 Web 主站自动生产部署能力；后续接力仍以仓库实时 main 为准）。
-- 当前生产：尚没有新的生产健康检查证据，因此不能声称 v1.5.11 已上线。已确认 self-hosted runner `racknerd-ci` 不是生产主机，仓库也未配置完整 `PROD_HOST / PROD_USER / PROD_SSH_KEY / PROD_KNOWN_HOSTS`，所以 PR #67 合并后的 main deploy job 正确地没有远程修改生产。
-- 当前已完成：PR #67 已合并。自动部署现在有两条受控路径：若未来配置完整生产 SSH secrets，main workflow 可直接部署；当前默认使用生产侧 `chen-assistant-auto-deploy.timer`，每 2 分钟检查 main，只对 Web 运行时变化执行标准 `deploy.sh`。部署支持精确目标 SHA、仅快进、防回退、数据库备份、版本/健康检查与静态资源校验。PR #67 head `b9c22ae` 的完整 validation、stability gate 全绿；合并后的 main validation、production stability recheck 与 deploy job 也均成功，其中 deploy job 明确记录为等待 production-side timer bootstrap。
-- 自动部署安全边界：PR 永不部署；main 变更先通过 validation + production stability recheck；纯 docs/tests/windows 变更不会重启 Web；生产 checkout 有本地受管文件修改或无法快进时自动停止；不使用 `git reset --hard` / force；过时部署目标不得让生产回退。
-- 当前未完成：生产机只差**一次性**安装 `chen-assistant-auto-deploy.timer`。安装后，此后 Web main 更新不再需要用户每次 SSH 登录执行 `cd /opt/chen-assistant && bash deploy.sh`。由于当前会话没有生产 SSH/终端权限，这一步不能伪称已执行。
-- 一次性生产安装命令：`cd /opt/chen-assistant && git fetch origin main && git show origin/main:scripts/install_auto_deploy_timer.sh | sudo bash`。**首次安装前不要先手工 merge main**：安装器会从 origin/main 安装 worker，并立即启动一次服务；让生产 checkout 保持旧 HEAD，worker 才能识别旧→新的差异并调用标准 deploy.sh 完成首轮 v1.5.11 部署。随后每 2 分钟检查 main。
-- 下一步建议：用户只需在生产机执行上述一次性命令并把输出发回；确认 `chen-assistant-auto-deploy.service` 成功、`/health` 为 v1.5.11 后，更新生产基准。此后正常 Web 开发可由 main 自动部署，不再重复手工登录服务器。
+- 当前应用版本：Web main 为 `v1.5.11`；`win-assistants v0.4.0` 已在 main
+- 当前 `main`：`4ee8d83e5fae4cb88d490dbba1742e3efcbb9d9f`（PR #67 已合并：自动化 Web 主站生产部署）
+- 当前生产：尚未得到生产主机执行 v1.5.11 `deploy.sh` 或 `/health` 的新证据；最后确认基准仍为 `985ac41` / v1.5.8。不得把 main 合并等同于生产已升级
+- 当前已完成：v1.5.11 缴费首页“三阶段（未通知 / 已通知 / 待缴费）”已通过完整 validation、stability gate 与历史浏览器回归并合并；自动生产部署能力也已通过 PR #67 合并。自动部署继续复用 `deploy.sh`，支持精确目标 SHA、防回退、Web 变更判断、本机生产 checkout / 严格 SSH 两种模式，以及生产侧 timer fallback
+- 生产访问实测：PR #67 preflight 在 self-hosted runner `racknerd-ci` 上确认 `LOCAL_PRODUCTION_AVAILABLE=no`，且 `PROD_HOST / PROD_USER / PROD_SSH_KEY / PROD_KNOWN_HOSTS` 均未配置。因此 CI 当前不能直接 SSH 到生产；main deploy job 会安全 defer 到生产侧 `chen-assistant-auto-deploy.timer`
+- 当前唯一部署阻塞：生产机还没有完成一次性 timer bootstrap。仓库已提供 `scripts/install_auto_deploy_timer.sh`，安装后每 2 分钟检查 main；Web 运行时变化执行标准 `deploy.sh`，纯 docs/tests/windows 变化只快进代码、不重启 Web 服务
+- 下一步：在生产服务器只做最后一次人工 bootstrap：先用 main 的最新 `deploy.sh` 把生产升级到当前 main，再运行 `scripts/install_auto_deploy_timer.sh`。完成后后续 main Web 变更即可自动部署，无需每次登录服务器
 
 ### 新聊天接管协议
 
