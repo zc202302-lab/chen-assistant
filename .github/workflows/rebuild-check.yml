@@ -232,6 +232,12 @@ jobs:
     name: production deploy preflight
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: [self-hosted, linux, x64, chen-assistant]
+    env:
+      PROD_HOST: ${{ secrets.PROD_HOST }}
+      PROD_USER: ${{ secrets.PROD_USER }}
+      PROD_PORT: ${{ secrets.PROD_PORT }}
+      PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+      PROD_KNOWN_HOSTS: ${{ secrets.PROD_KNOWN_HOSTS }}
     steps:
       - name: Detect production access mode
         shell: bash
@@ -251,6 +257,12 @@ jobs:
           else
             echo "LOCAL_PRODUCTION_AVAILABLE=no"
             echo "Remote SSH deployment secrets will be required after merge."
+          fi
+
+          if [[ -n "${PROD_HOST:-}" && -n "${PROD_USER:-}" && -n "${PROD_SSH_KEY:-}" && -n "${PROD_KNOWN_HOSTS:-}" ]]; then
+            echo "REMOTE_DEPLOY_SECRETS=complete"
+          else
+            echo "REMOTE_DEPLOY_SECRETS=incomplete"
           fi
 
   deploy_stability:
