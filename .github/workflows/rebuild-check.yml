@@ -356,8 +356,9 @@ jobs:
           PORT="${PROD_PORT:-22}"
           if [[ -z "${PROD_HOST:-}" || -z "${PROD_USER:-}" || -z "${PROD_SSH_KEY:-}" || -z "${PROD_KNOWN_HOSTS:-}" ]]; then
             echo "Production is not locally deployable and remote SSH secrets are incomplete."
-            echo "Required: PROD_HOST, PROD_USER, PROD_SSH_KEY, PROD_KNOWN_HOSTS. PROD_PORT is optional."
-            exit 1
+            echo "Direct CI deployment deferred to the production-side chen-assistant-auto-deploy.timer."
+            echo "One-time timer bootstrap is required on production before this fallback becomes active."
+            exit 0
           fi
 
           SSH_DIR="$(mktemp -d)"
