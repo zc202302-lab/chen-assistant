@@ -1,0 +1,374 @@
+/* v1.6.1 — responsive polish for global header and customer directory.
+   Desktop and mobile share the same design language but use device-appropriate spacing. */
+
+/* ---------- global header ---------- */
+.topbar{
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
+  grid-template-rows:44px 46px;
+  min-height:104px;
+  gap:6px 18px;
+  padding-top:9px;
+  padding-bottom:9px;
+}
+.topbar-left{
+  grid-column:1;
+  grid-row:1;
+  align-self:center;
+}
+.topbar-actions{
+  display:contents;
+}
+.global-history-nav{
+  grid-column:2;
+  grid-row:1;
+  justify-self:center;
+  height:40px;
+  border-radius:13px;
+  background:rgba(255,255,255,.90);
+  box-shadow:0 3px 12px rgba(15,23,42,.06);
+}
+.global-history-button{
+  width:42px;
+  height:34px;
+  font-size:21px;
+}
+.search-link{
+  grid-column:3;
+  grid-row:1;
+  justify-self:end;
+  align-self:center;
+  display:grid;
+  place-items:center;
+  width:40px;
+  height:40px;
+  border:1px solid rgba(17,24,39,.09);
+  border-radius:12px;
+  background:rgba(255,255,255,.88);
+  box-shadow:0 2px 9px rgba(15,23,42,.05);
+  color:#172033;
+  font-size:20px!important;
+  line-height:1;
+}
+.search-link:hover{background:#fff}
+.global-primary-nav{
+  grid-column:1/-1;
+  grid-row:2;
+  justify-self:center;
+}
+.global-primary-nav a{
+  min-width:82px;
+}
+
+/* ---------- customer directory ---------- */
+body:has(.customer-directory-v161) .page{
+  max-width:1180px;
+}
+.customer-directory-v161{
+  margin:0 auto 18px;
+  padding:18px 4px 0;
+}
+.customer-directory-head-v161{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:24px;
+}
+.customer-directory-title-v161 .eyebrow{
+  margin:0 0 4px;
+  color:#8792a3!important;
+  letter-spacing:.08em;
+}
+.customer-directory-title-v161 h1{
+  margin:0;
+  font-size:34px;
+  letter-spacing:-.035em;
+}
+.customer-directory-actions-v161{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.customer-directory-actions-v161 .button{
+  min-height:44px;
+  padding:0 16px;
+  border-radius:13px;
+}
+.customer-import-v161{
+  background:#f6f8fb!important;
+  border-color:#dfe5ed!important;
+}
+.customer-new-v161{
+  box-shadow:0 4px 12px rgba(17,24,39,.12);
+}
+.customer-search-v161{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 112px;
+  gap:10px;
+  margin:20px 0 14px;
+}
+.customer-search-v161 input{
+  min-height:50px;
+  border-radius:14px;
+  padding:0 16px;
+  font-size:16px;
+  border-color:#dce2ea;
+  box-shadow:0 2px 10px rgba(15,23,42,.025);
+}
+.customer-search-v161 button{
+  min-height:50px;
+  border-radius:14px;
+  font-weight:800;
+  box-shadow:0 3px 10px rgba(17,24,39,.09);
+}
+.customer-filter-v161{
+  gap:8px;
+  padding:2px 0 4px;
+  margin:0;
+}
+.customer-filter-v161 .pill{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  min-height:38px;
+  padding:0 13px;
+  border-radius:999px;
+  border-color:#dfe5ec;
+  color:#4a5568;
+  background:#fff;
+  font-weight:700;
+  white-space:nowrap;
+}
+.customer-filter-v161 .pill b{
+  min-width:21px;
+  height:21px;
+  display:inline-grid;
+  place-items:center;
+  padding:0 6px;
+  border-radius:999px;
+  background:#f1f4f8;
+  color:#647084;
+  font-size:11px;
+}
+.customer-filter-v161 .pill.active{
+  background:#111827;
+  border-color:#111827;
+  color:#fff;
+}
+.customer-filter-v161 .pill.active b{
+  background:rgba(255,255,255,.16);
+  color:#fff;
+}
+.customer-directory-list-v161{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin:0 auto;
+}
+.customer-card-v161{
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto 22px;
+  align-items:center;
+  gap:14px;
+  min-height:96px;
+  padding:18px 18px 18px 20px;
+  border:1px solid #e1e6ed;
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 5px 18px rgba(15,23,42,.035);
+  transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease,background .15s ease;
+}
+.customer-card-v161:hover{
+  transform:translateY(-1px);
+  border-color:#cbd4df;
+  box-shadow:0 10px 26px rgba(15,23,42,.065);
+}
+.customer-card-copy-v161{min-width:0}
+.customer-card-name-v161{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#182235;
+  font-size:17px;
+  line-height:1.35;
+}
+.customer-card-meta-v161{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  margin-top:7px;
+}
+.customer-card-meta-v161 span{
+  display:inline-flex;
+  align-items:center;
+  min-height:23px;
+  padding:2px 8px;
+  border-radius:999px;
+  background:#f4f6f9;
+  color:#738095;
+  font-size:11px;
+}
+.customer-card-fee-v161{
+  display:flex;
+  align-items:baseline;
+  white-space:nowrap;
+  color:#243149;
+}
+.customer-card-fee-v161 strong{
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.customer-card-fee-v161 small{
+  margin-left:2px;
+  color:#8a95a5;
+  font-size:11px;
+}
+.customer-card-arrow-v161{
+  color:#8a95a5;
+  font-size:22px;
+  text-align:right;
+}
+.customer-empty-v161{grid-column:1/-1}
+
+/* ---------- tablet ---------- */
+@media(max-width:980px){
+  .customer-directory-list-v161{grid-template-columns:1fr}
+}
+
+/* ---------- mobile ---------- */
+@media(max-width:760px){
+  .topbar{
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
+    grid-template-rows:42px 44px;
+    min-height:100px;
+    gap:5px 8px;
+    padding:8px max(14px,env(safe-area-inset-left)) 8px max(14px,env(safe-area-inset-right));
+  }
+  .topbar-left .brand{font-size:17px}
+  .global-history-nav{
+    height:38px;
+    border-radius:12px;
+  }
+  .global-history-button{
+    width:38px;
+    height:32px;
+    font-size:19px;
+  }
+  .search-link{
+    width:38px;
+    height:38px;
+    border-radius:11px;
+    font-size:18px!important;
+  }
+  .global-primary-nav{
+    width:min(330px,calc(100vw - 28px));
+  }
+  .global-primary-nav a{
+    flex:1;
+    min-width:0;
+    padding:7px 8px;
+  }
+
+  body:has(.customer-directory-v161) .page{
+    padding-left:14px;
+    padding-right:14px;
+  }
+  .customer-directory-v161{
+    padding:14px 0 0;
+    margin-bottom:14px;
+  }
+  .customer-directory-head-v161{
+    align-items:flex-end;
+    gap:12px;
+  }
+  .customer-directory-title-v161 h1{
+    font-size:30px;
+  }
+  .customer-directory-actions-v161{
+    gap:7px;
+  }
+  .customer-directory-actions-v161 .button{
+    min-height:40px;
+    padding:0 12px;
+    border-radius:12px;
+    font-size:13px;
+  }
+  .customer-import-v161{
+    max-width:138px;
+  }
+  .customer-search-v161{
+    grid-template-columns:minmax(0,1fr) 78px;
+    gap:8px;
+    margin:17px 0 12px;
+  }
+  .customer-search-v161 input,
+  .customer-search-v161 button{
+    min-height:46px;
+    border-radius:13px;
+  }
+  .customer-search-v161 input{
+    padding:0 13px;
+    font-size:15px;
+  }
+  .customer-filter-v161{
+    margin-left:-2px;
+    margin-right:-2px;
+    padding:2px 2px 6px;
+    gap:7px;
+  }
+  .customer-filter-v161 .pill{
+    min-height:36px;
+    padding:0 12px;
+    font-size:13px;
+  }
+  .customer-directory-list-v161{
+    grid-template-columns:1fr;
+    gap:9px;
+  }
+  .customer-card-v161{
+    grid-template-columns:minmax(0,1fr) auto 18px;
+    gap:10px;
+    min-height:86px;
+    padding:15px 14px 15px 16px;
+    border-radius:16px;
+    box-shadow:none;
+  }
+  .customer-card-name-v161{font-size:16px}
+  .customer-card-meta-v161{margin-top:6px;gap:5px}
+  .customer-card-meta-v161 span{font-size:10px;min-height:21px;padding:1px 7px}
+  .customer-card-fee-v161 strong{font-size:16px}
+  .customer-card-arrow-v161{font-size:20px}
+}
+
+@media(max-width:480px){
+  .customer-directory-head-v161{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:end;
+  }
+  .customer-directory-actions-v161{
+    display:grid;
+    grid-template-columns:auto auto;
+  }
+  .customer-import-v161{
+    font-size:12px!important;
+    padding:0 10px!important;
+  }
+  .customer-new-v161{
+    font-size:13px!important;
+  }
+}
+
+@media(max-width:390px){
+  .customer-directory-head-v161{
+    grid-template-columns:1fr;
+  }
+  .customer-directory-actions-v161{
+    grid-template-columns:1fr 1fr;
+    width:100%;
+  }
+  .customer-directory-actions-v161 .button{
+    width:100%;
+  }
+}
