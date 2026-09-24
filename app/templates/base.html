@@ -29,24 +29,26 @@
   <link rel="stylesheet" href="/static/v125_excel_review.css?v=1250">
   <link rel="stylesheet" href="/static/v128_table_finder.css?v=1280">
   <link rel="stylesheet" href="/static/v13_customer_documents.css?v=1300">
-  <link rel="stylesheet" href="/static/work-architecture-v14.css?v=1400">
+  <link rel="stylesheet" href="/static/work-architecture-v14.css?v=1400">\n  <link rel="stylesheet" href="/static/information-center-v160.css?v=1600">
   <link rel="stylesheet" href="/static/quick-search-v15.css?v=1510">
   <link rel="stylesheet" href="/static/high-frequency-v152.css?v=1525">
   <title>{% block title %}晨的助手{% endblock %}</title>
 </head>
 <body>
 {% set _path = request.url.path %}
-{% set _is_work = _path == '/work' or _path.startswith('/work/') or _path == '/search' or _path.startswith('/customers') or _path.startswith('/products') or _path.startswith('/accounts') %}
+{% set _is_info = _path == '/info' or _path.startswith('/info/') or _path.startswith('/accounts') %}
+{% set _is_work = _path == '/work' or _path.startswith('/work/') or _path == '/search' or _path.startswith('/customers') or _path.startswith('/products') %}
 {% set _is_life = _path.startswith('/life') %}
-{% set _search_target = '/search' if _is_work else '/global-search' %}
-{% set _search_scope = 'work' if _is_work else 'global' %}
+{% set _search_target = '/info' if _is_info else ('/search' if _is_work else '/global-search') %}
+{% set _search_scope = 'info' if _is_info else ('work' if _is_work else 'global') %}
 <header class="topbar">
   <div class="topbar-left">
     <a class="brand" href="/">晨的助手 <span>v{{ request.app.version }}</span></a>
   </div>
   <nav class="global-primary-nav" aria-label="主区域导航">
-    <a href="/"{% if not _is_work and not _is_life %} class="active" aria-current="page"{% endif %}>首页</a>
+    <a href="/"{% if not _is_work and not _is_info and not _is_life %} class="active" aria-current="page"{% endif %}>首页</a>
     <a href="/work"{% if _is_work %} class="active" aria-current="page"{% endif %}>工作</a>
+    <a href="/info"{% if _is_info %} class="active" aria-current="page"{% endif %}>资料</a>
     <a href="/life"{% if _is_life %} class="active" aria-current="page"{% endif %}>生活</a>
   </nav>
   <div class="topbar-actions">
@@ -60,7 +62,7 @@
 <div class="quick-search-v15" data-quick-search-v15 data-search-scope="{{ _search_scope }}" hidden>
   <div class="quick-search-card-v15" role="dialog" aria-modal="true" aria-label="搜索">
     <form class="quick-search-form-v15" method="get" action="{{ _search_target }}" data-quick-search-form>
-      <input class="quick-search-input-v15" autocomplete="off" placeholder="{% if _is_work %}客户名 / 集团编码 / 税号 / 号码 / 账号{% else %}客户、号码、账号、菜名、知识点…{% endif %}" data-quick-search-input aria-autocomplete="list" aria-controls="quickSearchLiveResults">
+      <input class="quick-search-input-v15" autocomplete="off" placeholder="{% if _is_info %}标题、正文、分类、标签…{% elif _is_work %}客户名 / 集团编码 / 税号 / 号码 / 账号{% else %}客户、资料、账号、菜名、知识点…{% endif %}" data-quick-search-input aria-autocomplete="list" aria-controls="quickSearchLiveResults">
       <button class="quick-search-submit-v15" type="submit">搜索</button>
     </form>
     <div class="quick-search-live-v151" id="quickSearchLiveResults" data-quick-search-results hidden aria-live="polite"></div>
@@ -68,7 +70,14 @@
   </div>
 </div>
 <main class="page">{% block content %}{% endblock %}</main>
-{% if _is_work %}
+{% if _is_info %}
+<nav class="bottom-nav" aria-label="资料中心导航">
+  <a href="/info" class="nav-item">▤<span>资料</span></a>
+  <a href="/info/new" class="nav-item">＋<span>新建</span></a>
+  <a href="/accounts" class="nav-item">◎<span>账户</span></a>
+  <a href="/info" class="nav-item">⌕<span>搜索</span></a>
+</nav>
+{% elif _is_work %}
 <nav class="bottom-nav" aria-label="工作导航">
   <a href="/work" class="nav-item">⌂<span>工作</span></a>
   <a href="/work/customers" class="nav-item">◎<span>客户</span></a>
@@ -113,7 +122,7 @@
 <script src="/static/v033_payment_flow_patch.js?v=1590"></script>
 <script src="/static/v10.js?v=1000"></script>
 <script src="/static/global-back.js?v=1540"></script>
-<script src="/static/quick-search-v15.js?v=1510"></script>
+<script src="/static/quick-search-v15.js?v=1600"></script>
 <script src="/static/v143_customer_status.js?v=1431"></script>
 <script src="/static/v12.js?v=1200"></script>
 <script src="/static/v123_foxmail_compose_fix.js?v=15100"></script>

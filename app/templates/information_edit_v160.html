@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}编辑资料{% else %}新建资料{% endif %} · 晨的助手{% endblock %}
+{% block content %}
+<section class="v10-shell info-center-v160">
+  <a class="v10-back" href="{% if item %}/info/{{ item.id }}{% else %}/info{% endif %}">← 返回资料中心</a>
+  <div class="v10-page-head info-head-v160">
+    <div>
+      <span class="v10-kicker">信息库</span>
+      <h1>{% if item %}编辑资料{% else %}新建资料{% endif %}</h1>
+      <p>只固定最少字段，正文可以按你自己的格式记录。</p>
+    </div>
+  </div>
+  <form class="info-edit-v160" method="post" action="{% if item %}/info/{{ item.id }}/edit{% else %}/info/new{% endif %}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label><span>标题 *</span><input name="title" required value="{{ item.title if item else '' }}" placeholder="例如：美国 VPS 节点"></label>
+    <div class="info-edit-two-v160">
+      <label><span>分类</span><input name="category" value="{{ item.category if item else '' }}" placeholder="例如：服务器 / 学习 / 软件"></label>
+      <label><span>标签</span><input name="tags" value="{{ item.tags if item else '' }}" placeholder="例如：VPS, Linux, 代理"></label>
+    </div>
+    <label><span>链接</span><input name="link_url" value="{{ item.link_url if item else '' }}" placeholder="https://…"></label>
+    <label><span>正文</span><textarea name="body" rows="18" placeholder="自由记录。可以使用 Markdown 习惯书写，但当前版本先按纯文本安全保存。">{{ item.body if item else '' }}</textarea></label>
+    <label class="info-check-v160"><input type="checkbox" name="pinned" value="1" {% if item and item.pinned %}checked{% endif %}><span>置顶这条资料</span></label>
+    <div class="info-form-actions-v160">
+      <button class="info-primary-v160" type="submit">保存</button>
+      <a href="{% if item %}/info/{{ item.id }}{% else %}/info{% endif %}">取消</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

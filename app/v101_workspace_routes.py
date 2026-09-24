@@ -50,7 +50,6 @@ def work_home_v101(request: Request, home: str = ''):
         customer_count = int(conn.execute('SELECT COUNT(*) n FROM customers').fetchone()['n'])
         open_tasks = int(conn.execute('SELECT COUNT(*) n FROM tasks WHERE done=0').fetchone()['n'])
         product_count = int(conn.execute("SELECT COUNT(DISTINCT service_type) n FROM services WHERE service_type<>''").fetchone()['n'])
-        account_count = int(conn.execute('SELECT COUNT(*) n FROM website_accounts').fetchone()['n'])
 
     return templates.TemplateResponse(
         'work_shell_v14.html',
@@ -60,7 +59,6 @@ def work_home_v101(request: Request, home: str = ''):
             'customer_count': customer_count,
             'open_tasks': open_tasks,
             'product_count': product_count,
-            'account_count': account_count,
         },
     )
 

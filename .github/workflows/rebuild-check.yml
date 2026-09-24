@@ -121,6 +121,7 @@ jobs:
           python tests/v159_payment_initiate_safety_contract.py
           python tests/v1510_payment_enter_navigation_contract.py
           python tests/v1511_payment_dashboard_contract.py
+          python tests/v160_information_center_contract.py
           python tests/production_auto_deploy_contract.py
           python tests/v153_home_navigation_contract.py
 
@@ -202,6 +203,10 @@ jobs:
       - name: v1.5.11 three-stage payment dashboard acceptance
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v1511_payment_dashboard_acceptance.py
+
+      - name: v1.6.0 information center acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/v160_information_center_acceptance.py
 
       - name: Legacy customer import browser acceptance
         if: steps.scope.outputs.mode == 'full'

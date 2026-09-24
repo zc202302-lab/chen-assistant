@@ -46,7 +46,7 @@ def nav_labels(page):
 def assert_primary_nav(page, active_label: str):
     nav = page.locator('.global-primary-nav')
     expect(nav).to_be_visible()
-    assert [x.strip() for x in nav.locator('a').all_inner_texts()] == ['首页', '工作', '生活']
+    assert [x.strip() for x in nav.locator('a').all_inner_texts()] == ['首页', '工作', '资料', '生活']
     expect(nav.locator('a.active')).to_have_text(active_label)
 
 
@@ -122,7 +122,7 @@ def main():
             page.goto('http://127.0.0.1:8141/search', wait_until='networkidle')
             assert nav_labels(page) == ['工作', '客户', '资料', '搜索']
             assert_primary_nav(page, '工作')
-            expect(page.locator('input[name="q"]')).to_have_attribute('placeholder', '客户名 / 集团编码 / 税号 / 号码 / 账号 / 网站账户')
+            expect(page.locator('input[name="q"]')).to_have_attribute('placeholder', '客户名 / 集团编码 / 税号 / 号码 / 账号')
             expect(page.get_by_text('菜谱', exact=True)).to_have_count(0)
             assert_history_nav(page)
 

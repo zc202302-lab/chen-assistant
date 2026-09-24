@@ -12,6 +12,7 @@ def main():
     assert 'class="global-primary-nav"' in base
     assert 'href="/"' in base and '>首页</a>' in base
     assert 'href="/work"' in base and '>工作</a>' in base
+    assert 'href="/info"' in base and '>资料</a>' in base
     assert 'href="/life"' in base and '>生活</a>' in base
     assert 'home-top-nav-v153' not in home
     assert 'v10-space-grid v152-space-grid' not in home
@@ -22,8 +23,8 @@ def main():
     assert 'view-transition-name:app-page' in css
     assert '.topbar-actions' in css
     assert 'position:static' in css
-    assert 'APP_VERSION = "1.5.11"' in config
-    print('v1.5.4 global top navigation contract passed on app v1.5.11')
+    assert 'APP_VERSION = "1.6.0"' in config
+    print('v1.5.4 global top navigation contract passed on app v1.6.0')
 
 
 if __name__ == '__main__':

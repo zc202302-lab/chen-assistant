@@ -177,24 +177,24 @@ def quick_search_suggest_v151(q: str = '', scope: str = 'work'):
                 ],
             })
 
-        accounts = conn.execute(
-            '''SELECT id,platform,username,email FROM website_accounts
-               WHERE platform LIKE ? OR url LIKE ? OR username LIKE ? OR email LIKE ? OR tags LIKE ?
-               ORDER BY platform LIMIT 5''',
-            (like, like, like, like, like),
-        ).fetchall()
-        if accounts:
-            groups.append({
-                'label': '网站账户',
-                'items': [
-                    _suggest_item(
-                        'account', row['platform'] or row['username'] or '网站账户',
-                        row['username'] or row['email'] or '', f"/accounts/{row['id']}",
-                    ) for row in accounts
-                ],
-            })
-
         if scope == 'global':
+            accounts = conn.execute(
+                '''SELECT id,platform,username,email FROM website_accounts
+                   WHERE platform LIKE ? OR url LIKE ? OR username LIKE ? OR email LIKE ? OR tags LIKE ?
+                   ORDER BY platform LIMIT 5''',
+                (like, like, like, like, like),
+            ).fetchall()
+            if accounts:
+                groups.append({
+                    'label': '网站账户',
+                    'items': [
+                        _suggest_item(
+                            'account', row['platform'] or row['username'] or '网站账户',
+                            row['username'] or row['email'] or '', f"/accounts/{row['id']}",
+                        ) for row in accounts
+                    ],
+                })
+
             recipes = conn.execute(
                 '''SELECT r.id,r.name,r.category FROM recipes r
                    WHERE r.archived=0 AND (r.name LIKE ? OR r.category LIKE ? OR r.tags LIKE ? OR r.description LIKE ?)
@@ -229,7 +229,6 @@ def quick_search_suggest_v151(q: str = '', scope: str = 'work'):
 def work_search_v124(request: Request, q: str = ''):
     q = q.strip()
     customers = []
-    accounts = []
     service_hits = []
     if q:
         like = f'%{q}%'
@@ -256,15 +255,9 @@ def work_search_v124(request: Request, q: str = ''):
                    ORDER BY c.name LIMIT 50''',
                 (like, like, like, like, like, like, like, compact, f'%{compact}%'),
             ).fetchall()
-            accounts = conn.execute(
-                '''SELECT id,platform,url,username,email,tags FROM website_accounts
-                   WHERE platform LIKE ? OR url LIKE ? OR username LIKE ? OR email LIKE ? OR tags LIKE ?
-                   ORDER BY platform LIMIT 30''',
-                (like, like, like, like, like),
-            ).fetchall()
     return templates.TemplateResponse(
         'search.html',
-        _ctx(request, q=q, customers=customers, accounts=accounts, service_hits=service_hits),
+        _ctx(request, q=q, customers=customers, service_hits=service_hits),
     )
 
 

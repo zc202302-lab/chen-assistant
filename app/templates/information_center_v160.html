@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}资料中心 · 晨的助手{% endblock %}
+{% block content %}
+<section class="v10-shell info-center-v160">
+  <div class="v10-page-head info-head-v160">
+    <div>
+      <span class="v10-kicker">个人信息资产</span>
+      <h1>资料中心</h1>
+      <p>用于保存格式不固定的长期信息。账户密码仍保留为专用子功能，不再属于工作模块。</p>
+    </div>
+    <a class="info-primary-v160" href="/info/new">＋ 新建资料</a>
+  </div>
+
+  <div class="info-overview-v160">
+    <a class="info-overview-card-v160" href="/info">
+      <span>信息库</span>
+      <strong>{{ records|length }}</strong>
+      <small>自由正文、分类、标签和链接</small>
+    </a>
+    <a class="info-overview-card-v160" href="/accounts">
+      <span>账户库</span>
+      <strong>{{ account_count }}</strong>
+      <small>网站、平台、用户名与密码</small>
+    </a>
+  </div>
+
+  <form class="info-search-v160" method="get" action="/info">
+    <input name="q" value="{{ q }}" placeholder="搜索标题、正文、分类、标签、链接…">
+    <select name="category">
+      <option value="">全部分类</option>
+      {% for c in categories %}<option value="{{ c }}" {% if c==category %}selected{% endif %}>{{ c }}</option>{% endfor %}
+    </select>
+    <button type="submit">搜索</button>
+  </form>
+
+  {% if records %}
+  <div class="info-list-v160">
+    {% for item in records %}
+    <a class="info-card-v160" href="/info/{{ item.id }}">
+      <div class="info-card-main-v160">
+        <div class="info-card-title-v160">
+          {% if item.pinned %}<span class="info-pin-v160">置顶</span>{% endif %}
+          <strong>{{ item.title }}</strong>
+        </div>
+        <div class="info-card-meta-v160">
+          {% if item.category %}<span>{{ item.category }}</span>{% endif %}
+          {% if item.tags %}<span>{{ item.tags }}</span>{% endif %}
+          <span>{{ item.updated_at[:10] }}</span>
+        </div>
+        {% if item.body %}
+        <p>{{ item.body[:150] }}{% if item.body|length > 150 %}…{% endif %}</p>
+        {% elif item.decrypt_error %}
+        <p class="info-error-v160">正文暂时无法解密，请检查加密密钥。</p>
+        {% elif item.link_url %}
+        <p>{{ item.link_url }}</p>
+        {% endif %}
+      </div>
+      <span class="info-arrow-v160">›</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="v10-empty info-empty-v160">
+    {% if q or category %}没有匹配资料。{% else %}还没有资料。可以先把 VPS、软件、学习笔记、项目记录等放进这里。{% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

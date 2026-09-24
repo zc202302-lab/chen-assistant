@@ -2,13 +2,14 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前应用版本：Web main 为 `v1.5.11`；`win-assistants v0.4.0` 已在 main
-- 当前 `main`：PR #67 已合并（自动化 Web 主站生产部署），并已增加 `scripts/bootstrap_production_auto_deploy.sh` 一次性生产 bootstrap；具体 SHA 始终以仓库实时 main 为准
-- 当前生产：已由用户在生产主机执行一次性 bootstrap 并提供终端证据。生产代码为 `20294be`（完整提交 `20294bebaabd0fc3e5502821294e890d8a72202f`），Web `/health` 返回 `ok=true, version=1.5.11`；数据库备份、Python/JS 检查、静态资源一致性检查均通过
-- 当前已完成：v1.5.11 缴费首页“三阶段（未通知 / 已通知 / 待缴费）”已通过完整 validation、stability gate 与历史浏览器回归并合并；自动生产部署能力也已通过 PR #67 合并。自动部署继续复用 `deploy.sh`，支持精确目标 SHA、防回退、Web 变更判断、本机生产 checkout / 严格 SSH 两种模式，以及生产侧 timer fallback
-- 生产访问实测：PR #67 preflight 在 self-hosted runner `racknerd-ci` 上确认 `LOCAL_PRODUCTION_AVAILABLE=no`，且 `PROD_HOST / PROD_USER / PROD_SSH_KEY / PROD_KNOWN_HOSTS` 均未配置。因此 CI 当前不能直接 SSH 到生产；main deploy job 会安全 defer 到生产侧 `chen-assistant-auto-deploy.timer`
-- 自动部署已落地：生产主机已安装并启用 `chen-assistant-auto-deploy.timer`；`systemctl is-enabled` 为 `enabled`，`systemctl is-active` 为 `active`，timer 每 2 分钟检查 main。oneshot `chen-assistant-auto-deploy.service` 执行完成后显示 `inactive (dead)` 属正常状态
-- 下一步：后续 Web 运行时更新合并 main 后，观察生产侧 timer 自动部署即可，不再要求用户每次登录服务器执行 `deploy.sh`。当前唯一非阻塞告警是远程资料存储健康检查访问 `127.0.0.1:18790` 被拒绝；deploy.sh 明确不阻塞部署，后续如需要再单独排查远程资料存储服务
+- 当前应用版本：生产 Web 为 `v1.5.11`；`win-assistants v0.4.0` 已在 main；生产自动部署 timer 已启用
+- 当前 `main`：`d374556abb9631483c2f5c68a42c84f8b4604002` 为最近确认状态；继续开发时始终以仓库实时 main 为准
+- 当前生产：用户已提供生产终端证据，Web `/health` 返回 `ok=true, version=1.5.11`，生产 timer enabled + active；后续 main Web 变更无需人工执行 deploy.sh
+- 当前产品决策：停止继续修补“账户库”作为工作模块功能。账户密码保留为专用子功能，但整体从“工作”移出；新增独立一级模块“资料中心”，用于保存格式不固定的长期个人信息资产
+- 当前开发：分支 `feat/v160-information-center`，候选版本 `v1.6.0`。已加入独立 `/info` 资料中心、加密正文的信息记录表、自由分类/标签/链接、信息 CRUD、列表搜索、全局搜索接入；顶部主导航增加“资料”，`/accounts` 归属资料中心，工作页移除账户入口
+- v1.6.0 安全边界：信息正文使用现有 Fernet / `APP_ENCRYPTION_KEY` 加密存储；标题、分类、标签、链接保持可索引元数据；正文搜索在应用层解密后匹配，不把正文以明文列存入 SQLite
+- 当前未完成：v1.6.0 尚未合并/部署；需要先跑静态合同、浏览器真实 CRUD/加密/搜索验收以及全部历史回归。附件、图片、文件库、收藏仍不在 v1.6.0 首批范围
+- 下一步：完成 PR CI；若全绿则合并 v1.6.0，随后由生产 timer 自动部署，再核对生产 `/health` 和资料中心页面
 
 ### 新聊天接管协议
 
@@ -1031,3 +1032,50 @@ git show origin/main:scripts/install_auto_deploy_timer.sh | sudo bash
 - `chen-assistant-auto-deploy.timer` 已成功创建、enabled、active；下一次检查约 2 分钟后。
 - oneshot `chen-assistant-auto-deploy.service` 完成后显示 `inactive (dead)` 且 `status=0/SUCCESS`，这是正常行为，不代表自动部署失效。
 - 从此 Web main 更新无需再让用户手工 SSH 执行 `deploy.sh`；生产 timer 会按设计自动检查并部署。
+
+
+## 25. v1.6.0 独立资料中心
+
+### 25.1 产品定位
+
+用户确认：不再继续把现有“账户库”修补成万能记录工具，也不再把该功能模块放在“工作”下面。建立独立一级“资料中心”：
+
+- 顶部一级导航：`首页 / 工作 / 资料 / 生活`。
+- 资料中心主入口：`/info`。
+- “信息库”是核心，允许格式不固定的记录。
+- 现有 `/accounts` 路由和账户数据继续保留，但视觉/导航归属改为“资料中心”，不再属于“工作”。
+- 现有“工作资料”仍保持其原本含义：跨客户复用的工作知识资产，不与个人资料中心混为一谈。
+
+### 25.2 v1.6.0 首批信息模型
+
+新增 `information_records`：
+
+- `title`：必填标题。
+- `category`：自由文本分类，不预设死枚举。
+- `tags`：自由标签。
+- `body_enc`：正文 Fernet 密文。
+- `link_url`：可选关联链接。
+- `pinned`：置顶。
+- `archived`：软归档。
+- `created_at / updated_at`。
+
+正文使用已有 `APP_ENCRYPTION_KEY`；列表/详情需要时在应用层解密。搜索可以匹配正文，但不新增明文正文索引。
+
+### 25.3 v1.6.0 首批交互
+
+- `GET /info`：信息库列表、分类过滤和全文搜索。
+- `GET/POST /info/new`：新建。
+- `GET /info/{id}`：详情。
+- `GET/POST /info/{id}/edit`：编辑。
+- `POST /info/{id}/archive`：软归档。
+- 现有账户库继续使用 `/accounts`。
+- 全局搜索新增“资料”结果分组。
+- 资料中心的顶部搜索只提交到 `/info`，避免错误复用工作区即时搜索建议。
+
+### 25.4 本期明确不做
+
+- 附件 / 图片 / 文件库。
+- 收藏夹。
+- AI 自动整理/自动标签。
+- 将工作资料迁入资料中心。
+- 改写现有账户密码表结构或删除历史账户数据。

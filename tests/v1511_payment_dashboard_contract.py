@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,7 +24,8 @@ def main():
     assert 'grid-template-columns:repeat(3,minmax(0,1fr))' in css
     assert '.state-notified' in css and '.state-initiated' in css
     assert 'work-home-polish-v121.css?v=15110' in base
-    assert 'APP_VERSION = "1.5.11"' in config
+    match = re.search(r'APP_VERSION = "(\d+)\.(\d+)\.(\d+)"', config)
+    assert match and tuple(map(int, match.groups())) >= (1, 5, 11)
     print('v1.5.11 three-stage payment dashboard contract passed')
 
 if __name__ == '__main__':
