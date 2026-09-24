@@ -8,7 +8,7 @@
 - 当前已完成：PR #67 已合并。自动部署现在有两条受控路径：若未来配置完整生产 SSH secrets，main workflow 可直接部署；当前默认使用生产侧 `chen-assistant-auto-deploy.timer`，每 2 分钟检查 main，只对 Web 运行时变化执行标准 `deploy.sh`。部署支持精确目标 SHA、仅快进、防回退、数据库备份、版本/健康检查与静态资源校验。PR #67 head `b9c22ae` 的完整 validation、stability gate 全绿；合并后的 main validation、production stability recheck 与 deploy job 也均成功，其中 deploy job 明确记录为等待 production-side timer bootstrap。
 - 自动部署安全边界：PR 永不部署；main 变更先通过 validation + production stability recheck；纯 docs/tests/windows 变更不会重启 Web；生产 checkout 有本地受管文件修改或无法快进时自动停止；不使用 `git reset --hard` / force；过时部署目标不得让生产回退。
 - 当前未完成：生产机只差**一次性**安装 `chen-assistant-auto-deploy.timer`。安装后，此后 Web main 更新不再需要用户每次 SSH 登录执行 `cd /opt/chen-assistant && bash deploy.sh`。由于当前会话没有生产 SSH/终端权限，这一步不能伪称已执行。
-- 一次性生产安装命令：`cd /opt/chen-assistant && git fetch origin main && git merge --ff-only origin/main && sudo bash scripts/install_auto_deploy_timer.sh`。安装器会立即启动一次自动部署服务，随后每 2 分钟检查 main。
+- 一次性生产安装命令：`cd /opt/chen-assistant && git fetch origin main && git show origin/main:scripts/install_auto_deploy_timer.sh | sudo bash`。**首次安装前不要先手工 merge main**：安装器会从 origin/main 安装 worker，并立即启动一次服务；让生产 checkout 保持旧 HEAD，worker 才能识别旧→新的差异并调用标准 deploy.sh 完成首轮 v1.5.11 部署。随后每 2 分钟检查 main。
 - 下一步建议：用户只需在生产机执行上述一次性命令并把输出发回；确认 `chen-assistant-auto-deploy.service` 成功、`/health` 为 v1.5.11 后，更新生产基准。此后正常 Web 开发可由 main 自动部署，不再重复手工登录服务器。
 
 ### 新聊天接管协议
@@ -1013,8 +1013,7 @@ PR #67 已合并到 main，merge commit `4ee8d83e5fae4cb88d490dbba1742e3efcbb9d9
 ```bash
 cd /opt/chen-assistant
 git fetch origin main
-git merge --ff-only origin/main
-sudo bash scripts/install_auto_deploy_timer.sh
+git show origin/main:scripts/install_auto_deploy_timer.sh | sudo bash
 ```
 
-安装器会 enable/start `chen-assistant-auto-deploy.timer`，并立即运行一次 `chen-assistant-auto-deploy.service`。这是唯一仍需要人工进入生产机的一次 bootstrap；之后 Web main 更新自动部署。
+安装器会从 `origin/main` 读取并安装 worker，enable/start `chen-assistant-auto-deploy.timer`，并立即运行一次 `chen-assistant-auto-deploy.service`。首次 bootstrap 不应预先把生产 checkout merge 到 main，否则 worker 看不到旧→新的提交差异，可能只判断“already current”而不触发首轮 Web 重启。上述 `git show ... | sudo bash` 命令避免了这个问题。这是唯一仍需要人工进入生产机的一次 bootstrap；之后 Web main 更新自动部署。
