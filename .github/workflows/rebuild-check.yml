@@ -122,6 +122,7 @@ jobs:
           python tests/v1510_payment_enter_navigation_contract.py
           python tests/v1511_payment_dashboard_contract.py
           python tests/v160_information_center_contract.py
+          python tests/v161_responsive_polish_contract.py
           python tests/production_auto_deploy_contract.py
           python tests/v153_home_navigation_contract.py
 
@@ -207,6 +208,10 @@ jobs:
       - name: v1.6.0 information center acceptance
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v160_information_center_acceptance.py
+
+      - name: v1.6.1 responsive desktop/mobile acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/v161_responsive_polish_acceptance.py
 
       - name: Legacy customer import browser acceptance
         if: steps.scope.outputs.mode == 'full'

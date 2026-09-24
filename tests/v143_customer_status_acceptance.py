@@ -104,7 +104,8 @@ def main():
             assert primary_box, 'global primary nav has no bounding box'
             assert history_box, 'global history nav has no bounding box'
             assert abs((primary_box['x'] + primary_box['width'] / 2) - 720) <= 4, primary_box
-            assert history_box['x'] > primary_box['x'] + primary_box['width'], (primary_box, history_box)
+            assert abs((history_box['x'] + history_box['width'] / 2) - 720) <= 4, history_box
+            assert primary_box['y'] > history_box['y'], (primary_box, history_box)
             assert page.locator('.topbar-actions [data-history-nav]').count() == 1
             b = back.bounding_box(); f = forward.bounding_box()
             assert b and f and b['width'] >= 34 and b['height'] >= 32 and f['width'] >= 34 and f['height'] >= 32
