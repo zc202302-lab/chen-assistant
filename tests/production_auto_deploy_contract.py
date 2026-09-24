@@ -5,6 +5,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
     workflow = (ROOT / '.github' / 'workflows' / 'rebuild-check.yml').read_text(encoding='utf-8')
+    worker = (ROOT / 'scripts' / 'auto_deploy_main.sh').read_text(encoding='utf-8')
+    installer = (ROOT / 'scripts' / 'install_auto_deploy_timer.sh').read_text(encoding='utf-8')
 
     assert 'TARGET_REV="${CHEN_DEPLOY_TARGET_REV:-}"' in deploy
     assert 'git merge-base --is-ancestor "$TARGET_REV" origin/main' in deploy
@@ -26,6 +28,13 @@ def main():
     for secret in ('PROD_HOST', 'PROD_USER', 'PROD_SSH_KEY', 'PROD_KNOWN_HOSTS'):
         assert f'secrets.{secret}' in workflow
     assert 'No Web runtime files changed; production deployment skipped.' in workflow
+
+    assert 'Direct CI deployment deferred to the production-side chen-assistant-auto-deploy.timer.' in workflow
+    assert 'git merge-base --is-ancestor "$START_REV" "$TARGET_REV"' in worker
+    assert 'CHEN_DEPLOY_TARGET_REV="$TARGET_REV"' in worker
+    assert 'app/*|storage_node/*|requirements.txt|deploy.sh' in worker
+    assert 'systemctl enable --now chen-assistant-auto-deploy.timer' in installer
+    assert 'OnUnitActiveSec=2min' in installer
 
     print('automatic production deployment contract passed')
 
