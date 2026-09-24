@@ -4,11 +4,11 @@
 
 - 当前应用版本：Web main 为 `v1.5.11`；`win-assistants v0.4.0` 已在 main
 - 当前 `main`：PR #67 已合并（自动化 Web 主站生产部署），并已增加 `scripts/bootstrap_production_auto_deploy.sh` 一次性生产 bootstrap；具体 SHA 始终以仓库实时 main 为准
-- 当前生产：尚未得到生产主机执行 v1.5.11 `deploy.sh` 或 `/health` 的新证据；最后确认基准仍为 `985ac41` / v1.5.8。不得把 main 合并等同于生产已升级
+- 当前生产：已由用户在生产主机执行一次性 bootstrap 并提供终端证据。生产代码为 `20294be`（完整提交 `20294bebaabd0fc3e5502821294e890d8a72202f`），Web `/health` 返回 `ok=true, version=1.5.11`；数据库备份、Python/JS 检查、静态资源一致性检查均通过
 - 当前已完成：v1.5.11 缴费首页“三阶段（未通知 / 已通知 / 待缴费）”已通过完整 validation、stability gate 与历史浏览器回归并合并；自动生产部署能力也已通过 PR #67 合并。自动部署继续复用 `deploy.sh`，支持精确目标 SHA、防回退、Web 变更判断、本机生产 checkout / 严格 SSH 两种模式，以及生产侧 timer fallback
 - 生产访问实测：PR #67 preflight 在 self-hosted runner `racknerd-ci` 上确认 `LOCAL_PRODUCTION_AVAILABLE=no`，且 `PROD_HOST / PROD_USER / PROD_SSH_KEY / PROD_KNOWN_HOSTS` 均未配置。因此 CI 当前不能直接 SSH 到生产；main deploy job 会安全 defer 到生产侧 `chen-assistant-auto-deploy.timer`
-- 当前唯一部署阻塞：生产机还没有完成一次性 timer bootstrap。仓库已提供 `scripts/install_auto_deploy_timer.sh`，安装后每 2 分钟检查 main；Web 运行时变化执行标准 `deploy.sh`，纯 docs/tests/windows 变化只快进代码、不重启 Web 服务
-- 下一步：在生产服务器只做最后一次人工 bootstrap。推荐直接运行 `scripts/bootstrap_production_auto_deploy.sh`：它会用最新 main 的 `deploy.sh` 升级生产、安装并启用 `chen-assistant-auto-deploy.timer`，最后验证 timer 与 `/health`。完成后后续 main Web 变更即可自动部署，无需每次登录服务器
+- 自动部署已落地：生产主机已安装并启用 `chen-assistant-auto-deploy.timer`；`systemctl is-enabled` 为 `enabled`，`systemctl is-active` 为 `active`，timer 每 2 分钟检查 main。oneshot `chen-assistant-auto-deploy.service` 执行完成后显示 `inactive (dead)` 属正常状态
+- 下一步：后续 Web 运行时更新合并 main 后，观察生产侧 timer 自动部署即可，不再要求用户每次登录服务器执行 `deploy.sh`。当前唯一非阻塞告警是远程资料存储健康检查访问 `127.0.0.1:18790` 被拒绝；deploy.sh 明确不阻塞部署，后续如需要再单独排查远程资料存储服务
 
 ### 新聊天接管协议
 
@@ -1016,3 +1016,18 @@ git show origin/main:scripts/install_auto_deploy_timer.sh | sudo bash
 ```
 
 安装器会从 `origin/main` 读取并安装 worker，enable/start `chen-assistant-auto-deploy.timer`，并立即运行一次 `chen-assistant-auto-deploy.service`。首次 bootstrap 不应预先把生产 checkout merge 到 main，否则 worker 看不到旧→新的提交差异，可能只判断“already current”而不触发首轮 Web 重启。上述 `git show ... | sudo bash` 命令避免了这个问题。这是唯一仍需要人工进入生产机的一次 bootstrap；之后 Web main 更新自动部署。
+
+
+### 24.5 生产自动部署已完成实机 bootstrap（2026-09-24）
+
+用户提供生产终端截图确认：
+
+- 当前生产代码：`20294be`，对应 main 提交 `20294bebaabd0fc3e5502821294e890d8a72202f`。
+- 数据库备份完成：`/opt/chen-assistant/backups/app.db.20260924-134624`。
+- Python 依赖未变化，跳过 pip install；v1.5.11 应用自检通过。
+- `/health` 返回 `{"ok":true,"version":"1.5.11"}`。
+- 全部 JS/CSS 静态资源一致；Foxmail 本次未变化，跳过重复校验。
+- 远程资料存储健康检查 `127.0.0.1:18790` 连接拒绝；这是现有 deploy.sh 中明确的非阻塞告警，不影响本次 Web 部署成功。
+- `chen-assistant-auto-deploy.timer` 已成功创建、enabled、active；下一次检查约 2 分钟后。
+- oneshot `chen-assistant-auto-deploy.service` 完成后显示 `inactive (dead)` 且 `status=0/SUCCESS`，这是正常行为，不代表自动部署失效。
+- 从此 Web main 更新无需再让用户手工 SSH 执行 `deploy.sh`；生产 timer 会按设计自动检查并部署。
