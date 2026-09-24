@@ -11,7 +11,8 @@ def main():
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
 
     assert 'responsive-polish-v161.css?v=1610' in base
-    assert 'class="customer-directory-v161"' in customers
+    assert 'customer-directory-v161' in customers
+    assert 'class="page-head customer-directory-v161"' in customers
     assert 'customer-directory-actions-v161' in customers
     assert 'customer-search-v161' in customers
     assert 'customer-filter-v161' in customers
