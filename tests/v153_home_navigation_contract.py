@@ -12,6 +12,7 @@ def main():
     assert 'class="global-primary-nav"' in base
     assert 'href="/"' in base and '>首页</a>' in base
     assert 'href="/work"' in base and '>工作</a>' in base
+    assert 'href="/info"' in base and '>资料</a>' in base
     assert 'href="/life"' in base and '>生活</a>' in base
     assert 'home-top-nav-v153' not in home
     assert 'v10-space-grid v152-space-grid' not in home
