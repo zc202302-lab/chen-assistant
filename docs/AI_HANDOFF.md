@@ -3,12 +3,12 @@
 ## 0. 当前接力状态（新聊天先看这里）
 
 - 当前应用版本：Web main 为 `v1.5.11`；`win-assistants v0.4.0` 已在 main
-- 当前 `main`：`4ee8d83e5fae4cb88d490dbba1742e3efcbb9d9f`（PR #67 已合并：自动化 Web 主站生产部署）
+- 当前 `main`：PR #67 已合并（自动化 Web 主站生产部署），并已增加 `scripts/bootstrap_production_auto_deploy.sh` 一次性生产 bootstrap；具体 SHA 始终以仓库实时 main 为准
 - 当前生产：尚未得到生产主机执行 v1.5.11 `deploy.sh` 或 `/health` 的新证据；最后确认基准仍为 `985ac41` / v1.5.8。不得把 main 合并等同于生产已升级
 - 当前已完成：v1.5.11 缴费首页“三阶段（未通知 / 已通知 / 待缴费）”已通过完整 validation、stability gate 与历史浏览器回归并合并；自动生产部署能力也已通过 PR #67 合并。自动部署继续复用 `deploy.sh`，支持精确目标 SHA、防回退、Web 变更判断、本机生产 checkout / 严格 SSH 两种模式，以及生产侧 timer fallback
 - 生产访问实测：PR #67 preflight 在 self-hosted runner `racknerd-ci` 上确认 `LOCAL_PRODUCTION_AVAILABLE=no`，且 `PROD_HOST / PROD_USER / PROD_SSH_KEY / PROD_KNOWN_HOSTS` 均未配置。因此 CI 当前不能直接 SSH 到生产；main deploy job 会安全 defer 到生产侧 `chen-assistant-auto-deploy.timer`
 - 当前唯一部署阻塞：生产机还没有完成一次性 timer bootstrap。仓库已提供 `scripts/install_auto_deploy_timer.sh`，安装后每 2 分钟检查 main；Web 运行时变化执行标准 `deploy.sh`，纯 docs/tests/windows 变化只快进代码、不重启 Web 服务
-- 下一步：在生产服务器只做最后一次人工 bootstrap：先用 main 的最新 `deploy.sh` 把生产升级到当前 main，再运行 `scripts/install_auto_deploy_timer.sh`。完成后后续 main Web 变更即可自动部署，无需每次登录服务器
+- 下一步：在生产服务器只做最后一次人工 bootstrap。推荐直接运行 `scripts/bootstrap_production_auto_deploy.sh`：它会用最新 main 的 `deploy.sh` 升级生产、安装并启用 `chen-assistant-auto-deploy.timer`，最后验证 timer 与 `/health`。完成后后续 main Web 变更即可自动部署，无需每次登录服务器
 
 ### 新聊天接管协议
 
