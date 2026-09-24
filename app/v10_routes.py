@@ -10,7 +10,8 @@ from fastapi.templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
-from .security import require_csrf
+from .security import decrypt_secret, require_csrf
+from .v160_information_center import ensure_v160_schema
 from .v10_seed import KNOWLEDGE_SEED, RECIPE_CATALOG, STRUCTURED_RECIPES
 
 router = APIRouter()
@@ -388,7 +389,7 @@ def life_home_v10(request: Request):
 @router.get('/search', response_class=HTMLResponse)
 def global_search_v10(request: Request, q: str = ''):
     q = q.strip()
-    customers = accounts = recipes = knowledge = []
+    customers = accounts = information = recipes = knowledge = []
     if q:
         like = f'%{q}%'
         with db() as conn:
@@ -406,6 +407,26 @@ def global_search_v10(request: Request, q: str = ''):
                    ORDER BY platform LIMIT 20''',
                 (like, like, like, like, like),
             ).fetchall()
+            ensure_v160_schema(conn)
+            info_rows = conn.execute(
+                '''SELECT id,title,category,tags,body_enc,link_url
+                   FROM information_records WHERE archived=0
+                   ORDER BY pinned DESC,updated_at DESC,id DESC'''
+            ).fetchall()
+            q_lower = q.casefold()
+            for row in info_rows:
+                try:
+                    body = decrypt_secret(row['body_enc'] or '')
+                except Exception:
+                    body = ''
+                haystack = '\\n'.join([
+                    row['title'] or '', row['category'] or '', row['tags'] or '',
+                    body, row['link_url'] or '',
+                ]).casefold()
+                if q_lower in haystack:
+                    information.append(dict(row))
+                if len(information) >= 30:
+                    break
             recipes = conn.execute(
                 '''SELECT r.id,r.name,r.category,r.tags,rv.version_no FROM recipes r
                    LEFT JOIN recipe_versions rv ON rv.id=r.current_version_id
@@ -419,7 +440,7 @@ def global_search_v10(request: Request, q: str = ''):
                 (like, like, like),
             ).fetchall()
     return templates.TemplateResponse('search_v10.html', _ctx(
-        request, q=q, customers=customers, accounts=accounts, recipes=recipes, knowledge=knowledge
+        request, q=q, customers=customers, accounts=accounts, information=information, recipes=recipes, knowledge=knowledge
     ))
 
 
