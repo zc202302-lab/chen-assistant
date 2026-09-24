@@ -30,6 +30,7 @@ def main():
     assert 'href="/info"' in base and '>资料</a>' in base
     assert "_path.startswith('/accounts')" in base
     assert 'information-center-v160.css?v=1600' in base
+    assert 'work-architecture-v14.css?v=1400">\\n' not in base, 'literal newline must not render above the header'
     assert '网站 / 平台账户' not in work
     assert '账户密码仍保留为专用子功能，不再属于工作模块。' in center
     assert 'href="/accounts"' in center
@@ -37,6 +38,9 @@ def main():
     assert '网址账户' not in work_search
     assert '网站账户' not in work_search
     assert "if scope == 'global':" in work_patch
+    css = (ROOT / 'app' / 'static' / 'information-center-v160.css').read_text(encoding='utf-8')
+    assert 'position:fixed' in css and 'bottom:calc(58px + env(safe-area-inset-bottom))' in css
+    assert '.info-edit-v160 textarea{height:42vh;min-height:260px;max-height:460px}' in css
     assert 'APP_VERSION = "1.6.0"' in config
 
     print('v1.6.0 information center contract passed')
