@@ -15,7 +15,7 @@ jobs:
       github.event.pull_request.base.ref == 'main' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.head.ref == 'release/win-assistants-v050-promote'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, chen-assistant]
     steps:
       - uses: actions/checkout@v4
         with:
