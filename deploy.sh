@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-APP_DIR="/opt/chen-assistant"; SERVICE="chen-assistant"; APP_HTTP="http://172.19.0.1:8010"; HEALTH_URL="$APP_HTTP/health"; BACKUP_DIR="$APP_DIR/backups"; EXPECTED_VERSION="1.6.1"
+APP_DIR="/opt/chen-assistant"; SERVICE="chen-assistant"; APP_HTTP="http://172.19.0.1:8010"; HEALTH_URL="$APP_HTTP/health"; BACKUP_DIR="$APP_DIR/backups"; EXPECTED_VERSION="1.6.1"; AUTO_DEPLOY_STATE_DIR="${CHEN_AUTO_DEPLOY_STATE_DIR:-/var/lib/chen-assistant-auto-deploy}"; AUTO_DEPLOY_CHECKPOINT="$AUTO_DEPLOY_STATE_DIR/last-successful-revision"; DEPLOY_STATUS_FILE="$APP_DIR/app/static/deployment-status.json"
 cd "$APP_DIR"
 echo "===== 晨的助手 v${EXPECTED_VERSION} 一键更新 ====="
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then echo "✗ 检测到服务器受 Git 管理文件有本地修改，已停止更新。"; git status --short; exit 1; fi
@@ -8,7 +8,7 @@ DEPLOY_FROM_REV="${CHEN_DEPLOY_FROM_REV:-$(git rev-parse HEAD)}"
 TARGET_REV="${CHEN_DEPLOY_TARGET_REV:-}"
 START_REV="$(git rev-parse HEAD)"
 echo "当前代码：$(git rev-parse --short HEAD)"
-git fetch origin main
+timeout 60s git fetch origin main
 if [[ -n "$TARGET_REV" ]]; then
   git rev-parse --verify "$TARGET_REV^{commit}" >/dev/null 2>&1 || { echo "✗ 指定部署提交不存在：$TARGET_REV"; exit 1; }
   git merge-base --is-ancestor "$TARGET_REV" origin/main || { echo "✗ 指定部署提交不属于当前 origin/main：$TARGET_REV"; exit 1; }
@@ -120,4 +120,37 @@ if grep -q '^REMOTE_STORAGE_BASE_URL=' .env 2>/dev/null && grep -q '^REMOTE_STOR
 else
   echo "ℹ 客户资料模块已安装；远程存储尚未配置时会在页面提示。"
 fi
+# Only after every production self-check has passed do we publish success.
+# This marker lets the production worker retry a failed deployment even when the
+# checkout itself was already fast-forwarded to the target revision.
+FULL_REV="$(git rev-parse HEAD)"
+mkdir -p "$AUTO_DEPLOY_STATE_DIR"
+CHECKPOINT_TMP="$(mktemp "$AUTO_DEPLOY_STATE_DIR/.last-successful-revision.XXXXXX")"
+printf '%s\n' "$FULL_REV" > "$CHECKPOINT_TMP"
+chmod 0644 "$CHECKPOINT_TMP"
+mv -f "$CHECKPOINT_TMP" "$AUTO_DEPLOY_CHECKPOINT"
+
+# Publish an exact, machine-readable production revision for GitHub Actions.
+# The file is untracked and served by the existing public /static mount.
+STATUS_TMP="$(mktemp "$APP_DIR/app/static/.deployment-status.XXXXXX")"
+.venv/bin/python - "$FULL_REV" "$EXPECTED_VERSION" > "$STATUS_TMP" <<'PY'
+import json,sys
+from datetime import datetime, timezone
+print(json.dumps({
+    "ok": True,
+    "revision": sys.argv[1],
+    "version": sys.argv[2],
+    "deployed_at": datetime.now(timezone.utc).isoformat(),
+}, ensure_ascii=False, separators=(",", ":")))
+PY
+chmod 0644 "$STATUS_TMP"
+mv -f "$STATUS_TMP" "$DEPLOY_STATUS_FILE"
+
+# Keep the production-side worker/timer definition synchronized automatically.
+# SYNC_ONLY never starts a nested deployment service from inside a deployment.
+if [[ -f scripts/install_auto_deploy_timer.sh ]]; then
+  CHEN_AUTO_DEPLOY_SYNC_ONLY=1 CHEN_AUTO_DEPLOY_STATE_DIR="$AUTO_DEPLOY_STATE_DIR" bash scripts/install_auto_deploy_timer.sh
+fi
+
+echo "✓ 生产部署确认：$FULL_REV"
 echo "===== 晨的助手 v${EXPECTED_VERSION} 更新完成 ====="; echo "代码：$(git rev-parse --short HEAD)"; echo "备份：${BACKUP_FILE:-无}"
