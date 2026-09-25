@@ -2,23 +2,16 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前 Windows 开发：`win-assistants v0.4.1` 正在开发，分支 `feat/win-assistants-tray-startup`，PR #76，最新功能 commit `9a5ef2c9008b70b6caec4da21fc078e20e0e1eee`。
-- 用户最后明确要求：设置 win-assistants 开机启动，并且开机后静默运行、直接进入系统托盘；执行“检查更新”后必须自动替换并自动重启，且重启后继续进入托盘，不需要人工再次打开。
-- v0.4.1 已完成代码：开机启动 UI 明确为“随 Windows 登录静默启动（直接进入托盘）”；HKCU Run 继续固定 `--background`；自更新替换脚本显式保留 background 重启模式；新增 startup/updater 防回归测试；版本已升到 `0.4.1`。
-- v0.4.1 尚未完成：等待 PR #76 CI（cross build / validation / stability）与最终 Windows EXE smoke test；通过后再合并 main，由既有 `win-assistants-release` 链路发布更新资产。短信/Foxmail 不改，久坐助手继续独立成熟代码。
-
-- 当前应用版本：main 已进入 Web `v1.6.1`；`win-assistants v0.4.0` 仍在 main
-- 当前 `main`：`31890b01533faf07ea75f9ddf878751c91fc2152`（已合并 PR #70：手机与电脑响应式界面优化）
-- PR #70 状态：已合并；合并前 head `85abd0bd88dbf105e78b2f9b10ef87ffc3b019de`
-- v1.6.1 已完成验证：PR stability gate #463 成功、PR v1.2 validation #845 成功；合并后 main stability gate #464 成功、main v1.2 validation #846 成功，包含安全审计、兼容性合同、全部历史浏览器回归以及 v1.6.1 桌面 1440px / 手机 390px 双视口验收
-- 本轮兼容修正：修复了 v1.6.1 新合同中错误的客户目录 class 精确断言；同时将 v1.4.3 的旧“历史箭头必须位于主导航右侧”布局断言迁移到 v1.6.1 已确定的新规则——历史箭头顶部居中、主导航第二行居中。旧测试中的后退/前进功能、尺寸、客户状态等行为验收均保留
-- 当前生产部署链：main 的 production stability recheck 已成功；deploy production job 成功执行，但 CI runner 无生产 SSH secrets 且不是生产机，因此日志明确将实际部署交给生产侧 `chen-assistant-auto-deploy.timer`
-- 当前生产基准：此前用户实际页面已确认生产进入 v1.6.0；`chen-assistant-auto-deploy.timer` 已完成一次性安装并启用。当前工具无法直接访问生产 `/health`，因此尚不能把 v1.6.1 标记为“生产已确认”
-- 当前产品决定：手机和电脑都要优化，但不强制共用同一个布局；根据屏幕空间分别调整，同时保持统一视觉语言
-- v1.6.1 已完成范围：① 顶部品牌左侧、后退/前进真正居中、搜索右侧、主导航第二行居中；② 手机/电脑分别优化尺寸和间距；③ 客户列表页层级、搜索、横向筛选胶囊和客户卡片优化，桌面双列、平板/手机单列；客户业务逻辑与数据模型未改变
-- 当前未完成：仅剩生产侧自动部署后的实机确认（至少确认 `/health` 为 v1.6.1，并从手机和电脑检查顶部布局及客户列表实际效果）
-- 当前 Open 开发 PR：PR #70 已结束；接管时必须重新查询 GitHub Open/Draft PR，不得把历史分支自动视为当前开发
-- 下一步：先确认生产 v1.6.1；确认后更新生产基准，再根据用户反馈继续响应式细节优化或进入下一项产品开发
+- 当前应用版本：main Web 为 `v1.6.1`；`win-assistants v0.4.1` 已通过 PR #76 合并进 main；当前正在开发 Web `v1.6.2`
+- 当前 main 基线：`5e9da31709311ec759c0466fcf2f3a2f61e2740f`（PR #76：win-assistants v0.4.1 静默开机启动与更新后托盘重启）
+- 当前 Windows 状态：PR #76 已合并；`win-assistants v0.4.1` 代码已在 main。最终 Windows EXE smoke/release 状态需要按 Windows 发布链单独确认，不能仅凭 main 合并推断已发布
+- 用户最后明确要求：电脑网页端不要让后退/前进箭头占据顶部中间位置；桌面端将两个箭头移到左上角“晨的助手”右侧；手机端保持 v1.6.1 的箭头居中布局；完成修改并部署
+- 当前 Web 开发分支：`feat/v162-desktop-header-main76`；原 PR #75 因 main 在验证期间前进，已由基于最新 main 的新分支接替；候选版本 `v1.6.2`
+- v1.6.2 已完成代码：新增 `responsive-polish-v162.css`；桌面端历史箭头移到品牌右侧，主导航继续真正居中，搜索继续右上；手机端保持 v1.6.1；同步版本号、deploy.sh、版本合同与双视口验收
+- v1.6.2 当前验证：早期 PR stability gate 已通过；完整 validation 已暴露并修正历史版本锁（v160/v153 仅接受旧版本）。当前改动已重新基于最新 main 落盘，下一步重新跑完整 CI
+- 当前生产基准：用户手机截图已确认 v1.6.1 响应式界面实际上线；生产精确 SHA 未由服务器侧直接取证
+- v1.6.2 验证要求：桌面 1440px 箭头位于品牌右侧且不占中间、主导航保持水平居中、搜索保持右上；手机 390px 箭头继续居中；必须通过 stability gate、完整 validation 和全部历史浏览器回归
+- 下一步：创建新的 v1.6.2 PR，CI 全绿后合并 main，由现有生产自动部署链发布 v1.6.2，再做生产实机确认
 
 ### 新聊天接管协议
 
