@@ -54,13 +54,19 @@ jobs:
             xvfb xserver-common \
             libgl1 libglx0 libglvnd0 libpixman-1-0 \
             libxfont2 libfontenc1 libxau6 libxdmcp6 libxcb1 libxshmfence1 \
-            libx11-6 libxext6
+            libx11-6 libxext6 x11-xkb-utils xkb-data
           for package in ./*.deb; do
             dpkg-deb --extract "${package}" "${wine_root}/root"
           done
           portable_lib="${wine_root}/root/usr/lib/x86_64-linux-gnu"
           export LD_LIBRARY_PATH="${portable_lib}:${LD_LIBRARY_PATH:-}"
+          export XKB_BINDIR="${wine_root}/root/usr/bin"
+          export XKB_CONFIG_ROOT="${wine_root}/root/usr/share/X11/xkb"
+          export PATH="${wine_root}/root/usr/bin:${PATH}"
           echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
+          echo "XKB_BINDIR=${XKB_BINDIR}" >> "${GITHUB_ENV}"
+          echo "XKB_CONFIG_ROOT=${XKB_CONFIG_ROOT}" >> "${GITHUB_ENV}"
+          echo "PATH=${PATH}" >> "${GITHUB_ENV}"
           wine_archive="${wine_root}/wine-11.18-staging-tkg-amd64-wow64.tar.xz"
           curl --fail --location --retry 3 --output "${wine_archive}" \
             "https://github.com/Kron4ek/Wine-Builds/releases/download/11.18/wine-11.18-staging-tkg-amd64-wow64.tar.xz"
@@ -93,7 +99,7 @@ jobs:
           echo "WINEARCH=win64" >> "${GITHUB_ENV}"
           echo 'WINEDLLOVERRIDES=winemenubuilder.exe=d;mscoree,mshtml=' >> "${GITHUB_ENV}"
           echo "WINEPREFIX=${wine_prefix}" >> "${GITHUB_ENV}"
-          "${xvfb_bin}" :99 -screen 0 1024x768x24 -nolisten tcp -kb \
+          "${xvfb_bin}" :99 -screen 0 1024x768x24 -nolisten tcp \
             > "${RUNNER_TEMP}/win-assistants-xvfb.log" 2>&1 &
           echo "DISPLAY=:99" >> "${GITHUB_ENV}"
           for attempt in {1..20}; do
