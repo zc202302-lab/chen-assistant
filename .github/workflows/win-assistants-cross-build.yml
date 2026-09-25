@@ -207,7 +207,7 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch --quiet origin win-assistants-release || true
+          git fetch --quiet origin "win-assistants-release:refs/remotes/origin/win-assistants-release" || true
 
           export GIT_INDEX_FILE="$RUNNER_TEMP/win-assistants-release.index"
           rm -f "$GIT_INDEX_FILE"
