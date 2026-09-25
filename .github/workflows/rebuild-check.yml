@@ -83,12 +83,28 @@ jobs:
             echo "Playwright install-deps dry-run exit status: ${dry_status}"
             package_line="$(printf '%s\n' "${dry_run}" | sed -n 's/.*apt-get install -y --no-install-recommends //p' | head -n1)"
             package_line="${package_line%\"}"
-            if [ -z "${package_line}" ]; then
+            packages=()
+            if [ -n "${package_line}" ]; then
+              read -r -a packages <<< "${package_line}"
+            else
+              # Playwright 1.63 on Ubuntu 24.04 may return status 1 and print
+              # "Missing system dependencies (N):" followed by an indented
+              # package list instead of an apt-get command.
+              mapfile -t packages < <(
+                printf '%s\n' "${dry_run}" |
+                  awk '
+                    /^Missing system dependencies \([0-9]+\):$/ { capture=1; next }
+                    capture && /^  [[:alnum:]][[:alnum:].+:-]*$/ { sub(/^  /, ""); print; next }
+                    capture { exit }
+                  '
+              )
+            fi
+            if [ "${#packages[@]}" -eq 0 ]; then
               echo "Unable to derive Playwright Chromium dependency package list" >&2
               printf '%s\n' "${dry_run}" >&2
               exit 1
             fi
-            read -r -a packages <<< "${package_line}"
+            printf 'Staging %d Playwright Linux dependency packages\n' "${#packages[@]}"
             (
               cd "${deps_root}/debs"
               apt-get download "${packages[@]}"
