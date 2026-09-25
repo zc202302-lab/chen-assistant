@@ -2,6 +2,10 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
+- Windows v0.4.1 部署收尾：PR #78 已合并到 main（merge `28ec308f7040421ec6deafeb64d8a23171c83153`），`win-assistants-release/update.json` 已实际更新为 v0.4.1，SHA-256 `772e875c1708166da9d003beb618c63d6c63281f04d65dff90fdd38b1629c0c6`，size `19,045,000` 字节。
+- 当前生产同步开发：旧 PR #80 因基于较旧 main 且历史导航验收失败已关闭；替代 PR #81（分支 `fix/install-win-assistants-sync-on-deploy-v2`，head `b4455544ec97447a6dd3a943a4050ad093298b43`）基于最新 main，只在 deploy.sh 中安装/刷新 `chen-win-assistants-sync.timer`。当前 stability gate #481 与 v1.2 validation #863 均仍在 queued、steps=null，尚未执行，不得绕过 CI 合并。
+- PR #81 合并后预期：现有生产 `chen-assistant-auto-deploy.timer` 在下一次部署时执行 deploy.sh，从而一次性安装 Windows release 资产同步 timer；该 timer 每 2 分钟把 `win-assistants-release` 的 EXE/update.json 校验后同步到公开静态目录。完成后才算“检查更新”线上闭环。
+
 - 当前 Windows 开发：`win-assistants v0.4.1` 正在开发，分支 `feat/win-assistants-tray-startup`，PR #76，最新功能 commit `9a5ef2c9008b70b6caec4da21fc078e20e0e1eee`。
 - 用户最后明确要求：设置 win-assistants 开机启动，并且开机后静默运行、直接进入系统托盘；执行“检查更新”后必须自动替换并自动重启，且重启后继续进入托盘，不需要人工再次打开。
 - v0.4.1 已完成代码：开机启动 UI 明确为“随 Windows 登录静默启动（直接进入托盘）”；HKCU Run 继续固定 `--background`；自更新替换脚本显式保留 background 重启模式；新增 startup/updater 防回归测试；版本已升到 `0.4.1`。
