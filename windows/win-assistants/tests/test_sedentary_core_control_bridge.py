@@ -29,6 +29,11 @@ class ControlBridgeTests(unittest.TestCase):
             self.assertEqual(command["action"], "show_settings")
             self.assertIsNone(consume_control_command())
 
+    def test_update_command_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"APPDATA": temp}, clear=False):
+            with self.assertRaises(ValueError):
+                send_control_command("check_update")
+
     def test_stale_command_is_ignored(self) -> None:
         with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ, {"APPDATA": temp}, clear=False):
             send_control_command("show_status")
