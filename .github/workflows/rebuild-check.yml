@@ -456,11 +456,7 @@ jobs:
           STATUS_URL="${PROD_PUBLIC_BASE_URL%/}/static/deployment-status.json"
           for attempt in $(seq 1 36); do
             body="$(curl --max-time 8 -fsS "$STATUS_URL?expected=$TARGET_SHA&attempt=$attempt" 2>/dev/null || true)"
-            revision="$(python -c 'import json,sys; 
-try:
- print(json.loads(sys.argv[1]).get("revision", ""))
-except Exception:
- print("")' "$body")"
+            revision="$(python -c 'import json,sys; s=sys.argv[1]; print((json.loads(s) if s else {}).get("revision",""))' "$body" 2>/dev/null || true)"
             if [[ "$revision" == "$TARGET_SHA" ]]; then
               echo "Production verified at exact revision $TARGET_SHA (mode: ${{ steps.deploy.outputs.mode }})."
               exit 0
