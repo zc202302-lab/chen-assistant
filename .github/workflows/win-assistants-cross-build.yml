@@ -50,10 +50,13 @@ jobs:
           wine_root="${RUNNER_TEMP}/win-assistants-wine"
           mkdir -p "${wine_root}/debs" "${wine_root}/root"
           cd "${wine_root}/debs"
-          apt-get download xvfb xserver-common
+          apt-get download xvfb xserver-common libgl1 libglx0 libglvnd0
           for package in ./*.deb; do
             dpkg-deb --extract "${package}" "${wine_root}/root"
           done
+          portable_lib="${wine_root}/root/usr/lib/x86_64-linux-gnu"
+          export LD_LIBRARY_PATH="${portable_lib}:${LD_LIBRARY_PATH:-}"
+          echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
           wine_archive="${wine_root}/wine-11.18-staging-tkg-amd64-wow64.tar.xz"
           curl --fail --location --retry 3 --output "${wine_archive}" \
             "https://github.com/Kron4ek/Wine-Builds/releases/download/11.18/wine-11.18-staging-tkg-amd64-wow64.tar.xz"
