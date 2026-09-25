@@ -2,7 +2,7 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- GitHub 当前实际 main：`aaf18998a0d7ce555cadd3b8da14b04bd8abba8a`（2026-09-25，PR #96 合并后的文档状态同步提交）。
+- GitHub 当前实际 main：`572aaffe6f4ffbcef38a74b60510e2853f6e324d`（2026-09-25，PR #98 已合并：工作页主模块改为真正两列小方块，并更新 CSS 缓存版本）。
 - 当前应用版本：Web main 为 `v1.6.1`；`win-assistants` 为 `v0.5.0`。
 - 当前功能合并基准：`44b9b9355e2641281b5989a5e03bfd87e16888ba`（Merge PR #83：win-assistants v0.5.0 内置久坐助手）；之后 main 还有发布/文档类提交，因此“功能基准”不要误当作当前 main SHA。
 - 当前发布基准：`win-assistants v0.5.0` 已正式发布。release `update.json` 已实际为 v0.5.0，EXE 71,614,597 字节，SHA256 `3b20cb906435872de7c6425e594b3a51ff6c4143b6f591ea743f2c5ca1bdf802`；promotion run `36123496387` 成功完成源码一致性、artifact、PE、release 分支及生产公网更新资产校验。
@@ -10,7 +10,7 @@
 - Web 生产：已有人机验收证据确认 v1.6.1 手机端实际上线；生产精确 commit 若未重新取证，不得仅凭版本号推断。
 - CI / Runner：新 self-hosted Runner `chen-assistant-ci-192-255-130-71` 已实际承接并成功执行 validation / stability / win-assistants cross-build。Draft PR #82 仍是 Runner 迁移历史 WIP，但它当前 head 已落后 main 49 commits；收尾前必须重新基于当前 main 审核，不能直接合并旧分支。
 - 其他既存 Open PR（包括 #77/#74/#73/#66/#64/#55/#43/#41/#39）属于历史或其他方向，不能仅因仍 Open 就视为当前开发。
-- GitHub 项目长期记忆机制已通过 PR #96 合并完成；`docs/PROJECT_CONTEXT.md` 现为跨聊天固定接管入口，不再需要粘贴超长项目提示词。\n- Web UI：PR #97 已合并，`/work` 页面“客户管理 / 工作资料”主模块已改为手机端两列并排的小卡片；仅改样式，业务逻辑不变。合并 commit：`3176f8528456880c7d1fc65fc6f325e3ef8b9438`。尚未完成生产部署取证。
+- GitHub 项目长期记忆机制已通过 PR #96 合并完成；`docs/PROJECT_CONTEXT.md` 现为跨聊天固定接管入口，不再需要粘贴超长项目提示词。\n- Web UI：PR #98 已合并，`/work` 页面“客户管理 / 工作资料”主模块已改为真正两列并排的小方块，简化卡片内容，并将 `work-architecture-v14.css` 缓存版本更新为 `v=1402`，解决 iPhone 继续使用旧 CSS 的问题。合并 commit：`572aaffe6f4ffbcef38a74b60510e2853f6e324d`。PR CI 与 main validation/stability 均已通过；GitHub deploy production job 已识别为 Web 运行时变更并按设计交由已完成实机 bootstrap 的生产侧 `chen-assistant-auto-deploy.timer` 自动部署。
 - 新的固定接管入口：`docs/PROJECT_CONTEXT.md`。长期产品规则、架构、开发约束、重要决策分别存放在 `PRODUCT_REQUIREMENTS.md`、`ARCHITECTURE.md`、`DEVELOPMENT_RULES.md`、`DECISIONS.md`。
 - 注意：本文件下方存在较早时期的历史状态段落（例如旧版本/旧生产基准），仅作历史记录；发生冲突时，以本节“当前接力状态”和 GitHub 实际代码/PR/Actions 为准。
 - 下一步：Windows 产品主线继续完成 v0.5.0 实机更新与集成功能验收；跨聊天时直接按 `docs/PROJECT_CONTEXT.md` 接管。
