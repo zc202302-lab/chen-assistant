@@ -65,7 +65,9 @@ jobs:
           export PATH="${wine_root}/root/usr/bin:${PATH}"
 
           # Prefer system Xvfb when complete. On minimal self-hosted runners
-          # without root/sudo, use the downloaded portable copy. Ubuntu's Xvfb
+          # without root/sudo, use the downloaded portable copy. This path is
+          # intentionally self-contained so Runner replacement needs no manual setup.
+          # Ubuntu's Xvfb
           # embeds /usr/bin/xkbcomp, so rewrite that fixed path to an equal-
           # length writable path and expose the portable xkbcomp there.
           if [ -x /usr/bin/Xvfb ] && [ -x /usr/bin/xkbcomp ]; then
