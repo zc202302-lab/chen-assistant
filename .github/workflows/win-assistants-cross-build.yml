@@ -33,7 +33,7 @@ jobs:
           python-version: "3.13"
       - name: Compile and test
         run: |
-          python -m compileall -q main.py win_assistants tests
+          python -m compileall -q main.py win_assistants sedentary tests
           python -m unittest discover -s tests -v
 
   build-windows-exe:
@@ -117,6 +117,7 @@ jobs:
             python3 -m zipfile -e "${wheel}" "${windows_python}/Lib/site-packages"
           done
           cp -R win_assistants "${windows_python}/win_assistants"
+          cp -R sedentary "${windows_python}/sedentary"
 
           echo "WINDOWS_PYTHON=${windows_python}/python.exe" >> "${GITHUB_ENV}"
           echo "WINDOWS_WHEELS=${windows_wheels}" >> "${GITHUB_ENV}"
@@ -127,16 +128,16 @@ jobs:
       - name: Verify Windows build dependencies
         run: >-
           timeout 120s "$WINE_BIN" "$WINDOWS_PYTHON" -c
-          "import PIL, pystray; from win32ctypes.pywin32 import pywintypes, win32api;
+          "import cv2, PIL, pystray; from win32ctypes.pywin32 import pywintypes, win32api;
           import PyInstaller; print('Windows build dependencies ready')"
       - name: Test with Windows Python
         run: |
-          "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants tests
+          "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants sedentary tests
           "$WINE_BIN" "$WINDOWS_PYTHON" -m unittest discover -s tests -v
       - name: Build Windows executable
         run: >-
           "$WINE_BIN" "$WINDOWS_PYTHON" -m PyInstaller --noconfirm --clean --onefile --windowed
-          --name win-assistants --collect-submodules pystray
+          --name win-assistants --collect-submodules pystray --collect-data cv2
           --hidden-import PIL.Image --hidden-import PIL.ImageDraw main.py
       - name: Smoke launch built executable
         run: |
@@ -196,7 +197,7 @@ jobs:
               "exe_url": "https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe",
               "sha256": sha256,
               "size": int(size),
-              "notes": "统一更新：win-assistants、内置短信与 Foxmail；同时触发久坐助手更新检查。",
+              "notes": "v0.5.0：短信、久坐与 Foxmail 已统一内置到 win-assistants，同一 EXE、同一开机入口、同一更新链。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
