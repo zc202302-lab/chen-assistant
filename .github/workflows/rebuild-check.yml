@@ -76,7 +76,11 @@ jobs:
             deps_root="${RUNNER_TEMP}/playwright-linux-deps"
             rm -rf "${deps_root}"
             mkdir -p "${deps_root}/debs" "${deps_root}/root"
-            dry_run="$(python -m playwright install-deps --dry-run chromium)"
+            set +e
+            dry_run="$(python -m playwright install-deps --dry-run chromium 2>&1)"
+            dry_status=$?
+            set -e
+            echo "Playwright install-deps dry-run exit status: ${dry_status}"
             package_line="$(printf '%s\n' "${dry_run}" | sed -n 's/.*apt-get install -y --no-install-recommends //p' | head -n1)"
             package_line="${package_line%\"}"
             if [ -z "${package_line}" ]; then
