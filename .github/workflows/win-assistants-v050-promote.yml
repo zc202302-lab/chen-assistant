@@ -1,0 +1,115 @@
+name: promote verified win-assistants v0.5.0 artifact
+
+permissions:
+  actions: read
+  contents: write
+  statuses: write
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "windows/win-assistants/README.md"
+
+jobs:
+  promote:
+    if: >-
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'release/win-assistants-v050-promote'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify current Windows source matches validated artifact source
+        run: |
+          git fetch --no-tags origin 4cde7d262baea626f8ea62c490d3f87d34d8cffb
+          git diff --exit-code 4cde7d262baea626f8ea62c490d3f87d34d8cffb HEAD --             windows/win-assistants             ':(exclude)windows/win-assistants/README.md'
+
+      - name: Download validated Windows artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --location --silent --show-error             -H "Authorization: Bearer $GH_TOKEN"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/10853891069/zip"             -o "$RUNNER_TEMP/win-assistants-windows.zip"
+          mkdir -p "$RUNNER_TEMP/win-assistants-artifact"
+          unzip -q "$RUNNER_TEMP/win-assistants-windows.zip" -d "$RUNNER_TEMP/win-assistants-artifact"
+
+      - name: Verify artifact identity
+        run: |
+          exe="$RUNNER_TEMP/win-assistants-artifact/win-assistants.exe"
+          test -s "$exe"
+          actual_sha="$(sha256sum "$exe" | awk '{print $1}')"
+          actual_size="$(stat -c '%s' "$exe")"
+          test "$actual_sha" = "3b20cb906435872de7c6425e594b3a51ff6c4143b6f591ea743f2c5ca1bdf802"
+          test "$actual_size" = "71614597"
+          file "$exe" | grep -q "PE32"
+
+      - name: Publish v0.5.0 updater release branch
+        id: publish_release
+        run: |
+          release_dir="$RUNNER_TEMP/win-assistants-release-assets"
+          mkdir -p "$release_dir"
+          cp "$RUNNER_TEMP/win-assistants-artifact/win-assistants.exe" "$release_dir/win-assistants.exe"
+
+          python3 - "$release_dir/update.json" <<'PY'
+          import json
+          import pathlib
+          payload = {
+              "version": "0.5.0",
+              "exe_url": "https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe",
+              "sha256": "3b20cb906435872de7c6425e594b3a51ff6c4143b6f591ea743f2c5ca1bdf802",
+              "size": 71614597,
+              "notes": "v0.5.0：短信、久坐与 Foxmail 已统一内置到 win-assistants，同一 EXE、同一开机入口、同一更新链。",
+          }
+          pathlib.Path(__import__("sys").argv[1]).write_text(
+              json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+              encoding="utf-8",
+          )
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --quiet origin "win-assistants-release:refs/remotes/origin/win-assistants-release" || true
+
+          export GIT_INDEX_FILE="$RUNNER_TEMP/win-assistants-release.index"
+          rm -f "$GIT_INDEX_FILE"
+          git read-tree --empty
+          exe_blob="$(git hash-object -w "$release_dir/win-assistants.exe")"
+          json_blob="$(git hash-object -w "$release_dir/update.json")"
+          git update-index --add --cacheinfo "100644,$exe_blob,win-assistants.exe"
+          git update-index --add --cacheinfo "100644,$json_blob,update.json"
+          tree="$(git write-tree)"
+
+          parent_args=()
+          if git rev-parse --verify --quiet refs/remotes/origin/win-assistants-release >/dev/null; then
+            parent="$(git rev-parse refs/remotes/origin/win-assistants-release)"
+            parent_args=(-p "$parent")
+          fi
+          commit="$(printf 'release: win-assistants v0.5.0\n' | git commit-tree "$tree" "${parent_args[@]}")"
+          git push origin "$commit:refs/heads/win-assistants-release"
+
+      - name: Report release status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.publish_release.outcome }}
+        run: |
+          state=failure
+          description="win-assistants v0.5.0 promotion failed"
+          if [ "$OUTCOME" = success ]; then
+            state=success
+            description="win-assistants v0.5.0 promoted"
+          fi
+          payload="$(python3 - "$state" "$description" <<'PY'
+          import json, sys
+          print(json.dumps({
+              "state": sys.argv[1],
+              "context": "win-assistants/v0.5.0-promotion",
+              "description": sys.argv[2],
+          }, separators=(",", ":")))
+          PY
+          )"
+          curl --fail --silent --show-error             -X POST             -H "Authorization: Bearer $GH_TOKEN"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/${{ github.event.pull_request.head.sha }}"             -d "$payload"
