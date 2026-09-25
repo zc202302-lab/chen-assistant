@@ -64,7 +64,10 @@ jobs:
           wineserver_bin="$(find "${wine_root}/root" -path '*/bin/wineserver' -type f -print -quit)"
           wineboot_bin="$(find "${wine_root}/root" -path '*/bin/wineboot' -print -quit)"
           wine_prefix="${RUNNER_TEMP}/win-assistants-wine-prefix"
-          xvfb_bin="${wine_root}/root/usr/bin/Xvfb"
+          xvfb_bin="$(command -v Xvfb || true)"
+          if [ -z "${xvfb_bin}" ]; then
+            xvfb_bin="${wine_root}/root/usr/bin/Xvfb"
+          fi
           echo "Portable Wine paths:"
           echo "  wine=${wine_bin}"
           echo "  wineserver=${wineserver_bin}"
@@ -89,7 +92,11 @@ jobs:
             test -S /tmp/.X11-unix/X99 && break
             sleep 0.25
           done
-          test -S /tmp/.X11-unix/X99
+          if ! test -S /tmp/.X11-unix/X99; then
+            echo "Xvfb failed to start:" >&2
+            cat "${RUNNER_TEMP}/win-assistants-xvfb.log" >&2 || true
+            exit 1
+          fi
           export DISPLAY=:99
           export WINEPREFIX="${wine_prefix}"
           export WINEARCH=win64
