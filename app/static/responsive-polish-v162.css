@@ -1,49 +1,28 @@
-/* v1.6.2 desktop header refinement
-   Desktop: move history controls beside brand, keep primary nav centered.
-   Mobile keeps v1.6.1 layout. */
+/* v1.6.2 — desktop header refinement.
+   Desktop keeps history controls next to the brand so they no longer occupy
+   the visual center. Mobile intentionally keeps the v1.6.1 centered controls. */
 
-@media (min-width: 768px){
-  .topbar{
-    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
-    grid-template-rows:44px 46px;
-  }
-
-  .topbar-left{
-    display:flex;
-    align-items:center;
-    gap:12px;
-  }
-
+@media (min-width:768px){
   .topbar-actions{
-    display:flex;
+    display:contents;
+  }
+
+  .global-history-nav{
     grid-column:1;
     grid-row:1;
-    align-items:center;
     justify-self:start;
     margin-left:190px;
   }
 
-  .global-history-nav{
-    height:40px;
-    border-radius:13px;
-    background:rgba(255,255,255,.9);
-    box-shadow:0 3px 12px rgba(15,23,42,.06);
+  .search-link{
+    grid-column:3;
+    grid-row:1;
+    justify-self:end;
   }
 
   .global-primary-nav{
     grid-column:1/-1;
     grid-row:2;
     justify-self:center;
-  }
-
-  .search-link{
-    grid-column:3;
-    grid-row:1;
-  }
-}
-
-@media (max-width: 767px){
-  .topbar-actions{
-    display:contents;
   }
 }
