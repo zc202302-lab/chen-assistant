@@ -347,6 +347,8 @@ jobs:
   deploy_production:
     name: deploy production
     needs: [validate, deploy_stability]
+    permissions:
+      contents: write
     if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
     runs-on: [self-hosted, linux, x64, chen-assistant]
     concurrency:
@@ -361,7 +363,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+
+      - name: Publish validated production revision
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git push --force origin "$GITHUB_SHA:refs/heads/production-ready"
+          echo "Validated production-ready revision: $GITHUB_SHA"
 
       - name: Decide whether Web production needs deployment
         id: scope
@@ -379,7 +388,7 @@ jobs:
             while IFS= read -r path; do
               [[ -z "$path" ]] && continue
               case "$path" in
-                app/*|storage_node/*|requirements.txt|deploy.sh)
+                app/*|storage_node/*|requirements.txt|deploy.sh|scripts/auto_deploy_main.sh|scripts/install_auto_deploy_timer.sh|scripts/bootstrap_production_auto_deploy.sh)
                   deploy=1
                   break
                   ;;
@@ -389,6 +398,7 @@ jobs:
           echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
 
       - name: Deploy exact validated main revision
+        id: deploy
         if: steps.scope.outputs.deploy == '1'
         shell: bash
         run: |
@@ -404,10 +414,12 @@ jobs:
               git show "$TARGET_SHA:deploy.sh" > /tmp/chen-deploy.sh
               chmod 700 /tmp/chen-deploy.sh
               CHEN_DEPLOY_TARGET_REV="$TARGET_SHA" bash /tmp/chen-deploy.sh
+              echo "mode=local" >> "$GITHUB_OUTPUT"
               exit 0
             elif sudo -n true >/dev/null 2>&1; then
               echo "Using local production checkout with passwordless sudo."
               sudo -n bash -lc "cd '$APP_DIR'; git fetch origin main; git show '$TARGET_SHA:deploy.sh' > /tmp/chen-deploy.sh; chmod 700 /tmp/chen-deploy.sh; CHEN_DEPLOY_TARGET_REV='$TARGET_SHA' bash /tmp/chen-deploy.sh"
+              echo "mode=local-sudo" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             echo "Local production checkout found but deploy privilege is insufficient; falling back to SSH."
@@ -417,7 +429,8 @@ jobs:
           if [[ -z "${PROD_HOST:-}" || -z "${PROD_USER:-}" || -z "${PROD_SSH_KEY:-}" || -z "${PROD_KNOWN_HOSTS:-}" ]]; then
             echo "Production is not locally deployable and remote SSH secrets are incomplete."
             echo "Direct CI deployment deferred to the production-side chen-assistant-auto-deploy.timer."
-            echo "One-time timer bootstrap is required on production before this fallback becomes active."
+            echo "GitHub will wait for the production revision marker before reporting success."
+            echo "mode=timer" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -430,6 +443,36 @@ jobs:
           chmod 600 "$KEY" "$KNOWN"
 
           ssh -i "$KEY" -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$KNOWN" "${PROD_USER}@${PROD_HOST}"             "set -Eeuo pipefail; cd '$APP_DIR'; git fetch origin main; TMP=\$(mktemp); trap 'rm -f "\$TMP"' EXIT; git show '$TARGET_SHA:deploy.sh' > "\$TMP"; chmod 700 "\$TMP"; CHEN_DEPLOY_TARGET_REV='$TARGET_SHA' bash "\$TMP""
+          echo "mode=ssh" >> "$GITHUB_OUTPUT"
+
+      - name: Verify production reached exact revision
+        if: steps.scope.outputs.deploy == '1'
+        shell: bash
+        env:
+          PROD_PUBLIC_BASE_URL: ${{ vars.PROD_PUBLIC_BASE_URL || 'https://assistant.ziboxiaozhushou.cn' }}
+        run: |
+          set -Eeuo pipefail
+          TARGET_SHA="$GITHUB_SHA"
+          STATUS_URL="${PROD_PUBLIC_BASE_URL%/}/static/deployment-status.json"
+          for attempt in $(seq 1 36); do
+            body="$(curl --max-time 8 -fsS "$STATUS_URL?expected=$TARGET_SHA&attempt=$attempt" 2>/dev/null || true)"
+            revision="$(python - "$body" <<'PY'
+import json,sys
+try:
+    print(json.loads(sys.argv[1]).get("revision", ""))
+except Exception:
+    print("")
+PY
+)"
+            if [[ "$revision" == "$TARGET_SHA" ]]; then
+              echo "Production verified at exact revision $TARGET_SHA (mode: ${{ steps.deploy.outputs.mode }})."
+              exit 0
+            fi
+            echo "Waiting for production revision $TARGET_SHA (attempt $attempt/36; current: ${revision:-unknown})"
+            sleep 10
+          done
+          echo "::error::Production did not confirm exact revision $TARGET_SHA within 6 minutes."
+          exit 1
 
       - name: Deployment skipped
         if: steps.scope.outputs.deploy != '1'
