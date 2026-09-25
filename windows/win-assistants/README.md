@@ -78,3 +78,5 @@ v0.5.0 合并后的正式发布仍以 `main` cross-build 实际写入 `win-assis
 <!-- promotion retry on self-hosted runner -->
 
 <!-- promotion trigger after PR90 -->
+
+<!-- promotion trigger after PR93 -->
