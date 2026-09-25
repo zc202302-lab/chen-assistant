@@ -64,3 +64,6 @@ py -m unittest discover -s tests -v
 产物为 `dist\win-assistants.exe`。PR 会先运行平台无关测试，再在 self-hosted Linux Runner 上通过 Wine + 官方 Windows Python 构建并 smoke test Windows PE。最终发布仍需要 Windows 实机验收摄像头、Foxmail 和开机托盘行为。
 
 v0.5.0 合并后的正式发布仍以 `main` cross-build 实际写入 `win-assistants-release/update.json` 为准；只有 manifest 与 EXE 发布成功后，客户端“检查更新”才会看到本版本。
+
+
+<!-- v0.5.0 release trigger after merged-PR publishing fix -->
