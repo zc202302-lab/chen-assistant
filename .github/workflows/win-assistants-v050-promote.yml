@@ -6,10 +6,8 @@ permissions:
   statuses: write
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
-    paths:
-      - "windows/win-assistants/README.md"
 
 jobs:
   promote:
