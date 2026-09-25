@@ -8,11 +8,11 @@
 - v0.5.0 已完成代码：从独立仓库 `zc202302-lab/chen-sit-guard` 当前 main 迁入成熟久坐核心；保留多区域人体存在检测、RTSP、强制休息状态机、DPAPI、统计和 `%APPDATA%\\久坐提醒` 数据；win-assistants 使用同一 EXE 的 `--sedentary --embedded --startup` 模式启动，不再依赖 `D:\\Tools\\chen-sit-guard\\main.py`。
 - 统一边界：短信、Foxmail、久坐均由 win-assistants 同一发布包维护；全程序只保留 win-assistants 主界面/主托盘的一个“检查更新”入口。内置久坐不再创建第二个托盘，不再保留独立 Git 更新器，也不再接受 `check_update` 控制命令。Foxmail 与缴费模块既有本地桥接协议、安全校验和“只打开草稿/文件剪贴板、绝不自动发送”边界不改。
 - v0.5.0 构建：已把 OpenCV 和久坐包加入 Windows 构建，复制原久坐 camera/control/state 测试；版本为 `0.5.0`。合并前 source validation、stability、v1.2 full validation 均通过；最新 cross-build 在新 Runner 上已通过 portable Wine/Xvfb、Windows Python/Tk、OpenCV 依赖、Windows 单测、PyInstaller、EXE smoke launch、PE 校验与 artifact 上传。
-- 当前发布基准：main 已是 `win-assistants v0.5.0`，但截至本次记录时 `win-assistants-release/update.json` 仍为 `v0.4.1`；因此不得把 v0.5.0 标记为“已发布/已部署”。已取得一轮完整成功的 v0.5.0 Windows cross-build artifact（run `36111182894`，artifact `10853891069`）：`win-assistants.exe` 大小 `71,614,597` 字节，SHA256 `3b20cb906435872de7c6425e594b3a51ff6c4143b6f591ea743f2c5ca1bdf802`。该 artifact 对应源码 `4cde7d262baea626f8ea62c490d3f87d34d8cffb`，与最终合并 `44b9b9355e2641281b5989a5e03bfd87e16888ba` 之间 Windows 业务源码无变化，仅 cross-build workflow 变化；可作为 v0.5.0 构建验证证据。正式 release 分支仍需 main 发布链实际写入 0.5.0 后再确认。生产静态目录仍需 Windows 实机“检查更新”验证。
+- 当前发布基准：`win-assistants v0.5.0` 已正式发布。`win-assistants-release/update.json` 已实际为 `v0.5.0`，EXE 大小 `71,614,597` 字节，SHA256 `3b20cb906435872de7c6425e594b3a51ff6c4143b6f591ea743f2c5ca1bdf802`。最终 promotion run `36123496387` 已成功完成源码一致性、artifact 下载、SHA256/大小/PE 校验、release 分支写入以及生产公网 `update.json` 校验，因此生产静态更新资产已明确验证到 v0.5.0。一次性 release PR #95 已关闭且未合并。
 - Runner 状态：新 self-hosted Runner `chen-assistant-ci-192-255-130-71` / machine `racknerd-7e11dcb` 已实际接单，并成功执行 v1.2 full validation 与 win-assistants cross-build。Draft PR #82 仍需单独检查/收尾，不能仅凭 Runner 已接单就自动判定其全部迁移事项已完成。
 - 其他既存 Open PR（#77/#74/#73/#66/#64/#55/#43/#41/#39）不是本轮 Windows v0.5.0 工作，除非实际代码/用户要求重新指向它们。
 - 用户最后明确要求：不要破坏 chen-assistant 主线；把短信、久坐、Foxmail 真正整合进 win-assistants；Windows 端只保留一个“检查更新”，任一模块变化都通过更新整个 win-assistants.exe 实现，并继续做到完成部署。
-- 下一步：不要再把问题视为代码构建失败；v0.5.0 Windows EXE 已有成功 cross-build 产物，当前阻塞是 GitHub Actions 发布触发/执行链。需先确认 main/merged 事件是否真正创建 win-assistants cross-build run；若未创建则修触发机制，若已创建则检查 publish_release 结果。只有 `win-assistants-release/update.json` 实际变为 v0.5.0 后，才继续生产静态同步与 Windows 唯一“检查更新”实机验证。
+- 下一步：Windows 发布链已完成到“release 分支 + 生产公网更新资产”验证。接下来只需在用户实际 Windows 电脑上通过 win-assistants 唯一“检查更新”从旧版升级到 v0.5.0，并实机验证短信、Foxmail、久坐、开机托盘、久坐设置/统计迁移；实机通过后再把 Windows 客户端 rollout 标记为完全完成。
 
 ### 新聊天接管协议
 
