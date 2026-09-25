@@ -84,6 +84,11 @@ for path in ['app/templates/cooking_tools_v12.html','app/templates/recipe_print_
 print('✓ v1.6.1 响应式界面优化 + v1.6.0资料中心 + 历史功能检查通过')
 PY
 if [[ -d data ]]; then chown "$SERVICE_USER:$SERVICE_GROUP" data; find data -maxdepth 1 -type f \( -name 'app.db' -o -name 'app.db-wal' -o -name 'app.db-shm' \) -exec chown "$SERVICE_USER:$SERVICE_GROUP" {} +; chmod u+rwx data; fi
+if [[ -f scripts/install_win_assistants_asset_sync.sh ]]; then
+  echo "→ 安装/刷新 win-assistants 更新资产同步定时器"
+  bash scripts/install_win_assistants_asset_sync.sh
+  echo "✓ win-assistants 更新资产同步定时器已刷新"
+fi
 systemctl restart "$SERVICE"; sleep 3; HEALTH_JSON="$(curl -fsS "$HEALTH_URL")"; echo "$HEALTH_JSON"
 .venv/bin/python - "$HEALTH_JSON" "$EXPECTED_VERSION" <<'PY'
 import json,sys
