@@ -2,6 +2,11 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
+- 当前 Windows 开发：`win-assistants v0.4.1` 正在开发，分支 `feat/win-assistants-tray-startup`，PR #76，最新功能 commit `9a5ef2c9008b70b6caec4da21fc078e20e0e1eee`。
+- 用户最后明确要求：设置 win-assistants 开机启动，并且开机后静默运行、直接进入系统托盘；执行“检查更新”后必须自动替换并自动重启，且重启后继续进入托盘，不需要人工再次打开。
+- v0.4.1 已完成代码：开机启动 UI 明确为“随 Windows 登录静默启动（直接进入托盘）”；HKCU Run 继续固定 `--background`；自更新替换脚本显式保留 background 重启模式；新增 startup/updater 防回归测试；版本已升到 `0.4.1`。
+- v0.4.1 尚未完成：等待 PR #76 CI（cross build / validation / stability）与最终 Windows EXE smoke test；通过后再合并 main，由既有 `win-assistants-release` 链路发布更新资产。短信/Foxmail 不改，久坐助手继续独立成熟代码。
+
 - 当前应用版本：main 已进入 Web `v1.6.1`；`win-assistants v0.4.0` 仍在 main
 - 当前 `main`：`31890b01533faf07ea75f9ddf878751c91fc2152`（已合并 PR #70：手机与电脑响应式界面优化）
 - PR #70 状态：已合并；合并前 head `85abd0bd88dbf105e78b2f9b10ef87ffc3b019de`
