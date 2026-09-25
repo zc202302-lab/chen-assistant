@@ -45,7 +45,7 @@ def read_runtime_status(max_age_seconds: float = MAX_STATUS_AGE_SECONDS) -> dict
 
 
 def send_control_command(action: str) -> str:
-    if action not in {"show_status", "show_settings", "check_update"}:
+    if action not in {"show_status", "show_settings"}:
         raise ValueError("unsupported control action")
     path = command_path()
     temp = path.with_suffix(".tmp")
@@ -76,7 +76,7 @@ def consume_control_command(max_age_seconds: float = 10.0) -> dict[str, object] 
         raw = json.loads(raw_text)
         action = str(raw.get("action", ""))
         created_at = float(raw.get("created_at", 0))
-        if action not in {"show_status", "show_settings", "check_update"}:
+        if action not in {"show_status", "show_settings"}:
             return None
         if created_at <= 0 or time.time() - created_at > max_age_seconds:
             return None
