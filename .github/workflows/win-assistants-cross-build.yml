@@ -50,7 +50,11 @@ jobs:
           wine_root="${RUNNER_TEMP}/win-assistants-wine"
           mkdir -p "${wine_root}/debs" "${wine_root}/root"
           cd "${wine_root}/debs"
-          apt-get download xvfb xserver-common libgl1 libglx0 libglvnd0
+          apt-get download \
+            xvfb xserver-common \
+            libgl1 libglx0 libglvnd0 libpixman-1-0 \
+            libxfont2 libfontenc1 libxau6 libxdmcp6 libxcb1 libxshmfence1 \
+            libx11-6 libxext6
           for package in ./*.deb; do
             dpkg-deb --extract "${package}" "${wine_root}/root"
           done
@@ -82,6 +86,7 @@ jobs:
           test -x "${xvfb_bin}"
           ldd "${wine_bin}" || true
           ldd "${wineboot_bin}" || true
+          ldd "${xvfb_bin}" || true
           "${wine_bin}" --version
           echo "WINE_BIN=${wine_bin}" >> "${GITHUB_ENV}"
           echo "WINESERVER=${wineserver_bin}" >> "${GITHUB_ENV}"
