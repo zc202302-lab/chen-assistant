@@ -372,3 +372,65 @@ body:has(.customer-directory-v161) .page{
     width:100%;
   }
 }
+
+
+/* v1.6.1 hotfix — keep /work primary modules as real compact two-column tiles on phones. */
+@media(max-width:760px){
+  .work-arch-shell .work-domain-grid{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+  .work-arch-shell .work-domain-card{
+    display:flex!important;
+    min-width:0!important;
+    min-height:0!important;
+    height:156px!important;
+    padding:12px 11px!important;
+    border-radius:16px!important;
+    flex-direction:column!important;
+    gap:7px!important;
+    box-sizing:border-box!important;
+  }
+  .work-arch-shell .work-domain-icon{
+    width:34px!important;
+    height:34px!important;
+    border-radius:10px!important;
+    font-size:14px!important;
+    flex:0 0 auto!important;
+  }
+  .work-arch-shell .work-domain-title{
+    display:block!important;
+  }
+  .work-arch-shell .work-domain-title h2{
+    margin:0!important;
+    font-size:16px!important;
+    line-height:1.2!important;
+  }
+  .work-arch-shell .work-domain-title span{
+    display:inline-flex!important;
+    margin-top:4px!important;
+    padding:3px 6px!important;
+    font-size:9px!important;
+  }
+  .work-arch-shell .work-domain-body p{
+    margin:5px 0 6px!important;
+    font-size:10px!important;
+    line-height:1.35!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  .work-arch-shell .work-domain-meta{
+    gap:4px!important;
+  }
+  .work-arch-shell .work-domain-meta span{
+    padding:3px 6px!important;
+    font-size:9px!important;
+  }
+  .work-arch-shell .work-domain-arrow{
+    margin-top:auto!important;
+    align-self:flex-start!important;
+    font-size:11px!important;
+  }
+}
