@@ -89,9 +89,14 @@ def main():
             history_box = page.locator('[data-history-nav]').bounding_box()
             search_box = page.locator('[data-quick-search-trigger]').bounding_box()
             nav_box = page.locator('.global-primary-nav').bounding_box()
-            assert history_box and centered(history_box, 1440)
+            assert history_box
+            brand_box = page.locator('.brand').bounding_box()
+            assert brand_box
+            assert history_box['x'] > brand_box['x'] + brand_box['width']
+            assert history_box['x'] < 360
             assert search_box and search_box['x'] > 1360
-            assert nav_box and nav_box['y'] > history_box['y']
+            assert nav_box and centered(nav_box, 1440)
+            assert nav_box['y'] > history_box['y']
 
             cards = page.locator('.customer-card-v161')
             expect(cards).to_have_count(4)
@@ -124,7 +129,7 @@ def main():
 
             browser.close()
 
-        print('v1.6.1 responsive desktop/mobile acceptance passed')
+        print('v1.6.2 desktop header + v1.6.1 mobile responsive acceptance passed')
     finally:
         proc.terminate()
         try:
