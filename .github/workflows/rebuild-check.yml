@@ -65,11 +65,36 @@ jobs:
 
       - name: Install Chromium
         run: |
-          # Self-hosted runners are dynamic infrastructure. A freshly provisioned
-          # runner may have the browser cache but not Chromium's Linux libraries.
-          # Install the official Playwright system dependencies instead of
-          # weakening or skipping any browser acceptance test.
-          python -m playwright install --with-deps chromium
+          # Self-hosted runners are dynamic infrastructure. Some runners do not
+          # grant passwordless sudo, so Playwright cannot install OS packages
+          # globally. Preserve the full browser test suite by staging the exact
+          # Chromium runtime packages reported by Playwright into RUNNER_TEMP.
+          if [ "$(id -u)" -eq 0 ] || (command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null); then
+            python -m playwright install --with-deps chromium
+          else
+            python -m playwright install chromium
+            deps_root="${RUNNER_TEMP}/playwright-linux-deps"
+            rm -rf "${deps_root}"
+            mkdir -p "${deps_root}/debs" "${deps_root}/root"
+            dry_run="$(python -m playwright install-deps --dry-run chromium)"
+            package_line="$(printf '%s\n' "${dry_run}" | sed -n 's/.*apt-get install -y --no-install-recommends //p' | head -n1)"
+            package_line="${package_line%\"}"
+            if [ -z "${package_line}" ]; then
+              echo "Unable to derive Playwright Chromium dependency package list" >&2
+              printf '%s\n' "${dry_run}" >&2
+              exit 1
+            fi
+            read -r -a packages <<< "${package_line}"
+            (
+              cd "${deps_root}/debs"
+              apt-get download "${packages[@]}"
+              for package in ./*.deb; do
+                dpkg-deb --extract "${package}" "${deps_root}/root"
+              done
+            )
+            portable_libs="${deps_root}/root/usr/lib/x86_64-linux-gnu:${deps_root}/root/lib/x86_64-linux-gnu"
+            echo "LD_LIBRARY_PATH=${portable_libs}:${LD_LIBRARY_PATH:-}" >> "${GITHUB_ENV}"
+          fi
 
       - name: Fast UI contracts
         if: steps.scope.outputs.mode == 'fast'
