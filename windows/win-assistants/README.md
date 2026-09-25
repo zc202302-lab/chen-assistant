@@ -72,3 +72,5 @@ v0.5.0 合并后的正式发布仍以 `main` cross-build 实际写入 `win-assis
 <!-- verified v0.5.0 artifact promotion trigger -->
 
 <!-- promotion synchronize retry -->
+
+<!-- promotion final retry after PR90 -->
