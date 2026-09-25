@@ -2,17 +2,17 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- 当前应用版本：Web main 仍为 `v1.6.1`；main 中 `win-assistants v0.4.1` 已完成短信与 Foxmail 内置。当前 Windows 开发目标为 `v0.5.0`：把成熟久坐助手也完整内置到同一 EXE。
-- 当前 `main`：`fa4a8b0c8f4291210cc574936cf8c7dbd164e997`（Windows v0.4.1 部署状态文档提交）。
-- 当前 Windows WIP：分支 `feat/win-assistants-embedded-sedentary-v050`，Draft PR #83。最新功能基线为 `ccc103225919059b01995d8c8edfc461a1020343`；统一更新残留清理后当前 head 为 `0909b5d79f84027a4827ad93eaac5444280f6c7f`。
+- 当前应用版本：Web main 仍为 `v1.6.1`；main 中 `win-assistants` 已升至 `v0.5.0`，短信、Foxmail、成熟久坐助手均已内置到同一 EXE。
+- 当前 `main` 功能合并基准：`44b9b9355e2641281b5989a5e03bfd87e16888ba`（Merge PR #83：win-assistants v0.5.0 内置久坐助手）。
+- Windows v0.5.0：PR #83 已合并；开发分支 `feat/win-assistants-embedded-sedentary-v050` 不再视为当前 WIP。合并前最终 head 为 `aa18092197323d359fad36a2937563a32a109e9c`。
 - v0.5.0 已完成代码：从独立仓库 `zc202302-lab/chen-sit-guard` 当前 main 迁入成熟久坐核心；保留多区域人体存在检测、RTSP、强制休息状态机、DPAPI、统计和 `%APPDATA%\\久坐提醒` 数据；win-assistants 使用同一 EXE 的 `--sedentary --embedded --startup` 模式启动，不再依赖 `D:\\Tools\\chen-sit-guard\\main.py`。
 - 统一边界：短信、Foxmail、久坐均由 win-assistants 同一发布包维护；全程序只保留 win-assistants 主界面/主托盘的一个“检查更新”入口。内置久坐不再创建第二个托盘，不再保留独立 Git 更新器，也不再接受 `check_update` 控制命令。Foxmail 与缴费模块既有本地桥接协议、安全校验和“只打开草稿/文件剪贴板、绝不自动发送”边界不改。
-- v0.5.0 构建：已把 OpenCV 和久坐包加入 Windows 构建，复制原久坐 camera/control/state 测试；版本已升 `0.5.0`。PR #83 正等待/执行 source validation、stability、v1.2 validation 与 win-assistants cross build，未通过前不得合并。
-- 当前生产/发布基准：正式 release 仍是 `win-assistants v0.4.1`；`win-assistants-release/update.json` 的 v0.4.1 已在 GitHub 侧确认。生产静态目录是否已实际同步 v0.4.1 仍不能仅凭 GitHub 推断，需实机“检查更新”确认。
-- Runner 迁移仍是独立 WIP：Draft PR #82（`ops/migrate-self-hosted-runner-192-255-130-71`）尚未完成。PR #82 的 validation/stability 虽成功，但实际 job 日志显示仍由旧 Runner `racknerd-ci` / machine `racknerd-06a24d3` 执行，因此不得把新 Runner 标记为已接管。
+- v0.5.0 构建：已把 OpenCV 和久坐包加入 Windows 构建，复制原久坐 camera/control/state 测试；版本为 `0.5.0`。合并前 source validation、stability、v1.2 full validation 均通过；最新 cross-build 在新 Runner 上已通过 portable Wine/Xvfb、Windows Python/Tk、OpenCV 依赖、Windows 单测、PyInstaller、EXE smoke launch、PE 校验与 artifact 上传。
+- 当前发布基准：main 已是 `win-assistants v0.5.0`，但截至本次记录时 `win-assistants-release/update.json` 仍为 `v0.4.1`；因此不得把 v0.5.0 标记为“已发布/已部署”，必须等待 main cross-build 实际发布 release manifest/EXE 后再确认。生产静态目录仍需 Windows 实机“检查更新”验证。
+- Runner 状态：新 self-hosted Runner `chen-assistant-ci-192-255-130-71` / machine `racknerd-7e11dcb` 已实际接单，并成功执行 v1.2 full validation 与 win-assistants cross-build。Draft PR #82 仍需单独检查/收尾，不能仅凭 Runner 已接单就自动判定其全部迁移事项已完成。
 - 其他既存 Open PR（#77/#74/#73/#66/#64/#55/#43/#41/#39）不是本轮 Windows v0.5.0 工作，除非实际代码/用户要求重新指向它们。
 - 用户最后明确要求：不要破坏 chen-assistant 主线；把短信、久坐、Foxmail 真正整合进 win-assistants；Windows 端只保留一个“检查更新”，任一模块变化都通过更新整个 win-assistants.exe 实现，并继续做到完成部署。
-- 下一步：先让 PR #83 全部 CI 通过并修复任何构建/测试问题；通过后合并 main，等待 main cross-build 发布 v0.5.0 到 `win-assistants-release`，确认 release manifest/EXE；最后由当前 Windows 客户端通过“检查更新”升级并实机验证三模块和开机托盘。
+- 下一步：等待/触发 main 的 win-assistants cross-build 发布 v0.5.0 到 `win-assistants-release`，确认 `update.json` 和 EXE；然后由当前 Windows 客户端通过唯一“检查更新”升级，并实机验证短信、Foxmail、久坐、开机托盘与久坐设置/统计迁移。
 
 ### 新聊天接管协议
 
