@@ -6,6 +6,7 @@ permissions:
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, closed]
     paths:
       - "windows/win-assistants/**"
       - ".github/workflows/win-assistants-cross-build.yml"
@@ -22,6 +23,7 @@ concurrency:
 
 jobs:
   source-validation:
+    if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
     runs-on: [self-hosted, linux, x64, chen-assistant]
     defaults:
       run:
@@ -37,6 +39,7 @@ jobs:
           python -m unittest discover -s tests -v
 
   build-windows-exe:
+    if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
     runs-on: [self-hosted, linux, x64, chen-assistant]
     defaults:
       run:
@@ -225,7 +228,9 @@ PY
 
       - name: Publish updater release branch
         id: publish_release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: >-
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true)
         run: |
           version="$(
             python3 - <<'PY'
@@ -289,7 +294,11 @@ PY
           echo "Published release branch win-assistants v$version ($sha)"
 
       - name: Report updater release status
-        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: >-
+          always() && (
+            (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+            (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true)
+          )
         env:
           GH_TOKEN: ${{ github.token }}
           PUBLISH_OUTCOME: ${{ steps.publish_release.outcome }}
