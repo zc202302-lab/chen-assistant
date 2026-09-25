@@ -12,7 +12,7 @@
 - Runner 状态：新 self-hosted Runner `chen-assistant-ci-192-255-130-71` / machine `racknerd-7e11dcb` 已实际接单，并成功执行 v1.2 full validation 与 win-assistants cross-build。Draft PR #82 仍需单独检查/收尾，不能仅凭 Runner 已接单就自动判定其全部迁移事项已完成。
 - 其他既存 Open PR（#77/#74/#73/#66/#64/#55/#43/#41/#39）不是本轮 Windows v0.5.0 工作，除非实际代码/用户要求重新指向它们。
 - 用户最后明确要求：不要破坏 chen-assistant 主线；把短信、久坐、Foxmail 真正整合进 win-assistants；Windows 端只保留一个“检查更新”，任一模块变化都通过更新整个 win-assistants.exe 实现，并继续做到完成部署。
-- 下一步：等待 PR #85 合并后的 closed/merged 事件实际完成 Windows cross-build 并发布 v0.5.0 到 `win-assistants-release`；确认 `update.json` 与 EXE 的版本、SHA256、大小；随后确认生产静态同步，再由当前 Windows 客户端通过唯一“检查更新”升级，并实机验证短信、Foxmail、久坐、开机托盘与久坐设置/统计迁移。
+- 下一步：不要再把问题视为代码构建失败；v0.5.0 Windows EXE 已有成功 cross-build 产物，当前阻塞是 GitHub Actions 发布触发/执行链。需先确认 main/merged 事件是否真正创建 win-assistants cross-build run；若未创建则修触发机制，若已创建则检查 publish_release 结果。只有 `win-assistants-release/update.json` 实际变为 v0.5.0 后，才继续生产静态同步与 Windows 唯一“检查更新”实机验证。
 
 ### 新聊天接管协议
 
