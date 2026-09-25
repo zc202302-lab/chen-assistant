@@ -32,27 +32,27 @@ def _existing(*paths: Path) -> Path | None:
     return next((path for path in paths if path.exists()), None)
 
 
-def _sedentary_command() -> list[str]:
-    roots = [
-        Path(r"D:\Tools\chen-sit-guard"),
-        Path(r"C:\Tools\chen-sit-guard"),
-        Path.cwd().parent / "chen-sit-guard",
+def internal_sedentary_command() -> list[str]:
+    """Launch the mature sedentary runtime from this same win-assistants build."""
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--sedentary", "--embedded", "--startup"]
+
+    root = Path(__file__).resolve().parent.parent
+    pythonw = Path(sys.executable).with_name("pythonw.exe")
+    executable = pythonw if pythonw.exists() else Path(sys.executable)
+    return [
+        str(executable),
+        str(root / "main.py"),
+        "--sedentary",
+        "--embedded",
+        "--startup",
     ]
-    for root in roots:
-        executable = _existing(root / "晨·久坐守护.exe", root / "dist" / "晨·久坐守护.exe")
-        if executable:
-            return [str(executable), "--startup"]
-        main = root / "main.py"
-        pythonw = _existing(root / ".venv" / "Scripts" / "pythonw.exe", root / ".venv" / "Scripts" / "python.exe")
-        if main.exists() and pythonw:
-            return [str(pythonw), str(main), "--startup"]
-    return []
 
 
 def default_module_configs() -> dict[str, ModuleConfig]:
     commands = {
         "sms": [],
-        "sedentary": _sedentary_command(),
+        "sedentary": internal_sedentary_command(),
         "chen_helper": [],
     }
     return {
@@ -99,6 +99,23 @@ class ModuleManager:
         except OSError as exc:
             self.status_callback(key, "启动失败")
             return False, f"启动失败：{exc}"
+
+    def stop(self, key: str) -> None:
+        process = self.processes.pop(key, None)
+        if process is not None and process.poll() is None:
+            try:
+                process.terminate()
+                process.wait(timeout=4)
+            except (OSError, subprocess.SubprocessError):
+                try:
+                    process.kill()
+                except OSError:
+                    pass
+        self.status_callback(key, "已停用")
+
+    def stop_all(self) -> None:
+        for key in tuple(self.processes):
+            self.stop(key)
 
     def refresh(self) -> None:
         for key in tuple(self.processes):

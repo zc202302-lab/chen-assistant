@@ -12,7 +12,7 @@ from . import __version__
 from .commands import command_for_path, display_path
 from .config import AppConfig
 from .foxmail import FoxmailBridge
-from .modules import MODULES, ModuleManager, default_module_configs
+from .modules import MODULES, ModuleManager, default_module_configs, internal_sedentary_command
 from .single_instance import SingleInstance
 from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
 from .sedentary import read_status as read_sedentary_status, send_command as send_sedentary_command, status_text as sedentary_status_text
@@ -32,6 +32,10 @@ class WinAssistantsApp:
         self.root = root
         self.config = AppConfig.load(default_module_configs())
         migrate_legacy_config(self.config)
+        # v0.5.0 migrates the mature sedentary runtime into this same executable.
+        # Ignore any legacy D:\\Tools\\chen-sit-guard path retained in config.
+        if "sedentary" in self.config.modules:
+            self.config.modules["sedentary"].command = internal_sedentary_command()
         self.manager = ModuleManager(self._set_status)
         self.sms_receiver = SmsReceiver()
         self.foxmail_bridge = FoxmailBridge()
@@ -95,11 +99,10 @@ class WinAssistantsApp:
                 ttk.Label(row, text="内置模块 · 仅监听 127.0.0.1:18763 · 不自动发送邮件", style="Card.TLabel").pack(side="left")
                 ttk.Button(row, text="重新启动", command=lambda: self._start_one("chen_helper")).pack(side="right")
             elif item.key == "sedentary":
-                ttk.Entry(row, textvariable=self.path_vars[item.key]).pack(side="left", fill="x", expand=True)
-                ttk.Button(row, text="选择", command=lambda key=item.key: self._choose_path(key)).pack(side="left", padx=(8, 0))
-                ttk.Button(row, text="打开状态", command=lambda: self._sedentary_command("show_status")).pack(side="left", padx=(8, 0))
-                ttk.Button(row, text="设置", command=lambda: self._sedentary_command("show_settings")).pack(side="left", padx=(8, 0))
-                ttk.Button(row, text="立即启动", command=lambda key=item.key: self._start_one(key)).pack(side="left", padx=(8, 0))
+                ttk.Label(row, text="内置模块 · 人体存在检测与强制休息已合并", style="Card.TLabel").pack(side="left")
+                ttk.Button(row, text="打开状态", command=lambda: self._sedentary_command("show_status")).pack(side="right", padx=(8, 0))
+                ttk.Button(row, text="设置", command=lambda: self._sedentary_command("show_settings")).pack(side="right", padx=(8, 0))
+                ttk.Button(row, text="重新启动", command=lambda key=item.key: self._restart_sedentary(key)).pack(side="right")
             else:
                 ttk.Entry(row, textvariable=self.path_vars[item.key]).pack(side="left", fill="x", expand=True)
                 ttk.Button(row, text="选择", command=lambda key=item.key: self._choose_path(key)).pack(side="left", padx=(8, 0))
@@ -110,7 +113,7 @@ class WinAssistantsApp:
         ttk.Checkbutton(controls, text="随 Windows 登录静默启动（直接进入托盘）", variable=self.startup_var, command=self._toggle_startup).pack(side="left")
         ttk.Button(controls, text="检查更新", command=self._check_updates).pack(side="right")
         ttk.Button(controls, text="接管旧工具的开机启动", command=self._take_over).pack(side="right", padx=(0, 8))
-        ttk.Label(outer, text=f"v{__version__} · 短信与 Foxmail 本地桥接已内置；久坐能力继续渐进迁移。", style="Sub.TLabel").pack(anchor="w", pady=(14, 0))
+        ttk.Label(outer, text=f"v{__version__} · 短信、久坐与 Foxmail 本地桥接均已内置。", style="Sub.TLabel").pack(anchor="w", pady=(14, 0))
 
     def _save_ui(self) -> None:
         for item in MODULES:
@@ -118,6 +121,9 @@ class WinAssistantsApp:
             cfg.enabled = bool(self.enabled_vars[item.key].get())
             if item.key in ("sms", "chen_helper"):
                 cfg.command = []
+                continue
+            if item.key == "sedentary":
+                cfg.command = internal_sedentary_command()
                 continue
             path = self.path_vars[item.key].get().strip()
             if path:
@@ -128,7 +134,7 @@ class WinAssistantsApp:
         self.config.save()
 
     def _choose_path(self, key: str) -> None:
-        if key in ("sms", "chen_helper"):
+        if key in ("sms", "chen_helper", "sedentary"):
             return
         path = filedialog.askopenfilename(title="选择模块程序", filetypes=[("程序或脚本", "*.exe *.py *.ps1"), ("所有文件", "*.*")])
         if not path:
@@ -156,6 +162,8 @@ class WinAssistantsApp:
                 self.sms_receiver.stop()
             elif key == "chen_helper":
                 self.foxmail_bridge.stop()
+            elif key == "sedentary":
+                self.manager.stop(key)
             self.status_vars[key].set("已停用")
 
     def _start_one(self, key: str) -> None:
@@ -179,6 +187,10 @@ class WinAssistantsApp:
             return
         ok, detail = self.manager.start(key, self.config.modules[key])
         self.status_vars[key].set(detail)
+
+    def _restart_sedentary(self, key: str = "sedentary") -> None:
+        self.manager.stop(key)
+        self.root.after(400, lambda: self._start_one(key))
 
     def _set_status(self, key: str, status: str) -> None:
         variable = self.status_vars.get(key)
@@ -315,17 +327,11 @@ class WinAssistantsApp:
                 return
 
             if not has_update:
-                status = read_sedentary_status()
-                if status:
-                    try:
-                        send_sedentary_command("check_update")
-                    except OSError:
-                        pass
                 self.root.after(
                     0,
                     lambda: messagebox.showinfo(
                         "检查更新",
-                        f"win-assistants v{__version__} 已是最新版。\n\n久坐助手也已发起更新检查。",
+                        f"win-assistants v{__version__} 已是最新版。\n\n短信、久坐与 Foxmail 均随同一版本更新。",
                     ),
                 )
                 return
@@ -345,12 +351,6 @@ class WinAssistantsApp:
         threading.Thread(target=worker, name="win-assistants-update-check", daemon=True).start()
 
     def _download_and_apply_update(self, manifest: dict[str, object]) -> None:
-        status = read_sedentary_status()
-        if status:
-            try:
-                send_sedentary_command("check_update")
-            except OSError:
-                pass
         try:
             staged = stage_update(manifest)
             launch_replacement(staged)
@@ -410,8 +410,13 @@ class WinAssistantsApp:
         self.root.focus_force()
 
     def _exit(self) -> None:
+        status = read_sedentary_status()
+        if status and bool(status.get("reminder_active")):
+            messagebox.showwarning("强制休息中", "请先完成当前强制休息，再退出 win-assistants。")
+            return
         self.sms_receiver.stop()
         self.foxmail_bridge.stop()
+        self.manager.stop_all()
         if self.tray_icon is not None:
             try:
                 self.tray_icon.stop()
