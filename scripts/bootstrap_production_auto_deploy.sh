@@ -9,15 +9,15 @@ if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
 fi
 
 cd "$APP_DIR"
-git fetch origin main
-TARGET_REV="$(git rev-parse origin/main)"
+timeout 60s git fetch origin main production-ready
+TARGET_REV="$(git rev-parse origin/production-ready)"
 DEPLOY_SCRIPT="$(mktemp)"
 trap 'rm -f "$DEPLOY_SCRIPT"' EXIT
 
 git show "$TARGET_REV:deploy.sh" > "$DEPLOY_SCRIPT"
 chmod 0700 "$DEPLOY_SCRIPT"
 
-echo "→ 部署当前 main：$TARGET_REV"
+echo "→ 部署当前已验证 production-ready：$TARGET_REV"
 CHEN_DEPLOY_TARGET_REV="$TARGET_REV" bash "$DEPLOY_SCRIPT"
 
 echo "→ 安装/启用生产自动部署 timer"
