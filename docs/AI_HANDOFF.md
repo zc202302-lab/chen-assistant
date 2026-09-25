@@ -4,14 +4,14 @@
 
 - 当前应用版本：Web main 仍为 `v1.6.1`；main 中 `win-assistants v0.4.1` 已完成短信与 Foxmail 内置。当前 Windows 开发目标为 `v0.5.0`：把成熟久坐助手也完整内置到同一 EXE。
 - 当前 `main`：`fa4a8b0c8f4291210cc574936cf8c7dbd164e997`（Windows v0.4.1 部署状态文档提交）。
-- 当前 Windows WIP：分支 `feat/win-assistants-embedded-sedentary-v050`，Draft PR #83。最新核心功能 commit `ccc103225919059b01995d8c8edfc461a1020343`。
+- 当前 Windows WIP：分支 `feat/win-assistants-embedded-sedentary-v050`，Draft PR #83。最新功能基线为 `ccc103225919059b01995d8c8edfc461a1020343`；统一更新残留清理后当前 head 为 `0909b5d79f84027a4827ad93eaac5444280f6c7f`。
 - v0.5.0 已完成代码：从独立仓库 `zc202302-lab/chen-sit-guard` 当前 main 迁入成熟久坐核心；保留多区域人体存在检测、RTSP、强制休息状态机、DPAPI、统计和 `%APPDATA%\\久坐提醒` 数据；win-assistants 使用同一 EXE 的 `--sedentary --embedded --startup` 模式启动，不再依赖 `D:\\Tools\\chen-sit-guard\\main.py`。
-- 统一边界：短信、Foxmail、久坐均由 win-assistants 同一发布包维护；内置久坐不再创建第二个托盘，也不再走独立 Git 更新入口。Foxmail 与缴费模块既有本地桥接协议、安全校验和“只打开草稿/文件剪贴板、绝不自动发送”边界不改。
+- 统一边界：短信、Foxmail、久坐均由 win-assistants 同一发布包维护；全程序只保留 win-assistants 主界面/主托盘的一个“检查更新”入口。内置久坐不再创建第二个托盘，不再保留独立 Git 更新器，也不再接受 `check_update` 控制命令。Foxmail 与缴费模块既有本地桥接协议、安全校验和“只打开草稿/文件剪贴板、绝不自动发送”边界不改。
 - v0.5.0 构建：已把 OpenCV 和久坐包加入 Windows 构建，复制原久坐 camera/control/state 测试；版本已升 `0.5.0`。PR #83 正等待/执行 source validation、stability、v1.2 validation 与 win-assistants cross build，未通过前不得合并。
 - 当前生产/发布基准：正式 release 仍是 `win-assistants v0.4.1`；`win-assistants-release/update.json` 的 v0.4.1 已在 GitHub 侧确认。生产静态目录是否已实际同步 v0.4.1 仍不能仅凭 GitHub 推断，需实机“检查更新”确认。
 - Runner 迁移仍是独立 WIP：Draft PR #82（`ops/migrate-self-hosted-runner-192-255-130-71`）尚未完成。PR #82 的 validation/stability 虽成功，但实际 job 日志显示仍由旧 Runner `racknerd-ci` / machine `racknerd-06a24d3` 执行，因此不得把新 Runner 标记为已接管。
 - 其他既存 Open PR（#77/#74/#73/#66/#64/#55/#43/#41/#39）不是本轮 Windows v0.5.0 工作，除非实际代码/用户要求重新指向它们。
-- 用户最后明确要求：不要破坏 chen-assistant 主线；把原来分别部署的短信、久坐、Foxmail 功能真正整合到一起，并继续做到完成部署。
+- 用户最后明确要求：不要破坏 chen-assistant 主线；把短信、久坐、Foxmail 真正整合进 win-assistants；Windows 端只保留一个“检查更新”，任一模块变化都通过更新整个 win-assistants.exe 实现，并继续做到完成部署。
 - 下一步：先让 PR #83 全部 CI 通过并修复任何构建/测试问题；通过后合并 main，等待 main cross-build 发布 v0.5.0 到 `win-assistants-release`，确认 release manifest/EXE；最后由当前 Windows 客户端通过“检查更新”升级并实机验证三模块和开机托盘。
 
 ### 新聊天接管协议
