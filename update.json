@@ -1,1 +1,1 @@
-{"version":"0.4.1","exe_url":"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe","sha256":"b3294dd930d3d5767e220da458cda2fe40f8a284b90eb126cac381129eaebb4e","size":19044465,"notes":"统一更新：win-assistants、内置短信与 Foxmail；同时触发久坐助手更新检查。"}
+{"version":"0.5.0","exe_url":"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe","sha256":"3b20cb906435872de7c6425e594b3a51ff6c4143b6f591ea743f2c5ca1bdf802","size":71614597,"notes":"v0.5.0：短信、久坐与 Foxmail 已统一内置到 win-assistants，同一 EXE、同一开机入口、同一更新链。"}
