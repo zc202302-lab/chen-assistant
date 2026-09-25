@@ -41,6 +41,7 @@ MUTED = "#61736F"
 class SedentaryApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
+        self.embedded_mode = "--embedded" in sys.argv
         self.settings = Settings.load()
         self.daily_stats = DailyStats.load_today()
         self._last_stats_save = time.monotonic()
@@ -64,7 +65,8 @@ class SedentaryApp:
         self._build_ui()
         self._saved_signature = self._settings_signature()
         self._start_detector()
-        self._start_tray()
+        if not self.embedded_mode:
+            self._start_tray()
         self.root.after(250, self._poll)
 
     def _configure_window(self) -> None:
@@ -98,7 +100,11 @@ class SedentaryApp:
         self.detail_label.pack()
         self.work_time_label = ttk.Label(card, text="已工作 0 分钟", style="WorkTime.TLabel")
         self.work_time_label.pack(pady=(14, 0))
-        ttk.Label(outer, text="关闭窗口会自动隐藏到托盘", style="Sub.TLabel").pack(pady=(4, 0))
+        ttk.Label(
+            outer,
+            text="关闭后可从 win-assistants 再次打开" if self.embedded_mode else "关闭窗口会自动隐藏到托盘",
+            style="Sub.TLabel",
+        ).pack(pady=(4, 0))
 
         self.host_var = tk.StringVar(value=self.settings.rtsp_host)
         self.port_var = tk.IntVar(value=self.settings.rtsp_port)
@@ -108,7 +114,7 @@ class SedentaryApp:
         self.work_var = tk.IntVar(value=self.settings.work_minutes)
         self.break_var = tk.IntVar(value=self.settings.break_minutes)
         self.grace_var = tk.IntVar(value=int(self.settings.absence_grace_seconds))
-        self.startup_var = tk.BooleanVar(value=self.settings.start_with_windows)
+        self.startup_var = tk.BooleanVar(value=False if self.embedded_mode else self.settings.start_with_windows)
         self.roi_values = [list(roi) for roi in (self.settings.seat_rois or ([] if not self.settings.roi else [self.settings.roi]))]
         self.roi_value = list(self.roi_values[0]) if self.roi_values else None
         self.settings_window: tk.Toplevel | None = None
@@ -222,16 +228,30 @@ class SedentaryApp:
             ttk.Spinbox(settings_card, from_=minimum, to=maximum, textvariable=variable, width=8).grid(row=row, column=1, sticky="e", pady=3)
         settings_card.columnconfigure(0, weight=1)
         next_row = len(rules)
-        ttk.Checkbutton(settings_card, text="随Windows登录自动启动（静默进入托盘）", variable=self.startup_var).grid(row=next_row, column=0, columnspan=2, sticky="w", pady=(7, 3))
+        startup_check = ttk.Checkbutton(
+            settings_card,
+            text="由 win-assistants 统一管理开机启动" if self.embedded_mode else "随Windows登录自动启动（静默进入托盘）",
+            variable=self.startup_var,
+        )
+        startup_check.grid(row=next_row, column=0, columnspan=2, sticky="w", pady=(7, 3))
+        if self.embedded_mode:
+            startup_check.state(["disabled"])
         ttk.Button(settings_card, text="保存全部设置", style="Accent.TButton", command=self.save_settings).grid(row=next_row + 1, column=0, columnspan=2, sticky="ew", pady=(7, 0))
 
         update_card = ttk.LabelFrame(outer, text=" 程序与启动 ", padding=12)
         update_card.pack(fill="x", pady=(10, 0))
-        ttk.Label(update_card, text="可在软件内更新，也可创建桌面快捷方式直接启动。").pack(anchor="w")
-        update_buttons = ttk.Frame(update_card)
-        update_buttons.pack(fill="x", pady=(8, 0))
-        ttk.Button(update_buttons, text="创建桌面快捷方式", command=self.create_shortcut_from_ui).pack(side="left")
-        ttk.Button(update_buttons, text="检查更新", command=self.check_updates_from_ui).pack(side="right")
+        if self.embedded_mode:
+            ttk.Label(
+                update_card,
+                text="久坐功能已内置到 win-assistants；开机启动和程序更新请在主界面统一管理。",
+                wraplength=500,
+            ).pack(anchor="w")
+        else:
+            ttk.Label(update_card, text="可在软件内更新，也可创建桌面快捷方式直接启动。").pack(anchor="w")
+            update_buttons = ttk.Frame(update_card)
+            update_buttons.pack(fill="x", pady=(8, 0))
+            ttk.Button(update_buttons, text="创建桌面快捷方式", command=self.create_shortcut_from_ui).pack(side="left")
+            ttk.Button(update_buttons, text="检查更新", command=self.check_updates_from_ui).pack(side="right")
 
         ttk.Label(
             outer,
@@ -529,12 +549,13 @@ class SedentaryApp:
         self.settings.work_minutes = work
         self.settings.break_minutes = rest
         self.settings.absence_grace_seconds = float(grace)
-        self.settings.start_with_windows = bool(self.startup_var.get())
+        self.settings.start_with_windows = False if self.embedded_mode else bool(self.startup_var.get())
         self.settings.seat_rois = [list(roi) for roi in self.roi_values]
         self.settings.roi = list(self.roi_values[0]) if self.roi_values else None
         try:
             self.settings.save()
-            set_startup(self.settings.start_with_windows)
+            if not self.embedded_mode:
+                set_startup(self.settings.start_with_windows)
         except (OSError, RuntimeError) as exc:
             messagebox.showerror("保存失败", str(exc))
             return
@@ -714,6 +735,9 @@ class SedentaryApp:
             messagebox.showerror("桌面快捷方式", message)
 
     def check_updates_from_ui(self) -> None:
+        if self.embedded_mode:
+            messagebox.showinfo("检查更新", "久坐功能已内置到 win-assistants，请在主界面使用“检查更新”。")
+            return
         if self.reminder_window and self.reminder_window.winfo_exists():
             self.reminder_window.bell()
             messagebox.showwarning("强制休息中", "强制休息完成后才能更新程序。")
