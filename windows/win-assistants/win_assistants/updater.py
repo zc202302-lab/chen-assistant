@@ -81,20 +81,15 @@ def stage_update(manifest: dict[str, object]) -> Path:
         temp.unlink(missing_ok=True)
 
 
-def launch_replacement(staged: Path) -> None:
-    if not getattr(sys, "frozen", False):
-        raise RuntimeError("当前不是已打包 EXE，不能替换程序")
-    target = Path(sys.executable).resolve()
-    if not staged.is_file():
-        raise RuntimeError("待安装更新文件不存在")
-
-    script = staged.parent / "apply-update.ps1"
-    source_text = str(staged).replace("'", "''")
+def _replacement_script(source: Path, target: Path, old_pid: int, background: bool = True) -> str:
+    source_text = str(source).replace("'", "''")
     target_text = str(target).replace("'", "''")
-    body = f"""$ErrorActionPreference = 'Stop'
-$oldPid = {os.getpid()}
+    arguments = "--background" if background else ""
+    return f"""$ErrorActionPreference = 'Stop'
+$oldPid = {old_pid}
 $source = '{source_text}'
 $target = '{target_text}'
+$arguments = '{arguments}'
 
 try {{
     Wait-Process -Id $oldPid -Timeout 60 -ErrorAction SilentlyContinue
@@ -110,10 +105,25 @@ for ($attempt = 0; $attempt -lt 30; $attempt++) {{
     }}
 }}
 
-Start-Process -FilePath $target -ArgumentList '--background'
+if ($arguments) {{
+    Start-Process -FilePath $target -ArgumentList $arguments
+}} else {{
+    Start-Process -FilePath $target
+}}
 Remove-Item -LiteralPath $source -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
 """
+
+
+def launch_replacement(staged: Path, background: bool = True) -> None:
+    if not getattr(sys, "frozen", False):
+        raise RuntimeError("当前不是已打包 EXE，不能替换程序")
+    target = Path(sys.executable).resolve()
+    if not staged.is_file():
+        raise RuntimeError("待安装更新文件不存在")
+
+    script = staged.parent / "apply-update.ps1"
+    body = _replacement_script(staged, target, os.getpid(), background=background)
     script.write_text(body, encoding="utf-8-sig")
     powershell = Path(os.getenv("WINDIR", r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
     executable = str(powershell if powershell.is_file() else Path("powershell.exe"))
