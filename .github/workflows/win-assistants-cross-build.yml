@@ -64,25 +64,35 @@ jobs:
           export XKB_CONFIG_ROOT="${wine_root}/root/usr/share/X11/xkb"
           export PATH="${wine_root}/root/usr/bin:${PATH}"
 
-          # Ubuntu's Xvfb is built with /usr as its XKB prefix and therefore
-          # executes /usr/bin/xkbcomp directly. PATH/XKB_BINDIR alone cannot
-          # replace that compiled-in path. Keep existing runner packages when
-          # present; otherwise install only the missing headless X11 runtime.
-          if [ ! -x /usr/bin/xkbcomp ] || [ ! -x /usr/bin/Xvfb ]; then
-            if [ "$(id -u)" -eq 0 ]; then
-              apt-get update -qq
-              apt-get install -y --no-install-recommends xvfb x11-xkb-utils xkb-data
-            elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-              sudo apt-get update -qq
-              sudo apt-get install -y --no-install-recommends xvfb x11-xkb-utils xkb-data
-            else
-              echo "Runner 缺少 /usr/bin/Xvfb 或 /usr/bin/xkbcomp，且没有 root/免密 sudo，无法可靠启动 Wine GUI 构建环境。" >&2
-              exit 1
-            fi
+          # Prefer system Xvfb when complete. On minimal self-hosted runners
+          # without root/sudo, use the downloaded portable copy. Ubuntu's Xvfb
+          # embeds /usr/bin/xkbcomp, so rewrite that fixed path to an equal-
+          # length writable path and expose the portable xkbcomp there.
+          if [ -x /usr/bin/Xvfb ] && [ -x /usr/bin/xkbcomp ]; then
+            xvfb_bin="/usr/bin/Xvfb"
+          else
+            xvfb_bin="${wine_root}/root/usr/bin/Xvfb"
+            portable_xkbcomp="${wine_root}/root/usr/bin/xkbcomp"
+            test -x "${xvfb_bin}"
+            test -x "${portable_xkbcomp}"
+            mkdir -p /tmp/bin
+            ln -sf "${portable_xkbcomp}" /tmp/bin/xkbcomp
+            python3 - "${xvfb_bin}" <<'PY'
+from pathlib import Path
+import sys
+
+target = Path(sys.argv[1])
+data = target.read_bytes()
+old = b"/usr/bin/xkbcomp"
+new = b"/tmp/bin/xkbcomp"
+if len(old) != len(new):
+    raise SystemExit("replacement path length mismatch")
+if old in data:
+    target.write_bytes(data.replace(old, new))
+elif new not in data:
+    raise SystemExit("Xvfb xkbcomp path marker not found")
+PY
           fi
-          test -x /usr/bin/Xvfb
-          test -x /usr/bin/xkbcomp
-          xvfb_bin="/usr/bin/Xvfb"
 
           echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
           echo "XKB_BINDIR=${XKB_BINDIR}" >> "${GITHUB_ENV}"
