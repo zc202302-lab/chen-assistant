@@ -67,3 +67,6 @@ v0.5.0 合并后的正式发布仍以 `main` cross-build 实际写入 `win-assis
 
 
 <!-- v0.5.0 release trigger after merged-PR publishing fix -->
+
+
+<!-- verified v0.5.0 artifact promotion trigger -->
