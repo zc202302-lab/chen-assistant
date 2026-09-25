@@ -7,10 +7,12 @@ def main():
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     customers = (ROOT / 'app' / 'templates' / 'customers.html').read_text(encoding='utf-8')
     css = (ROOT / 'app' / 'static' / 'responsive-polish-v161.css').read_text(encoding='utf-8')
+    css162 = (ROOT / 'app' / 'static' / 'responsive-polish-v162.css').read_text(encoding='utf-8')
     config = (ROOT / 'app' / 'config.py').read_text(encoding='utf-8')
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
 
     assert 'responsive-polish-v161.css?v=1610' in base
+    assert 'responsive-polish-v162.css?v=1620' in base
     assert 'customer-directory-v161' in customers
     assert 'class="page-head customer-directory-v161"' in customers
     assert 'customer-directory-actions-v161' in customers
@@ -27,10 +29,14 @@ def main():
     assert '.customer-directory-list-v161{\n  display:grid;' in css
     assert 'grid-template-columns:repeat(2,minmax(0,1fr));' in css
     assert '@media(max-width:980px)' in css
-    assert 'APP_VERSION = "1.6.1"' in config
-    assert 'EXPECTED_VERSION="1.6.1"' in deploy
+    assert 'APP_VERSION = "1.6.2"' in config
+    assert 'EXPECTED_VERSION="1.6.2"' in deploy
 
-    print('v1.6.1 responsive polish contract passed')
+    assert '@media (min-width:768px)' in css162
+    assert '.global-history-nav{\n    grid-column:1;' in css162
+    assert 'margin-left:190px;' in css162
+    assert '.search-link{\n    grid-column:3;' in css162
+    print('v1.6.2 desktop header + v1.6.1 responsive polish contract passed')
 
 
 if __name__ == '__main__':
