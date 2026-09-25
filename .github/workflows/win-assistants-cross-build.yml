@@ -33,7 +33,7 @@ jobs:
           python-version: "3.13"
       - name: Compile and test
         run: |
-          python -m compileall -q main.py win_assistants tests
+          python -m compileall -q main.py win_assistants sedentary tests
           python -m unittest discover -s tests -v
 
   build-windows-exe:
@@ -50,10 +50,54 @@ jobs:
           wine_root="${RUNNER_TEMP}/win-assistants-wine"
           mkdir -p "${wine_root}/debs" "${wine_root}/root"
           cd "${wine_root}/debs"
-          apt-get download xvfb xserver-common
+          apt-get download \
+            xvfb xserver-common \
+            libgl1 libglx0 libglvnd0 libpixman-1-0 \
+            libxfont2 libfontenc1 libxau6 libxdmcp6 libxcb1 libxshmfence1 \
+            libx11-6 libxext6 x11-xkb-utils xkb-data
           for package in ./*.deb; do
             dpkg-deb --extract "${package}" "${wine_root}/root"
           done
+          portable_lib="${wine_root}/root/usr/lib/x86_64-linux-gnu"
+          export LD_LIBRARY_PATH="${portable_lib}:${LD_LIBRARY_PATH:-}"
+          export XKB_BINDIR="${wine_root}/root/usr/bin"
+          export XKB_CONFIG_ROOT="${wine_root}/root/usr/share/X11/xkb"
+          export PATH="${wine_root}/root/usr/bin:${PATH}"
+
+          # Prefer system Xvfb when complete. On minimal self-hosted runners
+          # without root/sudo, use the downloaded portable copy. Ubuntu's Xvfb
+          # embeds /usr/bin/xkbcomp, so rewrite that fixed path to an equal-
+          # length writable path and expose the portable xkbcomp there.
+          if [ -x /usr/bin/Xvfb ] && [ -x /usr/bin/xkbcomp ]; then
+            xvfb_bin="/usr/bin/Xvfb"
+          else
+            xvfb_bin="${wine_root}/root/usr/bin/Xvfb"
+            portable_xkbcomp="${wine_root}/root/usr/bin/xkbcomp"
+            test -x "${xvfb_bin}"
+            test -x "${portable_xkbcomp}"
+            mkdir -p /tmp/bin
+            ln -sf "${portable_xkbcomp}" /tmp/bin/xkbcomp
+            python3 - "${xvfb_bin}" <<'PY'
+from pathlib import Path
+import sys
+
+target = Path(sys.argv[1])
+data = target.read_bytes()
+old = b"/usr/bin/xkbcomp"
+new = b"/tmp/bin/xkbcomp"
+if len(old) != len(new):
+    raise SystemExit("replacement path length mismatch")
+if old in data:
+    target.write_bytes(data.replace(old, new))
+elif new not in data:
+    raise SystemExit("Xvfb xkbcomp path marker not found")
+PY
+          fi
+
+          echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
+          echo "XKB_BINDIR=${XKB_BINDIR}" >> "${GITHUB_ENV}"
+          echo "XKB_CONFIG_ROOT=${XKB_CONFIG_ROOT}" >> "${GITHUB_ENV}"
+          echo "PATH=${PATH}" >> "${GITHUB_ENV}"
           wine_archive="${wine_root}/wine-11.18-staging-tkg-amd64-wow64.tar.xz"
           curl --fail --location --retry 3 --output "${wine_archive}" \
             "https://github.com/Kron4ek/Wine-Builds/releases/download/11.18/wine-11.18-staging-tkg-amd64-wow64.tar.xz"
@@ -64,11 +108,19 @@ jobs:
           wineserver_bin="$(find "${wine_root}/root" -path '*/bin/wineserver' -type f -print -quit)"
           wineboot_bin="$(find "${wine_root}/root" -path '*/bin/wineboot' -print -quit)"
           wine_prefix="${RUNNER_TEMP}/win-assistants-wine-prefix"
-          xvfb_bin="${wine_root}/root/usr/bin/Xvfb"
+          echo "Portable Wine paths:"
+          echo "  wine=${wine_bin}"
+          echo "  wineserver=${wineserver_bin}"
+          echo "  wineboot=${wineboot_bin}"
+          echo "  xvfb=${xvfb_bin}"
           test -x "${wine_bin}"
           test -x "${wineserver_bin}"
           test -x "${wineboot_bin}"
           test -x "${xvfb_bin}"
+          ldd "${wine_bin}" || true
+          ldd "${wineboot_bin}" || true
+          ldd "${xvfb_bin}" || true
+          "${wine_bin}" --version
           echo "WINE_BIN=${wine_bin}" >> "${GITHUB_ENV}"
           echo "WINESERVER=${wineserver_bin}" >> "${GITHUB_ENV}"
           echo "WINEARCH=win64" >> "${GITHUB_ENV}"
@@ -81,13 +133,20 @@ jobs:
             test -S /tmp/.X11-unix/X99 && break
             sleep 0.25
           done
-          test -S /tmp/.X11-unix/X99
+          if ! test -S /tmp/.X11-unix/X99; then
+            echo "Xvfb failed to start:" >&2
+            cat "${RUNNER_TEMP}/win-assistants-xvfb.log" >&2 || true
+            exit 1
+          fi
           export DISPLAY=:99
           export WINEPREFIX="${wine_prefix}"
           export WINEARCH=win64
           export WINESERVER="${wineserver_bin}"
           export WINEDLLOVERRIDES='winemenubuilder.exe=d;mscoree,mshtml='
-          timeout 180s "${wineboot_bin}" --init
+          if ! timeout 180s "${wineboot_bin}" --init; then
+            echo "wineboot initialization failed on this runner" >&2
+            exit 1
+          fi
           timeout 30s "${wineserver_bin}" -w || true
       - name: Prepare full Windows Python with Tcl/Tk
         run: |
@@ -117,6 +176,7 @@ jobs:
             python3 -m zipfile -e "${wheel}" "${windows_python}/Lib/site-packages"
           done
           cp -R win_assistants "${windows_python}/win_assistants"
+          cp -R sedentary "${windows_python}/sedentary"
 
           echo "WINDOWS_PYTHON=${windows_python}/python.exe" >> "${GITHUB_ENV}"
           echo "WINDOWS_WHEELS=${windows_wheels}" >> "${GITHUB_ENV}"
@@ -127,16 +187,16 @@ jobs:
       - name: Verify Windows build dependencies
         run: >-
           timeout 120s "$WINE_BIN" "$WINDOWS_PYTHON" -c
-          "import PIL, pystray; from win32ctypes.pywin32 import pywintypes, win32api;
+          "import cv2, PIL, pystray; from win32ctypes.pywin32 import pywintypes, win32api;
           import PyInstaller; print('Windows build dependencies ready')"
       - name: Test with Windows Python
         run: |
-          "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants tests
+          "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants sedentary tests
           "$WINE_BIN" "$WINDOWS_PYTHON" -m unittest discover -s tests -v
       - name: Build Windows executable
         run: >-
           "$WINE_BIN" "$WINDOWS_PYTHON" -m PyInstaller --noconfirm --clean --onefile --windowed
-          --name win-assistants --collect-submodules pystray
+          --name win-assistants --collect-submodules pystray --collect-data cv2
           --hidden-import PIL.Image --hidden-import PIL.ImageDraw main.py
       - name: Smoke launch built executable
         run: |
@@ -196,7 +256,7 @@ jobs:
               "exe_url": "https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe",
               "sha256": sha256,
               "size": int(size),
-              "notes": "统一更新：win-assistants、内置短信与 Foxmail；同时触发久坐助手更新检查。",
+              "notes": "v0.5.0：短信、久坐与 Foxmail 已统一内置到 win-assistants，同一 EXE、同一开机入口、同一更新链。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
