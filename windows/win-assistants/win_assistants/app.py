@@ -107,7 +107,7 @@ class WinAssistantsApp:
 
         controls = ttk.Frame(outer)
         controls.pack(fill="x", pady=(6, 0))
-        ttk.Checkbutton(controls, text="win-assistants 随 Windows 登录启动", variable=self.startup_var, command=self._toggle_startup).pack(side="left")
+        ttk.Checkbutton(controls, text="随 Windows 登录静默启动（直接进入托盘）", variable=self.startup_var, command=self._toggle_startup).pack(side="left")
         ttk.Button(controls, text="检查更新", command=self._check_updates).pack(side="right")
         ttk.Button(controls, text="接管旧工具的开机启动", command=self._take_over).pack(side="right", padx=(0, 8))
         ttk.Label(outer, text=f"v{__version__} · 短信与 Foxmail 本地桥接已内置；久坐能力继续渐进迁移。", style="Sub.TLabel").pack(anchor="w", pady=(14, 0))
