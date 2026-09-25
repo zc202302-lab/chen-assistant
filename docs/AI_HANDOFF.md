@@ -10,7 +10,7 @@
 - Web 生产：已有人机验收证据确认 v1.6.1 手机端实际上线；生产精确 commit 若未重新取证，不得仅凭版本号推断。
 - CI / Runner：新 self-hosted Runner `chen-assistant-ci-192-255-130-71` 已实际承接并成功执行 validation / stability / win-assistants cross-build。Draft PR #82 仍是 Runner 迁移历史 WIP，但它当前 head 已落后 main 49 commits；收尾前必须重新基于当前 main 审核，不能直接合并旧分支。
 - 其他既存 Open PR（包括 #77/#74/#73/#66/#64/#55/#43/#41/#39）属于历史或其他方向，不能仅因仍 Open 就视为当前开发。
-- 当前任务：建立 GitHub 项目长期记忆机制，减少跨聊天窗口时的超长提示词依赖。当前分支：`docs/github-project-memory`。
+- 当前任务：建立 GitHub 项目长期记忆机制，减少跨聊天窗口时的超长提示词依赖。当前分支：`docs/github-project-memory`，PR #96。
 - 新的固定接管入口：`docs/PROJECT_CONTEXT.md`。长期产品规则、架构、开发约束、重要决策分别存放在 `PRODUCT_REQUIREMENTS.md`、`ARCHITECTURE.md`、`DEVELOPMENT_RULES.md`、`DECISIONS.md`。
 - 注意：本文件下方存在较早时期的历史状态段落（例如旧版本/旧生产基准），仅作历史记录；发生冲突时，以本节“当前接力状态”和 GitHub 实际代码/PR/Actions 为准。
 - 下一步：完成本次项目记忆文档 PR；之后跨聊天时只需给出短接管提示词。Windows 产品主线仍是完成 v0.5.0 实机更新与集成功能验收。
