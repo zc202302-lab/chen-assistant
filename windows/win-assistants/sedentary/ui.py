@@ -26,7 +26,6 @@ from .storage import (
     Settings,
     log_event,
 )
-from .updater import cache_git_path, check_and_update, restart_app
 
 
 BG = "#F4F7F6"
@@ -240,18 +239,11 @@ class SedentaryApp:
 
         update_card = ttk.LabelFrame(outer, text=" 程序与启动 ", padding=12)
         update_card.pack(fill="x", pady=(10, 0))
-        if self.embedded_mode:
-            ttk.Label(
-                update_card,
-                text="久坐功能已内置到 win-assistants；开机启动和程序更新请在主界面统一管理。",
-                wraplength=500,
-            ).pack(anchor="w")
-        else:
-            ttk.Label(update_card, text="可在软件内更新，也可创建桌面快捷方式直接启动。").pack(anchor="w")
-            update_buttons = ttk.Frame(update_card)
-            update_buttons.pack(fill="x", pady=(8, 0))
-            ttk.Button(update_buttons, text="创建桌面快捷方式", command=self.create_shortcut_from_ui).pack(side="left")
-            ttk.Button(update_buttons, text="检查更新", command=self.check_updates_from_ui).pack(side="right")
+        ttk.Label(
+            update_card,
+            text="久坐功能属于 win-assistants；开机启动和程序更新统一在主界面管理，本模块没有独立更新入口。",
+            wraplength=500,
+        ).pack(anchor="w")
 
         ttk.Label(
             outer,
@@ -495,8 +487,6 @@ class SedentaryApp:
             self.show_window()
         elif action == "show_settings":
             self.show_settings()
-        elif action == "check_update":
-            self.check_updates_from_ui()
 
     def _refresh_labels(self) -> None:
         snap = self.tracker.snapshot()
@@ -719,7 +709,6 @@ class SedentaryApp:
             menu = pystray.Menu(
                 pystray.MenuItem("打开状态", lambda: self.show_window(), default=True),
                 pystray.MenuItem("设置", lambda: self.root.after(0, self.show_settings)),
-                pystray.MenuItem("检查更新", lambda: self.root.after(0, self.check_updates_from_ui)),
                 pystray.MenuItem("退出", lambda: self.root.after(0, self.request_quit)),
             )
             self.tray_icon = pystray.Icon("sedentary-reminder", image, "久坐提醒", menu)
@@ -733,73 +722,6 @@ class SedentaryApp:
             messagebox.showinfo("桌面快捷方式", message + "\n\n以后双击桌面上的“晨·久坐守护”即可启动，不会弹出 CMD 黑窗口。")
         else:
             messagebox.showerror("桌面快捷方式", message)
-
-    def check_updates_from_ui(self) -> None:
-        if self.embedded_mode:
-            messagebox.showinfo("检查更新", "久坐功能已内置到 win-assistants，请在主界面使用“检查更新”。")
-            return
-        if self.reminder_window and self.reminder_window.winfo_exists():
-            self.reminder_window.bell()
-            messagebox.showwarning("强制休息中", "强制休息完成后才能更新程序。")
-            return
-
-        def worker() -> None:
-            status, message = check_and_update()
-            self.root.after(0, lambda: self._finish_update_check(status, message))
-
-        threading.Thread(target=worker, name="app-updater", daemon=True).start()
-
-    def _finish_update_check(self, status: str, message: str) -> None:
-        if status == "updated":
-            try:
-                self.daily_stats.save()
-            except OSError:
-                pass
-
-            if self.detector:
-                self.detector.stop()
-
-            ok, restart_message = restart_app()
-            if not ok:
-                messagebox.showerror(
-                    "更新完成但重启失败",
-                    message + "\n\n" + restart_message + "\n\n当前程序会继续保持打开。",
-                )
-                self._start_detector()
-                return
-
-            messagebox.showinfo("更新完成", message + "\n\n" + restart_message)
-            if self.tray_icon:
-                self.tray_icon.stop()
-            self._closing = True
-            self.root.destroy()
-            return
-        if status == "git_missing":
-            path = filedialog.askopenfilename(
-                title="选择 Git 程序（只需一次）",
-                filetypes=[("Git executable", "git.exe"), ("Executable", "*.exe"), ("All files", "*.*")],
-            )
-            if not path:
-                messagebox.showwarning("检查更新", "未选择 Git，更新未执行。")
-                return
-            ok, detail = cache_git_path(path)
-            if not ok:
-                messagebox.showerror("Git 路径无效", detail)
-                return
-
-            def retry_worker() -> None:
-                retry_status, retry_message = check_and_update()
-                self.root.after(0, lambda: self._finish_update_check(retry_status, retry_message))
-
-            threading.Thread(target=retry_worker, name="app-updater-retry", daemon=True).start()
-            return
-
-        if status == "current":
-            messagebox.showinfo("检查更新", message)
-        elif status == "offline":
-            messagebox.showwarning("检查更新", message)
-        else:
-            messagebox.showerror("检查更新", message)
 
     def request_quit(self) -> None:
         if self.reminder_window and self.reminder_window.winfo_exists():
