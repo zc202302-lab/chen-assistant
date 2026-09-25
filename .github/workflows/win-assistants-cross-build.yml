@@ -65,10 +65,18 @@ jobs:
           wineboot_bin="$(find "${wine_root}/root" -path '*/bin/wineboot' -print -quit)"
           wine_prefix="${RUNNER_TEMP}/win-assistants-wine-prefix"
           xvfb_bin="${wine_root}/root/usr/bin/Xvfb"
+          echo "Portable Wine paths:"
+          echo "  wine=${wine_bin}"
+          echo "  wineserver=${wineserver_bin}"
+          echo "  wineboot=${wineboot_bin}"
+          echo "  xvfb=${xvfb_bin}"
           test -x "${wine_bin}"
           test -x "${wineserver_bin}"
           test -x "${wineboot_bin}"
           test -x "${xvfb_bin}"
+          ldd "${wine_bin}" || true
+          ldd "${wineboot_bin}" || true
+          "${wine_bin}" --version
           echo "WINE_BIN=${wine_bin}" >> "${GITHUB_ENV}"
           echo "WINESERVER=${wineserver_bin}" >> "${GITHUB_ENV}"
           echo "WINEARCH=win64" >> "${GITHUB_ENV}"
@@ -87,7 +95,10 @@ jobs:
           export WINEARCH=win64
           export WINESERVER="${wineserver_bin}"
           export WINEDLLOVERRIDES='winemenubuilder.exe=d;mscoree,mshtml='
-          timeout 180s "${wineboot_bin}" --init
+          if ! timeout 180s "${wineboot_bin}" --init; then
+            echo "wineboot initialization failed on this runner" >&2
+            exit 1
+          fi
           timeout 30s "${wineserver_bin}" -w || true
       - name: Prepare full Windows Python with Tcl/Tk
         run: |
