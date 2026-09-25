@@ -1,0 +1,28 @@
+/* v1.6.2 — desktop header refinement.
+   Desktop keeps history controls next to the brand so they no longer occupy
+   the visual center. Mobile intentionally keeps the v1.6.1 centered controls. */
+
+@media (min-width:768px){
+  .topbar-actions{
+    display:contents;
+  }
+
+  .global-history-nav{
+    grid-column:1;
+    grid-row:1;
+    justify-self:start;
+    margin-left:190px;
+  }
+
+  .search-link{
+    grid-column:3;
+    grid-row:1;
+    justify-self:end;
+  }
+
+  .global-primary-nav{
+    grid-column:1/-1;
+    grid-row:2;
+    justify-self:center;
+  }
+}
