@@ -225,7 +225,7 @@ PY
 
       - name: Publish updater release branch
         id: publish_release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.head_ref == 'ops/publish-win-assistants-v050')
         run: |
           version="$(
             python3 - <<'PY'
@@ -289,7 +289,7 @@ PY
           echo "Published release branch win-assistants v$version ($sha)"
 
       - name: Report updater release status
-        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: always() && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.head_ref == 'ops/publish-win-assistants-v050'))
         env:
           GH_TOKEN: ${{ github.token }}
           PUBLISH_OUTCOME: ${{ steps.publish_release.outcome }}
