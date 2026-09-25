@@ -8,11 +8,11 @@
 - v0.5.0 已完成代码：从独立仓库 `zc202302-lab/chen-sit-guard` 当前 main 迁入成熟久坐核心；保留多区域人体存在检测、RTSP、强制休息状态机、DPAPI、统计和 `%APPDATA%\\久坐提醒` 数据；win-assistants 使用同一 EXE 的 `--sedentary --embedded --startup` 模式启动，不再依赖 `D:\\Tools\\chen-sit-guard\\main.py`。
 - 统一边界：短信、Foxmail、久坐均由 win-assistants 同一发布包维护；全程序只保留 win-assistants 主界面/主托盘的一个“检查更新”入口。内置久坐不再创建第二个托盘，不再保留独立 Git 更新器，也不再接受 `check_update` 控制命令。Foxmail 与缴费模块既有本地桥接协议、安全校验和“只打开草稿/文件剪贴板、绝不自动发送”边界不改。
 - v0.5.0 构建：已把 OpenCV 和久坐包加入 Windows 构建，复制原久坐 camera/control/state 测试；版本为 `0.5.0`。合并前 source validation、stability、v1.2 full validation 均通过；最新 cross-build 在新 Runner 上已通过 portable Wine/Xvfb、Windows Python/Tk、OpenCV 依赖、Windows 单测、PyInstaller、EXE smoke launch、PE 校验与 artifact 上传。
-- 当前发布基准：main 已是 `win-assistants v0.5.0`，但截至本次记录时 `win-assistants-release/update.json` 仍为 `v0.4.1`；因此不得把 v0.5.0 标记为“已发布/已部署”，必须等待 main cross-build 实际发布 release manifest/EXE 后再确认。生产静态目录仍需 Windows 实机“检查更新”验证。
+- 当前发布基准：main 已是 `win-assistants v0.5.0`，但截至本次记录时 `win-assistants-release/update.json` 仍为 `v0.4.1`；因此不得把 v0.5.0 标记为“已发布/已部署”。已建立发布触发修复分支 `fix/win-assistants-release-on-merged-pr` / PR #85：保留 main push 发布，并新增“Windows 相关 PR closed 且实际 merged”后的正式发布路径，避免 API 驱动的 main push 未可靠触发发布。生产静态目录仍需 Windows 实机“检查更新”验证。
 - Runner 状态：新 self-hosted Runner `chen-assistant-ci-192-255-130-71` / machine `racknerd-7e11dcb` 已实际接单，并成功执行 v1.2 full validation 与 win-assistants cross-build。Draft PR #82 仍需单独检查/收尾，不能仅凭 Runner 已接单就自动判定其全部迁移事项已完成。
 - 其他既存 Open PR（#77/#74/#73/#66/#64/#55/#43/#41/#39）不是本轮 Windows v0.5.0 工作，除非实际代码/用户要求重新指向它们。
 - 用户最后明确要求：不要破坏 chen-assistant 主线；把短信、久坐、Foxmail 真正整合进 win-assistants；Windows 端只保留一个“检查更新”，任一模块变化都通过更新整个 win-assistants.exe 实现，并继续做到完成部署。
-- 下一步：等待/触发 main 的 win-assistants cross-build 发布 v0.5.0 到 `win-assistants-release`，确认 `update.json` 和 EXE；然后由当前 Windows 客户端通过唯一“检查更新”升级，并实机验证短信、Foxmail、久坐、开机托盘与久坐设置/统计迁移。
+- 下一步：先让 PR #85 通过现有 CI 并合并；合并后的 closed/merged 事件必须实际发布 v0.5.0 到 `win-assistants-release`，确认 `update.json` 与 EXE 的版本、SHA256、大小；随后确认生产静态同步，再由当前 Windows 客户端通过唯一“检查更新”升级，并实机验证短信、Foxmail、久坐、开机托盘与久坐设置/统计迁移。
 
 ### 新聊天接管协议
 
