@@ -18,6 +18,7 @@ class ModuleTests(unittest.TestCase):
         self.assertIn("--startup", command)
         defaults = default_module_configs()
         self.assertEqual(defaults["sedentary"].command, command)
+        self.assertEqual(defaults["number_inbox"].command, [])
 
     def test_missing_executable_is_not_started(self):
         with tempfile.TemporaryDirectory() as directory:
