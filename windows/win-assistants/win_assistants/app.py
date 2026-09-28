@@ -555,7 +555,7 @@ class WinAssistantsApp:
             if not token:
                 messagebox.showerror("号码提醒", "请填写提醒连接码。", parent=window)
                 return
-            raw_times = [part.strip() for part in re.split(r"[,，;；\\s]+", reminder_times_var.get()) if part.strip()]
+            raw_times = [part.strip() for part in re.split(r"[,，;；\s]+", reminder_times_var.get()) if part.strip()]
             if len(raw_times) > 5:
                 messagebox.showerror("号码提醒", "定时提醒最多设置 5 个时间点。", parent=window)
                 return
