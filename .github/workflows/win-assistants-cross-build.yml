@@ -78,12 +78,50 @@ jobs:
             mkdir -p /tmp/bin
             ln -sf "${portable_xkbcomp}" /tmp/bin/xkbcomp
 
-            mapfile -t xkb_path_files < <(
-              grep -RlaF '/usr/bin/xkbcomp' \
-                "${wine_root}/root/usr/bin" "${wine_root}/root/usr/lib" 2>/dev/null || true
-            )
-            for target in "${xkb_path_files[@]}"; do
-              python3 - "${target}" <<'PY'
+            # Some Ubuntu Xvfb builds store "/usr/bin" and "xkbcomp"
+            # separately instead of one contiguous "/usr/bin/xkbcomp" string.
+            # Rewrite only Xvfb's equal-length executable directory when that
+            # split representation is detected.
+            python3 - "${xvfb_bin}" <<'PY'
+          from pathlib import Path
+          import sys
+
+          target = Path(sys.argv[1])
+          data = target.read_bytes()
+          exact = b"/usr/bin/xkbcomp"
+          old_dir = b"/usr/bin"
+          new_dir = b"/tmp/bin"
+          if exact in data:
+              target.write_bytes(data.replace(exact, b"/tmp/bin/xkbcomp"))
+              print(f"patched exact Xvfb xkbcomp path: {target}")
+          elif b"xkbcomp" in data and old_dir in data:
+              target.write_bytes(data.replace(old_dir, new_dir))
+              print(f"patched split Xvfb executable directory: {target}")
+          else:
+              print(f"Xvfb has no patchable xkbcomp path marker: {target}")
+          PY
+
+            # Ubuntu Xvfb may invoke /usr/bin/xkbcomp through an internal helper.
+            # Prefer satisfying that exact system path when this self-hosted runner
+            # permits it; fall back to patching extracted X11 binaries only when
+            # the runner is intentionally unprivileged.
+            if [ ! -x /usr/bin/xkbcomp ]; then
+              if [ "$(id -u)" -eq 0 ]; then
+                ln -sf "${portable_xkbcomp}" /usr/bin/xkbcomp
+              elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+                sudo ln -sf "${portable_xkbcomp}" /usr/bin/xkbcomp
+              fi
+            fi
+
+            if [ -x /usr/bin/xkbcomp ]; then
+              echo "Xvfb system xkbcomp path ready: /usr/bin/xkbcomp"
+            else
+              mapfile -t xkb_path_files < <(
+                grep -RlaF '/usr/bin/xkbcomp' \
+                  "${wine_root}/root/usr/bin" "${wine_root}/root/usr/lib" 2>/dev/null || true
+              )
+              for target in "${xkb_path_files[@]}"; do
+                python3 - "${target}" <<'PY'
           from pathlib import Path
           import sys
 
@@ -97,7 +135,8 @@ jobs:
               target.write_bytes(data.replace(old, new))
               print(f"patched xkbcomp path: {target}")
           PY
-            done
+              done
+            fi
           fi
 
           echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
