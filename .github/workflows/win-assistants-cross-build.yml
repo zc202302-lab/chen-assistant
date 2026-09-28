@@ -6,7 +6,6 @@ permissions:
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, closed]
     paths:
       - "windows/win-assistants/**"
       - ".github/workflows/win-assistants-cross-build.yml"
@@ -23,7 +22,6 @@ concurrency:
 
 jobs:
   source-validation:
-    if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
     runs-on: [self-hosted, linux, x64, chen-assistant]
     defaults:
       run:
@@ -39,7 +37,6 @@ jobs:
           python -m unittest discover -s tests -v
 
   build-windows-exe:
-    if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
     runs-on: [self-hosted, linux, x64, chen-assistant]
     defaults:
       run:
@@ -81,20 +78,20 @@ jobs:
             mkdir -p /tmp/bin
             ln -sf "${portable_xkbcomp}" /tmp/bin/xkbcomp
             python3 - "${xvfb_bin}" <<'PY'
-from pathlib import Path
-import sys
-
-target = Path(sys.argv[1])
-data = target.read_bytes()
-old = b"/usr/bin/xkbcomp"
-new = b"/tmp/bin/xkbcomp"
-if len(old) != len(new):
-    raise SystemExit("replacement path length mismatch")
-if old in data:
-    target.write_bytes(data.replace(old, new))
-elif new not in data:
-    raise SystemExit("Xvfb xkbcomp path marker not found")
-PY
+          from pathlib import Path
+          import sys
+          
+          target = Path(sys.argv[1])
+          data = target.read_bytes()
+          old = b"/usr/bin/xkbcomp"
+          new = b"/tmp/bin/xkbcomp"
+          if len(old) != len(new):
+              raise SystemExit("replacement path length mismatch")
+          if old in data:
+              target.write_bytes(data.replace(old, new))
+          elif new not in data:
+              raise SystemExit("Xvfb xkbcomp path marker not found")
+          PY
           fi
 
           echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
@@ -228,9 +225,7 @@ PY
 
       - name: Publish updater release branch
         id: publish_release
-        if: >-
-          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-          (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           version="$(
             python3 - <<'PY'
@@ -261,7 +256,7 @@ PY
               "exe_url": "https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe",
               "sha256": sha256,
               "size": int(size),
-              "notes": "v0.5.0：短信、久坐与 Foxmail 已统一内置到 win-assistants，同一 EXE、同一开机入口、同一更新链。",
+              "notes": "v0.5.1：新增号码提醒，和短信、久坐、Foxmail 一起内置到同一 win-assistants.exe；仍使用同一托盘、同一开机入口、同一检查更新。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
@@ -294,11 +289,7 @@ PY
           echo "Published release branch win-assistants v$version ($sha)"
 
       - name: Report updater release status
-        if: >-
-          always() && (
-            (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-            (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true)
-          )
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
           PUBLISH_OUTCOME: ${{ steps.publish_release.outcome }}

@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.db import db, init_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.security import create_session  # noqa: E402
-from app.v162_number_inbox import ensure_number_inbox_schema, TOKEN_META_KEY  # noqa: E402
+from app.v162_number_inbox import ensure_desktop_token, ensure_number_inbox_schema, DESKTOP_TOKEN_META_KEY, TOKEN_META_KEY  # noqa: E402
 
 
 def main():
@@ -30,6 +30,10 @@ def main():
         assert len(token) >= 24
         saved = conn.execute('SELECT value FROM app_meta WHERE key=?', (TOKEN_META_KEY,)).fetchone()
         assert saved and saved['value'] == token
+        desktop_token = ensure_desktop_token(conn)
+        assert len(desktop_token) >= 32
+        saved_desktop = conn.execute('SELECT value FROM app_meta WHERE key=?', (DESKTOP_TOKEN_META_KEY,)).fetchone()
+        assert saved_desktop and saved_desktop['value'] == desktop_token
 
     client = TestClient(app)
 
@@ -53,6 +57,20 @@ def main():
     )
     assert duplicate.status_code == 200, duplicate.text
     assert '已经在待处理列表中' in duplicate.text
+
+    unauth_feed = client.get('/api/number-inbox/pending', follow_redirects=False)
+    assert unauth_feed.status_code == 401, unauth_feed.text
+    feed = client.get(
+        '/api/number-inbox/pending',
+        headers={'Authorization': f'Bearer {desktop_token}'},
+    )
+    assert feed.status_code == 200, feed.text
+    payload = feed.json()
+    assert payload['ok'] is True
+    assert payload['pending_count'] == 1
+    assert payload['latest_id'] > 0
+    assert payload['items'][0]['number'] == '138 0013 8000'
+    assert feed.headers.get('cache-control') == 'no-store'
 
     with db() as conn:
         rows = conn.execute('SELECT * FROM number_inbox ORDER BY id').fetchall()
@@ -95,6 +113,30 @@ def main():
         assert row['status'] == 'pending'
         assert row['completed_at'] == ''
 
+    rotate_desktop = client.post(
+        '/work/number-inbox/rotate-desktop-token',
+        data={'csrf': csrf},
+        follow_redirects=False,
+    )
+    assert rotate_desktop.status_code == 303
+    with db() as conn:
+        new_desktop_token = conn.execute(
+            'SELECT value FROM app_meta WHERE key=?',
+            (DESKTOP_TOKEN_META_KEY,),
+        ).fetchone()['value']
+        assert new_desktop_token != desktop_token
+    old_feed = client.get(
+        '/api/number-inbox/pending',
+        headers={'Authorization': f'Bearer {desktop_token}'},
+        follow_redirects=False,
+    )
+    assert old_feed.status_code == 401
+    new_feed = client.get(
+        '/api/number-inbox/pending',
+        headers={'Authorization': f'Bearer {new_desktop_token}'},
+    )
+    assert new_feed.status_code == 200
+
     rotate = client.post(
         '/work/number-inbox/rotate-link',
         data={'csrf': csrf},
@@ -110,7 +152,7 @@ def main():
     new_link = client.get(f'/number-submit/{new_token}')
     assert new_link.status_code == 200
 
-    print('v1.6.2 number inbox contract passed')
+    print('v1.6.3 number inbox + Windows reminder API contract passed')
 
 
 if __name__ == '__main__':

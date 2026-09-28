@@ -25,6 +25,7 @@ MODULES = (
     ModuleDefinition("sms", "短信助手", "接收 iPhone 短信并提取验证码", 1),
     ModuleDefinition("sedentary", "久坐助手", "摄像头人体检测与强制休息", 5),
     ModuleDefinition("chen_helper", "小助手连接", "Foxmail 与本机能力桥接", 2),
+    ModuleDefinition("number_inbox", "号码提醒", "提醒同事新提交的待录入号码", 3),
 )
 
 
@@ -54,6 +55,7 @@ def default_module_configs() -> dict[str, ModuleConfig]:
         "sms": [],
         "sedentary": internal_sedentary_command(),
         "chen_helper": [],
+        "number_inbox": [],
     }
     return {
         item.key: ModuleConfig(enabled=True, command=commands[item.key], delay_seconds=item.default_delay)
