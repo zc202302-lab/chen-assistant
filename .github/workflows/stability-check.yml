@@ -27,3 +27,46 @@ jobs:
         run: python -m compileall -q app tests/stability_contract.py
       - name: Version, health and SQLite stability contract
         run: python tests/stability_contract.py
+
+  verify-win-assistants-v052-production:
+    if: github.event_name == 'pull_request' && github.head_ref == 'verify/win-assistants-v052-production'
+    runs-on: [self-hosted, linux, x64, chen-assistant]
+    steps:
+      - name: Verify public updater v0.5.2
+        run: |
+          set -Eeuo pipefail
+          update_url="https://assistant.ziboxiaozhushou.cn/static/win-assistants/update.json?verify=$(date +%s)"
+          exe_url="https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?verify=$(date +%s)"
+
+          for attempt in 1 2 3 4 5 6; do
+            if update="$(curl --fail --silent --show-error --max-time 20 "$update_url")" &&
+               python3 - "$update" <<'PY'
+          import json, sys
+          update = json.loads(sys.argv[1])
+          assert update.get("version") == "0.5.2", update
+          assert update.get("sha256") == "a330b6e0475bc8de903b7d17212a9b973936544a61747925ecdc5311475201a6", update
+          assert int(update.get("size", 0)) == 71624749, update
+          print("update", update)
+          PY
+            then
+              break
+            fi
+            if [ "$attempt" -eq 6 ]; then
+              echo "public updater did not reach v0.5.2" >&2
+              exit 1
+            fi
+            sleep 20
+          done
+
+          exe="$RUNNER_TEMP/win-assistants-v052-public.exe"
+          curl --fail --location --silent --show-error --max-time 240 "$exe_url" -o "$exe"
+          test "$(stat -c '%s' "$exe")" = "71624749"
+          echo "a330b6e0475bc8de903b7d17212a9b973936544a61747925ecdc5311475201a6  $exe" | sha256sum --check
+          python3 - "$exe" <<'PY'
+          from pathlib import Path
+          import sys
+          p = Path(sys.argv[1])
+          assert p.read_bytes()[:2] == b"MZ"
+          print("public EXE verified", p.stat().st_size)
+          PY
+
