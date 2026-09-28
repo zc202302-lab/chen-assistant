@@ -478,15 +478,10 @@ class WinAssistantsApp:
                 text="已完成",
                 command=lambda value=item_id: self._complete_number_reminder(value),
             ).pack(side="right")
-            ttk.Button(
-                actions,
-                text="仅关闭提醒",
-                command=lambda value=item_id: self._dismiss_number_reminder(value),
-            ).pack(side="right", padx=(0, 8))
 
         ttk.Label(
             outer,
-            text="“已完成”会同步网页后台；“仅关闭提醒”只关闭本机这条提醒，不改变网页状态。",
+            text="“已完成”会同步网页后台并移除该号码；直接关闭窗口只会暂时隐藏，下一提醒时间仍会弹出未完成号码。",
             foreground=MUTED,
         ).pack(anchor="w", pady=(8, 0))
 
