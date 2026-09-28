@@ -34,6 +34,16 @@ def _has_column(conn, table: str, column: str) -> bool:
     return any(row['name'] == column for row in conn.execute(f'PRAGMA table_info({table})').fetchall())
 
 
+def _pending_payment_review_tasks(conn, customer_id: int):
+    return conn.execute(
+        """SELECT id,title,remind_at,remind_date
+           FROM tasks
+           WHERE customer_id=? AND is_payment_review=1 AND done=0
+           ORDER BY COALESCE(NULLIF(remind_at,''),NULLIF(remind_date,''),'9999-12-31'),id""",
+        (customer_id,),
+    ).fetchall()
+
+
 def ensure_v031(conn):
     """Migrate the existing v0.3 payment run into the four-stage v0.3.1 workflow once."""
     v03._ensure_v03(conn)
@@ -76,6 +86,7 @@ def _run_v031(conn, customer_id: int, period: str | None = None):
     initiated = bool((row['initiated_at'] or '').strip())
     initiate_prepared = bool((row['initiate_prepared_at'] or '').strip()) and notified and not initiated
     paid = bool((row['paid_at'] or '').strip())
+    pending_review_tasks = _pending_payment_review_tasks(conn, customer_id)
 
     if paid:
         stage, label = 'paid', '已完成缴费'
@@ -109,6 +120,8 @@ def _run_v031(conn, customer_id: int, period: str | None = None):
         'initiated_at': row['initiated_at'] or '',
         'initiate_prepared_at': row['initiate_prepared_at'] or '',
         'paid_at': row['paid_at'] or '',
+        'payment_review_pending': len(pending_review_tasks),
+        'payment_review_titles': [task['title'] for task in pending_review_tasks[:3]],
     }
     return run, stats
 
@@ -224,6 +237,11 @@ def _set_initiated(conn, customer_id: int, period: str, run):
         return
     if not run['notified']:
         raise HTTPException(400, '请先完成“通知客户”')
+    pending_reviews = _pending_payment_review_tasks(conn, customer_id)
+    if pending_reviews:
+        names = '、'.join(task['title'] for task in pending_reviews[:3])
+        suffix = f" 等 {len(pending_reviews)} 项" if len(pending_reviews) > 3 else ''
+        raise HTTPException(409, f'请先确认缴费审核待办已完成：{names}{suffix}')
     conn.execute(
         "UPDATE customer_payment_runs SET initiated_at=?,initiate_prepared_at='',updated_at=? WHERE id=?",
         (now, now, run_id),
@@ -435,6 +453,11 @@ def payment_mail_compose_v031(customer_id: int):
         run, _ = _run_v031(conn, customer_id, period)
         if not run['notified']:
             raise HTTPException(400, '请先完成“通知客户”，再调用Foxmail')
+        pending_reviews = _pending_payment_review_tasks(conn, customer_id)
+        if pending_reviews:
+            names = '、'.join(task['title'] for task in pending_reviews[:3])
+            suffix = f" 等 {len(pending_reviews)} 项" if len(pending_reviews) > 3 else ''
+            raise HTTPException(409, f'请先确认缴费审核待办已完成：{names}{suffix}')
         template = _get_template(conn, customer_id)
         recipient = _recipient(conn)
 
