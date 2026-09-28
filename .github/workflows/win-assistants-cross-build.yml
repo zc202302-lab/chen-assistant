@@ -148,7 +148,7 @@ jobs:
           echo "WINEARCH=win64" >> "${GITHUB_ENV}"
           echo 'WINEDLLOVERRIDES=winemenubuilder.exe=d;mscoree,mshtml=' >> "${GITHUB_ENV}"
           echo "WINEPREFIX=${wine_prefix}" >> "${GITHUB_ENV}"
-          "${xvfb_bin}" :99 -screen 0 1024x768x24 -nolisten tcp \
+          "${xvfb_bin}" :99 -screen 0 1024x768x24 -nolisten tcp -kb \
             > "${RUNNER_TEMP}/win-assistants-xvfb.log" 2>&1 &
           echo "DISPLAY=:99" >> "${GITHUB_ENV}"
           for attempt in {1..20}; do
