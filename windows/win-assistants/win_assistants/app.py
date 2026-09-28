@@ -42,7 +42,10 @@ class WinAssistantsApp:
         self.foxmail_bridge = FoxmailBridge()
         self.number_inbox_receiver = NumberInboxReceiver()
         self.tray_icon = None
+        self.ui_actions: queue.Queue[str] = queue.Queue()
+        self._update_checking = False
         self.sms_code_var = tk.StringVar(value="尚未收到验证码")
+        self.update_status_var = tk.StringVar(value="更新状态：就绪")
         self.status_vars = {item.key: tk.StringVar(value="等待启动") for item in MODULES}
         self.enabled_vars = {item.key: tk.BooleanVar(value=self.config.modules[item.key].enabled) for item in MODULES}
         self.path_vars = {
@@ -56,6 +59,7 @@ class WinAssistantsApp:
         self._start_enabled_modules()
         if start_hidden or self.config.start_minimized:
             self.root.after(50, self.root.withdraw if tray_ready else self.root.iconify)
+        self.root.after(100, self._poll_ui_actions)
         self.root.after(1000, self._poll)
 
     def _configure_window(self) -> None:
@@ -144,9 +148,10 @@ class WinAssistantsApp:
         controls.pack(fill="x", pady=(10, 0))
         ttk.Label(controls, text=f"当前版本 v{__version__}", style="Sub.TLabel").pack(side="left", padx=(0, 12))
         ttk.Checkbutton(controls, text="随 Windows 登录静默启动（直接进入托盘）", variable=self.startup_var, command=self._toggle_startup).pack(side="left")
-        ttk.Button(controls, text="检查更新", command=self._check_updates).pack(side="right")
+        ttk.Button(controls, text="检查更新", command=self._request_update_check).pack(side="right")
         ttk.Button(controls, text="接管旧工具的开机启动", command=self._take_over).pack(side="right", padx=(0, 8))
-        ttk.Label(shell, text=f"v{__version__} · 四个模块统一内置，同一个检查更新。", style="Sub.TLabel").pack(anchor="w", pady=(8, 0))
+        ttk.Label(shell, textvariable=self.update_status_var, style="Sub.TLabel").pack(anchor="w", pady=(8, 0))
+        ttk.Label(shell, text=f"v{__version__} · 四个模块统一内置，同一个检查更新。", style="Sub.TLabel").pack(anchor="w", pady=(3, 0))
 
     def _save_ui(self) -> None:
         for item in MODULES:
@@ -243,6 +248,28 @@ class WinAssistantsApp:
         variable = self.status_vars.get(key)
         if variable:
             variable.set(status)
+
+    def _poll_ui_actions(self) -> None:
+        while True:
+            try:
+                action = self.ui_actions.get_nowait()
+            except queue.Empty:
+                break
+            if action == "show":
+                self._show_window()
+            elif action == "check_updates":
+                self._request_update_check()
+            elif action == "exit":
+                self._exit()
+        self.root.after(100, self._poll_ui_actions)
+
+    def _set_update_status(self, text: str, *, notify: bool = False) -> None:
+        self.update_status_var.set(text)
+        if notify and self.tray_icon is not None:
+            try:
+                self.tray_icon.notify(text, "win-assistants 更新")
+            except Exception:
+                pass
 
     def _poll(self) -> None:
         self.manager.refresh()
@@ -446,36 +473,59 @@ class WinAssistantsApp:
         self.sms_receiver.publish_test(settings, token.strip())
         self.status_vars["sms"].set("正在发送测试短信")
 
+    def _request_update_check(self) -> None:
+        if self._update_checking:
+            self._set_update_status("更新状态：正在处理，请稍候", notify=True)
+            return
+        self._update_checking = True
+        self._set_update_status("更新状态：正在检查新版本…", notify=True)
+        self._check_updates()
+
+    def _finish_update_check(self, status: str) -> None:
+        self._update_checking = False
+        self._set_update_status(status)
+
     def _check_updates(self) -> None:
-        self.status_vars["sedentary"].set(self.status_vars["sedentary"].get())
         def worker() -> None:
             try:
                 manifest = fetch_manifest()
                 has_update = newer_version_available(__version__, manifest)
             except Exception as exc:
-                self.root.after(0, lambda: messagebox.showwarning("检查更新", f"无法检查 win-assistants 更新：{exc}"))
+                def failed() -> None:
+                    self._finish_update_check("更新状态：检查失败")
+                    messagebox.showwarning("检查更新", f"无法检查 win-assistants 更新：{exc}")
+                self.root.after(0, failed)
                 return
 
             if not has_update:
-                self.root.after(
-                    0,
-                    lambda: messagebox.showinfo(
+                def current() -> None:
+                    self._finish_update_check(f"更新状态：v{__version__} 已是最新版")
+                    messagebox.showinfo(
                         "检查更新",
                         f"win-assistants v{__version__} 已是最新版。\n\n短信、久坐、Foxmail 与号码提醒均通过这一个“检查更新”统一更新。",
-                    ),
-                )
+                    )
+                self.root.after(0, current)
                 return
 
             version = str(manifest.get("version", "")).strip()
             notes = str(manifest.get("notes", "")).strip()
+
             def confirm() -> None:
+                self._set_update_status(f"更新状态：发现 v{version}")
                 text = f"当前版本：v{__version__}\n目标版本：v{version}\n\n发现新的 win-assistants。"
                 if notes:
                     text += f"\n\n{notes}"
                 text += "\n\n是否现在下载并更新？\n整个 win-assistants.exe 会一次更新完成，下载、SHA256校验、替换和重启均自动执行。"
                 if not messagebox.askyesno("发现更新", text):
+                    self._finish_update_check("更新状态：已取消")
                     return
-                threading.Thread(target=lambda: self._download_and_apply_update(manifest), name="win-assistants-updater", daemon=True).start()
+                self._set_update_status(f"更新状态：正在下载并校验 v{version}…", notify=True)
+                threading.Thread(
+                    target=lambda: self._download_and_apply_update(manifest),
+                    name="win-assistants-updater",
+                    daemon=True,
+                ).start()
+
             self.root.after(0, confirm)
 
         threading.Thread(target=worker, name="win-assistants-update-check", daemon=True).start()
@@ -483,9 +533,16 @@ class WinAssistantsApp:
     def _download_and_apply_update(self, manifest: dict[str, object]) -> None:
         try:
             staged = stage_update(manifest)
+            self.root.after(
+                0,
+                lambda: self._set_update_status("更新状态：校验完成，正在安装并重启…", notify=True),
+            )
             launch_replacement(staged, manifest)
         except Exception as exc:
-            self.root.after(0, lambda: messagebox.showerror("更新失败", str(exc)))
+            def failed() -> None:
+                self._finish_update_check("更新状态：更新失败")
+                messagebox.showerror("更新失败", str(exc))
+            self.root.after(0, failed)
             return
         self.root.after(0, self._exit_for_update)
 
@@ -523,9 +580,9 @@ class WinAssistantsApp:
             draw.rounded_rectangle((7, 7, 57, 57), radius=13, fill=GREEN, outline="white", width=4)
             draw.text((18, 14), "W", fill="white")
             menu = pystray.Menu(
-                pystray.MenuItem("打开 win-assistants", lambda: self.root.after(0, self._show_window), default=True),
-                pystray.MenuItem("检查更新", lambda: self.root.after(0, self._check_updates)),
-                pystray.MenuItem("退出", lambda: self.root.after(0, self._exit)),
+                pystray.MenuItem("打开 win-assistants", lambda *_args: self.ui_actions.put("show"), default=True),
+                pystray.MenuItem("检查更新", lambda *_args: self.ui_actions.put("check_updates")),
+                pystray.MenuItem("退出", lambda *_args: self.ui_actions.put("exit")),
             )
             self.tray_icon = pystray.Icon("win-assistants", image, "win-assistants", menu)
             self.tray_icon.run_detached()

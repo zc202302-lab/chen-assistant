@@ -59,9 +59,9 @@ class UpdaterTests(unittest.TestCase):
         self.assertIn("$arguments = ''", script)
 
     def test_newer_version(self) -> None:
-        self.assertTrue(newer_version_available("0.5.1", {"version": "0.5.2"}))
-        self.assertFalse(newer_version_available("0.5.2", {"version": "0.5.2"}))
-        self.assertFalse(newer_version_available("0.5.3", {"version": "0.5.2"}))
+        self.assertTrue(newer_version_available("0.5.2", {"version": "0.5.3"}))
+        self.assertFalse(newer_version_available("0.5.3", {"version": "0.5.3"}))
+        self.assertFalse(newer_version_available("0.5.4", {"version": "0.5.3"}))
 
 
 if __name__ == "__main__":
