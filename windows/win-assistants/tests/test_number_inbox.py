@@ -45,6 +45,7 @@ class NumberInboxTests(unittest.TestCase):
             return _Response({
                 "ok": True,
                 "pending_count": 2,
+                "pending_ids": [8, 9],
                 "latest_id": 9,
                 "items": [{"id": 9, "number": "13800138000", "submitter": "张三", "note": "新装"}],
             })
@@ -78,6 +79,7 @@ class NumberInboxTests(unittest.TestCase):
         payload = {
             "ok": True,
             "pending_count": 1,
+            "pending_ids": [8],
             "latest_id": 8,
             "items": [{"id": 8, "number": "13800138000", "submitter": "张三", "note": ""}],
         }
@@ -92,6 +94,7 @@ class NumberInboxTests(unittest.TestCase):
         snapshot = receiver.events.get_nowait()
         self.assertEqual(snapshot.kind, "snapshot")
         self.assertEqual(snapshot.item_id, 8)
+        self.assertEqual(snapshot.pending_ids, (8,))
         with self.assertRaises(queue.Empty):
             receiver.events.get_nowait()
 
@@ -101,6 +104,7 @@ class NumberInboxTests(unittest.TestCase):
         payload = {
             "ok": True,
             "pending_count": 3,
+            "pending_ids": [5, 7, 8],
             "latest_id": 8,
             "items": [
                 {"id": 8, "number": "18800000008", "submitter": "乙", "note": ""},
