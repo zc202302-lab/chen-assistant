@@ -317,6 +317,9 @@ def number_inbox_desktop_done(request: Request, item_id: int):
     return response
 
 
+number_inbox_desktop_done.__desktop_token_authenticated__ = True
+
+
 @router.post('/work/number-inbox/rotate-desktop-token')
 def number_inbox_rotate_desktop_token(request: Request, csrf: str = Form(...)):
     _csrf(request, csrf)
