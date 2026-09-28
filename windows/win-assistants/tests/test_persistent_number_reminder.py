@@ -23,19 +23,24 @@ class PersistentNumberReminderTests(unittest.TestCase):
         self.assertNotIn("self._show_window()", inbox_branch)
         self.assertNotIn('self.tray_icon.notify(detail, "新的待录入号码")', inbox_branch)
 
-    def test_reminder_is_persistent_and_topmost(self) -> None:
+    def test_reminder_can_close_until_next_schedule(self) -> None:
         source = method_block("_show_number_reminder", "_open_number_inbox")
-        self.assertIn('window.protocol("WM_DELETE_WINDOW", self._keep_number_reminder_visible)', source)
+        self.assertIn('window.protocol("WM_DELETE_WINDOW", self._hide_number_reminder_until_schedule)', source)
         self.assertIn('window.attributes("-topmost", True)', source)
         self.assertIn("self.number_reminder_items[event.item_id] = event", source)
+        hide = method_block("_hide_number_reminder_until_schedule", "_keep_number_reminder_visible")
+        self.assertIn("window.withdraw()", hide)
+        schedule = method_block("_maybe_show_scheduled_number_reminder", "_render_number_reminder")
+        self.assertIn("self.config.number_inbox.reminder_times", schedule)
+        self.assertIn("self._number_reminder_last_slot", schedule)
 
-    def test_reminder_has_explicit_per_item_close_only(self) -> None:
+    def test_reminder_has_complete_sync_and_local_dismiss(self) -> None:
         render = method_block("_render_number_reminder", "_show_number_reminder")
-        dismiss = method_block("_dismiss_number_reminder", "_keep_number_reminder_visible")
-        self.assertIn("关闭这条提醒", render)
-        self.assertIn("关闭提醒不会修改网页中的待处理状态", render)
-        self.assertIn("self.number_reminder_items.pop(item_id, None)", dismiss)
-        self.assertIn("self.number_reminder_window.destroy()", dismiss)
+        complete = method_block("_complete_number_reminder", "_hide_number_reminder_until_schedule")
+        self.assertIn('text="已完成"', render)
+        self.assertIn('text="仅关闭提醒"', render)
+        self.assertIn("self.number_inbox_receiver.complete", complete)
+        self.assertIn("self._dismiss_number_reminder(item_id)", complete)
 
 
 if __name__ == "__main__":
