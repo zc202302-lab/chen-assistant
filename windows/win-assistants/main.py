@@ -9,8 +9,14 @@ def main() -> None:
         run_sedentary()
         return
 
-    from win_assistants.app import run as run_assistants
-    run_assistants()
+    from win_assistants.number_inbox import NumberInboxWatcher
+    watcher = NumberInboxWatcher()
+    watcher.start()
+    try:
+        from win_assistants.app import run as run_assistants
+        run_assistants()
+    finally:
+        watcher.stop()
 
 
 if __name__ == "__main__":
