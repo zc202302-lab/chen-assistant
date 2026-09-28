@@ -17,12 +17,14 @@ from .v143_customer_resources import ensure_customer_resources_v143, router as v
 from .v143_payment_controls_patch import router as v143_payment_controls_router
 from .v144_audit_hardening import router as v144_audit_hardening_router
 from .work_architecture import WORK_DOMAINS, WORK_LIBRARY_CATEGORIES
+from .v162_number_inbox import ensure_number_inbox_schema, pending_number_count, router as v162_number_inbox_router
 
 router = APIRouter()
 templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
 
 # Audit hardening and current customer extensions are registered before historical
 # compatibility routes so duplicate paths resolve to the newest safe behavior.
+router.include_router(v162_number_inbox_router)
 router.include_router(v144_audit_hardening_router)
 router.include_router(v143_payment_controls_router)
 router.include_router(v143_customer_resources_router)
@@ -37,6 +39,7 @@ def startup_recipe_template_import_v101():
     ensure_v101_recipe_templates()
     ensure_v13_customer_documents()
     ensure_customer_resources_v143()
+    ensure_number_inbox_schema()
 
 
 @router.get('/work', response_class=HTMLResponse)
@@ -50,6 +53,7 @@ def work_home_v101(request: Request, home: str = ''):
         customer_count = int(conn.execute('SELECT COUNT(*) n FROM customers').fetchone()['n'])
         open_tasks = int(conn.execute('SELECT COUNT(*) n FROM tasks WHERE done=0').fetchone()['n'])
         product_count = int(conn.execute("SELECT COUNT(DISTINCT service_type) n FROM services WHERE service_type<>''").fetchone()['n'])
+        pending_numbers = pending_number_count(conn)
 
     return templates.TemplateResponse(
         'work_shell_v14.html',
@@ -59,6 +63,7 @@ def work_home_v101(request: Request, home: str = ''):
             'customer_count': customer_count,
             'open_tasks': open_tasks,
             'product_count': product_count,
+            'pending_numbers': pending_numbers,
         },
     )
 

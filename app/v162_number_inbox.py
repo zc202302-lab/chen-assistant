@@ -1,0 +1,240 @@
+from __future__ import annotations
+
+import re
+import secrets
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+
+from . import config
+from .db import db, now_iso
+from .security import require_csrf
+
+router = APIRouter()
+templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
+
+TOKEN_META_KEY = 'number_inbox_submit_token_v1'
+
+NUMBER_INBOX_SCHEMA = r'''
+CREATE TABLE IF NOT EXISTS number_inbox (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    number TEXT NOT NULL,
+    normalized_number TEXT NOT NULL,
+    submitter TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','done')),
+    submitted_at TEXT NOT NULL,
+    completed_at TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_number_inbox_status_time
+    ON number_inbox(status, submitted_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_number_inbox_normalized_status
+    ON number_inbox(normalized_number, status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_number_inbox_one_pending
+    ON number_inbox(normalized_number) WHERE status='pending';
+'''
+
+
+def ensure_number_inbox_schema(conn=None) -> str:
+    owns = conn is None
+    if owns:
+        cm = db()
+        conn = cm.__enter__()
+    try:
+        conn.execute('CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+        conn.executescript(NUMBER_INBOX_SCHEMA)
+        row = conn.execute('SELECT value FROM app_meta WHERE key=?', (TOKEN_META_KEY,)).fetchone()
+        token = row['value'] if row else ''
+        if not token:
+            token = secrets.token_urlsafe(24)
+            conn.execute(
+                'INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)',
+                (TOKEN_META_KEY, token),
+            )
+        return token
+    finally:
+        if owns:
+            cm.__exit__(None, None, None)
+
+
+def _ctx(request: Request, **extra):
+    session = getattr(request.state, 'session', None)
+    base = {
+        'request': request,
+        'csrf': session['csrf_token'] if session else '',
+        'app_version': config.APP_VERSION,
+    }
+    base.update(extra)
+    return base
+
+
+def _csrf(request: Request, value: str):
+    try:
+        require_csrf(request.state.session, value)
+    except ValueError:
+        raise HTTPException(403, 'CSRF校验失败')
+
+
+def _normalize_number(value: str) -> tuple[str, str]:
+    raw = (value or '').strip()
+    if len(raw) > 64:
+        raise HTTPException(400, '号码过长')
+    digits = re.sub(r'\D', '', raw)
+    if digits.startswith('86') and len(digits) == 13:
+        digits = digits[2:]
+    if len(digits) < 5 or len(digits) > 20:
+        raise HTTPException(400, '请输入有效号码')
+    return raw, digits
+
+
+def _token_matches(conn, token: str) -> bool:
+    expected = ensure_number_inbox_schema(conn)
+    return bool(token) and secrets.compare_digest(token, expected)
+
+
+def _display_time(value: str) -> str:
+    try:
+        dt = datetime.fromisoformat(value)
+        return dt.astimezone(ZoneInfo('Asia/Shanghai')).strftime('%m-%d %H:%M')
+    except Exception:
+        return value or ''
+
+
+@router.get('/number-submit/{token}', response_class=HTMLResponse)
+def public_number_submit_page(request: Request, token: str):
+    with db() as conn:
+        if not _token_matches(conn, token):
+            raise HTTPException(404)
+    return templates.TemplateResponse(
+        'number_submit_v162.html',
+        {
+            'request': request,
+            'token': token,
+            'success': False,
+            'duplicate': False,
+            'submitted_number': '',
+        },
+    )
+
+
+@router.post('/number-submit/{token}', response_class=HTMLResponse)
+def public_number_submit(
+    request: Request,
+    token: str,
+    number: str = Form(...),
+    submitter: str = Form(''),
+    note: str = Form(''),
+):
+    raw, normalized = _normalize_number(number)
+    submitter = (submitter or '').strip()[:40]
+    note = (note or '').strip()[:300]
+    duplicate = False
+    with db() as conn:
+        if not _token_matches(conn, token):
+            raise HTTPException(404)
+        cur = conn.execute(
+            '''INSERT OR IGNORE INTO number_inbox
+               (number,normalized_number,submitter,note,status,submitted_at,completed_at)
+               VALUES(?,?,?,?, 'pending', ?, '')''',
+            (raw, normalized, submitter, note, now_iso()),
+        )
+        duplicate = cur.rowcount == 0
+    return templates.TemplateResponse(
+        'number_submit_v162.html',
+        {
+            'request': request,
+            'token': token,
+            'success': True,
+            'duplicate': duplicate,
+            'submitted_number': raw,
+        },
+    )
+
+
+public_number_submit.__public_token_authenticated__ = True
+
+
+@router.get('/work/number-inbox', response_class=HTMLResponse)
+def number_inbox_admin(request: Request, status: str = 'pending'):
+    if status not in {'pending', 'done', 'all'}:
+        status = 'pending'
+    with db() as conn:
+        token = ensure_number_inbox_schema(conn)
+        pending_count = int(
+            conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n']
+        )
+        done_count = int(
+            conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='done'").fetchone()['n']
+        )
+        if status == 'all':
+            rows = conn.execute(
+                'SELECT * FROM number_inbox ORDER BY CASE status WHEN \'pending\' THEN 0 ELSE 1 END, submitted_at DESC, id DESC LIMIT 300'
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                'SELECT * FROM number_inbox WHERE status=? ORDER BY submitted_at DESC, id DESC LIMIT 300',
+                (status,),
+            ).fetchall()
+    items = []
+    for row in rows:
+        item = dict(row)
+        item['submitted_display'] = _display_time(item['submitted_at'])
+        item['completed_display'] = _display_time(item['completed_at'])
+        items.append(item)
+    share_url = str(request.base_url).rstrip('/') + f'/number-submit/{token}'
+    return templates.TemplateResponse(
+        'number_inbox_v162.html',
+        _ctx(
+            request,
+            items=items,
+            status=status,
+            pending_count=pending_count,
+            done_count=done_count,
+            share_url=share_url,
+        ),
+    )
+
+
+@router.post('/work/number-inbox/{item_id}/done')
+def number_inbox_done(request: Request, item_id: int, csrf: str = Form(...)):
+    _csrf(request, csrf)
+    with db() as conn:
+        ensure_number_inbox_schema(conn)
+        conn.execute(
+            "UPDATE number_inbox SET status='done',completed_at=? WHERE id=? AND status='pending'",
+            (now_iso(), item_id),
+        )
+    return RedirectResponse('/work/number-inbox?status=pending', status_code=303)
+
+
+@router.post('/work/number-inbox/{item_id}/reopen')
+def number_inbox_reopen(request: Request, item_id: int, csrf: str = Form(...)):
+    _csrf(request, csrf)
+    with db() as conn:
+        ensure_number_inbox_schema(conn)
+        conn.execute(
+            "UPDATE OR IGNORE number_inbox SET status='pending',completed_at='' WHERE id=? AND status='done'",
+            (item_id,),
+        )
+    return RedirectResponse('/work/number-inbox?status=done', status_code=303)
+
+
+@router.post('/work/number-inbox/rotate-link')
+def number_inbox_rotate_link(request: Request, csrf: str = Form(...)):
+    _csrf(request, csrf)
+    token = secrets.token_urlsafe(24)
+    with db() as conn:
+        ensure_number_inbox_schema(conn)
+        conn.execute(
+            'INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)',
+            (TOKEN_META_KEY, token),
+        )
+    return RedirectResponse('/work/number-inbox', status_code=303)
+
+
+def pending_number_count(conn) -> int:
+    ensure_number_inbox_schema(conn)
+    return int(conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'])

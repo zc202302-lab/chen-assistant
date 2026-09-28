@@ -38,6 +38,7 @@
       <a href="/customers"><b>全部客户</b><span>查找、新建与导入客户</span></a>
       <a href="/products"><b>产品汇总</b><span>{{ product_count }} 个业务类型</span></a>
       <a href="/search"><b>工作搜索</b><span>查询客户、号码、账号等数据</span></a>
+      <a href="/work/number-inbox"><b>号码收集</b><span>{% if pending_numbers %}{{ pending_numbers }} 个待录入{% else %}暂无待录入{% endif %}</span></a>
     </div>
   </section>
 </section>
