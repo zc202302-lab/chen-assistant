@@ -27,8 +27,8 @@ def main():
     assert '.customer-directory-list-v161{\n  display:grid;' in css
     assert 'grid-template-columns:repeat(2,minmax(0,1fr));' in css
     assert '@media(max-width:980px)' in css
-    assert 'APP_VERSION = "1.6.3"' in config
-    assert 'EXPECTED_VERSION="1.6.3"' in deploy
+    assert 'APP_VERSION = "1.6.4"' in config
+    assert 'EXPECTED_VERSION="1.6.4"' in deploy
 
     print('v1.6.1 responsive polish contract passed')
 
