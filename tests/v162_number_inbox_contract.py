@@ -79,12 +79,28 @@ def main():
     assert payload['items'][0]['number'] == '138 0013 8000'
     assert feed.headers.get('cache-control') == 'no-store'
 
+    desktop_done_unauth = client.post('/api/number-inbox/1/done', follow_redirects=False)
+    assert desktop_done_unauth.status_code == 401
+
     with db() as conn:
         rows = conn.execute('SELECT * FROM number_inbox ORDER BY id').fetchall()
         assert len(rows) == 1, len(rows)
         assert rows[0]['normalized_number'] == '13800138000'
         assert rows[0]['status'] == 'pending'
         item_id = int(rows[0]['id'])
+
+    desktop_done = client.post(
+        f'/api/number-inbox/{item_id}/done',
+        headers={'Authorization': f'Bearer {desktop_token}'},
+    )
+    assert desktop_done.status_code == 200, desktop_done.text
+    assert desktop_done.json()['status'] == 'done'
+    assert desktop_done.headers.get('cache-control') == 'no-store'
+    with db() as conn:
+        row = conn.execute('SELECT status,completed_at FROM number_inbox WHERE id=?', (item_id,)).fetchone()
+        assert row['status'] == 'done'
+        assert row['completed_at']
+        conn.execute("UPDATE number_inbox SET status='pending',completed_at='' WHERE id=?", (item_id,))
 
     unauthenticated = client.get('/work/number-inbox', follow_redirects=False)
     assert unauthenticated.status_code == 303, unauthenticated.status_code
