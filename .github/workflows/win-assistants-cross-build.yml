@@ -78,20 +78,20 @@ jobs:
             mkdir -p /tmp/bin
             ln -sf "${portable_xkbcomp}" /tmp/bin/xkbcomp
             python3 - "${xvfb_bin}" <<'PY'
-from pathlib import Path
-import sys
-
-target = Path(sys.argv[1])
-data = target.read_bytes()
-old = b"/usr/bin/xkbcomp"
-new = b"/tmp/bin/xkbcomp"
-if len(old) != len(new):
-    raise SystemExit("replacement path length mismatch")
-if old in data:
-    target.write_bytes(data.replace(old, new))
-elif new not in data:
-    raise SystemExit("Xvfb xkbcomp path marker not found")
-PY
+          from pathlib import Path
+          import sys
+          
+          target = Path(sys.argv[1])
+          data = target.read_bytes()
+          old = b"/usr/bin/xkbcomp"
+          new = b"/tmp/bin/xkbcomp"
+          if len(old) != len(new):
+              raise SystemExit("replacement path length mismatch")
+          if old in data:
+              target.write_bytes(data.replace(old, new))
+          elif new not in data:
+              raise SystemExit("Xvfb xkbcomp path marker not found")
+          PY
           fi
 
           echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
