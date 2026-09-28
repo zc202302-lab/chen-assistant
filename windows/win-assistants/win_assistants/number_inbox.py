@@ -19,6 +19,7 @@ class NumberInboxEvent:
     number: str = ""
     submitter: str = ""
     note: str = ""
+    pending_ids: tuple[int, ...] | None = None
 
 
 class NumberInboxReceiver:
@@ -125,6 +126,16 @@ class NumberInboxReceiver:
                 pending_count = max(0, int(payload.get("pending_count", 0) or 0))
                 latest_id = max(0, int(payload.get("latest_id", 0) or 0))
                 items = payload.get("items", [])
+                pending_ids_raw = payload.get("pending_ids")
+                pending_ids = None
+                if isinstance(pending_ids_raw, list):
+                    normalized_ids = []
+                    for value in pending_ids_raw:
+                        try:
+                            normalized_ids.append(int(value))
+                        except (TypeError, ValueError):
+                            continue
+                    pending_ids = tuple(normalized_ids)
 
                 if not primed:
                     last_seen = latest_id
@@ -135,6 +146,7 @@ class NumberInboxReceiver:
                             f"已连接 · {pending_count} 个待录入",
                             pending_count=pending_count,
                             item_id=last_seen,
+                            pending_ids=pending_ids,
                         )
                     )
                     for item in reversed(items):
@@ -155,6 +167,7 @@ class NumberInboxReceiver:
                                 number=str(item.get("number") or ""),
                                 submitter=str(item.get("submitter") or ""),
                                 note=str(item.get("note") or ""),
+                                pending_ids=pending_ids,
                             )
                         )
                 else:
@@ -179,6 +192,7 @@ class NumberInboxReceiver:
                                 number=str(item.get("number") or ""),
                                 submitter=str(item.get("submitter") or ""),
                                 note=str(item.get("note") or ""),
+                                pending_ids=pending_ids,
                             )
                         )
                     last_seen = max(last_seen, latest_id)
@@ -189,6 +203,7 @@ class NumberInboxReceiver:
                                 f"已连接 · {pending_count} 个待录入",
                                 pending_count=pending_count,
                                 item_id=last_seen,
+                                pending_ids=pending_ids,
                             )
                         )
             except urllib.error.HTTPError as exc:
