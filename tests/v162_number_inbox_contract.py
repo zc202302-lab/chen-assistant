@@ -75,6 +75,7 @@ def main():
     payload = feed.json()
     assert payload['ok'] is True
     assert payload['pending_count'] == 1
+    assert len(payload['pending_ids']) == 1
     assert payload['latest_id'] > 0
     assert payload['items'][0]['number'] == '138 0013 8000'
     assert feed.headers.get('cache-control') == 'no-store'
