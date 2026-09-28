@@ -27,3 +27,51 @@ jobs:
         run: python -m compileall -q app tests/stability_contract.py
       - name: Version, health and SQLite stability contract
         run: python tests/stability_contract.py
+
+
+  verify-v166-v055-production:
+    if: github.event_name == 'pull_request' && github.head_ref == 'verify/win-assistants-v055-production'
+    runs-on: [self-hosted, linux, x64, chen-assistant]
+    steps:
+      - name: Verify public Web v1.6.6 and win-assistants v0.5.5
+        run: |
+          set -Eeuo pipefail
+          health_url="https://assistant.ziboxiaozhushou.cn/health"
+          update_url="https://assistant.ziboxiaozhushou.cn/static/win-assistants/update.json"
+          exe_url="https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe"
+          for attempt in 1 2 3 4 5 6 7 8 9; do
+            stamp="$(date +%s)"
+            if health="$(curl --fail --silent --show-error --max-time 20 "$health_url?verify=$stamp")" &&
+               update="$(curl --fail --silent --show-error --max-time 20 "$update_url?verify=$stamp")" &&
+               python3 - "$health" "$update" <<'PY'
+          import json, sys
+          health = json.loads(sys.argv[1])
+          update = json.loads(sys.argv[2])
+          assert health.get("ok") is True, health
+          assert health.get("version") == "1.6.6", health
+          assert update.get("version") == "0.5.5", update
+          assert update.get("sha256") == "4e602ea351487cb2f3db78492c9507760b606c8c94f4eabcfdd4cc62df62f1b8", update
+          assert int(update.get("size", 0)) == 71633194, update
+          print("health", health)
+          print("update", update)
+          PY
+            then
+              break
+            fi
+            if [ "$attempt" -eq 9 ]; then
+              echo "production did not reach Web v1.6.6 + win-assistants v0.5.5" >&2
+              exit 1
+            fi
+            sleep 20
+          done
+          exe="$RUNNER_TEMP/win-assistants-v055-public.exe"
+          curl --fail --location --silent --show-error --max-time 240 "$exe_url?verify=$(date +%s)" -o "$exe"
+          test "$(stat -c '%s' "$exe")" = "71633194"
+          echo "4e602ea351487cb2f3db78492c9507760b606c8c94f4eabcfdd4cc62df62f1b8  $exe" | sha256sum --check
+          python3 - "$exe" <<'PY'
+          from pathlib import Path
+          import sys
+          p = Path(sys.argv[1])
+          assert p.read_bytes()[:2] == b"MZ"
+          print("public EXE verified", p.stat().st_size)
+          PY
