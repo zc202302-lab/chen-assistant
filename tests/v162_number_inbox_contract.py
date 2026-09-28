@@ -37,6 +37,13 @@ def main():
 
     client = TestClient(app)
 
+    update_asset = client.get('/static/win-assistants/update.json', follow_redirects=False)
+    update_cache = update_asset.headers.get('cache-control', '')
+    assert 'no-store' in update_cache and 'no-cache' in update_cache, update_cache
+    exe_asset = client.get('/static/win-assistants/win-assistants.exe', follow_redirects=False)
+    exe_cache = exe_asset.headers.get('cache-control', '')
+    assert 'no-cache' in exe_cache and 'max-age=0' in exe_cache, exe_cache
+
     bad = client.get('/number-submit/not-the-token', follow_redirects=False)
     assert bad.status_code == 404, bad.text
 
@@ -152,7 +159,7 @@ def main():
     new_link = client.get(f'/number-submit/{new_token}')
     assert new_link.status_code == 200
 
-    print('v1.6.3 number inbox + Windows reminder API contract passed')
+    print('v1.6.4 number inbox + cache-safe Windows updater assets contract passed')
 
 
 if __name__ == '__main__':
