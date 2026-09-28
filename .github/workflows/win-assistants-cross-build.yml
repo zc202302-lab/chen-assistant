@@ -208,11 +208,7 @@ jobs:
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then
-            if [ -s dist/win-assistants.exe ] && python3 - <<'PY'
-from pathlib import Path
-target = Path("dist/win-assistants.exe")
-raise SystemExit(0 if target.read_bytes()[:2] == b"MZ" else 1)
-PY
+            if [ -s dist/win-assistants.exe ] && python3 -c 'from pathlib import Path; p=Path("dist/win-assistants.exe"); raise SystemExit(0 if p.read_bytes()[:2] == b"MZ" else 1)'
             then
               echo "PyInstaller/Wine exited with status=$status after producing a complete-looking PE; continuing to mandatory smoke + PE verification."
             else
