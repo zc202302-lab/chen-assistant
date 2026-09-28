@@ -310,10 +310,10 @@ jobs:
           target, version, sha256, size = sys.argv[1:]
           payload = {
               "version": version,
-              "exe_url": "https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe",
+              "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": "v0.5.1：新增号码提醒，和短信、久坐、Foxmail 一起内置到同一 win-assistants.exe；仍使用同一托盘、同一开机入口、同一检查更新。",
+              "notes": "v0.5.2：修复号码提醒被窗口裁掉的问题，并全面加固唯一“检查更新”：防缓存下载、强校验、原子替换、自动重启与更新日志。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
