@@ -273,10 +273,12 @@ def number_inbox_desktop_pending(request: Request):
                LIMIT 200"""
         ).fetchall()
         total = int(conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'])
+        pending_ids = [int(row['id']) for row in conn.execute("SELECT id FROM number_inbox WHERE status='pending' ORDER BY id").fetchall()]
     response = JSONResponse(
         {
             'ok': True,
             'pending_count': total,
+            'pending_ids': pending_ids,
             'latest_id': int(rows[0]['id']) if rows else 0,
             'items': [
                 {
