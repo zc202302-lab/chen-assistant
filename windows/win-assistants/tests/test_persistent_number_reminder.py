@@ -8,8 +8,8 @@ APP_SOURCE = (Path(__file__).resolve().parents[1] / "win_assistants" / "app.py")
 
 
 def method_block(name: str, next_name: str) -> str:
-    start = APP_SOURCE.index(f"    def {name}")
-    end = APP_SOURCE.index(f"    def {next_name}", start)
+    start = APP_SOURCE.index(f"    def {name}(")
+    end = APP_SOURCE.index(f"    def {next_name}(", start)
     return APP_SOURCE[start:end]
 
 
