@@ -2,14 +2,14 @@
 
 `win-assistants` 是“晨的小助手”的统一 Windows 客户端。
 
-## 当前阶段：v0.5.1 四模块统一内置
+## 当前阶段：v0.5.5 四模块统一内置
 
 v0.5.0 将原先独立运行的久坐守护成熟代码迁入 `win-assistants`。现在一个发布 EXE 统一包含：
 
 - 短信助手：iPhone 短信验证码接收、提取与复制；
 - 久坐助手：RTSP 摄像头人体存在检测、1～5 个检测区域、久坐状态机与强制休息；
 - Foxmail / 缴费本地桥接：继续监听 `127.0.0.1:18763`，保持 TXT 校验、文件剪贴板与人工发送边界；
-- 号码提醒：通过独立 Bearer 连接码只读访问晨的小助手待处理队列，新号码由同一个托盘弹出 Windows 通知。
+- 号码提醒：通过独立 Bearer 连接码读取待处理队列；新号码即时弹出独立提醒窗，可直接“已完成”同步 Web 状态；窗口可关闭，并按最多 5 个自定义时间点再次提醒未完成号码。
 
 迁移原则是保留成熟业务规则，不重新设计久坐识别和 Foxmail 缴费交接。久坐核心直接来自 `chen-sit-guard` 当前 main，并保留原有 `%APPDATA%\久坐提醒` 设置、RTSP 密码、统计和状态文件，因此升级后不需要重新配置摄像头。
 
@@ -64,7 +64,7 @@ py -m unittest discover -s tests -v
 
 产物为 `dist\win-assistants.exe`。PR 会先运行平台无关测试，再在 self-hosted Linux Runner 上通过 Wine + 官方 Windows Python 构建并 smoke test Windows PE。最终发布仍需要 Windows 实机验收摄像头、Foxmail 和开机托盘行为。
 
-v0.5.1 的正式发布仍以 `main` / merged-PR cross-build 实际写入 `win-assistants-release/update.json` 为准；只有 manifest 与 EXE 发布成功后，客户端唯一“检查更新”才会看到本版本。号码提醒连接码在 Web 的“工作 → 号码收集 → Windows 提醒连接”中获取，连接码使用 Windows 用户级保护保存。
+v0.5.5 的正式发布仍以 `main` / merged-PR cross-build 实际写入 `win-assistants-release/update.json` 为准；只有 manifest 与 EXE 发布成功后，客户端唯一“检查更新”才会看到本版本。号码提醒连接码在 Web 的“工作 → 号码收集 → Windows 提醒连接”中获取，连接码使用 Windows 用户级保护保存。
 
 
 <!-- v0.5.0 release trigger after merged-PR publishing fix -->
