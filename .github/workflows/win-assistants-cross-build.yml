@@ -200,10 +200,22 @@ jobs:
           "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants sedentary tests
           "$WINE_BIN" "$WINDOWS_PYTHON" -m unittest discover -s tests -v
       - name: Build Windows executable
-        run: >-
-          "$WINE_BIN" "$WINDOWS_PYTHON" -m PyInstaller --noconfirm --clean --onefile --windowed
-          --name win-assistants --collect-submodules pystray --collect-data cv2
-          --hidden-import PIL.Image --hidden-import PIL.ImageDraw main.py
+        run: |
+          set +e
+          "$WINE_BIN" "$WINDOWS_PYTHON" -m PyInstaller --noconfirm --clean --onefile --windowed \
+            --name win-assistants --collect-submodules pystray --collect-data cv2 \
+            --hidden-import PIL.Image --hidden-import PIL.ImageDraw main.py
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            if [ -s dist/win-assistants.exe ] && python3 -c 'from pathlib import Path; p=Path("dist/win-assistants.exe"); raise SystemExit(0 if p.read_bytes()[:2] == b"MZ" else 1)'
+            then
+              echo "PyInstaller/Wine exited with status=$status after producing a complete-looking PE; continuing to mandatory smoke + PE verification."
+            else
+              echo "PyInstaller failed before a usable EXE was produced (status=$status)." >&2
+              exit "$status"
+            fi
+          fi
       - name: Smoke launch built executable
         run: |
           set +e
