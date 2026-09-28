@@ -159,6 +159,11 @@ def audit_csrf_first_winners():
                 continue
             uncovered.append((path, module, name, 'invalid public token-authenticated POST guard'))
             continue
+        if getattr(endpoint, '__desktop_token_authenticated__', False):
+            if path.startswith('/api/number-inbox/') and 'if not _desktop_token_matches(conn, request):' in source:
+                continue
+            uncovered.append((path, module, name, 'invalid desktop Bearer-authenticated POST guard'))
+            continue
         if not any(marker in source for marker in markers):
             uncovered.append((path, module, name, 'no CSRF marker/delegate'))
     assert not uncovered, 'winning POST routes without visible CSRF protection/delegation:\n' + '\n'.join(map(str, uncovered))
