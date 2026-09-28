@@ -33,6 +33,8 @@ CREATE INDEX IF NOT EXISTS idx_number_inbox_status_time
     ON number_inbox(status, submitted_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_number_inbox_normalized_status
     ON number_inbox(normalized_number, status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_number_inbox_one_pending
+    ON number_inbox(normalized_number) WHERE status='pending';
 '''
 
 
@@ -133,19 +135,13 @@ def public_number_submit(
     with db() as conn:
         if not _token_matches(conn, token):
             raise HTTPException(404)
-        existing = conn.execute(
-            "SELECT id FROM number_inbox WHERE normalized_number=? AND status='pending' ORDER BY id DESC LIMIT 1",
-            (normalized,),
-        ).fetchone()
-        if existing:
-            duplicate = True
-        else:
-            conn.execute(
-                '''INSERT INTO number_inbox
-                   (number,normalized_number,submitter,note,status,submitted_at,completed_at)
-                   VALUES(?,?,?,?, 'pending', ?, '')''',
-                (raw, normalized, submitter, note, now_iso()),
-            )
+        cur = conn.execute(
+            '''INSERT OR IGNORE INTO number_inbox
+               (number,normalized_number,submitter,note,status,submitted_at,completed_at)
+               VALUES(?,?,?,?, 'pending', ?, '')''',
+            (raw, normalized, submitter, note, now_iso()),
+        )
+        duplicate = cur.rowcount == 0
     return templates.TemplateResponse(
         'number_submit_v162.html',
         {
@@ -217,7 +213,7 @@ def number_inbox_reopen(request: Request, item_id: int, csrf: str = Form(...)):
     with db() as conn:
         ensure_number_inbox_schema(conn)
         conn.execute(
-            "UPDATE number_inbox SET status='pending',completed_at='' WHERE id=? AND status='done'",
+            "UPDATE OR IGNORE number_inbox SET status='pending',completed_at='' WHERE id=? AND status='done'",
             (item_id,),
         )
     return RedirectResponse('/work/number-inbox?status=done', status_code=303)
