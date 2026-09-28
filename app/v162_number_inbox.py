@@ -238,3 +238,11 @@ def number_inbox_rotate_link(request: Request, csrf: str = Form(...)):
 def pending_number_count(conn) -> int:
     ensure_number_inbox_schema(conn)
     return int(conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'])
+
+
+@router.get('/number-submit/status/pending-count')
+def public_pending_number_count():
+    """Minimal public status used by win-assistants; never exposes submitted numbers."""
+    with db() as conn:
+        count = pending_number_count(conn)
+    return {'ok': True, 'pending_count': count}
