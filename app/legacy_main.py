@@ -102,7 +102,14 @@ async def auth_and_headers(request: Request, call_next):
             return RedirectResponse('/login', status_code=303)
         request.state.session = session
     response = await call_next(request)
-    if not path.startswith('/static/'):
+    if path == '/static/win-assistants/update.json':
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    elif path == '/static/win-assistants/win-assistants.exe':
+        response.headers['Cache-Control'] = 'no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+    elif not path.startswith('/static/'):
         response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
