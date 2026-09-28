@@ -78,12 +78,27 @@ jobs:
             mkdir -p /tmp/bin
             ln -sf "${portable_xkbcomp}" /tmp/bin/xkbcomp
 
-            mapfile -t xkb_path_files < <(
-              grep -RlaF '/usr/bin/xkbcomp' \
-                "${wine_root}/root/usr/bin" "${wine_root}/root/usr/lib" 2>/dev/null || true
-            )
-            for target in "${xkb_path_files[@]}"; do
-              python3 - "${target}" <<'PY'
+            # Ubuntu Xvfb may invoke /usr/bin/xkbcomp through an internal helper.
+            # Prefer satisfying that exact system path when this self-hosted runner
+            # permits it; fall back to patching extracted X11 binaries only when
+            # the runner is intentionally unprivileged.
+            if [ ! -x /usr/bin/xkbcomp ]; then
+              if [ "$(id -u)" -eq 0 ]; then
+                ln -sf "${portable_xkbcomp}" /usr/bin/xkbcomp
+              elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+                sudo ln -sf "${portable_xkbcomp}" /usr/bin/xkbcomp
+              fi
+            fi
+
+            if [ -x /usr/bin/xkbcomp ]; then
+              echo "Xvfb system xkbcomp path ready: /usr/bin/xkbcomp"
+            else
+              mapfile -t xkb_path_files < <(
+                grep -RlaF '/usr/bin/xkbcomp' \
+                  "${wine_root}/root/usr/bin" "${wine_root}/root/usr/lib" 2>/dev/null || true
+              )
+              for target in "${xkb_path_files[@]}"; do
+                python3 - "${target}" <<'PY'
           from pathlib import Path
           import sys
 
@@ -97,7 +112,8 @@ jobs:
               target.write_bytes(data.replace(old, new))
               print(f"patched xkbcomp path: {target}")
           PY
-            done
+              done
+            fi
           fi
 
           echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
