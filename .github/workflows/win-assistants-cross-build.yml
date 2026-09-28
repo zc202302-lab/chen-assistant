@@ -324,7 +324,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": "v0.5.4：号码提醒改为独立持久提醒窗，不再拉起整个主程序；多条新号码集中显示，逐条明确关闭前一直保留。",
+              "notes": "v0.5.5：号码提醒支持电脑端直接“已完成”并同步网页后台；提醒窗口可关闭，最多设置5个每日提醒时间，未完成号码会在下个提醒点再次弹出。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
