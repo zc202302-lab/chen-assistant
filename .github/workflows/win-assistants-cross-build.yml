@@ -77,10 +77,16 @@ jobs:
             test -x "${portable_xkbcomp}"
             mkdir -p /tmp/bin
             ln -sf "${portable_xkbcomp}" /tmp/bin/xkbcomp
-            python3 - "${xvfb_bin}" <<'PY'
+
+            mapfile -t xkb_path_files < <(
+              grep -RlaF '/usr/bin/xkbcomp' \
+                "${wine_root}/root/usr/bin" "${wine_root}/root/usr/lib" 2>/dev/null || true
+            )
+            for target in "${xkb_path_files[@]}"; do
+              python3 - "${target}" <<'PY'
           from pathlib import Path
           import sys
-          
+
           target = Path(sys.argv[1])
           data = target.read_bytes()
           old = b"/usr/bin/xkbcomp"
@@ -89,9 +95,9 @@ jobs:
               raise SystemExit("replacement path length mismatch")
           if old in data:
               target.write_bytes(data.replace(old, new))
-          elif new not in data:
-              raise SystemExit("Xvfb xkbcomp path marker not found")
+              print(f"patched xkbcomp path: {target}")
           PY
+            done
           fi
 
           echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
