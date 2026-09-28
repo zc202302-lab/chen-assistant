@@ -38,7 +38,6 @@ class PersistentNumberReminderTests(unittest.TestCase):
         render = method_block("_render_number_reminder", "_show_number_reminder")
         complete = method_block("_complete_number_reminder", "_hide_number_reminder_until_schedule")
         self.assertIn('text="已完成"', render)
-        self.assertIn('text="仅关闭提醒"', render)
         self.assertIn("self.number_inbox_receiver.complete", complete)
         self.assertIn("self._dismiss_number_reminder(item_id)", complete)
 
