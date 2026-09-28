@@ -23,6 +23,18 @@ class _Response:
         return self._payload
 
 
+class _OneShotStop:
+    def __init__(self):
+        self.stopped = False
+
+    def is_set(self):
+        return self.stopped
+
+    def wait(self, _seconds):
+        self.stopped = True
+        return True
+
+
 class NumberInboxTests(unittest.TestCase):
     def test_fetch_uses_bearer_token_and_validates_payload(self):
         seen = {}
@@ -53,7 +65,7 @@ class NumberInboxTests(unittest.TestCase):
             "items": [{"id": 8, "number": "13800138000", "submitter": "张三", "note": ""}],
         }
 
-        stop = type("Stop", (), {"is_set": lambda self: False, "wait": lambda self, _s: True})()
+        stop = _OneShotStop()
         receiver._generation = 1
         with patch.object(receiver, "fetch", return_value=payload):
             receiver._run(settings, "token", stop, 1)
@@ -76,7 +88,7 @@ class NumberInboxTests(unittest.TestCase):
                 {"id": 5, "number": "18800000005", "submitter": "", "note": ""},
             ],
         }
-        stop = type("Stop", (), {"is_set": lambda self: False, "wait": lambda self, _s: True})()
+        stop = _OneShotStop()
         receiver._generation = 1
         with patch.object(receiver, "fetch", return_value=payload):
             receiver._run(settings, "token", stop, 1)
@@ -88,7 +100,7 @@ class NumberInboxTests(unittest.TestCase):
         receiver = NumberInboxReceiver()
         settings = NumberInboxConfig(last_seen_id=1)
         error = urllib.error.HTTPError(settings.api_url, 401, "Unauthorized", {}, io.BytesIO())
-        stop = type("Stop", (), {"is_set": lambda self: False, "wait": lambda self, _s: True})()
+        stop = _OneShotStop()
         receiver._generation = 1
         with patch.object(receiver, "fetch", side_effect=error):
             receiver._run(settings, "token", stop, 1)
