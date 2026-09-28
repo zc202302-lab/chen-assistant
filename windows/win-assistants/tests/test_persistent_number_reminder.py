@@ -23,6 +23,14 @@ class PersistentNumberReminderTests(unittest.TestCase):
         self.assertNotIn("self._show_window()", inbox_branch)
         self.assertNotIn('self.tray_icon.notify(detail, "新的待录入号码")', inbox_branch)
 
+    def test_server_pending_ids_remove_web_completed_reminders(self) -> None:
+        poll = method_block("_poll", "_reconcile_number_reminder_items")
+        self.assertIn("inbox_event.pending_ids is not None", poll)
+        self.assertIn("self._reconcile_number_reminder_items(inbox_event.pending_ids)", poll)
+        reconcile = method_block("_reconcile_number_reminder_items", "_copy_text")
+        self.assertIn("if item_id not in allowed", reconcile)
+        self.assertIn("self.number_reminder_items.pop(item_id, None)", reconcile)
+
     def test_reminder_can_close_until_next_schedule(self) -> None:
         source = method_block("_show_number_reminder", "_open_number_inbox")
         self.assertIn('window.protocol("WM_DELETE_WINDOW", self._hide_number_reminder_until_schedule)', source)
