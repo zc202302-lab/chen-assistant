@@ -62,10 +62,38 @@ class SmsConfig:
 
 
 @dataclass
+class NumberInboxConfig:
+    api_url: str = "https://assistant.ziboxiaozhushou.cn/api/number-inbox/pending"
+    protected_token: str = ""
+    interval_seconds: int = 15
+    last_seen_id: int = 0
+
+    @classmethod
+    def from_dict(cls, raw: object) -> "NumberInboxConfig":
+        if not isinstance(raw, dict):
+            return cls()
+        try:
+            interval = max(10, min(120, int(raw.get("interval_seconds", 15))))
+        except (TypeError, ValueError):
+            interval = 15
+        try:
+            last_seen = max(0, int(raw.get("last_seen_id", 0)))
+        except (TypeError, ValueError):
+            last_seen = 0
+        return cls(
+            api_url=str(raw.get("api_url") or cls.api_url).strip(),
+            protected_token=str(raw.get("protected_token") or ""),
+            interval_seconds=interval,
+            last_seen_id=last_seen,
+        )
+
+
+@dataclass
 class AppConfig:
     start_minimized: bool = False
     modules: dict[str, ModuleConfig] = field(default_factory=dict)
     sms: SmsConfig = field(default_factory=SmsConfig)
+    number_inbox: NumberInboxConfig = field(default_factory=NumberInboxConfig)
 
     @classmethod
     def load(cls, defaults: dict[str, ModuleConfig] | None = None) -> "AppConfig":
@@ -77,7 +105,7 @@ class AppConfig:
             raw = json.loads(path.read_text(encoding="utf-8"))
             for key, value in raw.get("modules", {}).items():
                 base[key] = ModuleConfig.from_dict(value)
-            return cls(bool(raw.get("start_minimized", False)), base, SmsConfig.from_dict(raw.get("sms")))
+            return cls(bool(raw.get("start_minimized", False)), base, SmsConfig.from_dict(raw.get("sms")), NumberInboxConfig.from_dict(raw.get("number_inbox")))
         except (OSError, ValueError, TypeError):
             return cls(modules=base)
 
