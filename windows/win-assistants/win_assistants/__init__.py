@@ -1,3 +1,3 @@
 """win-assistants unified Windows client."""
 
-__version__ = "0.5.3"
+__version__ = "0.5.4"
