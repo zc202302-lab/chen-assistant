@@ -93,6 +93,15 @@
   else titleLine?.appendChild(flow);
   if (toolsRight && flow.parentElement !== toolsRight) toolsRight.appendChild(flow);
 
+  let reviewWarning = root.querySelector('[data-payment-review-warning]');
+  if (!reviewWarning && toolsRight) {
+    reviewWarning = document.createElement('span');
+    reviewWarning.className = 'payment-review-warning-v164';
+    reviewWarning.dataset.paymentReviewWarning = '1';
+    reviewWarning.hidden = true;
+    toolsRight.prepend(reviewWarning);
+  }
+
   let imageButton = root.querySelector('[data-v031-payment-image]');
   if (!imageButton) {
     imageButton = document.createElement('button');
@@ -171,10 +180,13 @@
           ? (disabled ? '请先撤回后续步骤' : '点击撤回客户通知状态')
           : '把缴费图片通过微信发给客户后点击确认';
       } else if (action === 'initiate') {
-        disabled ||= done ? !!state.paid : !state.notified;
+        const reviewBlocked = !done && Number(state.payment_review_pending || 0) > 0;
+        disabled ||= done ? !!state.paid : (!state.notified || reviewBlocked);
         title = done
           ? (disabled ? '请先撤回完成缴费' : '点击撤回发起缴费状态')
-          : '先调用Foxmail并实际发送邮件，再点击确认';
+          : (reviewBlocked
+              ? `还有 ${state.payment_review_pending} 项“缴费审核”待办未确认，暂不能发起缴费`
+              : '先调用Foxmail并实际发送邮件，再点击确认');
       } else {
         disabled ||= !done && !state.initiated;
         title = done ? '点击撤回完成缴费并恢复缴费前周期' : '确认已实际完成支付';
@@ -188,9 +200,17 @@
       imageButton.disabled = busy || !state.reviewed || !!state.paid;
       imageButton.title = state.reviewed ? '生成当前页面高密度缴费表并复制到剪贴板' : '先完成金额核对';
     }
+    const reviewPending = Number(state.payment_review_pending || 0);
+    if (reviewWarning) {
+      reviewWarning.hidden = reviewPending === 0;
+      reviewWarning.textContent = reviewPending ? `缴费审核待确认 ${reviewPending}` : '';
+      reviewWarning.title = (state.payment_review_titles || []).join('、');
+    }
     if (foxmailButton) {
-      foxmailButton.disabled = busy || !state.notified || !!state.paid;
-      foxmailButton.title = state.notified ? '打开Foxmail写邮件窗口，发送后再确认“发起缴费”' : '先完成客户通知';
+      foxmailButton.disabled = busy || !state.notified || !!state.paid || reviewPending > 0;
+      foxmailButton.title = reviewPending
+        ? `请先完成 ${reviewPending} 项“缴费审核”待办`
+        : (state.notified ? '打开Foxmail写邮件窗口，发送后再确认“发起缴费”' : '先完成客户通知');
     }
     const label = document.getElementById('paymentRunLabel');
     if (label) label.textContent = state.label || '';
