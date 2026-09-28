@@ -181,7 +181,6 @@
                 <summary class="ghost small">编辑</summary>
                 <form method="post" action="/tasks/{{ t.id }}/edit" class="task-form-v164 task-edit-form-v164">
                   <input type="hidden" name="csrf" value="{{ csrf }}">
-                  <input type="hidden" name="remind_date" value="{{ t.remind_date }}">
                   <label class="task-content-field-v164">待办内容<input name="title" required maxlength="200" value="{{ t.title }}"></label>
                   <label>提醒时间<input type="datetime-local" name="remind_at" value="{{ t.remind_at if 'T' in (t.remind_at or '') else '' }}"></label>
                   <label class="task-review-check-v164"><input type="checkbox" name="is_payment_review" value="1" {% if t.is_payment_review %}checked{% endif %}> <span><b>缴费审核</b><small>未确认完成时禁止发起缴费。</small></span></label>
