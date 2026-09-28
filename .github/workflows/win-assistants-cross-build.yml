@@ -89,8 +89,10 @@ jobs:
               raise SystemExit("replacement path length mismatch")
           if old in data:
               target.write_bytes(data.replace(old, new))
-          elif new not in data:
-              raise SystemExit("Xvfb xkbcomp path marker not found")
+          elif new in data:
+              pass
+          else:
+              print("Xvfb has no embedded /usr/bin/xkbcomp marker; relying on XKB_BINDIR/PATH")
           PY
           fi
 
