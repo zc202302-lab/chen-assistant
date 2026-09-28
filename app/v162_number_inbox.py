@@ -154,6 +154,9 @@ def public_number_submit(
     )
 
 
+public_number_submit.__public_token_authenticated__ = True
+
+
 @router.get('/work/number-inbox', response_class=HTMLResponse)
 def number_inbox_admin(request: Request, status: str = 'pending'):
     if status not in {'pending', 'done', 'all'}:
