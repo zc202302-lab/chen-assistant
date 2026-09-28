@@ -261,7 +261,7 @@ PY
               "exe_url": "https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe",
               "sha256": sha256,
               "size": int(size),
-              "notes": "v0.5.0：短信、久坐与 Foxmail 已统一内置到 win-assistants，同一 EXE、同一开机入口、同一更新链。",
+              "notes": "v0.5.1：新增号码提醒，和短信、久坐、Foxmail 一起内置到同一 win-assistants.exe；仍使用同一托盘、同一开机入口、同一检查更新。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
