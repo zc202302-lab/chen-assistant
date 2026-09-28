@@ -2,19 +2,19 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- GitHub 当前功能/发布基准：main `dcd48dc3efc693e717491cdcf6361beeb40b5d64`（2026-09-28，PR #112 已合并；PR #111 将 win-assistants 升到 v0.5.2 并修复号码提醒/检查更新可见性与自更新可靠性，PR #112 补强最小 Runner 的 portable pip）。
-- 当前应用版本：Web main 为 `v1.6.5`；`win-assistants` main / release / 生产公网更新资产均为 `v0.5.2`。Web 生产版本如需声称必须另做 `/health` 取证。
+- GitHub 当前功能/发布基准：main `c7837131f765188218f0271f1d2efdb1fddeb36c`（2026-09-28，PR #114 已合并：win-assistants v0.5.3 修复托盘“检查更新”无反应，托盘动作改为线程安全队列并由 Tk 主线程执行）。
+- 当前应用版本：Web main 为 `v1.6.5`；`win-assistants` main / release / 生产公网更新资产均为 `v0.5.3`。Web 生产版本如需声称必须另做 `/health` 取证。
 - 当前功能合并基准：`44b9b9355e2641281b5989a5e03bfd87e16888ba`（Merge PR #83：win-assistants v0.5.0 内置久坐助手）；之后 main 还有发布/文档类提交，因此“功能基准”不要误当作当前 main SHA。
-- 当前发布基准：`win-assistants v0.5.2` 已正式发布。`win-assistants-release/update.json` 实际为 v0.5.2，EXE 大小 `71,624,749` 字节，SHA256 `a330b6e0475bc8de903b7d17212a9b973936544a61747925ecdc5311475201a6`。main push run `36381139384` 完成 Windows tests、PyInstaller、GUI smoke、PE 校验、artifact 上传与 release 分支发布；一次性验证 PR #113 又从 self-hosted Runner 实际请求公网 update.json 并下载公网 EXE，版本/大小/SHA256/MZ 全部通过，PR #113 已关闭且未合并。
-- Windows 客户端 rollout：v0.5.2 已解决用户截图暴露的“号码提醒/检查更新被窗口底部裁掉”问题，主界面现在使用可滚动模块区；唯一 updater 已加固为防缓存清单/EXE URL、3 次下载重试、size/SHA256/MZ 强校验、原子替换、自动重启与 `%LOCALAPPDATA%\\win-assistants\\update.log` 日志。以后版本升级统一走“检查更新”，不再设计手动下载 EXE 作为常规流程。当前只差用户这台实际 Windows 电脑从旧版升级到 v0.5.2 并做实机验收。
+- 当前发布基准：`win-assistants v0.5.3` 已正式发布。`win-assistants-release/update.json` 实际为 v0.5.3，EXE 大小 `71,625,654` 字节，SHA256 `74002324110d800ebb71b9e1d4bec44becf94f2189553c922de53c6490d83ca4`。main push run `36383827828` 完成 source validation、Windows tests、PyInstaller、GUI smoke、PE 校验、artifact 上传与 release 分支发布；一次性验证 PR #115 从 self-hosted Runner 实际请求公网 update.json 并下载公网 EXE，版本/大小/SHA256/MZ 全部通过，PR #115 已关闭且未合并。
+- Windows 客户端 rollout：v0.5.3 已解决两个用户实机问题：其一是 v0.5.2 修复“号码提醒/检查更新被窗口底部裁掉”，主界面使用可滚动模块区；其二是 v0.5.3 修复托盘“检查更新”点击无反应，pystray 后台线程不再直接调用 Tk，而是只写线程安全 `ui_actions` 队列，由 Tk 主线程每 100ms 消费。检查更新现在有“正在检查 / 正在下载并校验 / 校验完成正在安装并重启 / 失败 / 已是最新版”等明确反馈，并防止并发重复更新。唯一 updater 继续保留防缓存、重试、size/SHA256/MZ 强校验、原子替换、自动重启与 `%LOCALAPPDATA%\\win-assistants\\update.log` 日志。以后升级只走唯一“检查更新”。
 - Web 生产：v1.6.3 已实际部署并从公网取证。一次性验证 PR #108 的 `verify-number-reminders-production` job 返回 `health {'ok': True, 'version': '1.6.3'}`；号码收集后台现包含独立“Windows 提醒连接码”，只读 API `/api/number-inbox/pending` 使用 Bearer token，与同事提交 token 分离。
 - CI / Runner：新 self-hosted Runner `chen-assistant-ci-192-255-130-71` 已实际承接并成功执行 validation / stability / win-assistants cross-build。Draft PR #82 仍是 Runner 迁移历史 WIP，但它当前 head 已落后 main 49 commits；收尾前必须重新基于当前 main 审核，不能直接合并旧分支。
 - 其他既存 Open PR（包括 #77/#74/#73/#66/#64/#55/#43/#41/#39）属于历史或其他方向，不能仅因仍 Open 就视为当前开发。
 - GitHub 项目长期记忆机制已通过 PR #96 合并完成；`docs/PROJECT_CONTEXT.md` 现为跨聊天固定接管入口，不再需要粘贴超长项目提示词。\n- Web UI：PR #98 已合并，`/work` 页面“客户管理 / 工作资料”主模块已改为真正两列并排的小方块，简化卡片内容，并将 `work-architecture-v14.css` 缓存版本更新为 `v=1402`，解决 iPhone 继续使用旧 CSS 的问题。合并 commit：`572aaffe6f4ffbcef38a74b60510e2853f6e324d`。PR CI 与 main validation/stability 均已通过；GitHub deploy production job 已识别为 Web 运行时变更并按设计交由已完成实机 bootstrap 的生产侧 `chen-assistant-auto-deploy.timer` 自动部署。
-- 号码收集 / Windows 提醒：Web 已包含号码收集与 Windows Bearer 只读提醒 API；win-assistants v0.5.2 主界面可滚动显示第四个“号码提醒”模块。Windows 仍只做提醒，不自动录入、不自动改变 Web 状态；服务器待处理队列仍是唯一数据源。
+- 号码收集 / Windows 提醒：Web 已包含号码收集与 Windows Bearer 只读提醒 API；win-assistants v0.5.3 主界面可滚动显示第四个“号码提醒”模块。Windows 仍只做提醒，不自动录入、不自动改变 Web 状态；服务器待处理队列仍是唯一数据源。
 - 新的固定接管入口：`docs/PROJECT_CONTEXT.md`。长期产品规则、架构、开发约束、重要决策分别存放在 `PRODUCT_REQUIREMENTS.md`、`ARCHITECTURE.md`、`DEVELOPMENT_RULES.md`、`DECISIONS.md`。
 - 注意：本文件下方存在较早时期的历史状态段落（例如旧版本/旧生产基准），仅作历史记录；发生冲突时，以本节“当前接力状态”和 GitHub 实际代码/PR/Actions 为准。
-- 下一步：在用户实际 Windows 电脑上先用现有旧版托盘右键“检查更新”尝试升级到 v0.5.2；升级成功后确认窗口底部可滚动看到“号码提醒”和“检查更新”，并在“号码提醒 → 设置”填写 Web 提供的服务器地址/提醒连接码。若旧版 updater 因历史缺陷升级失败，再仅把 v0.5.2 作为一次性 bootstrap 安装；从 v0.5.2 起后续升级只走唯一“检查更新”。
+- 下一步：用户当前截图仍是旧客户端，且其旧版托盘 updater 已实机表现为“点击检查更新无反应”，因此无法依靠已经安装在本机的旧二进制远程自愈。需要仅做一次 bootstrap：退出旧 win-assistants，用已验证的 v0.5.3 EXE 覆盖当前程序并启动；从 v0.5.3 起后续版本升级只允许使用唯一“检查更新”，不再手动下载。随后验证第四个“号码提醒”可见，并在“号码提醒 → 设置”填写 Web 提供的服务器地址/提醒连接码。
 
 ### 新聊天接管协议
 
