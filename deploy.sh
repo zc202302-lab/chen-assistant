@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-APP_DIR="/opt/chen-assistant"; SERVICE="chen-assistant"; APP_HTTP="http://172.19.0.1:8010"; HEALTH_URL="$APP_HTTP/health"; BACKUP_DIR="$APP_DIR/backups"; EXPECTED_VERSION="1.6.5"
+APP_DIR="/opt/chen-assistant"; SERVICE="chen-assistant"; APP_HTTP="http://172.19.0.1:8010"; HEALTH_URL="$APP_HTTP/health"; BACKUP_DIR="$APP_DIR/backups"; EXPECTED_VERSION="1.6.6"
 cd "$APP_DIR"
 echo "===== 晨的助手 v${EXPECTED_VERSION} 一键更新 ====="
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then echo "✗ 检测到服务器受 Git 管理文件有本地修改，已停止更新。"; git status --short; exit 1; fi
@@ -73,7 +73,7 @@ from app.v143_customer_resources import ensure_customer_resources_v143
 from app.db import db
 expected=sys.argv[1]; assert app.version==expected,(app.version,expected)
 ensure_v101_recipe_templates(); ensure_v13_customer_documents(); ensure_customer_resources_v143()
-for method,path in [('GET','/life'),('GET','/life/recipes'),('GET','/life/tools'),('GET','/life/recipes/{recipe_id}/print'),('GET','/work'),('GET','/work/customers'),('GET','/work/library'),('GET','/search'),('GET','/api/number-inbox/pending'),('GET','/customers/{customer_id}/documents-v13'),('POST','/customers/{customer_id}/documents-v13'),('GET','/customers/{customer_id}/documents-v13/{document_id}/download'),('GET','/customers/{customer_id}/resource-items-v143'),('POST','/customers/{customer_id}/resource-items-v143'),('POST','/customers/{customer_id}/resource-items-v143/{item_id}/delete'),('GET','/customers/{customer_id}/runtime-v143'),('POST','/customers/{customer_id}/runtime-v143'),('POST','/services/{service_id}/toggle-fixed'),('POST','/services/{service_id}/payment-review-toggle'),('POST','/customers/{customer_id}/payment-workflow-v031'),('GET','/customers/{customer_id}/payment.xlsx')]:
+for method,path in [('GET','/life'),('GET','/life/recipes'),('GET','/life/tools'),('GET','/life/recipes/{recipe_id}/print'),('GET','/work'),('GET','/work/customers'),('GET','/work/library'),('GET','/search'),('GET','/api/number-inbox/pending'),('POST','/api/number-inbox/{item_id}/done'),('GET','/customers/{customer_id}/documents-v13'),('POST','/customers/{customer_id}/documents-v13'),('GET','/customers/{customer_id}/documents-v13/{document_id}/download'),('GET','/customers/{customer_id}/resource-items-v143'),('POST','/customers/{customer_id}/resource-items-v143'),('POST','/customers/{customer_id}/resource-items-v143/{item_id}/delete'),('GET','/customers/{customer_id}/runtime-v143'),('POST','/customers/{customer_id}/runtime-v143'),('POST','/services/{service_id}/toggle-fixed'),('POST','/services/{service_id}/payment-review-toggle'),('POST','/customers/{customer_id}/payment-workflow-v031'),('GET','/customers/{customer_id}/payment.xlsx')]:
     assert any(getattr(r,'path','')==path and method in getattr(r,'methods',set()) for r in app.router.routes),(method,path)
 with db() as conn:
     n=conn.execute('SELECT COUNT(*) n FROM recipe_versions WHERE change_summary LIKE ?',(f'{TEMPLATE_IMPORT_MARKER}%',)).fetchone()['n']; assert n==len(TEMPLATE_SHEET_NAMES)==18,n
@@ -81,7 +81,7 @@ with db() as conn:
     assert conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='customer_resource_items_v143'").fetchone()
 for path in ['app/templates/cooking_tools_v12.html','app/templates/recipe_print_v101.html','app/static/v12.js','app/static/v12.css','app/static/recipe-print-v101.css','app/static/work-home-polish-v121.css','app/static/global-back.js','app/static/global-back.css','app/static/v143_customer_status.js','app/static/v143_customer_status.css','app/static/v143_customer_resources.js','app/static/v143_customer_resources.css','app/static/v13_customer_documents.js','app/static/v13_customer_documents.css','app/static/chen_foxmail_bootstrap.ps1','app/static/chen_foxmail_helper_v09.ps1','app/static/v123_foxmail_compose_fix.js','app/static/home-top-nav-v153.css','app/v143_payment_controls_patch.py','app/v143_customer_resources.py','app/v144_audit_hardening.py','app/work_architecture.py','app/v162_number_inbox.py','app/templates/work_shell_v14.html','app/templates/work_library_v14.html','app/templates/number_submit_v162.html','app/templates/number_inbox_v162.html','app/static/number-inbox-v162.css','app/static/number-inbox-v162.js','app/static/task-v164.css','tests/v164_task_review_contract.py','storage_node/app.py']:
     assert Path(path).is_file(),path
-print('✓ v1.6.5 Windows更新缓存加固 + v1.6.4待办增强/缴费审核闸门 + 历史功能检查通过')
+print('✓ v1.6.6 Windows号码完成同步 API + v1.6.5更新缓存加固 + 历史功能检查通过')
 PY
 if [[ -d data ]]; then chown "$SERVICE_USER:$SERVICE_GROUP" data; find data -maxdepth 1 -type f \( -name 'app.db' -o -name 'app.db-wal' -o -name 'app.db-shm' \) -exec chown "$SERVICE_USER:$SERVICE_GROUP" {} +; chmod u+rwx data; fi
 if [[ -f scripts/install_win_assistants_asset_sync.sh ]]; then

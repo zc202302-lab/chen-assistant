@@ -270,13 +270,15 @@ def number_inbox_desktop_pending(request: Request):
                FROM number_inbox
                WHERE status='pending'
                ORDER BY id DESC
-               LIMIT 20"""
+               LIMIT 200"""
         ).fetchall()
         total = int(conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'])
+        pending_ids = [int(row['id']) for row in conn.execute("SELECT id FROM number_inbox WHERE status='pending' ORDER BY id").fetchall()]
     response = JSONResponse(
         {
             'ok': True,
             'pending_count': total,
+            'pending_ids': pending_ids,
             'latest_id': int(rows[0]['id']) if rows else 0,
             'items': [
                 {
@@ -292,6 +294,30 @@ def number_inbox_desktop_pending(request: Request):
     )
     response.headers['Cache-Control'] = 'no-store'
     return response
+
+
+@router.post('/api/number-inbox/{item_id}/done')
+def number_inbox_desktop_done(request: Request, item_id: int):
+    with db() as conn:
+        if not _desktop_token_matches(conn, request):
+            return JSONResponse({'ok': False, 'error': 'unauthorized'}, status_code=401)
+        row = conn.execute('SELECT id,status,completed_at FROM number_inbox WHERE id=?', (item_id,)).fetchone()
+        if not row:
+            return JSONResponse({'ok': False, 'error': 'not_found'}, status_code=404)
+        if row['status'] == 'pending':
+            completed_at = now_iso()
+            conn.execute(
+                "UPDATE number_inbox SET status='done',completed_at=? WHERE id=? AND status='pending'",
+                (completed_at, item_id),
+            )
+        else:
+            completed_at = row['completed_at'] or ''
+    response = JSONResponse({'ok': True, 'id': item_id, 'status': 'done', 'completed_at': completed_at})
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+number_inbox_desktop_done.__desktop_token_authenticated__ = True
 
 
 @router.post('/work/number-inbox/rotate-desktop-token')

@@ -5,6 +5,7 @@ import queue
 import re
 import threading
 import tkinter as tk
+from datetime import datetime
 from urllib.parse import urlparse
 from tkinter import filedialog, messagebox, ttk
 
@@ -43,6 +44,7 @@ class WinAssistantsApp:
         self.number_inbox_receiver = NumberInboxReceiver()
         self.number_reminder_window: tk.Toplevel | None = None
         self.number_reminder_items: dict[int, NumberInboxEvent] = {}
+        self._number_reminder_last_slot = ""
         self.tray_icon = None
         self.ui_actions: queue.Queue[str] = queue.Queue()
         self._update_checking = False
@@ -299,12 +301,33 @@ class WinAssistantsApp:
             except queue.Empty:
                 break
             self.status_vars["number_inbox"].set(inbox_event.message)
+            if inbox_event.pending_ids is not None:
+                self._reconcile_number_reminder_items(inbox_event.pending_ids)
             if inbox_event.item_id > self.config.number_inbox.last_seen_id:
                 self.config.number_inbox.last_seen_id = inbox_event.item_id
                 self.config.save()
-            if inbox_event.kind == "new":
+            if inbox_event.kind == "snapshot":
+                self.number_reminder_items[inbox_event.item_id] = inbox_event
+            elif inbox_event.kind == "new":
                 self._show_number_reminder(inbox_event)
+        self._maybe_show_scheduled_number_reminder()
         self.root.after(1500, self._poll)
+
+    def _reconcile_number_reminder_items(self, pending_ids: tuple[int, ...]) -> None:
+        allowed = set(pending_ids)
+        removed = False
+        for item_id in list(self.number_reminder_items):
+            if item_id not in allowed:
+                self.number_reminder_items.pop(item_id, None)
+                removed = True
+        if not removed:
+            return
+        if not self.number_reminder_items:
+            if self.number_reminder_window is not None and self.number_reminder_window.winfo_exists():
+                self.number_reminder_window.destroy()
+            self.number_reminder_window = None
+        elif self.number_reminder_window is not None and self.number_reminder_window.winfo_exists():
+            self._render_number_reminder()
 
     def _copy_text(self, value: str) -> None:
         self.root.clipboard_clear()
@@ -332,6 +355,37 @@ class WinAssistantsApp:
             return
         self._render_number_reminder()
 
+    def _complete_number_reminder(self, item_id: int) -> None:
+        if item_id not in self.number_reminder_items:
+            return
+        try:
+            token = unprotect_secret(self.config.number_inbox.protected_token)
+        except Exception as exc:
+            messagebox.showerror("号码提醒", f"连接码读取失败：{exc}", parent=self.number_reminder_window)
+            return
+        if not token:
+            messagebox.showerror("号码提醒", "请先完成号码提醒设置。", parent=self.number_reminder_window)
+            return
+
+        def worker() -> None:
+            try:
+                self.number_inbox_receiver.complete(self.config.number_inbox, token, item_id)
+            except Exception as exc:
+                self.root.after(
+                    0,
+                    lambda: messagebox.showerror("号码提醒", f"同步已完成状态失败：{exc}", parent=self.number_reminder_window),
+                )
+                return
+            self.root.after(0, lambda: self._dismiss_number_reminder(item_id))
+
+        threading.Thread(target=worker, name="number-inbox-complete", daemon=True).start()
+
+    def _hide_number_reminder_until_schedule(self) -> None:
+        window = self.number_reminder_window
+        if window is None or not window.winfo_exists():
+            return
+        window.withdraw()
+
     def _keep_number_reminder_visible(self) -> None:
         window = self.number_reminder_window
         if window is None or not window.winfo_exists():
@@ -343,6 +397,32 @@ class WinAssistantsApp:
         except tk.TclError:
             pass
         self.root.bell()
+
+    def _maybe_show_scheduled_number_reminder(self) -> None:
+        if not self.number_reminder_items:
+            return
+        now = datetime.now()
+        slot = now.strftime("%H:%M")
+        if slot not in self.config.number_inbox.reminder_times:
+            return
+        key = now.strftime("%Y-%m-%d ") + slot
+        if key == self._number_reminder_last_slot:
+            return
+        self._number_reminder_last_slot = key
+        if self.number_reminder_window is None or not self.number_reminder_window.winfo_exists():
+            window = tk.Toplevel(self.root)
+            self.number_reminder_window = window
+            window.title("待录入号码提醒")
+            window.resizable(True, True)
+            window.minsize(420, 220)
+            window.configure(bg=CARD)
+            window.protocol("WM_DELETE_WINDOW", self._hide_number_reminder_until_schedule)
+            try:
+                window.attributes("-topmost", True)
+            except tk.TclError:
+                pass
+            self._render_number_reminder()
+        self._keep_number_reminder_visible()
 
     def _render_number_reminder(self) -> None:
         window = self.number_reminder_window
@@ -365,7 +445,7 @@ class WinAssistantsApp:
         ).pack(side="right")
         ttk.Label(
             outer,
-            text="提醒会一直保留，直到你明确关闭对应提醒；关闭提醒不会修改网页中的待处理状态。",
+            text="可直接完成并同步网页状态；关闭窗口后，会在下一个设定提醒时间重新弹出仍未完成的号码。",
             foreground=MUTED,
             wraplength=390,
         ).pack(anchor="w", pady=(6, 12))
@@ -413,13 +493,13 @@ class WinAssistantsApp:
             ).pack(side="left", padx=(8, 0))
             ttk.Button(
                 actions,
-                text="关闭这条提醒",
-                command=lambda value=item_id: self._dismiss_number_reminder(value),
+                text="已完成",
+                command=lambda value=item_id: self._complete_number_reminder(value),
             ).pack(side="right")
 
         ttk.Label(
             outer,
-            text="如果业务已经处理，请仍在网页“号码收集”中标记“已录入”。",
+            text="“已完成”会同步网页后台并移除该号码；直接关闭窗口只会暂时隐藏，下一提醒时间仍会弹出未完成号码。",
             foreground=MUTED,
         ).pack(anchor="w", pady=(8, 0))
 
@@ -437,7 +517,7 @@ class WinAssistantsApp:
             window.resizable(True, True)
             window.minsize(420, 220)
             window.configure(bg=CARD)
-            window.protocol("WM_DELETE_WINDOW", self._keep_number_reminder_visible)
+            window.protocol("WM_DELETE_WINDOW", self._hide_number_reminder_until_schedule)
             try:
                 window.attributes("-topmost", True)
             except tk.TclError:
@@ -453,7 +533,7 @@ class WinAssistantsApp:
     def _show_number_inbox_settings(self) -> None:
         window = tk.Toplevel(self.root)
         window.title("号码提醒设置")
-        window.geometry("650x330")
+        window.geometry("650x400")
         window.resizable(False, False)
         frame = ttk.Frame(window, padding=20)
         frame.pack(fill="both", expand=True)
@@ -465,6 +545,7 @@ class WinAssistantsApp:
             current_token = ""
         token_var = tk.StringVar(value=current_token)
         interval_var = tk.IntVar(value=self.config.number_inbox.interval_seconds)
+        reminder_times_var = tk.StringVar(value=", ".join(self.config.number_inbox.reminder_times))
 
         ttk.Label(frame, text="服务器地址").grid(row=0, column=0, sticky="w", pady=7)
         ttk.Entry(frame, textvariable=api_var, width=57).grid(row=0, column=1, sticky="ew", padx=(12, 0), pady=7)
@@ -472,12 +553,14 @@ class WinAssistantsApp:
         ttk.Entry(frame, textvariable=token_var, show="●", width=57).grid(row=1, column=1, sticky="ew", padx=(12, 0), pady=7)
         ttk.Label(frame, text="检查间隔（秒）").grid(row=2, column=0, sticky="w", pady=7)
         ttk.Spinbox(frame, from_=10, to=120, textvariable=interval_var, width=8).grid(row=2, column=1, sticky="w", padx=(12, 0), pady=7)
+        ttk.Label(frame, text="定时提醒（最多5个）").grid(row=3, column=0, sticky="w", pady=7)
+        ttk.Entry(frame, textvariable=reminder_times_var, width=57).grid(row=3, column=1, sticky="ew", padx=(12, 0), pady=7)
         ttk.Label(
             frame,
-            text="连接码在网页“工作 → 号码收集 → Windows 提醒连接”中复制。只读取待处理号码，不会自动录入或改变状态。",
+            text="格式示例：09:00, 16:00。新号码仍会即时提醒；关闭提醒窗口后，未完成号码会在下一个设定时间再次弹出。",
             style="Sub.TLabel",
             wraplength=570,
-        ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(12, 18))
+        ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 18))
         frame.columnconfigure(1, weight=1)
 
         def save_and_connect() -> None:
@@ -490,6 +573,17 @@ class WinAssistantsApp:
             if not token:
                 messagebox.showerror("号码提醒", "请填写提醒连接码。", parent=window)
                 return
+            raw_times = [part.strip() for part in re.split(r"[,，;；\s]+", reminder_times_var.get()) if part.strip()]
+            if len(raw_times) > 5:
+                messagebox.showerror("号码提醒", "定时提醒最多设置 5 个时间点。", parent=window)
+                return
+            reminder_times = []
+            for value in raw_times:
+                if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", value):
+                    messagebox.showerror("号码提醒", f"提醒时间格式无效：{value}，请使用 HH:MM。", parent=window)
+                    return
+                if value not in reminder_times:
+                    reminder_times.append(value)
             try:
                 interval = max(10, min(120, int(interval_var.get())))
                 protected = protect_secret(token)
@@ -500,12 +594,13 @@ class WinAssistantsApp:
             self.config.number_inbox.protected_token = protected
             self.config.number_inbox.interval_seconds = interval
             self.config.number_inbox.last_seen_id = 0
+            self.config.number_inbox.reminder_times = reminder_times
             self.config.save()
             window.destroy()
             if self.enabled_vars["number_inbox"].get():
                 self._start_one("number_inbox")
 
-        ttk.Button(frame, text="保存并连接", command=save_and_connect).grid(row=4, column=0, columnspan=2, sticky="e")
+        ttk.Button(frame, text="保存并连接", command=save_and_connect).grid(row=5, column=0, columnspan=2, sticky="e")
 
     def _sedentary_command(self, action: str) -> None:
         status = read_sedentary_status()

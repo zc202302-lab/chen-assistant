@@ -45,6 +45,7 @@ class NumberInboxTests(unittest.TestCase):
             return _Response({
                 "ok": True,
                 "pending_count": 2,
+                "pending_ids": [8, 9],
                 "latest_id": 9,
                 "items": [{"id": 9, "number": "13800138000", "submitter": "张三", "note": "新装"}],
             })
@@ -55,12 +56,30 @@ class NumberInboxTests(unittest.TestCase):
         self.assertEqual(seen["authorization"], "Bearer secret-token")
         self.assertEqual(payload["latest_id"], 9)
 
+    def test_complete_posts_with_bearer_token(self):
+        seen = {}
+
+        def fake_urlopen(request, timeout=0):
+            seen["url"] = request.full_url
+            seen["authorization"] = request.headers.get("Authorization")
+            seen["method"] = request.get_method()
+            return _Response({"ok": True, "id": 9, "status": "done", "completed_at": "2026-09-28T10:00:00+00:00"})
+
+        settings = NumberInboxConfig(api_url="https://assistant.example/api/number-inbox/pending")
+        with patch("win_assistants.number_inbox.urllib.request.urlopen", side_effect=fake_urlopen):
+            payload = NumberInboxReceiver.complete(settings, "secret-token", 9)
+        self.assertEqual(seen["url"], "https://assistant.example/api/number-inbox/9/done")
+        self.assertEqual(seen["authorization"], "Bearer secret-token")
+        self.assertEqual(seen["method"], "POST")
+        self.assertEqual(payload["status"], "done")
+
     def test_first_poll_primes_without_new_notification(self):
         receiver = NumberInboxReceiver()
         settings = NumberInboxConfig(last_seen_id=0)
         payload = {
             "ok": True,
             "pending_count": 1,
+            "pending_ids": [8],
             "latest_id": 8,
             "items": [{"id": 8, "number": "13800138000", "submitter": "张三", "note": ""}],
         }
@@ -72,6 +91,10 @@ class NumberInboxTests(unittest.TestCase):
         event = receiver.events.get_nowait()
         self.assertEqual(event.kind, "connected")
         self.assertEqual(event.item_id, 8)
+        snapshot = receiver.events.get_nowait()
+        self.assertEqual(snapshot.kind, "snapshot")
+        self.assertEqual(snapshot.item_id, 8)
+        self.assertEqual(snapshot.pending_ids, (8,))
         with self.assertRaises(queue.Empty):
             receiver.events.get_nowait()
 
@@ -81,6 +104,7 @@ class NumberInboxTests(unittest.TestCase):
         payload = {
             "ok": True,
             "pending_count": 3,
+            "pending_ids": [5, 7, 8],
             "latest_id": 8,
             "items": [
                 {"id": 8, "number": "18800000008", "submitter": "乙", "note": ""},

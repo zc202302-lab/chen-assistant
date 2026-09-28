@@ -19,6 +19,7 @@ class NumberInboxEvent:
     number: str = ""
     submitter: str = ""
     note: str = ""
+    pending_ids: tuple[int, ...] | None = None
 
 
 class NumberInboxReceiver:
@@ -79,6 +80,30 @@ class NumberInboxReceiver:
             raise RuntimeError("号码提醒接口 items 无效")
         return payload
 
+    @staticmethod
+    def complete(settings: NumberInboxConfig, token: str, item_id: int, timeout: float = 15.0) -> dict[str, object]:
+        if not settings.api_url or not token:
+            raise ValueError("请先完成号码提醒设置")
+        base = settings.api_url.rsplit("/pending", 1)[0]
+        if base == settings.api_url:
+            raise ValueError("号码提醒接口地址无效")
+        request = urllib.request.Request(
+            f"{base}/{int(item_id)}/done",
+            data=b"",
+            method="POST",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "User-Agent": "win-assistants-number-inbox/1",
+                "Cache-Control": "no-cache",
+            },
+        )
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            raw = response.read(256 * 1024)
+        payload = json.loads(raw.decode("utf-8"))
+        if not isinstance(payload, dict) or payload.get("ok") is not True or payload.get("status") != "done":
+            raise RuntimeError("号码完成接口返回无效")
+        return payload
+
     def _run(
         self,
         settings: NumberInboxConfig,
@@ -101,6 +126,16 @@ class NumberInboxReceiver:
                 pending_count = max(0, int(payload.get("pending_count", 0) or 0))
                 latest_id = max(0, int(payload.get("latest_id", 0) or 0))
                 items = payload.get("items", [])
+                pending_ids_raw = payload.get("pending_ids")
+                pending_ids = None
+                if isinstance(pending_ids_raw, list):
+                    normalized_ids = []
+                    for value in pending_ids_raw:
+                        try:
+                            normalized_ids.append(int(value))
+                        except (TypeError, ValueError):
+                            continue
+                    pending_ids = tuple(normalized_ids)
 
                 if not primed:
                     last_seen = latest_id
@@ -111,8 +146,30 @@ class NumberInboxReceiver:
                             f"已连接 · {pending_count} 个待录入",
                             pending_count=pending_count,
                             item_id=last_seen,
+                            pending_ids=pending_ids,
                         )
                     )
+                    for item in reversed(items):
+                        if not isinstance(item, dict):
+                            continue
+                        try:
+                            item_id = int(item.get("id", 0) or 0)
+                        except (TypeError, ValueError):
+                            continue
+                        if item_id <= 0:
+                            continue
+                        self.events.put(
+                            NumberInboxEvent(
+                                "snapshot",
+                                "同步现有待处理号码",
+                                pending_count=pending_count,
+                                item_id=item_id,
+                                number=str(item.get("number") or ""),
+                                submitter=str(item.get("submitter") or ""),
+                                note=str(item.get("note") or ""),
+                                pending_ids=pending_ids,
+                            )
+                        )
                 else:
                     unseen = []
                     for item in items:
@@ -135,6 +192,7 @@ class NumberInboxReceiver:
                                 number=str(item.get("number") or ""),
                                 submitter=str(item.get("submitter") or ""),
                                 note=str(item.get("note") or ""),
+                                pending_ids=pending_ids,
                             )
                         )
                     last_seen = max(last_seen, latest_id)
@@ -145,6 +203,7 @@ class NumberInboxReceiver:
                                 f"已连接 · {pending_count} 个待录入",
                                 pending_count=pending_count,
                                 item_id=last_seen,
+                                pending_ids=pending_ids,
                             )
                         )
             except urllib.error.HTTPError as exc:

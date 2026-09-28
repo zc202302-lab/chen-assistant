@@ -41,7 +41,7 @@ def main():
     css = (ROOT / 'app' / 'static' / 'information-center-v160.css').read_text(encoding='utf-8')
     assert 'position:fixed' in css and 'bottom:calc(58px + env(safe-area-inset-bottom))' in css
     assert '.info-edit-v160 textarea{height:42vh;min-height:260px;max-height:460px}' in css
-    assert 'APP_VERSION = "1.6.0"' in config or 'APP_VERSION = "1.6.1"' in config or 'APP_VERSION = "1.6.3"' in config or 'APP_VERSION = "1.6.5"' in config
+    assert 'APP_VERSION = "1.6.0"' in config or 'APP_VERSION = "1.6.1"' in config or 'APP_VERSION = "1.6.3"' in config or 'APP_VERSION = "1.6.5"' in config or 'APP_VERSION = "1.6.6"' in config
 
     print('v1.6.0 information center contract passed')
 

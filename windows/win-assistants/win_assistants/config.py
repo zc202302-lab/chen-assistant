@@ -67,6 +67,7 @@ class NumberInboxConfig:
     protected_token: str = ""
     interval_seconds: int = 15
     last_seen_id: int = 0
+    reminder_times: list[str] = field(default_factory=lambda: ["09:00", "16:00"])
 
     @classmethod
     def from_dict(cls, raw: object) -> "NumberInboxConfig":
@@ -80,11 +81,30 @@ class NumberInboxConfig:
             last_seen = max(0, int(raw.get("last_seen_id", 0)))
         except (TypeError, ValueError):
             last_seen = 0
+        raw_times = raw.get("reminder_times", ["09:00", "16:00"])
+        if not isinstance(raw_times, list):
+            raw_times = ["09:00", "16:00"]
+        reminder_times = []
+        for value in raw_times:
+            text = str(value or "").strip()
+            if len(text) != 5 or text[2] != ":":
+                continue
+            try:
+                hour, minute = (int(part) for part in text.split(":", 1))
+            except ValueError:
+                continue
+            if 0 <= hour <= 23 and 0 <= minute <= 59:
+                normalized = f"{hour:02d}:{minute:02d}"
+                if normalized not in reminder_times:
+                    reminder_times.append(normalized)
+            if len(reminder_times) >= 5:
+                break
         return cls(
             api_url=str(raw.get("api_url") or cls.api_url).strip(),
             protected_token=str(raw.get("protected_token") or ""),
             interval_seconds=interval,
             last_seen_id=last_seen,
+            reminder_times=reminder_times,
         )
 
 
