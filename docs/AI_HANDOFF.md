@@ -2,19 +2,19 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
-- GitHub 当前 Web 功能合并基准：`bae83755c94fc67923deeb985bbecdb58e23a518`（2026-09-28，PR #101 已合并：同事号码提交入口 / 待录入队列 v1.6.2）。后续若存在文档提交，实际 main SHA 可继续前移。
-- 当前应用版本：Web main / 生产均为 `v1.6.2`；`win-assistants` 为 `v0.5.0`。
+- GitHub 当前功能/发布基准：main `c70609f6632af81f9dfc9684e9b9cf35763ec8ca`（2026-09-28，PR #107 已合并；其中 PR #104 已加入 Web v1.6.3 + win-assistants v0.5.1 号码提醒，PR #105/#106/#107 完成跨 Runner Windows 发布链修复）。
+- 当前应用版本：Web main / 生产均为 `v1.6.3`；`win-assistants` main / release / 生产公网更新资产均为 `v0.5.1`。
 - 当前功能合并基准：`44b9b9355e2641281b5989a5e03bfd87e16888ba`（Merge PR #83：win-assistants v0.5.0 内置久坐助手）；之后 main 还有发布/文档类提交，因此“功能基准”不要误当作当前 main SHA。
-- 当前发布基准：`win-assistants v0.5.0` 已正式发布。release `update.json` 已实际为 v0.5.0，EXE 71,614,597 字节，SHA256 `3b20cb906435872de7c6425e594b3a51ff6c4143b6f591ea743f2c5ca1bdf802`；promotion run `36123496387` 成功完成源码一致性、artifact、PE、release 分支及生产公网更新资产校验。
-- Windows 客户端 rollout 仍差用户实际 Windows 电脑上的最终实机验收：通过唯一“检查更新”从旧版升级到 v0.5.0，并验证短信、Foxmail、久坐、开机托盘、设置/统计迁移。
-- Web 生产：v1.6.2 已实际部署并从公网取证。PR #101 合并后 main push run `36366589681` 完成 full validation + production stability recheck；CI 直部署因无生产 SSH/本地权限而按设计交给生产 `chen-assistant-auto-deploy.timer`。随后一次性验证 PR #102 的 `verify-production-v162` job 从 self-hosted Runner 实际请求 `https://assistant.ziboxiaozhushou.cn/health`，返回 `{'ok': True, 'version': '1.6.2'}`；PR #102 已关闭且未合并。
+- 当前发布基准：`win-assistants v0.5.1` 已正式发布。`win-assistants-release/update.json` 已实际为 v0.5.1，EXE 大小 `71,621,269` 字节，SHA256 `8726d3c2a6070c1223ec3d2a4cfdbee46eb4f9c424dd5ff0823e4800a457a1e1`。main push run `36371223167` 完成 source validation、Windows Python tests、PyInstaller、GUI smoke、PE 校验与 release 分支发布；一次性验证 PR #108 从 self-hosted Runner 实际请求公网 update.json 并下载公网 EXE，版本/大小/SHA256/MZ 全部通过，PR #108 已关闭且未合并。
+- Windows 客户端 rollout：服务器发布链与公网资产已完成到 v0.5.1；仍差用户实际 Windows 电脑上的最终实机验收：重新下载或通过唯一“检查更新”运行 v0.5.1，并验证短信、Foxmail、久坐、号码提醒、开机托盘、设置/统计迁移。
+- Web 生产：v1.6.3 已实际部署并从公网取证。一次性验证 PR #108 的 `verify-number-reminders-production` job 返回 `health {'ok': True, 'version': '1.6.3'}`；号码收集后台现包含独立“Windows 提醒连接码”，只读 API `/api/number-inbox/pending` 使用 Bearer token，与同事提交 token 分离。
 - CI / Runner：新 self-hosted Runner `chen-assistant-ci-192-255-130-71` 已实际承接并成功执行 validation / stability / win-assistants cross-build。Draft PR #82 仍是 Runner 迁移历史 WIP，但它当前 head 已落后 main 49 commits；收尾前必须重新基于当前 main 审核，不能直接合并旧分支。
 - 其他既存 Open PR（包括 #77/#74/#73/#66/#64/#55/#43/#41/#39）属于历史或其他方向，不能仅因仍 Open 就视为当前开发。
 - GitHub 项目长期记忆机制已通过 PR #96 合并完成；`docs/PROJECT_CONTEXT.md` 现为跨聊天固定接管入口，不再需要粘贴超长项目提示词。\n- Web UI：PR #98 已合并，`/work` 页面“客户管理 / 工作资料”主模块已改为真正两列并排的小方块，简化卡片内容，并将 `work-architecture-v14.css` 缓存版本更新为 `v=1402`，解决 iPhone 继续使用旧 CSS 的问题。合并 commit：`572aaffe6f4ffbcef38a74b60510e2853f6e324d`。PR CI 与 main validation/stability 均已通过；GitHub deploy production job 已识别为 Web 运行时变更并按设计交由已完成实机 bootstrap 的生产侧 `chen-assistant-auto-deploy.timer` 自动部署。
-- 号码收集 v1.6.2：PR #101 已合并并生产上线。`/number-submit/{token}` 是同事无需登录的随机 token 提交入口；后台 `/work/number-inbox` 仍需主系统登录。支持号码/提交人/备注、待处理/已处理/全部、点击号码复制、已录入/恢复、分享链接轮换，以及同一规范化号码仅一个待处理项的数据库级并发去重。公开 POST 通过显式 token-authenticated 安全审计；后台状态变更继续使用 CSRF。工作页辅助入口会显示待录入数量。当前尚未接入 Windows 桌面通知，后续提醒层应以服务器待处理队列为唯一数据源。
+- 号码收集 / Windows 提醒：Web v1.6.3 + win-assistants v0.5.1 已生产上线。同事仍通过 `/number-submit/{token}` 提交；Windows 使用独立提醒连接码只读轮询 `/api/number-inbox/pending`，默认约 15 秒检查一次。首次连接只同步当前 latest_id，不把历史待处理全弹为新提醒；后续新号码通过现有唯一托盘发 Windows 通知，并打开主窗口。Windows 仅提醒，不自动录入、不自动改变 Web 状态；服务器待处理队列仍是唯一数据源。
 - 新的固定接管入口：`docs/PROJECT_CONTEXT.md`。长期产品规则、架构、开发约束、重要决策分别存放在 `PRODUCT_REQUIREMENTS.md`、`ARCHITECTURE.md`、`DEVELOPMENT_RULES.md`、`DECISIONS.md`。
 - 注意：本文件下方存在较早时期的历史状态段落（例如旧版本/旧生产基准），仅作历史记录；发生冲突时，以本节“当前接力状态”和 GitHub 实际代码/PR/Actions 为准。
-- 下一步：号码收集第一版已上线；用户可进入 `/work/number-inbox` 复制生产环境自动生成的同事提交链接并开始试用。下一阶段优先把新提交提醒接入 `win-assistants`（只做提醒/待处理数量，不另建第二套数据源），同时 Windows 产品主线继续完成 v0.5.0 实机更新与集成功能验收。跨聊天时直接按 `docs/PROJECT_CONTEXT.md` 接管。
+- 下一步：在用户实际 Windows 电脑上运行 v0.5.1，进入“号码提醒 → 设置”，从 Web“工作 → 号码收集 → Windows 提醒连接”复制服务器地址/提醒连接码并保存连接；随后由同事提交一个测试号码，验证 Windows 通知、待处理数量和 Web“已录入”闭环。若实机通过，再把 v0.5.1 客户端 rollout 标记为完全完成。
 
 ### 新聊天接管协议
 
