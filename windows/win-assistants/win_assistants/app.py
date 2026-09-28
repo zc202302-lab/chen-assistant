@@ -60,8 +60,8 @@ class WinAssistantsApp:
 
     def _configure_window(self) -> None:
         self.root.title("win-assistants")
-        self.root.geometry("760x540")
-        self.root.minsize(680, 480)
+        self.root.geometry("800x700")
+        self.root.minsize(720, 560)
         self.root.configure(bg=BG)
         self.root.protocol("WM_DELETE_WINDOW", self.root.withdraw)
 
@@ -76,13 +76,39 @@ class WinAssistantsApp:
         style.configure("Module.TLabel", background=CARD, foreground=TEXT, font=("Microsoft YaHei UI", 12, "bold"))
         style.configure("TButton", font=("Microsoft YaHei UI", 9), padding=6)
 
-        outer = ttk.Frame(self.root, padding=24)
-        outer.pack(fill="both", expand=True)
-        ttk.Label(outer, text="win-assistants", style="Title.TLabel").pack(anchor="w")
-        ttk.Label(outer, text="一个入口管理短信、久坐与晨的小助手本地能力", style="Sub.TLabel").pack(anchor="w", pady=(2, 18))
+        shell = ttk.Frame(self.root, padding=(24, 24, 24, 14))
+        shell.pack(fill="both", expand=True)
+        ttk.Label(shell, text="win-assistants", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(shell, text="一个入口管理短信、久坐、Foxmail 与号码提醒", style="Sub.TLabel").pack(anchor="w", pady=(2, 14))
+
+        list_holder = ttk.Frame(shell)
+        list_holder.pack(fill="both", expand=True)
+        canvas = tk.Canvas(list_holder, background=BG, highlightthickness=0, borderwidth=0)
+        scrollbar = ttk.Scrollbar(list_holder, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        cards = ttk.Frame(canvas)
+        cards_window = canvas.create_window((0, 0), window=cards, anchor="nw")
+
+        def refresh_scrollregion(_event=None) -> None:
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def fit_cards_width(event) -> None:
+            canvas.itemconfigure(cards_window, width=event.width)
+
+        cards.bind("<Configure>", refresh_scrollregion)
+        canvas.bind("<Configure>", fit_cards_width)
+
+        def on_mousewheel(event) -> None:
+            delta = -1 if event.delta > 0 else 1
+            canvas.yview_scroll(delta * 3, "units")
+
+        canvas.bind_all("<MouseWheel>", on_mousewheel, add="+")
 
         for item in MODULES:
-            card = ttk.Frame(outer, style="Card.TFrame", padding=14)
+            card = ttk.Frame(cards, style="Card.TFrame", padding=14)
             card.pack(fill="x", pady=(0, 10))
             head = ttk.Frame(card, style="Card.TFrame")
             head.pack(fill="x")
@@ -114,13 +140,13 @@ class WinAssistantsApp:
                 ttk.Button(row, text="选择", command=lambda key=item.key: self._choose_path(key)).pack(side="left", padx=(8, 0))
                 ttk.Button(row, text="立即启动", command=lambda key=item.key: self._start_one(key)).pack(side="left", padx=(8, 0))
 
-        controls = ttk.Frame(outer)
-        controls.pack(fill="x", pady=(6, 0))
+        controls = ttk.Frame(shell)
+        controls.pack(fill="x", pady=(10, 0))
         ttk.Label(controls, text=f"当前版本 v{__version__}", style="Sub.TLabel").pack(side="left", padx=(0, 12))
         ttk.Checkbutton(controls, text="随 Windows 登录静默启动（直接进入托盘）", variable=self.startup_var, command=self._toggle_startup).pack(side="left")
         ttk.Button(controls, text="检查更新", command=self._check_updates).pack(side="right")
         ttk.Button(controls, text="接管旧工具的开机启动", command=self._take_over).pack(side="right", padx=(0, 8))
-        ttk.Label(outer, text=f"v{__version__} · 短信、久坐、Foxmail 与号码提醒均已内置。", style="Sub.TLabel").pack(anchor="w", pady=(14, 0))
+        ttk.Label(shell, text=f"v{__version__} · 四个模块统一内置，同一个检查更新。", style="Sub.TLabel").pack(anchor="w", pady=(8, 0))
 
     def _save_ui(self) -> None:
         for item in MODULES:
