@@ -28,7 +28,7 @@
       </div>
       <aside class="v023-task-card">
         <div class="v023-task-head"><b>待办</b><button type="button" class="tab-text-link" data-tab-open="tasks">全部 {{ open_tasks|length }}</button></div>
-        {% for t in open_tasks[:2] %}<div class="v023-task-line"><span>{{ t.title }}</span><small>{{ (t.remind_date or '无日期')|replace('-','/') }}</small></div>{% else %}<span class="v023-task-empty">暂无未完成待办</span>{% endfor %}
+        {% for t in open_tasks[:2] %}<div class="v023-task-line"><span>{{ t.title }}{% if t.is_payment_review %}<em class="task-review-badge-v164">缴费审核</em>{% endif %}</span><small>{{ (t.remind_at or t.remind_date or '无提醒')|replace('T',' ')|replace('-','/') }}</small></div>{% else %}<span class="v023-task-empty">暂无未完成待办</span>{% endfor %}
         <button type="button" class="v023-add-task" data-tab-open="tasks">＋ 新增待办</button>
       </aside>
     </section>
@@ -143,7 +143,62 @@
     </section>
 
     <section class="customer-panel" data-customer-panel="contacts" {% if active_tab!='contacts' %}hidden{% endif %}><section class="card compact-card"><div class="section-head"><h2>联系人</h2><span>{{ contacts|length }} 人</span></div>{% for k in contacts %}<div class="info-row"><div><b>{{ k.name or '未命名联系人' }}</b><small>{{ k.kind }}{% if k.relationship %} · {{ k.relationship }}{% endif %}{% if k.phone %} · {{ k.phone }}{% endif %}</small></div>{% if k.phone %}<button class="copy-btn ghost small" data-copy="{{ k.phone }}">复制电话</button>{% endif %}</div>{% else %}<p class="empty">还没有联系人。</p>{% endfor %}</section></section>
-    <section class="customer-panel" data-customer-panel="tasks" {% if active_tab!='tasks' %}hidden{% endif %}><section class="card compact-card"><div class="section-head"><h2>待办</h2><span>{{ open_tasks|length }} 未完成</span></div>{% for t in tasks %}<div class="info-row {% if t.done %}muted{% endif %}"><div><b>{{ t.title }}</b><small>{{ (t.remind_date or '无日期')|replace('-','/') }}{% if t.note %} · {{ t.note }}{% endif %}</small></div><form method="post" action="/tasks/{{ t.id }}/toggle"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small">{{ '恢复' if t.done else '完成' }}</button></form></div>{% else %}<p class="empty">暂无待办。</p>{% endfor %}</section></section>
+    <section class="customer-panel" data-customer-panel="tasks" {% if active_tab!='tasks' %}hidden{% endif %}>
+      <section class="card compact-card task-panel-v164">
+        <div class="section-head">
+          <div><h2>待办</h2><small class="task-panel-hint-v164">待办内容、提醒时间和缴费审核要求都可随时修改。</small></div>
+          <span>{{ open_tasks|length }} 未完成</span>
+        </div>
+
+        <details class="task-add-v164" open>
+          <summary>＋ 新增待办</summary>
+          <form method="post" action="/customers/{{ customer.id }}/tasks" class="task-form-v164">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <label class="task-content-field-v164">待办内容<input name="title" required maxlength="200" placeholder="例如：核对本月集团缴费名单"></label>
+            <label>提醒时间<input type="datetime-local" name="remind_at"></label>
+            <label class="task-review-check-v164"><input type="checkbox" name="is_payment_review" value="1"> <span><b>缴费审核</b><small>勾选后，未完成此待办时禁止发起缴费。</small></span></label>
+            <label class="task-note-field-v164">备注<textarea name="note" rows="2" maxlength="1000" placeholder="可选"></textarea></label>
+            <button class="primary" type="submit">保存待办</button>
+          </form>
+        </details>
+
+        <div class="task-list-v164">
+          {% for t in tasks %}
+          <article class="task-item-v164 {% if t.done %}is-done{% endif %}">
+            <div class="task-item-main-v164">
+              <div class="task-item-title-v164">
+                <b>{{ t.title }}</b>
+                {% if t.is_payment_review %}<span class="task-review-badge-v164">缴费审核</span>{% endif %}
+                {% if t.done %}<span class="task-done-badge-v164">已完成</span>{% endif %}
+              </div>
+              <div class="task-item-meta-v164">
+                <span>提醒：{{ (t.remind_at or t.remind_date or '未设置')|replace('T',' ')|replace('-','/') }}</span>
+                {% if t.note %}<span>{{ t.note }}</span>{% endif %}
+              </div>
+            </div>
+            <div class="task-item-actions-v164">
+              <details class="task-edit-v164">
+                <summary class="ghost small">编辑</summary>
+                <form method="post" action="/tasks/{{ t.id }}/edit" class="task-form-v164 task-edit-form-v164">
+                  <input type="hidden" name="csrf" value="{{ csrf }}">
+                  <input type="hidden" name="remind_date" value="{{ t.remind_date }}">
+                  <label class="task-content-field-v164">待办内容<input name="title" required maxlength="200" value="{{ t.title }}"></label>
+                  <label>提醒时间<input type="datetime-local" name="remind_at" value="{{ t.remind_at if 'T' in (t.remind_at or '') else '' }}"></label>
+                  <label class="task-review-check-v164"><input type="checkbox" name="is_payment_review" value="1" {% if t.is_payment_review %}checked{% endif %}> <span><b>缴费审核</b><small>未确认完成时禁止发起缴费。</small></span></label>
+                  <label class="task-note-field-v164">备注<textarea name="note" rows="2" maxlength="1000">{{ t.note }}</textarea></label>
+                  <button class="primary small" type="submit">保存修改</button>
+                </form>
+              </details>
+              <form method="post" action="/tasks/{{ t.id }}/toggle">
+                <input type="hidden" name="csrf" value="{{ csrf }}">
+                <button class="{% if t.done %}ghost{% else %}secondary{% endif %} small">{{ '恢复' if t.done else ('确认已审核' if t.is_payment_review else '完成') }}</button>
+              </form>
+            </div>
+          </article>
+          {% else %}<p class="empty">暂无待办。</p>{% endfor %}
+        </div>
+      </section>
+    </section>
     <section class="customer-panel" data-customer-panel="visits" {% if active_tab!='visits' %}hidden{% endif %}><section class="card compact-card"><div class="section-head"><h2>跟进记录</h2><span>{{ visits|length }}</span></div>{% for v in visits %}<div class="info-row"><div><b>{{ (v.visit_date or '')|replace('-','/') }} · {{ v.kind }}</b><small>{{ v.result }}{% if v.plan %} · 下一步：{{ v.plan }}{% endif %}</small></div></div>{% else %}<p class="empty">暂无跟进记录。</p>{% endfor %}</section></section>
   </div>
 
