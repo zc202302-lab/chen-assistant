@@ -270,7 +270,7 @@ def number_inbox_desktop_pending(request: Request):
                FROM number_inbox
                WHERE status='pending'
                ORDER BY id DESC
-               LIMIT 20"""
+               LIMIT 200"""
         ).fetchall()
         total = int(conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'])
     response = JSONResponse(
