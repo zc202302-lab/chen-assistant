@@ -213,7 +213,18 @@ jobs:
 
           windows_wheels="${RUNNER_TEMP}/win-assistants-wheels"
           mkdir -p "${windows_python}/Lib/site-packages" "${windows_wheels}"
-          python3 -m pip download --disable-pip-version-check --only-binary=:all: \
+
+          if python3 -m pip --version >/dev/null 2>&1; then
+            host_pip=(python3 -m pip)
+          else
+            pip_zipapp="${RUNNER_TEMP}/pip.pyz"
+            curl --fail --location --retry 3 --output "${pip_zipapp}" \
+              "https://bootstrap.pypa.io/pip/pip.pyz"
+            python3 "${pip_zipapp}" --version
+            host_pip=(python3 "${pip_zipapp}")
+          fi
+
+          "${host_pip[@]}" download --disable-pip-version-check --only-binary=:all: \
             --platform win_amd64 --python-version 312 --implementation cp --abi cp312 \
             --dest "${windows_wheels}" -r requirements.txt \
             "pefile>=2022.5.30" "pywin32-ctypes>=0.2.1"
