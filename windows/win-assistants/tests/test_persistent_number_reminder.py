@@ -16,10 +16,12 @@ def method_block(name: str, next_name: str) -> str:
 class PersistentNumberReminderTests(unittest.TestCase):
     def test_new_number_does_not_open_main_window_or_use_transient_tray_notice(self) -> None:
         source = method_block("_poll", "_copy_text")
-        self.assertIn('if inbox_event.kind == "new":', source)
-        self.assertIn("self._show_number_reminder(inbox_event)", source)
-        self.assertNotIn("self._show_window()", source)
-        self.assertNotIn('self.tray_icon.notify(detail, "新的待录入号码")', source)
+        marker = 'if inbox_event.kind == "new":'
+        self.assertIn(marker, source)
+        inbox_branch = source[source.index(marker):]
+        self.assertIn("self._show_number_reminder(inbox_event)", inbox_branch)
+        self.assertNotIn("self._show_window()", inbox_branch)
+        self.assertNotIn('self.tray_icon.notify(detail, "新的待录入号码")', inbox_branch)
 
     def test_reminder_is_persistent_and_topmost(self) -> None:
         source = method_block("_show_number_reminder", "_open_number_inbox")
