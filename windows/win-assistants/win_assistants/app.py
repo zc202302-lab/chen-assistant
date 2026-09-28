@@ -13,6 +13,7 @@ from .commands import command_for_path, display_path
 from .config import AppConfig
 from .foxmail import FoxmailBridge
 from .modules import MODULES, ModuleManager, default_module_configs, internal_sedentary_command
+from .number_inbox import NumberInboxReceiver
 from .single_instance import SingleInstance
 from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
 from .sedentary import read_status as read_sedentary_status, send_command as send_sedentary_command, status_text as sedentary_status_text
@@ -39,6 +40,7 @@ class WinAssistantsApp:
         self.manager = ModuleManager(self._set_status)
         self.sms_receiver = SmsReceiver()
         self.foxmail_bridge = FoxmailBridge()
+        self.number_inbox_receiver = NumberInboxReceiver()
         self.tray_icon = None
         self.sms_code_var = tk.StringVar(value="尚未收到验证码")
         self.status_vars = {item.key: tk.StringVar(value="等待启动") for item in MODULES}
@@ -98,6 +100,10 @@ class WinAssistantsApp:
             elif item.key == "chen_helper":
                 ttk.Label(row, text="内置模块 · 仅监听 127.0.0.1:18763 · 不自动发送邮件", style="Card.TLabel").pack(side="left")
                 ttk.Button(row, text="重新启动", command=lambda: self._start_one("chen_helper")).pack(side="right")
+            elif item.key == "number_inbox":
+                ttk.Label(row, text="内置模块 · 从晨的小助手读取待录入队列", style="Card.TLabel").pack(side="left")
+                ttk.Button(row, text="打开待录入", command=self._open_number_inbox).pack(side="right", padx=(8, 0))
+                ttk.Button(row, text="设置", command=self._show_number_inbox_settings).pack(side="right")
             elif item.key == "sedentary":
                 ttk.Label(row, text="内置模块 · 人体存在检测与强制休息已合并", style="Card.TLabel").pack(side="left")
                 ttk.Button(row, text="打开状态", command=lambda: self._sedentary_command("show_status")).pack(side="right", padx=(8, 0))
@@ -113,13 +119,13 @@ class WinAssistantsApp:
         ttk.Checkbutton(controls, text="随 Windows 登录静默启动（直接进入托盘）", variable=self.startup_var, command=self._toggle_startup).pack(side="left")
         ttk.Button(controls, text="检查更新", command=self._check_updates).pack(side="right")
         ttk.Button(controls, text="接管旧工具的开机启动", command=self._take_over).pack(side="right", padx=(0, 8))
-        ttk.Label(outer, text=f"v{__version__} · 短信、久坐与 Foxmail 本地桥接均已内置。", style="Sub.TLabel").pack(anchor="w", pady=(14, 0))
+        ttk.Label(outer, text=f"v{__version__} · 短信、久坐、Foxmail 与号码提醒均已内置。", style="Sub.TLabel").pack(anchor="w", pady=(14, 0))
 
     def _save_ui(self) -> None:
         for item in MODULES:
             cfg = self.config.modules[item.key]
             cfg.enabled = bool(self.enabled_vars[item.key].get())
-            if item.key in ("sms", "chen_helper"):
+            if item.key in ("sms", "chen_helper", "number_inbox"):
                 cfg.command = []
                 continue
             if item.key == "sedentary":
@@ -164,6 +170,8 @@ class WinAssistantsApp:
                 self.foxmail_bridge.stop()
             elif key == "sedentary":
                 self.manager.stop(key)
+            elif key == "number_inbox":
+                self.number_inbox_receiver.stop()
             self.status_vars[key].set("已停用")
 
     def _start_one(self, key: str) -> None:
@@ -184,6 +192,18 @@ class WinAssistantsApp:
             self.foxmail_bridge.stop()
             ok, detail = self.foxmail_bridge.start()
             self.status_vars[key].set(detail if ok else f"启动失败：{detail}")
+            return
+        if key == "number_inbox":
+            try:
+                token = unprotect_secret(self.config.number_inbox.protected_token)
+            except Exception as exc:
+                self.status_vars[key].set(f"连接码读取失败：{exc}")
+                return
+            if not token:
+                self.status_vars[key].set("请先完成设置")
+                return
+            self.number_inbox_receiver.start(self.config.number_inbox, token)
+            self.status_vars[key].set("正在连接")
             return
         ok, detail = self.manager.start(key, self.config.modules[key])
         self.status_vars[key].set(detail)
@@ -216,7 +236,90 @@ class WinAssistantsApp:
                 if event.marker:
                     self.config.sms.marker = event.marker
                     self.config.save()
+
+        while True:
+            try:
+                inbox_event = self.number_inbox_receiver.events.get_nowait()
+            except queue.Empty:
+                break
+            self.status_vars["number_inbox"].set(inbox_event.message)
+            if inbox_event.item_id > self.config.number_inbox.last_seen_id:
+                self.config.number_inbox.last_seen_id = inbox_event.item_id
+                self.config.save()
+            if inbox_event.kind == "new":
+                detail = inbox_event.number
+                if inbox_event.submitter:
+                    detail += f" · {inbox_event.submitter}"
+                if self.tray_icon is not None:
+                    try:
+                        self.tray_icon.notify(detail, "新的待录入号码")
+                    except Exception:
+                        self.root.bell()
+                else:
+                    self.root.bell()
+                self._show_window()
         self.root.after(1500, self._poll)
+
+    def _open_number_inbox(self) -> None:
+        import webbrowser
+        webbrowser.open("https://assistant.ziboxiaozhushou.cn/work/number-inbox")
+
+    def _show_number_inbox_settings(self) -> None:
+        window = tk.Toplevel(self.root)
+        window.title("号码提醒设置")
+        window.geometry("650x330")
+        window.resizable(False, False)
+        frame = ttk.Frame(window, padding=20)
+        frame.pack(fill="both", expand=True)
+
+        api_var = tk.StringVar(value=self.config.number_inbox.api_url)
+        try:
+            current_token = unprotect_secret(self.config.number_inbox.protected_token)
+        except Exception:
+            current_token = ""
+        token_var = tk.StringVar(value=current_token)
+        interval_var = tk.IntVar(value=self.config.number_inbox.interval_seconds)
+
+        ttk.Label(frame, text="服务器地址").grid(row=0, column=0, sticky="w", pady=7)
+        ttk.Entry(frame, textvariable=api_var, width=57).grid(row=0, column=1, sticky="ew", padx=(12, 0), pady=7)
+        ttk.Label(frame, text="提醒连接码").grid(row=1, column=0, sticky="w", pady=7)
+        ttk.Entry(frame, textvariable=token_var, show="●", width=57).grid(row=1, column=1, sticky="ew", padx=(12, 0), pady=7)
+        ttk.Label(frame, text="检查间隔（秒）").grid(row=2, column=0, sticky="w", pady=7)
+        ttk.Spinbox(frame, from_=10, to=120, textvariable=interval_var, width=8).grid(row=2, column=1, sticky="w", padx=(12, 0), pady=7)
+        ttk.Label(
+            frame,
+            text="连接码在网页“工作 → 号码收集 → Windows 提醒连接”中复制。只读取待处理号码，不会自动录入或改变状态。",
+            style="Sub.TLabel",
+            wraplength=570,
+        ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(12, 18))
+        frame.columnconfigure(1, weight=1)
+
+        def save_and_connect() -> None:
+            api_url = api_var.get().strip()
+            token = token_var.get().strip()
+            parsed = urlparse(api_url)
+            if parsed.scheme.lower() != "https" or not parsed.netloc:
+                messagebox.showerror("号码提醒", "服务器地址必须是 HTTPS 地址。", parent=window)
+                return
+            if not token:
+                messagebox.showerror("号码提醒", "请填写提醒连接码。", parent=window)
+                return
+            try:
+                interval = max(10, min(120, int(interval_var.get())))
+                protected = protect_secret(token)
+            except Exception as exc:
+                messagebox.showerror("号码提醒", f"保存连接码失败：{exc}", parent=window)
+                return
+            self.config.number_inbox.api_url = api_url
+            self.config.number_inbox.protected_token = protected
+            self.config.number_inbox.interval_seconds = interval
+            self.config.number_inbox.last_seen_id = 0
+            self.config.save()
+            window.destroy()
+            if self.enabled_vars["number_inbox"].get():
+                self._start_one("number_inbox")
+
+        ttk.Button(frame, text="保存并连接", command=save_and_connect).grid(row=4, column=0, columnspan=2, sticky="e")
 
     def _sedentary_command(self, action: str) -> None:
         status = read_sedentary_status()
@@ -416,6 +519,7 @@ class WinAssistantsApp:
             return
         self.sms_receiver.stop()
         self.foxmail_bridge.stop()
+        self.number_inbox_receiver.stop()
         self.manager.stop_all()
         if self.tray_icon is not None:
             try:
