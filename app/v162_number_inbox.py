@@ -6,7 +6,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from . import config
@@ -17,6 +17,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
 
 TOKEN_META_KEY = 'number_inbox_submit_token_v1'
+DESKTOP_TOKEN_META_KEY = 'number_inbox_desktop_token_v1'
 
 NUMBER_INBOX_SCHEMA = r'''
 CREATE TABLE IF NOT EXISTS number_inbox (
@@ -95,6 +96,40 @@ def _token_matches(conn, token: str) -> bool:
     return bool(token) and secrets.compare_digest(token, expected)
 
 
+def ensure_desktop_token(conn=None) -> str:
+    owns = conn is None
+    if owns:
+        cm = db()
+        conn = cm.__enter__()
+    try:
+        ensure_number_inbox_schema(conn)
+        row = conn.execute('SELECT value FROM app_meta WHERE key=?', (DESKTOP_TOKEN_META_KEY,)).fetchone()
+        token = row['value'] if row else ''
+        if not token:
+            token = secrets.token_urlsafe(32)
+            conn.execute(
+                'INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)',
+                (DESKTOP_TOKEN_META_KEY, token),
+            )
+        return token
+    finally:
+        if owns:
+            cm.__exit__(None, None, None)
+
+
+def _desktop_token_from_request(request: Request) -> str:
+    auth = (request.headers.get('authorization') or '').strip()
+    if not auth.lower().startswith('bearer '):
+        return ''
+    return auth[7:].strip()
+
+
+def _desktop_token_matches(conn, request: Request) -> bool:
+    supplied = _desktop_token_from_request(request)
+    expected = ensure_desktop_token(conn)
+    return bool(supplied) and secrets.compare_digest(supplied, expected)
+
+
 def _display_time(value: str) -> str:
     try:
         dt = datetime.fromisoformat(value)
@@ -163,6 +198,7 @@ def number_inbox_admin(request: Request, status: str = 'pending'):
         status = 'pending'
     with db() as conn:
         token = ensure_number_inbox_schema(conn)
+        desktop_token = ensure_desktop_token(conn)
         pending_count = int(
             conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n']
         )
@@ -194,6 +230,8 @@ def number_inbox_admin(request: Request, status: str = 'pending'):
             pending_count=pending_count,
             done_count=done_count,
             share_url=share_url,
+            desktop_token=desktop_token,
+            desktop_api_url=str(request.base_url).rstrip('/') + '/api/number-inbox/pending',
         ),
     )
 
@@ -220,6 +258,53 @@ def number_inbox_reopen(request: Request, item_id: int, csrf: str = Form(...)):
             (item_id,),
         )
     return RedirectResponse('/work/number-inbox?status=done', status_code=303)
+
+
+@router.get('/api/number-inbox/pending')
+def number_inbox_desktop_pending(request: Request):
+    with db() as conn:
+        if not _desktop_token_matches(conn, request):
+            return JSONResponse({'ok': False, 'error': 'unauthorized'}, status_code=401)
+        rows = conn.execute(
+            """SELECT id,number,submitter,note,submitted_at
+               FROM number_inbox
+               WHERE status='pending'
+               ORDER BY id DESC
+               LIMIT 20"""
+        ).fetchall()
+        total = int(conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'])
+    response = JSONResponse(
+        {
+            'ok': True,
+            'pending_count': total,
+            'latest_id': int(rows[0]['id']) if rows else 0,
+            'items': [
+                {
+                    'id': int(row['id']),
+                    'number': row['number'],
+                    'submitter': row['submitter'],
+                    'note': row['note'],
+                    'submitted_at': row['submitted_at'],
+                }
+                for row in rows
+            ],
+        }
+    )
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@router.post('/work/number-inbox/rotate-desktop-token')
+def number_inbox_rotate_desktop_token(request: Request, csrf: str = Form(...)):
+    _csrf(request, csrf)
+    token = secrets.token_urlsafe(32)
+    with db() as conn:
+        ensure_number_inbox_schema(conn)
+        conn.execute(
+            'INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)',
+            (DESKTOP_TOKEN_META_KEY, token),
+        )
+    return RedirectResponse('/work/number-inbox', status_code=303)
 
 
 @router.post('/work/number-inbox/rotate-link')
