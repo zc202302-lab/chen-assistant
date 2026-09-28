@@ -301,6 +301,8 @@ class WinAssistantsApp:
             except queue.Empty:
                 break
             self.status_vars["number_inbox"].set(inbox_event.message)
+            if inbox_event.pending_ids is not None:
+                self._reconcile_number_reminder_items(inbox_event.pending_ids)
             if inbox_event.item_id > self.config.number_inbox.last_seen_id:
                 self.config.number_inbox.last_seen_id = inbox_event.item_id
                 self.config.save()
@@ -310,6 +312,22 @@ class WinAssistantsApp:
                 self._show_number_reminder(inbox_event)
         self._maybe_show_scheduled_number_reminder()
         self.root.after(1500, self._poll)
+
+    def _reconcile_number_reminder_items(self, pending_ids: tuple[int, ...]) -> None:
+        allowed = set(pending_ids)
+        removed = False
+        for item_id in list(self.number_reminder_items):
+            if item_id not in allowed:
+                self.number_reminder_items.pop(item_id, None)
+                removed = True
+        if not removed:
+            return
+        if not self.number_reminder_items:
+            if self.number_reminder_window is not None and self.number_reminder_window.winfo_exists():
+                self.number_reminder_window.destroy()
+            self.number_reminder_window = None
+        elif self.number_reminder_window is not None and self.number_reminder_window.winfo_exists():
+            self._render_number_reminder()
 
     def _copy_text(self, value: str) -> None:
         self.root.clipboard_clear()
@@ -561,7 +579,7 @@ class WinAssistantsApp:
                 return
             reminder_times = []
             for value in raw_times:
-                if not re.fullmatch(r"(?:[01]\\d|2[0-3]):[0-5]\\d", value):
+                if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", value):
                     messagebox.showerror("号码提醒", f"提醒时间格式无效：{value}，请使用 HH:MM。", parent=window)
                     return
                 if value not in reminder_times:
