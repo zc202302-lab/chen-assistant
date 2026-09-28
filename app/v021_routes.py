@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
 from urllib.parse import quote
 
 from fastapi import APIRouter, Request, Form, HTTPException
@@ -493,20 +493,74 @@ def customer_tasks_v021(request: Request, customer_id: int):
     return templates.TemplateResponse('tasks_v021.html', ctx(request, customer=customer, tasks=tasks))
 
 
+def _task_reminder_value(remind_at: str = '', remind_date: str = '') -> tuple[str, str]:
+    raw = (remind_at or '').strip() or (remind_date or '').strip()
+    if not raw:
+        return '', ''
+    normalized = raw.replace(' ', 'T')
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        try:
+            parsed = datetime.strptime(raw, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(400, '提醒时间格式无效')
+    if 'T' in normalized:
+        value = parsed.strftime('%Y-%m-%dT%H:%M')
+    else:
+        value = parsed.strftime('%Y-%m-%d')
+    return value, parsed.strftime('%Y-%m-%d')
+
+
 @router.post('/customers/{customer_id}/tasks')
 def task_add_v021(
     request: Request, customer_id: int, csrf: str = Form(...),
-    title: str = Form(...), remind_date: str = Form(''), note: str = Form('')
+    title: str = Form(...), remind_at: str = Form(''), remind_date: str = Form(''),
+    note: str = Form(''), is_payment_review: str = Form('0')
 ):
     check_csrf(request, csrf)
+    title = title.strip()
+    if not title:
+        raise HTTPException(400, '待办内容不能为空')
+    reminder, legacy_date = _task_reminder_value(remind_at, remind_date)
+    now = now_iso()
     with db() as conn:
         customer_or_404(conn, customer_id)
         conn.execute(
-            'INSERT INTO tasks(customer_id,title,remind_date,note,created_at) VALUES(?,?,?,?,?)',
-            (customer_id, title.strip(), remind_date.strip(), note.strip(), now_iso()),
+            '''INSERT INTO tasks
+               (customer_id,title,remind_date,remind_at,note,is_payment_review,created_at,updated_at)
+               VALUES(?,?,?,?,?,?,?,?)''',
+            (customer_id, title, legacy_date, reminder, note.strip(), 1 if is_payment_review == '1' else 0, now, now),
         )
-        conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), customer_id))
-    return RedirectResponse(f'/customers/{customer_id}/tasks', 303)
+        conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now, customer_id))
+    return RedirectResponse(f'/customers/{customer_id}?tab=tasks', 303)
+
+
+@router.post('/tasks/{task_id}/edit')
+def task_edit_v164(
+    request: Request, task_id: int, csrf: str = Form(...),
+    title: str = Form(...), remind_at: str = Form(''), remind_date: str = Form(''),
+    note: str = Form(''), is_payment_review: str = Form('0')
+):
+    check_csrf(request, csrf)
+    title = title.strip()
+    if not title:
+        raise HTTPException(400, '待办内容不能为空')
+    reminder, legacy_date = _task_reminder_value(remind_at, remind_date)
+    with db() as conn:
+        row = conn.execute('SELECT customer_id FROM tasks WHERE id=?', (task_id,)).fetchone()
+        if not row:
+            raise HTTPException(404)
+        now = now_iso()
+        conn.execute(
+            '''UPDATE tasks
+               SET title=?,remind_date=?,remind_at=?,note=?,is_payment_review=?,updated_at=?
+               WHERE id=?''',
+            (title, legacy_date, reminder, note.strip(), 1 if is_payment_review == '1' else 0, now, task_id),
+        )
+        if row['customer_id']:
+            conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now, row['customer_id']))
+    return RedirectResponse(f"/customers/{row['customer_id']}?tab=tasks" if row['customer_id'] else '/', 303)
 
 
 @router.post('/tasks/{task_id}/toggle')
@@ -516,8 +570,11 @@ def task_toggle_v021(request: Request, task_id: int, csrf: str = Form(...)):
         row = conn.execute('SELECT customer_id,done FROM tasks WHERE id=?', (task_id,)).fetchone()
         if not row:
             raise HTTPException(404)
-        conn.execute('UPDATE tasks SET done=? WHERE id=?', (0 if row['done'] else 1, task_id))
-    return RedirectResponse(f"/customers/{row['customer_id']}/tasks" if row['customer_id'] else '/', 303)
+        now = now_iso()
+        conn.execute('UPDATE tasks SET done=?,updated_at=? WHERE id=?', (0 if row['done'] else 1, now, task_id))
+        if row['customer_id']:
+            conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now, row['customer_id']))
+    return RedirectResponse(f"/customers/{row['customer_id']}?tab=tasks" if row['customer_id'] else '/', 303)
 
 
 @router.get('/customers/{customer_id}/visits', response_class=HTMLResponse)

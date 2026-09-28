@@ -132,9 +132,12 @@ CREATE TABLE IF NOT EXISTS tasks (
     customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     remind_date TEXT DEFAULT '',
+    remind_at TEXT DEFAULT '',
     note TEXT DEFAULT '',
+    is_payment_review INTEGER NOT NULL DEFAULT 0,
     done INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS visits (
@@ -256,6 +259,17 @@ def _migrate(conn: sqlite3.Connection):
     if not _has_column(conn, 'services', 'inactive_from_period'):
         conn.execute("ALTER TABLE services ADD COLUMN inactive_from_period TEXT DEFAULT ''")
 
+    # v1.6.4: richer customer tasks. Existing date-only reminders remain valid and
+    # are copied into remind_at without inventing a time.
+    if not _has_column(conn, 'tasks', 'remind_at'):
+        conn.execute("ALTER TABLE tasks ADD COLUMN remind_at TEXT DEFAULT ''")
+        conn.execute("UPDATE tasks SET remind_at=remind_date WHERE COALESCE(remind_at,'')='' AND COALESCE(remind_date,'')<>''")
+    if not _has_column(conn, 'tasks', 'is_payment_review'):
+        conn.execute('ALTER TABLE tasks ADD COLUMN is_payment_review INTEGER NOT NULL DEFAULT 0')
+    if not _has_column(conn, 'tasks', 'updated_at'):
+        conn.execute("ALTER TABLE tasks ADD COLUMN updated_at TEXT DEFAULT ''")
+        conn.execute("UPDATE tasks SET updated_at=created_at WHERE COALESCE(updated_at,'')=''")
+
     if not _has_column(conn, 'payment_entries', 'confirmed'):
         conn.execute('ALTER TABLE payment_entries ADD COLUMN confirmed INTEGER NOT NULL DEFAULT 0')
         conn.execute("UPDATE payment_entries SET confirmed=1 WHERE source IN ('manual','fixed')")
@@ -362,6 +376,7 @@ def _migrate(conn: sqlite3.Connection):
     conn.execute('CREATE INDEX IF NOT EXISTS idx_payment_rules_service_period ON service_payment_rules(service_id,effective_period)')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_payment_runs_customer_period ON customer_payment_runs(customer_id,period)')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_promotions_service_status ON promotions(service_id,status,expiry_date)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_tasks_customer_review ON tasks(customer_id,is_payment_review,done)')
 
 
 def init_db():
