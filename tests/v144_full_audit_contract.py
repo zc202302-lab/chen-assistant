@@ -154,6 +154,11 @@ def audit_csrf_first_winners():
         except (OSError, TypeError):
             uncovered.append((path, module, name, 'source unavailable'))
             continue
+        if getattr(endpoint, '__public_token_authenticated__', False):
+            if path.startswith('/number-submit/') and 'if not _token_matches(conn, token):' in source:
+                continue
+            uncovered.append((path, module, name, 'invalid public token-authenticated POST guard'))
+            continue
         if not any(marker in source for marker in markers):
             uncovered.append((path, module, name, 'no CSRF marker/delegate'))
     assert not uncovered, 'winning POST routes without visible CSRF protection/delegation:\n' + '\n'.join(map(str, uncovered))
