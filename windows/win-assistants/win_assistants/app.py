@@ -13,7 +13,7 @@ from .commands import command_for_path, display_path
 from .config import AppConfig
 from .foxmail import FoxmailBridge
 from .modules import MODULES, ModuleManager, default_module_configs, internal_sedentary_command
-from .number_inbox import NumberInboxReceiver
+from .number_inbox import NumberInboxEvent, NumberInboxReceiver
 from .single_instance import SingleInstance
 from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
 from .sedentary import read_status as read_sedentary_status, send_command as send_sedentary_command, status_text as sedentary_status_text
@@ -41,6 +41,8 @@ class WinAssistantsApp:
         self.sms_receiver = SmsReceiver()
         self.foxmail_bridge = FoxmailBridge()
         self.number_inbox_receiver = NumberInboxReceiver()
+        self.number_reminder_window: tk.Toplevel | None = None
+        self.number_reminder_items: dict[int, NumberInboxEvent] = {}
         self.tray_icon = None
         self.ui_actions: queue.Queue[str] = queue.Queue()
         self._update_checking = False
@@ -301,18 +303,148 @@ class WinAssistantsApp:
                 self.config.number_inbox.last_seen_id = inbox_event.item_id
                 self.config.save()
             if inbox_event.kind == "new":
-                detail = inbox_event.number
-                if inbox_event.submitter:
-                    detail += f" · {inbox_event.submitter}"
-                if self.tray_icon is not None:
-                    try:
-                        self.tray_icon.notify(detail, "新的待录入号码")
-                    except Exception:
-                        self.root.bell()
-                else:
-                    self.root.bell()
-                self._show_window()
+                self._show_number_reminder(inbox_event)
         self.root.after(1500, self._poll)
+
+    def _copy_text(self, value: str) -> None:
+        self.root.clipboard_clear()
+        self.root.clipboard_append(value)
+
+    def _position_number_reminder(self) -> None:
+        window = self.number_reminder_window
+        if window is None or not window.winfo_exists():
+            return
+        window.update_idletasks()
+        width = max(420, window.winfo_reqwidth())
+        height = min(620, max(220, window.winfo_reqheight()))
+        screen_w = window.winfo_screenwidth()
+        screen_h = window.winfo_screenheight()
+        x = max(0, screen_w - width - 24)
+        y = max(0, screen_h - height - 72)
+        window.geometry(f"{width}x{height}+{x}+{y}")
+
+    def _dismiss_number_reminder(self, item_id: int) -> None:
+        self.number_reminder_items.pop(item_id, None)
+        if not self.number_reminder_items:
+            if self.number_reminder_window is not None and self.number_reminder_window.winfo_exists():
+                self.number_reminder_window.destroy()
+            self.number_reminder_window = None
+            return
+        self._render_number_reminder()
+
+    def _keep_number_reminder_visible(self) -> None:
+        window = self.number_reminder_window
+        if window is None or not window.winfo_exists():
+            return
+        window.deiconify()
+        window.lift()
+        try:
+            window.attributes("-topmost", True)
+        except tk.TclError:
+            pass
+        self.root.bell()
+
+    def _render_number_reminder(self) -> None:
+        window = self.number_reminder_window
+        if window is None or not window.winfo_exists():
+            return
+
+        for child in window.winfo_children():
+            child.destroy()
+
+        outer = ttk.Frame(window, padding=16)
+        outer.pack(fill="both", expand=True)
+
+        head = ttk.Frame(outer)
+        head.pack(fill="x")
+        ttk.Label(head, text="待录入号码提醒", font=("Microsoft YaHei UI", 15, "bold")).pack(side="left")
+        ttk.Label(
+            head,
+            text=f"{len(self.number_reminder_items)} 条待处理提醒",
+            foreground=MUTED,
+        ).pack(side="right")
+        ttk.Label(
+            outer,
+            text="提醒会一直保留，直到你明确关闭对应提醒；关闭提醒不会修改网页中的待处理状态。",
+            foreground=MUTED,
+            wraplength=390,
+        ).pack(anchor="w", pady=(6, 12))
+
+        list_holder = ttk.Frame(outer)
+        list_holder.pack(fill="both", expand=True)
+        canvas = tk.Canvas(list_holder, highlightthickness=0, borderwidth=0, background=CARD)
+        scrollbar = ttk.Scrollbar(list_holder, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        cards = ttk.Frame(canvas)
+        cards_window = canvas.create_window((0, 0), window=cards, anchor="nw")
+        cards.bind("<Configure>", lambda _event: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda event: canvas.itemconfigure(cards_window, width=event.width))
+
+        for item_id in sorted(self.number_reminder_items, reverse=True):
+            item = self.number_reminder_items[item_id]
+            card = ttk.Frame(cards, padding=12)
+            card.pack(fill="x", pady=(0, 10))
+
+            ttk.Label(
+                card,
+                text=item.number or "未填写号码",
+                font=("Microsoft YaHei UI", 16, "bold"),
+            ).pack(anchor="w")
+
+            meta = item.submitter.strip() if item.submitter else "未填写提交人"
+            ttk.Label(card, text=f"提交人：{meta}", foreground=MUTED).pack(anchor="w", pady=(4, 0))
+            if item.note:
+                ttk.Label(card, text=f"备注：{item.note}", wraplength=360).pack(anchor="w", pady=(4, 0))
+
+            actions = ttk.Frame(card)
+            actions.pack(fill="x", pady=(10, 0))
+            ttk.Button(
+                actions,
+                text="复制号码",
+                command=lambda value=item.number: self._copy_text(value),
+            ).pack(side="left")
+            ttk.Button(
+                actions,
+                text="打开待录入",
+                command=self._open_number_inbox,
+            ).pack(side="left", padx=(8, 0))
+            ttk.Button(
+                actions,
+                text="关闭这条提醒",
+                command=lambda value=item_id: self._dismiss_number_reminder(value),
+            ).pack(side="right")
+
+        ttk.Label(
+            outer,
+            text="如果业务已经处理，请仍在网页“号码收集”中标记“已录入”。",
+            foreground=MUTED,
+        ).pack(anchor="w", pady=(8, 0))
+
+        self._position_number_reminder()
+
+    def _show_number_reminder(self, event: NumberInboxEvent) -> None:
+        if event.item_id <= 0:
+            return
+        self.number_reminder_items[event.item_id] = event
+
+        if self.number_reminder_window is None or not self.number_reminder_window.winfo_exists():
+            window = tk.Toplevel(self.root)
+            self.number_reminder_window = window
+            window.title("待录入号码提醒")
+            window.resizable(True, True)
+            window.minsize(420, 220)
+            window.configure(bg=CARD)
+            window.protocol("WM_DELETE_WINDOW", self._keep_number_reminder_visible)
+            try:
+                window.attributes("-topmost", True)
+            except tk.TclError:
+                pass
+
+        self._render_number_reminder()
+        self._keep_number_reminder_visible()
 
     def _open_number_inbox(self) -> None:
         import webbrowser
@@ -597,6 +729,10 @@ class WinAssistantsApp:
         self.root.focus_force()
 
     def _shutdown(self) -> None:
+        if self.number_reminder_window is not None and self.number_reminder_window.winfo_exists():
+            self.number_reminder_window.destroy()
+        self.number_reminder_window = None
+        self.number_reminder_items.clear()
         self.sms_receiver.stop()
         self.foxmail_bridge.stop()
         self.number_inbox_receiver.stop()

@@ -324,7 +324,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": "v0.5.3：修复托盘“检查更新”点击无反应；托盘动作改由 Tk 主线程队列执行，并增加检查、下载、校验、安装与重启的明确状态反馈。",
+              "notes": "v0.5.4：号码提醒改为独立持久提醒窗，不再拉起整个主程序；多条新号码集中显示，逐条明确关闭前一直保留。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
