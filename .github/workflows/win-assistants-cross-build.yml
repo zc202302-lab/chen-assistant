@@ -79,7 +79,7 @@ jobs:
             ln -sf "${portable_xkbcomp}" /tmp/bin/xkbcomp
 
             mapfile -t xkb_path_files < <(
-              grep -RIl --binary-files=text -F '/usr/bin/xkbcomp' \
+              grep -RlaF '/usr/bin/xkbcomp' \
                 "${wine_root}/root/usr/bin" "${wine_root}/root/usr/lib" 2>/dev/null || true
             )
             for target in "${xkb_path_files[@]}"; do
