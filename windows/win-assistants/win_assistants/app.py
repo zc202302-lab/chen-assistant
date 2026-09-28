@@ -116,6 +116,7 @@ class WinAssistantsApp:
 
         controls = ttk.Frame(outer)
         controls.pack(fill="x", pady=(6, 0))
+        ttk.Label(controls, text=f"当前版本 v{__version__}", style="Sub.TLabel").pack(side="left", padx=(0, 12))
         ttk.Checkbutton(controls, text="随 Windows 登录静默启动（直接进入托盘）", variable=self.startup_var, command=self._toggle_startup).pack(side="left")
         ttk.Button(controls, text="检查更新", command=self._check_updates).pack(side="right")
         ttk.Button(controls, text="接管旧工具的开机启动", command=self._take_over).pack(side="right", padx=(0, 8))
@@ -434,7 +435,7 @@ class WinAssistantsApp:
                     0,
                     lambda: messagebox.showinfo(
                         "检查更新",
-                        f"win-assistants v{__version__} 已是最新版。\n\n短信、久坐与 Foxmail 均随同一版本更新。",
+                        f"win-assistants v{__version__} 已是最新版。\n\n短信、久坐、Foxmail 与号码提醒均通过这一个“检查更新”统一更新。",
                     ),
                 )
                 return
@@ -442,10 +443,10 @@ class WinAssistantsApp:
             version = str(manifest.get("version", "")).strip()
             notes = str(manifest.get("notes", "")).strip()
             def confirm() -> None:
-                text = f"发现 win-assistants {version}。"
+                text = f"当前版本：v{__version__}\n目标版本：v{version}\n\n发现新的 win-assistants。"
                 if notes:
                     text += f"\n\n{notes}"
-                text += "\n\n是否现在下载并更新？更新完成后程序会自动重启。"
+                text += "\n\n是否现在下载并更新？\n整个 win-assistants.exe 会一次更新完成，下载、SHA256校验、替换和重启均自动执行。"
                 if not messagebox.askyesno("发现更新", text):
                     return
                 threading.Thread(target=lambda: self._download_and_apply_update(manifest), name="win-assistants-updater", daemon=True).start()
@@ -456,11 +457,11 @@ class WinAssistantsApp:
     def _download_and_apply_update(self, manifest: dict[str, object]) -> None:
         try:
             staged = stage_update(manifest)
-            launch_replacement(staged)
+            launch_replacement(staged, manifest)
         except Exception as exc:
             self.root.after(0, lambda: messagebox.showerror("更新失败", str(exc)))
             return
-        self.root.after(0, self._exit)
+        self.root.after(0, self._exit_for_update)
 
     def _toggle_startup(self) -> None:
         try:
@@ -512,11 +513,7 @@ class WinAssistantsApp:
         self.root.lift()
         self.root.focus_force()
 
-    def _exit(self) -> None:
-        status = read_sedentary_status()
-        if status and bool(status.get("reminder_active")):
-            messagebox.showwarning("强制休息中", "请先完成当前强制休息，再退出 win-assistants。")
-            return
+    def _shutdown(self) -> None:
         self.sms_receiver.stop()
         self.foxmail_bridge.stop()
         self.number_inbox_receiver.stop()
@@ -527,6 +524,18 @@ class WinAssistantsApp:
             except Exception:
                 pass
         self.root.destroy()
+
+    def _exit_for_update(self) -> None:
+        # A validated self-update must be able to close the current executable
+        # even while the sedentary module is in a forced-rest state.
+        self._shutdown()
+
+    def _exit(self) -> None:
+        status = read_sedentary_status()
+        if status and bool(status.get("reminder_active")):
+            messagebox.showwarning("强制休息中", "请先完成当前强制休息，再退出 win-assistants。")
+            return
+        self._shutdown()
 
 
 def run() -> None:
