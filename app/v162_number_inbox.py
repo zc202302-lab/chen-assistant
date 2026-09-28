@@ -294,6 +294,27 @@ def number_inbox_desktop_pending(request: Request):
     return response
 
 
+@router.post('/api/number-inbox/{item_id}/done')
+def number_inbox_desktop_done(request: Request, item_id: int):
+    with db() as conn:
+        if not _desktop_token_matches(conn, request):
+            return JSONResponse({'ok': False, 'error': 'unauthorized'}, status_code=401)
+        row = conn.execute('SELECT id,status,completed_at FROM number_inbox WHERE id=?', (item_id,)).fetchone()
+        if not row:
+            return JSONResponse({'ok': False, 'error': 'not_found'}, status_code=404)
+        if row['status'] == 'pending':
+            completed_at = now_iso()
+            conn.execute(
+                "UPDATE number_inbox SET status='done',completed_at=? WHERE id=? AND status='pending'",
+                (completed_at, item_id),
+            )
+        else:
+            completed_at = row['completed_at'] or ''
+    response = JSONResponse({'ok': True, 'id': item_id, 'status': 'done', 'completed_at': completed_at})
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 @router.post('/work/number-inbox/rotate-desktop-token')
 def number_inbox_rotate_desktop_token(request: Request, csrf: str = Form(...)):
     _csrf(request, csrf)
