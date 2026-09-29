@@ -167,6 +167,9 @@ $expectedSha = '{expected_sha}'
 $expectedSize = {expected_size}
 $arguments = '{arguments}'
 $candidate = "$target.update"
+$backup = "$target.previous"
+$installedNew = $false
+$verifiedStartup = $false
 $logDir = Join-Path $env:LOCALAPPDATA 'win-assistants'
 $log = Join-Path $logDir 'update.log'
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null
@@ -193,9 +196,12 @@ try {{
         throw "candidate sha256 mismatch: expected=$expectedSha actual=$sha"
     }}
 
+    Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
+    Copy-Item -LiteralPath $target -Destination $backup -Force
     for ($attempt = 0; $attempt -lt 30; $attempt++) {{
         try {{
             Move-Item -LiteralPath $candidate -Destination $target -Force
+            $installedNew = $true
             break
         }} catch {{
             if ($attempt -ge 29) {{ throw }}
@@ -210,15 +216,48 @@ try {{
     }}
 
     Write-UpdateLog "installed sha=$installedSha size=$installedSize"
-    if ($arguments) {{
-        Start-Process -FilePath $target -ArgumentList $arguments
-    }} else {{
-        Start-Process -FilePath $target
+    $probe = Join-Path $logDir ("startup-" + [guid]::NewGuid().ToString("N") + ".txt")
+    $launchArgs = @()
+    if ($arguments) {{ $launchArgs += $arguments }}
+    $launchArgs += '--update-startup-probe'
+    $launchArgs += ('"' + $probe + '"')
+    Start-Sleep -Seconds 2
+    $newProcess = Start-Process -FilePath $target -ArgumentList $launchArgs -PassThru
+    Write-UpdateLog "restart requested pid=$($newProcess.Id)"
+    for ($attempt = 0; $attempt -lt 90; $attempt++) {{
+        if (Test-Path -LiteralPath $probe) {{
+            if ((Get-Content -LiteralPath $probe -Raw) -eq 'ready') {{
+                $verifiedStartup = $true
+                break
+            }}
+        }}
+        $newProcess.Refresh()
+        if ($newProcess.HasExited) {{ break }}
+        Start-Sleep -Milliseconds 500
     }}
-    Write-UpdateLog "restart requested"
+    Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
+    if (-not $verifiedStartup) {{ throw "new executable did not confirm startup within 45 seconds" }}
+    Write-UpdateLog "startup confirmed pid=$($newProcess.Id)"
+    Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
 }} catch {{
     Write-UpdateLog ("FAILED: " + $_.Exception.Message)
-    throw
+    if ($installedNew -and (Test-Path -LiteralPath $backup)) {{
+        try {{
+            if ($newProcess -and -not $newProcess.HasExited) {{
+                Stop-Process -Id $newProcess.Id -Force -ErrorAction SilentlyContinue
+                try {{ Wait-Process -Id $newProcess.Id -Timeout 10 -ErrorAction SilentlyContinue }} catch {{}}
+            }}
+            Move-Item -LiteralPath $backup -Destination $target -Force
+            Write-UpdateLog "rolled back to previous executable"
+            if ($arguments) {{
+                Start-Process -FilePath $target -ArgumentList $arguments
+            }} else {{
+                Start-Process -FilePath $target
+            }}
+        }} catch {{
+            Write-UpdateLog ("ROLLBACK FAILED: " + $_.Exception.Message)
+        }}
+    }}
 }} finally {{
     Remove-Item -LiteralPath $candidate -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $source -Force -ErrorAction SilentlyContinue
