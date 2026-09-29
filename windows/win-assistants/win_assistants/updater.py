@@ -10,6 +10,7 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import Callable
 
 UPDATE_MANIFEST_URL = "https://assistant.ziboxiaozhushou.cn/static/win-assistants/update.json"
 
@@ -75,17 +76,31 @@ def newer_version_available(current_version: str, manifest: dict[str, object]) -
     return _version_tuple(str(manifest.get("version", "0"))) > _version_tuple(current_version)
 
 
-def _download_file(url: str, target: Path, timeout: float = 120.0, attempts: int = 3) -> None:
+def _download_file(
+    url: str,
+    target: Path,
+    timeout: float = 120.0,
+    attempts: int = 3,
+    *,
+    expected_size: int = 0,
+    progress: Callable[[int, int], None] | None = None,
+) -> None:
     last_error: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
             target.unlink(missing_ok=True)
+            downloaded = 0
+            if progress:
+                progress(0, expected_size)
             with urllib.request.urlopen(_request(url), timeout=timeout) as response, target.open("wb") as handle:
                 while True:
                     block = response.read(1024 * 1024)
                     if not block:
                         break
                     handle.write(block)
+                    downloaded += len(block)
+                    if progress:
+                        progress(downloaded, expected_size)
             if target.stat().st_size <= 0:
                 raise RuntimeError("下载到的更新文件为空")
             return
@@ -108,7 +123,12 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def stage_update(manifest: dict[str, object]) -> Path:
+def stage_update(
+    manifest: dict[str, object],
+    *,
+    progress: Callable[[int, int], None] | None = None,
+    phase: Callable[[str], None] | None = None,
+) -> Path:
     if not getattr(sys, "frozen", False):
         raise RuntimeError("当前不是已打包 EXE，不能执行自更新")
     update_root = Path(os.getenv("LOCALAPPDATA") or tempfile.gettempdir()) / "win-assistants" / "updates"
@@ -125,7 +145,9 @@ def stage_update(manifest: dict[str, object]) -> Path:
             version=version,
             sha256=expected_sha,
         )
-        _download_file(download_url, temp)
+        _download_file(download_url, temp, expected_size=expected_size, progress=progress)
+        if phase:
+            phase("正在校验更新文件…")
         actual_size = temp.stat().st_size
         if actual_size != expected_size:
             raise RuntimeError(
