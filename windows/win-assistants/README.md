@@ -2,7 +2,7 @@
 
 `win-assistants` 是“晨的小助手”的统一 Windows 客户端。
 
-## 当前阶段：v0.5.6 四模块统一内置
+## 当前阶段：v0.5.7 四模块统一内置
 
 v0.5.0 将原先独立运行的久坐守护成熟代码迁入 `win-assistants`。现在一个发布 EXE 统一包含：
 
@@ -64,7 +64,7 @@ py -m unittest discover -s tests -v
 
 产物为 `dist\win-assistants.exe`。PR 会先运行平台无关测试，再在 self-hosted Linux Runner 上通过 Wine + 官方 Windows Python 构建并 smoke test Windows PE。最终发布仍需要 Windows 实机验收摄像头、Foxmail 和开机托盘行为。
 
-v0.5.6 的正式发布仍以 `main` / merged-PR cross-build 实际写入 `win-assistants-release/update.json` 为准；只有 manifest 与 EXE 发布成功后，客户端唯一“检查更新”才会看到本版本。号码提醒连接码在 Web 的“工作 → 号码收集 → Windows 提醒连接”中获取，连接码使用 Windows 用户级保护保存。
+v0.5.7 的正式发布仍以 `main` / merged-PR cross-build 实际写入 `win-assistants-release/update.json` 为准；只有 manifest 与 EXE 发布成功后，客户端唯一“检查更新”才会看到本版本。号码提醒连接码在 Web 的“工作 → 号码收集 → Windows 提醒连接”中获取，连接码使用 Windows 用户级保护保存。
 
 
 <!-- v0.5.0 release trigger after merged-PR publishing fix -->
