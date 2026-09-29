@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 import queue
 import re
 import threading
@@ -855,6 +856,7 @@ class WinAssistantsApp:
 def run() -> None:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--background", action="store_true")
+    parser.add_argument("--update-startup-probe", default="")
     args, _ = parser.parse_known_args()
     instance = SingleInstance()
     if instance.already_running:
@@ -863,6 +865,8 @@ def run() -> None:
     root = tk.Tk()
     try:
         WinAssistantsApp(root, start_hidden=args.background)
+        if args.update_startup_probe:
+            Path(args.update_startup_probe).write_text("ready", encoding="ascii")
         root.mainloop()
     finally:
         instance.close()
