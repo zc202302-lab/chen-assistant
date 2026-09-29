@@ -46,6 +46,10 @@ class UpdaterTests(unittest.TestCase):
         self.assertIn("Move-Item -LiteralPath $candidate -Destination $target -Force", script)
         self.assertIn("Start-Process -FilePath $target -ArgumentList $arguments", script)
         self.assertIn("update.log", script)
+        self.assertIn("startup confirmed", script)
+        self.assertIn("--update-startup-probe", script)
+        self.assertIn("rolled back to previous executable", script)
+        self.assertIn("Move-Item -LiteralPath $backup -Destination $target -Force", script)
 
     def test_replacement_can_restart_visible(self) -> None:
         script = _replacement_script(
