@@ -52,6 +52,7 @@ class WinAssistantsApp:
         self._update_checking = False
         self.sms_code_var = tk.StringVar(value="尚未收到验证码")
         self.update_status_var = tk.StringVar(value="更新状态：就绪")
+        self.update_progress_var = tk.DoubleVar(value=0)
         self.status_vars = {item.key: tk.StringVar(value="等待启动") for item in MODULES}
         self.enabled_vars = {item.key: tk.BooleanVar(value=self.config.modules[item.key].enabled) for item in MODULES}
         self.path_vars = {
@@ -199,6 +200,8 @@ class WinAssistantsApp:
                    style="Accent.TButton").pack(side="right")
         ttk.Label(footer, textvariable=self.update_status_var, style="Footer.TLabel").pack(
             anchor="w", pady=(10, 0))
+        self.update_progress_bar = ttk.Progressbar(
+            footer, mode="determinate", maximum=100, variable=self.update_progress_var)
 
     def _save_ui(self) -> None:
         for item in MODULES:
@@ -743,6 +746,29 @@ class WinAssistantsApp:
         self.sms_receiver.publish_test(settings, token.strip())
         self.status_vars["sms"].set("正在发送测试短信")
 
+    def _show_update_progress(self, *, indeterminate: bool = False) -> None:
+        bar = self.update_progress_bar
+        bar.stop()
+        bar.configure(mode="indeterminate" if indeterminate else "determinate")
+        if not bar.winfo_manager():
+            bar.pack(fill="x", pady=(8, 0))
+        if indeterminate:
+            bar.start(15)
+
+    def _download_progress(self, received: int, total: int) -> None:
+        percent = min(100, max(0, int(received * 100 / total))) if total > 0 else 0
+        self.update_progress_var.set(percent)
+        self._set_update_status(f"更新状态：正在下载 {percent}%（{received / 1048576:.1f} / {total / 1048576:.1f} MB）")
+
+    def _update_phase(self, phase: str) -> None:
+        self._show_update_progress(indeterminate=True)
+        self._set_update_status(f"更新状态：{phase}")
+
+    def _hide_update_progress(self) -> None:
+        self.update_progress_bar.stop()
+        self.update_progress_bar.pack_forget()
+        self.update_progress_var.set(0)
+
     def _request_update_check(self) -> None:
         if self._update_checking:
             self._set_update_status("更新状态：正在处理，请稍候", notify=True)
@@ -753,6 +779,7 @@ class WinAssistantsApp:
 
     def _finish_update_check(self, status: str) -> None:
         self._update_checking = False
+        self._hide_update_progress()
         self._set_update_status(status)
 
     def _check_updates(self) -> None:
@@ -789,7 +816,9 @@ class WinAssistantsApp:
                 if not messagebox.askyesno("发现更新", text):
                     self._finish_update_check("更新状态：已取消")
                     return
-                self._set_update_status(f"更新状态：正在下载并校验 v{version}…", notify=True)
+                self.update_progress_var.set(0)
+                self._show_update_progress()
+                self._set_update_status(f"更新状态：准备下载 v{version}…", notify=True)
                 threading.Thread(
                     target=lambda: self._download_and_apply_update(manifest),
                     name="win-assistants-updater",
@@ -802,11 +831,15 @@ class WinAssistantsApp:
 
     def _download_and_apply_update(self, manifest: dict[str, object]) -> None:
         try:
-            staged = stage_update(manifest)
-            self.root.after(
-                0,
-                lambda: self._set_update_status("更新状态：校验完成，正在安装并重启…", notify=True),
-            )
+            def on_progress(received: int, total: int) -> None:
+                self.root.after(0, lambda received=received, total=total:
+                                self._download_progress(received, total))
+
+            def on_phase(message: str) -> None:
+                self.root.after(0, lambda message=message: self._update_phase(message))
+
+            staged = stage_update(manifest, progress=on_progress, phase=on_phase)
+            self.root.after(0, lambda: self._update_phase("校验完成，正在安装并重启…"))
             launch_replacement(staged, manifest)
         except Exception as exc:
             def failed() -> None:
