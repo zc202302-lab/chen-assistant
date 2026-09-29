@@ -145,9 +145,10 @@ class WinAssistantsApp:
                             style="Module.TCheckbutton").pack(side="left", padx=(0, 7))
             ttk.Label(heading, text=item.name, style="Module.TLabel").pack(side="left")
             tk.Label(heading, textvariable=self.status_vars[item.key], bg=SOFT, fg=GREEN,
-                     padx=10, pady=4, font=("Microsoft YaHei UI", 9)).pack(side="right")
+                     padx=10, pady=4, wraplength=250, justify="right",
+                     font=("Microsoft YaHei UI", 9)).pack(side="right")
 
-            ttk.Label(card, text=item.description, style="Card.TLabel").pack(
+            ttk.Label(card, text=item.description, style="Card.TLabel", wraplength=620).pack(
                 anchor="w", padx=(34, 0), pady=(3, 10))
             bottom = ttk.Frame(card, style="Card.TFrame")
             bottom.pack(fill="x", padx=(34, 0))
