@@ -22,11 +22,13 @@ from .startup import is_startup_enabled, set_startup, stop_legacy_foxmail_proces
 from .updater import fetch_manifest, launch_replacement, newer_version_available, stage_update
 
 
-BG = "#F4F7F6"
+BG = "#F3F6F5"
 CARD = "#FFFFFF"
-GREEN = "#167D68"
-TEXT = "#18332E"
-MUTED = "#61736F"
+GREEN = "#176D5C"
+TEXT = "#172D29"
+MUTED = "#657773"
+BORDER = "#DFE8E4"
+SOFT = "#EAF3EF"
 
 
 class WinAssistantsApp:
@@ -67,9 +69,9 @@ class WinAssistantsApp:
         self.root.after(1000, self._poll)
 
     def _configure_window(self) -> None:
-        self.root.title("win-assistants")
-        self.root.geometry("800x700")
-        self.root.minsize(720, 560)
+        self.root.title("晨的小助手 · Windows")
+        self.root.geometry("840x700")
+        self.root.minsize(740, 560)
         self.root.configure(bg=BG)
         self.root.protocol("WM_DELETE_WINDOW", self.root.withdraw)
 
@@ -78,16 +80,33 @@ class WinAssistantsApp:
         style.theme_use("clam")
         style.configure("TFrame", background=BG)
         style.configure("Card.TFrame", background=CARD)
-        style.configure("Title.TLabel", background=BG, foreground=TEXT, font=("Microsoft YaHei UI", 22, "bold"))
+        style.configure("Footer.TFrame", background=CARD)
+        style.configure("Title.TLabel", background=BG, foreground=TEXT, font=("Microsoft YaHei UI", 21, "bold"))
+        style.configure("Eyebrow.TLabel", background=BG, foreground=GREEN, font=("Microsoft YaHei UI", 9, "bold"))
         style.configure("Sub.TLabel", background=BG, foreground=MUTED, font=("Microsoft YaHei UI", 10))
-        style.configure("Card.TLabel", background=CARD, foreground=TEXT, font=("Microsoft YaHei UI", 10))
+        style.configure("Card.TLabel", background=CARD, foreground=MUTED, font=("Microsoft YaHei UI", 9))
         style.configure("Module.TLabel", background=CARD, foreground=TEXT, font=("Microsoft YaHei UI", 12, "bold"))
-        style.configure("TButton", font=("Microsoft YaHei UI", 9), padding=6)
+        style.configure("Detail.TLabel", background=CARD, foreground=MUTED, font=("Microsoft YaHei UI", 9))
+        style.configure("Footer.TLabel", background=CARD, foreground=MUTED, font=("Microsoft YaHei UI", 9))
+        style.configure("TButton", font=("Microsoft YaHei UI", 9), padding=(12, 7),
+                        background=SOFT, foreground=TEXT, borderwidth=0)
+        style.map("TButton", background=[("active", "#DCEBE4"), ("disabled", "#F0F2F1")])
+        style.configure("Accent.TButton", background=GREEN, foreground="#FFFFFF", padding=(15, 8))
+        style.map("Accent.TButton", background=[("active", "#115746"), ("disabled", "#B9CBC4")],
+                  foreground=[("disabled", "#FFFFFF")])
+        style.configure("Module.TCheckbutton", background=CARD, foreground=TEXT)
+        style.map("Module.TCheckbutton", background=[("active", CARD)])
+        style.configure("Footer.TCheckbutton", background=CARD, foreground=TEXT)
+        style.map("Footer.TCheckbutton", background=[("active", CARD)])
 
-        shell = ttk.Frame(self.root, padding=(24, 24, 24, 14))
+        shell = ttk.Frame(self.root, padding=(24, 20, 24, 18))
         shell.pack(fill="both", expand=True)
-        ttk.Label(shell, text="win-assistants", style="Title.TLabel").pack(anchor="w")
-        ttk.Label(shell, text="一个入口管理短信、久坐、Foxmail 与号码提醒", style="Sub.TLabel").pack(anchor="w", pady=(2, 14))
+
+        header = ttk.Frame(shell)
+        header.pack(fill="x", pady=(0, 18))
+        ttk.Label(header, text="工作台 / WINDOWS", style="Eyebrow.TLabel").pack(anchor="w")
+        ttk.Label(header, text="晨的小助手", style="Title.TLabel").pack(anchor="w", pady=(3, 2))
+        ttk.Label(header, text="短信、久坐、Foxmail 与号码提醒，统一在这里管理", style="Sub.TLabel").pack(anchor="w")
 
         list_holder = ttk.Frame(shell)
         list_holder.pack(fill="both", expand=True)
@@ -99,63 +118,87 @@ class WinAssistantsApp:
 
         cards = ttk.Frame(canvas)
         cards_window = canvas.create_window((0, 0), window=cards, anchor="nw")
-
-        def refresh_scrollregion(_event=None) -> None:
-            canvas.configure(scrollregion=canvas.bbox("all"))
-
-        def fit_cards_width(event) -> None:
-            canvas.itemconfigure(cards_window, width=event.width)
-
-        cards.bind("<Configure>", refresh_scrollregion)
-        canvas.bind("<Configure>", fit_cards_width)
+        cards.bind("<Configure>", lambda _event: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda event: canvas.itemconfigure(cards_window, width=event.width))
 
         def on_mousewheel(event) -> None:
-            delta = -1 if event.delta > 0 else 1
-            canvas.yview_scroll(delta * 3, "units")
+            canvas.yview_scroll((-1 if event.delta > 0 else 1) * 3, "units")
 
         canvas.bind_all("<MouseWheel>", on_mousewheel, add="+")
 
+        details = {
+            "sms": "内置接收 · 不再启动独立短信程序",
+            "sedentary": "内置检测 · 管理工作与休息状态",
+            "chen_helper": "本地桥接 · 仅监听 127.0.0.1:18763",
+            "number_inbox": "连接网页端 · 同步待录入号码",
+        }
         for item in MODULES:
-            card = ttk.Frame(cards, style="Card.TFrame", padding=14)
-            card.pack(fill="x", pady=(0, 10))
-            head = ttk.Frame(card, style="Card.TFrame")
-            head.pack(fill="x")
-            ttk.Checkbutton(head, variable=self.enabled_vars[item.key], command=lambda key=item.key: self._toggle_module(key)).pack(side="left")
-            ttk.Label(head, text=item.name, style="Module.TLabel").pack(side="left")
-            ttk.Label(head, textvariable=self.status_vars[item.key], style="Card.TLabel").pack(side="right")
-            ttk.Label(card, text=item.description, style="Card.TLabel").pack(anchor="w", padx=(28, 0), pady=(3, 8))
-            row = ttk.Frame(card, style="Card.TFrame")
-            row.pack(fill="x", padx=(28, 0))
-            if item.key == "sms":
-                ttk.Label(row, text="内置模块 · 不再启动独立短信 EXE", style="Card.TLabel").pack(side="left")
-                ttk.Label(row, textvariable=self.sms_code_var, style="Card.TLabel").pack(side="left", padx=(18, 0))
-                ttk.Button(row, text="复制验证码", command=self._copy_sms_code).pack(side="right", padx=(8, 0))
-                ttk.Button(row, text="设置", command=self._show_sms_settings).pack(side="right")
-            elif item.key == "chen_helper":
-                ttk.Label(row, text="内置模块 · 仅监听 127.0.0.1:18763 · 不自动发送邮件", style="Card.TLabel").pack(side="left")
-                ttk.Button(row, text="重新启动", command=lambda: self._start_one("chen_helper")).pack(side="right")
-            elif item.key == "number_inbox":
-                ttk.Label(row, text="内置模块 · 从晨的小助手读取待录入队列", style="Card.TLabel").pack(side="left")
-                ttk.Button(row, text="打开待录入", command=self._open_number_inbox).pack(side="right", padx=(8, 0))
-                ttk.Button(row, text="设置", command=self._show_number_inbox_settings).pack(side="right")
-            elif item.key == "sedentary":
-                ttk.Label(row, text="内置模块 · 人体存在检测与强制休息已合并", style="Card.TLabel").pack(side="left")
-                ttk.Button(row, text="打开状态", command=lambda: self._sedentary_command("show_status")).pack(side="right", padx=(8, 0))
-                ttk.Button(row, text="设置", command=lambda: self._sedentary_command("show_settings")).pack(side="right", padx=(8, 0))
-                ttk.Button(row, text="重新启动", command=lambda key=item.key: self._restart_sedentary(key)).pack(side="right")
-            else:
-                ttk.Entry(row, textvariable=self.path_vars[item.key]).pack(side="left", fill="x", expand=True)
-                ttk.Button(row, text="选择", command=lambda key=item.key: self._choose_path(key)).pack(side="left", padx=(8, 0))
-                ttk.Button(row, text="立即启动", command=lambda key=item.key: self._start_one(key)).pack(side="left", padx=(8, 0))
+            border = tk.Frame(cards, bg=BORDER, padx=1, pady=1)
+            border.pack(fill="x", pady=(0, 10))
+            card = ttk.Frame(border, style="Card.TFrame", padding=(17, 14))
+            card.pack(fill="both", expand=True)
 
-        controls = ttk.Frame(shell)
-        controls.pack(fill="x", pady=(10, 0))
-        ttk.Label(controls, text=f"当前版本 v{__version__}", style="Sub.TLabel").pack(side="left", padx=(0, 12))
-        ttk.Checkbutton(controls, text="随 Windows 登录静默启动（直接进入托盘）", variable=self.startup_var, command=self._toggle_startup).pack(side="left")
-        ttk.Button(controls, text="检查更新", command=self._request_update_check).pack(side="right")
-        ttk.Button(controls, text="接管旧工具的开机启动", command=self._take_over).pack(side="right", padx=(0, 8))
-        ttk.Label(shell, textvariable=self.update_status_var, style="Sub.TLabel").pack(anchor="w", pady=(8, 0))
-        ttk.Label(shell, text=f"v{__version__} · 四个模块统一内置，同一个检查更新。", style="Sub.TLabel").pack(anchor="w", pady=(3, 0))
+            heading = ttk.Frame(card, style="Card.TFrame")
+            heading.pack(fill="x")
+            ttk.Checkbutton(heading, variable=self.enabled_vars[item.key],
+                            command=lambda key=item.key: self._toggle_module(key),
+                            style="Module.TCheckbutton").pack(side="left", padx=(0, 7))
+            ttk.Label(heading, text=item.name, style="Module.TLabel").pack(side="left")
+            tk.Label(heading, textvariable=self.status_vars[item.key], bg=SOFT, fg=GREEN,
+                     padx=10, pady=4, wraplength=250, justify="right",
+                     font=("Microsoft YaHei UI", 9)).pack(side="right")
+
+            ttk.Label(card, text=item.description, style="Card.TLabel", wraplength=620).pack(
+                anchor="w", padx=(34, 0), pady=(3, 10))
+            bottom = ttk.Frame(card, style="Card.TFrame")
+            bottom.pack(fill="x", padx=(34, 0))
+            actions = ttk.Frame(bottom, style="Card.TFrame")
+            actions.pack(side="right")
+            if item.key == "sms":
+                ttk.Button(actions, text="设置", command=self._show_sms_settings).pack(side="left", padx=(0, 7))
+                ttk.Button(actions, text="复制验证码", command=self._copy_sms_code,
+                           style="Accent.TButton").pack(side="left")
+            elif item.key == "chen_helper":
+                ttk.Button(actions, text="重新启动", command=lambda: self._start_one("chen_helper")).pack(side="left")
+            elif item.key == "number_inbox":
+                ttk.Button(actions, text="设置", command=self._show_number_inbox_settings).pack(side="left", padx=(0, 7))
+                ttk.Button(actions, text="打开待录入", command=self._open_number_inbox,
+                           style="Accent.TButton").pack(side="left")
+            elif item.key == "sedentary":
+                ttk.Button(actions, text="重新启动", command=lambda key=item.key: self._restart_sedentary(key)).pack(side="left", padx=(0, 7))
+                ttk.Button(actions, text="设置", command=lambda: self._sedentary_command("show_settings")).pack(side="left", padx=(0, 7))
+                ttk.Button(actions, text="打开状态", command=lambda: self._sedentary_command("show_status"),
+                           style="Accent.TButton").pack(side="left")
+            else:
+                ttk.Button(actions, text="选择", command=lambda key=item.key: self._choose_path(key)).pack(side="left", padx=(0, 7))
+                ttk.Button(actions, text="立即启动", command=lambda key=item.key: self._start_one(key),
+                           style="Accent.TButton").pack(side="left")
+            if item.key == "sms":
+                detail = self.sms_code_var
+            elif item.key in details:
+                detail = details[item.key]
+            else:
+                detail = self.path_vars[item.key]
+            ttk.Label(bottom, textvariable=detail if isinstance(detail, tk.StringVar) else None,
+                      text=detail if isinstance(detail, str) else "",
+                      style="Detail.TLabel", wraplength=330).pack(side="left", anchor="center")
+
+        footer_border = tk.Frame(shell, bg=BORDER, height=1)
+        footer_border.pack(fill="x", pady=(12, 0))
+        footer = ttk.Frame(shell, style="Footer.TFrame", padding=(16, 13))
+        footer.pack(fill="x")
+        top = ttk.Frame(footer, style="Footer.TFrame")
+        top.pack(fill="x")
+        ttk.Label(top, text=f"版本 v{__version__}", style="Footer.TLabel").pack(side="left", padx=(0, 15))
+        ttk.Checkbutton(top, text="登录 Windows 后在托盘启动", variable=self.startup_var,
+                        command=self._toggle_startup, style="Footer.TCheckbutton").pack(side="left")
+        buttons = ttk.Frame(footer, style="Footer.TFrame")
+        buttons.pack(fill="x", pady=(10, 0))
+        ttk.Button(buttons, text="接管旧工具启动项", command=self._take_over).pack(side="left")
+        ttk.Button(buttons, text="检查更新", command=self._request_update_check,
+                   style="Accent.TButton").pack(side="right")
+        ttk.Label(footer, textvariable=self.update_status_var, style="Footer.TLabel").pack(
+            anchor="w", pady=(10, 0))
 
     def _save_ui(self) -> None:
         for item in MODULES:
