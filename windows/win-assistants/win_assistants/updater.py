@@ -168,6 +168,26 @@ def stage_update(
         temp.unlink(missing_ok=True)
 
 
+def verify_staged_startup(staged: Path, timeout: float = 90.0) -> None:
+    """Exercise the downloaded one-file bootloader before stopping the running app."""
+    marker = staged.with_name(f"startup-check-{os.getpid()}-{time.time_ns()}.txt")
+    try:
+        process = subprocess.Popen(
+            [str(staged), "--smoke-test", str(marker)],
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        try:
+            process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            raise RuntimeError("新程序启动检查超时，更新已取消；当前版本仍可使用")
+        if process.returncode != 0 or not marker.is_file() or marker.read_text(encoding="ascii") != "ready":
+            raise RuntimeError("新程序无法加载运行组件，更新已取消；当前版本仍可使用")
+    finally:
+        marker.unlink(missing_ok=True)
+
+
 def _replacement_script(
     source: Path,
     target: Path,
@@ -189,6 +209,10 @@ $expectedSha = '{expected_sha}'
 $expectedSize = {expected_size}
 $arguments = '{arguments}'
 $candidate = "$target.update"
+$backup = "$target.previous"
+$installedNew = $false
+$verifiedStartup = $false
+$newProcess = $null
 $logDir = Join-Path $env:LOCALAPPDATA 'win-assistants'
 $log = Join-Path $logDir 'update.log'
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null
@@ -215,9 +239,12 @@ try {{
         throw "candidate sha256 mismatch: expected=$expectedSha actual=$sha"
     }}
 
+    Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
+    Copy-Item -LiteralPath $target -Destination $backup -Force
     for ($attempt = 0; $attempt -lt 30; $attempt++) {{
         try {{
             Move-Item -LiteralPath $candidate -Destination $target -Force
+            $installedNew = $true
             break
         }} catch {{
             if ($attempt -ge 29) {{ throw }}
@@ -232,15 +259,52 @@ try {{
     }}
 
     Write-UpdateLog "installed sha=$installedSha size=$installedSize"
-    if ($arguments) {{
-        Start-Process -FilePath $target -ArgumentList $arguments
-    }} else {{
-        Start-Process -FilePath $target
+    $probe = Join-Path $logDir ("startup-" + [guid]::NewGuid().ToString("N") + ".txt")
+    $launchArgs = @()
+    if ($arguments) {{ $launchArgs += $arguments }}
+    $launchArgs += '--update-startup-probe'
+    $launchArgs += ('"' + $probe + '"')
+    Start-Sleep -Seconds 2
+    $newProcess = Start-Process -FilePath $target -ArgumentList $launchArgs -PassThru
+    Write-UpdateLog "restart requested pid=$($newProcess.Id)"
+    for ($attempt = 0; $attempt -lt 120; $attempt++) {{
+        if ((Test-Path -LiteralPath $probe) -and ((Get-Content -LiteralPath $probe -Raw) -eq 'ready')) {{
+            $verifiedStartup = $true
+            break
+        }}
+        $newProcess.Refresh()
+        if ($newProcess.HasExited) {{ break }}
+        Start-Sleep -Milliseconds 500
     }}
-    Write-UpdateLog "restart requested"
+    Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
+    if (-not $verifiedStartup) {{ throw "new executable did not confirm startup within 60 seconds" }}
+    Write-UpdateLog "startup confirmed pid=$($newProcess.Id)"
+    Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
 }} catch {{
     Write-UpdateLog ("FAILED: " + $_.Exception.Message)
-    throw
+    if ($installedNew -and (Test-Path -LiteralPath $backup)) {{
+        try {{
+            if ($newProcess -and -not $newProcess.HasExited) {{
+                Stop-Process -Id $newProcess.Id -Force -ErrorAction SilentlyContinue
+                try {{ Wait-Process -Id $newProcess.Id -Timeout 10 -ErrorAction SilentlyContinue }} catch {{}}
+            }}
+            Move-Item -LiteralPath $backup -Destination $target -Force
+            Write-UpdateLog "rolled back to previous executable"
+        }} catch {{
+            Write-UpdateLog ("ROLLBACK FAILED: " + $_.Exception.Message)
+        }}
+    }}
+    if (Test-Path -LiteralPath $target) {{
+        try {{
+            if ($arguments) {{
+                Start-Process -FilePath $target -ArgumentList $arguments
+            }} else {{
+                Start-Process -FilePath $target
+            }}
+        }} catch {{
+            Write-UpdateLog ("restart previous executable failed: " + $_.Exception.Message)
+        }}
+    }}
 }} finally {{
     Remove-Item -LiteralPath $candidate -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $source -Force -ErrorAction SilentlyContinue
