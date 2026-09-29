@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import io
+import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from win_assistants.updater import (
     _cache_busted_url,
+    _download_file,
     _replacement_script,
     _version_tuple,
     newer_version_available,
+    verify_staged_startup,
 )
 
 
@@ -30,6 +35,28 @@ class UpdaterTests(unittest.TestCase):
         self.assertEqual(query["sha"], ["a" * 16])
         self.assertTrue(query["nocache"][0].isdigit())
 
+    def test_download_reports_actual_bytes(self) -> None:
+        events: list[tuple[int, int]] = []
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "update.download"
+            with patch("win_assistants.updater.urllib.request.urlopen",
+                       return_value=io.BytesIO(b"abcde")):
+                _download_file("https://example.test/app.exe", target,
+                               expected_size=5, progress=lambda done, total: events.append((done, total)))
+            self.assertEqual(target.read_bytes(), b"abcde")
+        self.assertEqual(events, [(0, 5), (5, 5)])
+
+    def test_failed_staged_startup_keeps_current_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            candidate = Path(directory) / "candidate.exe"
+            candidate.write_bytes(b"MZ")
+            process = unittest.mock.Mock()
+            process.returncode = 1
+            with patch("win_assistants.updater.subprocess.Popen", return_value=process):
+                with self.assertRaisesRegex(RuntimeError, "当前版本仍可使用"):
+                    verify_staged_startup(candidate)
+            self.assertTrue(candidate.exists())
+
     def test_replacement_restarts_in_background_and_verifies_candidate(self) -> None:
         script = _replacement_script(
             Path(r"C:\Tools\new.exe"),
@@ -46,6 +73,10 @@ class UpdaterTests(unittest.TestCase):
         self.assertIn("Move-Item -LiteralPath $candidate -Destination $target -Force", script)
         self.assertIn("Start-Process -FilePath $target -ArgumentList $arguments", script)
         self.assertIn("update.log", script)
+        self.assertIn("startup confirmed", script)
+        self.assertIn("--update-startup-probe", script)
+        self.assertIn("rolled back to previous executable", script)
+        self.assertIn("Move-Item -LiteralPath $backup -Destination $target -Force", script)
 
     def test_replacement_can_restart_visible(self) -> None:
         script = _replacement_script(

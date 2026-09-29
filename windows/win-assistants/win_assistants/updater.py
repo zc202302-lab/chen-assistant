@@ -10,6 +10,7 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from typing import Callable
 
 UPDATE_MANIFEST_URL = "https://assistant.ziboxiaozhushou.cn/static/win-assistants/update.json"
 
@@ -75,17 +76,31 @@ def newer_version_available(current_version: str, manifest: dict[str, object]) -
     return _version_tuple(str(manifest.get("version", "0"))) > _version_tuple(current_version)
 
 
-def _download_file(url: str, target: Path, timeout: float = 120.0, attempts: int = 3) -> None:
+def _download_file(
+    url: str,
+    target: Path,
+    timeout: float = 120.0,
+    attempts: int = 3,
+    *,
+    expected_size: int = 0,
+    progress: Callable[[int, int], None] | None = None,
+) -> None:
     last_error: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
             target.unlink(missing_ok=True)
+            downloaded = 0
+            if progress:
+                progress(0, expected_size)
             with urllib.request.urlopen(_request(url), timeout=timeout) as response, target.open("wb") as handle:
                 while True:
                     block = response.read(1024 * 1024)
                     if not block:
                         break
                     handle.write(block)
+                    downloaded += len(block)
+                    if progress:
+                        progress(downloaded, expected_size)
             if target.stat().st_size <= 0:
                 raise RuntimeError("下载到的更新文件为空")
             return
@@ -108,7 +123,12 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def stage_update(manifest: dict[str, object]) -> Path:
+def stage_update(
+    manifest: dict[str, object],
+    *,
+    progress: Callable[[int, int], None] | None = None,
+    phase: Callable[[str], None] | None = None,
+) -> Path:
     if not getattr(sys, "frozen", False):
         raise RuntimeError("当前不是已打包 EXE，不能执行自更新")
     update_root = Path(os.getenv("LOCALAPPDATA") or tempfile.gettempdir()) / "win-assistants" / "updates"
@@ -125,7 +145,9 @@ def stage_update(manifest: dict[str, object]) -> Path:
             version=version,
             sha256=expected_sha,
         )
-        _download_file(download_url, temp)
+        _download_file(download_url, temp, expected_size=expected_size, progress=progress)
+        if phase:
+            phase("正在校验更新文件…")
         actual_size = temp.stat().st_size
         if actual_size != expected_size:
             raise RuntimeError(
@@ -144,6 +166,26 @@ def stage_update(manifest: dict[str, object]) -> Path:
         return staged
     finally:
         temp.unlink(missing_ok=True)
+
+
+def verify_staged_startup(staged: Path, timeout: float = 90.0) -> None:
+    """Exercise the downloaded one-file bootloader before stopping the running app."""
+    marker = staged.with_name(f"startup-check-{os.getpid()}-{time.time_ns()}.txt")
+    try:
+        process = subprocess.Popen(
+            [str(staged), "--smoke-test", str(marker)],
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        try:
+            process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            raise RuntimeError("新程序启动检查超时，更新已取消；当前版本仍可使用")
+        if process.returncode != 0 or not marker.is_file() or marker.read_text(encoding="ascii") != "ready":
+            raise RuntimeError("新程序无法加载运行组件，更新已取消；当前版本仍可使用")
+    finally:
+        marker.unlink(missing_ok=True)
 
 
 def _replacement_script(
@@ -167,6 +209,10 @@ $expectedSha = '{expected_sha}'
 $expectedSize = {expected_size}
 $arguments = '{arguments}'
 $candidate = "$target.update"
+$backup = "$target.previous"
+$installedNew = $false
+$verifiedStartup = $false
+$newProcess = $null
 $logDir = Join-Path $env:LOCALAPPDATA 'win-assistants'
 $log = Join-Path $logDir 'update.log'
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null
@@ -193,9 +239,12 @@ try {{
         throw "candidate sha256 mismatch: expected=$expectedSha actual=$sha"
     }}
 
+    Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
+    Copy-Item -LiteralPath $target -Destination $backup -Force
     for ($attempt = 0; $attempt -lt 30; $attempt++) {{
         try {{
             Move-Item -LiteralPath $candidate -Destination $target -Force
+            $installedNew = $true
             break
         }} catch {{
             if ($attempt -ge 29) {{ throw }}
@@ -210,15 +259,52 @@ try {{
     }}
 
     Write-UpdateLog "installed sha=$installedSha size=$installedSize"
-    if ($arguments) {{
-        Start-Process -FilePath $target -ArgumentList $arguments
-    }} else {{
-        Start-Process -FilePath $target
+    $probe = Join-Path $logDir ("startup-" + [guid]::NewGuid().ToString("N") + ".txt")
+    $launchArgs = @()
+    if ($arguments) {{ $launchArgs += $arguments }}
+    $launchArgs += '--update-startup-probe'
+    $launchArgs += ('"' + $probe + '"')
+    Start-Sleep -Seconds 2
+    $newProcess = Start-Process -FilePath $target -ArgumentList $launchArgs -PassThru
+    Write-UpdateLog "restart requested pid=$($newProcess.Id)"
+    for ($attempt = 0; $attempt -lt 120; $attempt++) {{
+        if ((Test-Path -LiteralPath $probe) -and ((Get-Content -LiteralPath $probe -Raw) -eq 'ready')) {{
+            $verifiedStartup = $true
+            break
+        }}
+        $newProcess.Refresh()
+        if ($newProcess.HasExited) {{ break }}
+        Start-Sleep -Milliseconds 500
     }}
-    Write-UpdateLog "restart requested"
+    Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
+    if (-not $verifiedStartup) {{ throw "new executable did not confirm startup within 60 seconds" }}
+    Write-UpdateLog "startup confirmed pid=$($newProcess.Id)"
+    Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
 }} catch {{
     Write-UpdateLog ("FAILED: " + $_.Exception.Message)
-    throw
+    if ($installedNew -and (Test-Path -LiteralPath $backup)) {{
+        try {{
+            if ($newProcess -and -not $newProcess.HasExited) {{
+                Stop-Process -Id $newProcess.Id -Force -ErrorAction SilentlyContinue
+                try {{ Wait-Process -Id $newProcess.Id -Timeout 10 -ErrorAction SilentlyContinue }} catch {{}}
+            }}
+            Move-Item -LiteralPath $backup -Destination $target -Force
+            Write-UpdateLog "rolled back to previous executable"
+        }} catch {{
+            Write-UpdateLog ("ROLLBACK FAILED: " + $_.Exception.Message)
+        }}
+    }}
+    if (Test-Path -LiteralPath $target) {{
+        try {{
+            if ($arguments) {{
+                Start-Process -FilePath $target -ArgumentList $arguments
+            }} else {{
+                Start-Process -FilePath $target
+            }}
+        }} catch {{
+            Write-UpdateLog ("restart previous executable failed: " + $_.Exception.Message)
+        }}
+    }}
 }} finally {{
     Remove-Item -LiteralPath $candidate -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $source -Force -ErrorAction SilentlyContinue

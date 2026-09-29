@@ -266,14 +266,17 @@ jobs:
               exit "$status"
             fi
           fi
-      - name: Smoke launch built executable
+      - name: Smoke test bundled Python startup
         run: |
+          marker="$RUNNER_TEMP/win-assistants-smoke-ready.txt"
+          rm -f "$marker"
           set +e
-          timeout 8s "$WINE_BIN" dist/win-assistants.exe --background
+          timeout 90s "$WINE_BIN" dist/win-assistants.exe --smoke-test "$marker"
           status=$?
           set -e
-          if [ "$status" -ne 124 ]; then
-            echo "win-assistants.exe exited during GUI smoke test (status=$status)"
+          if [ "$status" -ne 0 ] || [ ! -f "$marker" ] || [ "$(cat "$marker")" != ready ]; then
+            echo "Frozen EXE did not load Python and bundled modules (status=$status)." >&2
+            timeout 30s "$WINESERVER" -k || true
             exit 1
           fi
           timeout 30s "$WINESERVER" -k || true
@@ -324,7 +327,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": "v0.5.6：重新设计 Windows 工作台，统一模块卡片、状态和更新操作区。",
+              "notes": "v0.5.7：显示下载进度；安装前验证新程序，重启后确认启动，失败自动回退。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
