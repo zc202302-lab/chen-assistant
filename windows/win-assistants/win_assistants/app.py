@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 import queue
 import re
 import threading
@@ -19,7 +20,7 @@ from .single_instance import SingleInstance
 from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
 from .sedentary import read_status as read_sedentary_status, send_command as send_sedentary_command, status_text as sedentary_status_text
 from .startup import is_startup_enabled, set_startup, stop_legacy_foxmail_processes, take_over_legacy_startup
-from .updater import fetch_manifest, launch_replacement, newer_version_available, stage_update
+from .updater import fetch_manifest, launch_replacement, newer_version_available, stage_update, verify_staged_startup
 
 
 BG = "#F3F6F5"
@@ -839,6 +840,8 @@ class WinAssistantsApp:
                 self.root.after(0, lambda message=message: self._update_phase(message))
 
             staged = stage_update(manifest, progress=on_progress, phase=on_phase)
+            on_phase("正在验证新程序能否启动…")
+            verify_staged_startup(staged)
             self.root.after(0, lambda: self._update_phase("校验完成，正在安装并重启…"))
             launch_replacement(staged, manifest)
         except Exception as exc:
@@ -931,6 +934,7 @@ class WinAssistantsApp:
 def run() -> None:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--background", action="store_true")
+    parser.add_argument("--update-startup-probe", default="")
     args, _ = parser.parse_known_args()
     instance = SingleInstance()
     if instance.already_running:
@@ -939,6 +943,8 @@ def run() -> None:
     root = tk.Tk()
     try:
         WinAssistantsApp(root, start_hidden=args.background)
+        if args.update_startup_probe:
+            Path(args.update_startup_probe).write_text("ready", encoding="ascii")
         root.mainloop()
     finally:
         instance.close()
