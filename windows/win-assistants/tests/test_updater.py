@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import io
+import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 from win_assistants.updater import (
     _cache_busted_url,
+    _download_file,
     _replacement_script,
     _version_tuple,
     newer_version_available,
@@ -29,6 +33,17 @@ class UpdaterTests(unittest.TestCase):
         self.assertEqual(query["version"], ["0.5.2"])
         self.assertEqual(query["sha"], ["a" * 16])
         self.assertTrue(query["nocache"][0].isdigit())
+
+    def test_download_reports_actual_bytes(self) -> None:
+        events: list[tuple[int, int]] = []
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "update.download"
+            with patch("win_assistants.updater.urllib.request.urlopen",
+                       return_value=io.BytesIO(b"abcde")):
+                _download_file("https://example.test/app.exe", target,
+                               expected_size=5, progress=lambda done, total: events.append((done, total)))
+            self.assertEqual(target.read_bytes(), b"abcde")
+        self.assertEqual(events, [(0, 5), (5, 5)])
 
     def test_replacement_restarts_in_background_and_verifies_candidate(self) -> None:
         script = _replacement_script(
