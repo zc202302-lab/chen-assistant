@@ -64,6 +64,15 @@ def main():
         pass
     else:
         raise AssertionError('oversized expansion must be rejected')
+    unsafe = io.BytesIO()
+    with zipfile.ZipFile(unsafe, 'w') as archive:
+        archive.writestr('xl/workbook.xml', ('<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE workbook [<!ENTITY test "unsafe">]><workbook/>').encode('utf-16'))
+    try:
+        ExcelTable(unsafe.getvalue(), 'entities.xlsx')
+    except ValueError as exc:
+        assert 'XML' in str(exc)
+    else:
+        raise AssertionError('UTF-16 XML entity definitions must be rejected')
     init_db()
     ensure_work_lists_schema()
     ensure_work_list_import_schema()
@@ -128,6 +137,11 @@ def main():
         client.cookies.set('session_token', other_token)
         assert client.get(stale).status_code == 404
         assert client.post(stale + '/confirm', data={'csrf': other_csrf, 'revision': '3'}).status_code == 404
+        client.cookies.set('session_token', token)
+        with db() as conn:
+            conn.execute("UPDATE work_list_imports SET expires_at='2000-01-01T00:00:00+00:00' WHERE token=?", (stale.rsplit('/', 1)[-1],))
+        assert client.get(stale).status_code == 410
+        assert client.post(stale + '/confirm', data={'csrf': csrf, 'revision': '3'}).status_code == 410
     with db() as conn:
         assert dict(conn.execute('SELECT * FROM customers WHERE id=?', (customer_id,)).fetchone()) == customer_before
         assert [dict(r) for r in conn.execute('SELECT * FROM payment_entries')] == payments_before

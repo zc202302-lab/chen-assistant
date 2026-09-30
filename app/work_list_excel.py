@@ -107,7 +107,8 @@ class ExcelTable:
 
     def _xml(self, path):
         content = self.zip.read(path)
-        if b'<!DOCTYPE' in content.upper() or b'<!ENTITY' in content.upper():
+        definitions = content.replace(b'\x00', b'').upper()
+        if b'<!DOCTYPE' in definitions or b'<!ENTITY' in definitions:
             raise ValueError('文件包含不支持的 XML 定义')
         return ET.fromstring(content)
 
