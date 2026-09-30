@@ -90,7 +90,9 @@ async def import_excel_upload(request: Request):
                 _list(conn, target, True)
             conn.execute('DELETE FROM work_list_imports WHERE expires_at<?', (now_iso(),))
             owner = request.state.session['token_hash']
-            if conn.execute('SELECT COUNT(*) FROM work_list_imports WHERE owner=?', (owner,)).fetchone()[0] >= 10:
+            drafts = conn.execute('SELECT payload_enc FROM work_list_imports WHERE owner=?', (owner,)).fetchall()
+            active = sum(json.loads(decrypt_secret(row['payload_enc'])).get('phase') != 'done' for row in drafts)
+            if active >= 10:
                 raise ValueError('同时保留的预览最多10份，请在清单中完成导入或稍后再试')
             token = secrets.token_urlsafe(32)
             payload = {'phase': 'config', 'filename': filename, 'source': base64.b64encode(content).decode(),
