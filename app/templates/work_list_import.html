@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Excel 导入 · 清单{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/work-lists.css?v=1680">
+<section class="wl-shell">
+  <div class="wl-head"><div><a href="/work/lists">返回清单</a><h1>Excel 导入</h1><p>上传 → 选择工作表和范围 → 匹配字段 → 预览确认</p></div></div>
+  {% if error %}<p class="wl-error" role="alert" style="white-space:pre-wrap">{{ error }}</p>{% endif %}
+  {% if data.phase == 'upload' %}
+  <section class="wl-panel"><form class="wl-form" method="post" action="/work/list-import/upload" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Excel 文件<input type="file" name="file" accept=".xlsx,.xlsm,.xls" required></label>
+    <label>导入目标<select name="target" aria-label="导入目标"><option value="0">新建一张清单</option>{% for list in lists %}<option value="{{ list.id }}" {{ 'selected' if list.id == data.target else '' }}>{{ list.title }}</option>{% endfor %}</select></label>
+    <p class="wl-hint">支持 XLSX、XLSM、XLS；文件最多5 MB，每次最多5000行、50列。上传不会新增记录。预览仅本次登录可见，有效期24小时，完成后清除上传文件。公式读取文件已保存的结果，不执行公式或宏。</p>
+    <button type="submit">上传并选择范围</button>
+  </form></section>
+  {% elif data.phase == 'done' %}
+  <section class="wl-panel"><h2>导入完成</h2><p>新增 {{ data.imported }} 条记录，跳过 {{ data.skipped }} 条完全重复记录。</p><p class="wl-hint">导入只追加清单记录，不覆盖原有记录，也不修改客户缴费数据。</p><a class="btn" href="/work/lists/{{ data.target }}">查看清单</a></section>
+  {% else %}
+  <details class="wl-panel" {{ 'open' if data.phase == 'config' else '' }}><summary>工作表及导入范围 · {{ data.filename }}</summary>
+  <form class="wl-form" method="post" action="/work/list-import/{{ job.token }}/prepare">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ job.revision }}">
+    <label>工作表<select name="sheet" aria-label="工作表">{% for sheet in data.sheets %}<option value="{{ sheet }}" {{ 'selected' if sheet == data.sheet else '' }}>{{ sheet }}</option>{% endfor %}</select></label>
+    <div class="wl-import-range"><label>表头行<input type="number" name="header" value="{{ data.header }}" min="1" max="1000" required></label><label>开始列<input name="first" value="{{ data.first }}" maxlength="3" required placeholder="A"></label><label>结束列（可选）<input name="last" value="{{ data.last }}" maxlength="3" placeholder="例如 G"></label><label>结束行（可选）<input name="end" type="number" value="{{ data.end if data.end else '' }}" min="2" placeholder="留空至末尾"></label></div>
+    <p class="wl-hint">数据从表头下一行开始，空白行会跳过。表格左侧有汇总时，可只选右侧明细列，例如 D 至 G。合并或空白表头会生成列名，可在下一步修改。</p>
+    <label>导入目标<select name="target" aria-label="导入目标"><option value="0">新建一张清单</option>{% for list in lists %}<option value="{{ list.id }}" {{ 'selected' if list.id == data.target else '' }}>{{ list.title }}</option>{% endfor %}</select></label>
+    <label>新清单名称（选择新建时使用）<input name="title" value="{{ data.title }}" required maxlength="200"></label>
+    <button type="submit">读取所选范围</button>
+  </form></details>
+  {% if data.phase == 'mapping' or edit %}
+  <section class="wl-panel"><h2>匹配字段</h2><p>已读取 {{ data.table.rows|length }} 行。{{ '追加到：' + item.title if item else '创建新清单：' + data.title }}</p>
+  <p class="wl-hint">号码、账号、集团编码建议选择文本，以保留前导零。已有字段自动按同名匹配，可改为忽略或新建字段。关联客户必须唯一匹配；不匹配时可保留为普通文本。多选字段使用顿号、逗号或分号分隔。</p>
+  <form class="wl-form" method="post" action="/work/list-import/{{ job.token }}/preview"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ job.revision }}">
+    <div class="wl-table-wrap"><table class="wl-table"><thead><tr><th>Excel 列</th><th>导入到</th><th>新字段名称</th><th>新字段类型</th></tr></thead><tbody>
+    {% for col in data.table.columns %}{% set index = loop.index0 %}{% set matching = fields|rejectattr('hidden')|selectattr('label', 'equalto', col.label)|list %}{% set prior = data.mapping[index] if data.mapping is defined else none %}{% set chosen = prior.dest if prior else (matching[0].id|string if matching else 'new') %}
+      <tr><td>{{ col.letter }} · {{ col.label }}</td><td><select name="dest_{{ col.key }}" aria-label="{{ col.letter }}列导入到"><option value="new" {{ 'selected' if chosen == 'new' else '' }}>新建字段</option><option value="skip" {{ 'selected' if chosen == 'skip' else '' }}>忽略此列</option>{% for field in fields if not field.hidden %}<option value="{{ field.id }}" {{ 'selected' if chosen == field.id|string else '' }}>{{ field.label }}（{{ kinds[field.kind] }}）</option>{% endfor %}{% for dest, label in [('note','备注'),('status','记录状态'),('customer_name','关联客户：客户名称'),('customer_code','关联客户：集团编码')] %}<option value="{{ dest }}" {{ 'selected' if chosen == dest else '' }}>{{ label }}</option>{% endfor %}</select></td>
+      <td><input name="label_{{ col.key }}" maxlength="80" value="{{ prior.label if prior else col.label }}" aria-label="{{ col.letter }}列新字段名称"></td><td><select name="kind_{{ col.key }}" aria-label="{{ col.letter }}列新字段类型">{% for kind in ['text','number','money','date'] %}<option value="{{ kind }}" {{ 'selected' if prior and prior.kind == kind else '' }}>{{ kinds[kind] }}</option>{% endfor %}</select></td></tr>
+    {% endfor %}</tbody></table></div>
+    <label>完全重复的记录<select name="duplicates" aria-label="完全重复的记录"><option value="skip" {{ 'selected' if not data.plan or data.plan.duplicates == 'skip' else '' }}>跳过（字段、备注、状态、关联客户都相同）</option><option value="append" {{ 'selected' if data.plan and data.plan.duplicates == 'append' else '' }}>仍然追加</option></select></label>
+    <button type="submit">检查数据并预览导入</button>
+  </form></section>
+  <section class="wl-panel"><h2>原表数据预览（前20行）</h2><div class="wl-table-wrap"><table class="wl-table"><thead><tr><th>原表行号</th>{% for col in data.table.columns %}<th>{{ col.letter }} · {{ col.label }}</th>{% endfor %}</tr></thead><tbody>{% for row in data.table.rows[:20] %}<tr><td>{{ row.row }}</td>{% for cell in row.cells %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div></section>
+  {% elif data.phase == 'preview' %}
+  <section class="wl-panel"><h2>确认导入预览</h2><p>将新增 {{ data.plan.count }} 条，跳过 {{ data.plan.skipped }} 条完全重复记录。</p><p class="wl-hint">{{ '追加到：' + item.title if item else '创建新清单：' + data.title }}。只追加，不覆盖；确认时会再次检查重复记录。Excel 已丢失的前导零或超过15位数字的精度无法恢复，请先在原文件中将号码列保存为文本。</p>
+    <div class="wl-table-wrap"><table class="wl-table"><thead><tr><th>原表行号</th><th>处理</th>{% for field in data.plan.fields %}<th>{{ field.label }}</th>{% endfor %}<th>状态</th><th>备注</th></tr></thead><tbody>{% for row in data.plan.rows[:20] %}<tr><td>{{ row.source_row }}</td><td>{{ '跳过重复' if row.duplicate else '新增' }}</td>{% for field in data.plan.fields %}{% set value = row['values'].get(field.id|string, '') %}<td>{{ value|join('、') if field.kind == 'multi' else value }}</td>{% endfor %}<td>{{ '已完成' if row.status == 'done' else '待处理' }}</td><td>{{ row.note }}</td></tr>{% endfor %}</tbody></table></div>
+    <p class="wl-hint">预览仅显示前20行，确认将处理全部 {{ data.plan.rows|length }} 行。</p>
+    <form method="post" action="/work/list-import/{{ job.token }}/confirm" class="wl-actions"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ job.revision }}"><button type="submit">确认导入 {{ data.plan.count }} 条</button><a href="/work/list-import/{{ job.token }}?edit=1">返回修改匹配</a></form>
+  </section>
+  {% endif %}
+  {% endif %}
+</section>
+{% endblock %}

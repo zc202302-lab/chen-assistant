@@ -3,7 +3,7 @@
 {% block content %}
 <link rel="stylesheet" href="/static/work-lists.css?v=1670">
 <section class="wl-shell">
-  <div class="wl-head"><div><a href="/work/lists{{ '?archived=1' if item.archived else '' }}">全部清单</a><h1>{{ item.title }}</h1><p>{{ item.description }}</p></div><div class="wl-actions">{% if not item.archived %}<a class="btn" href="/work/lists/{{ item.id }}/records/new">新增记录</a>{% endif %}<a href="/work/lists/{{ item.id }}/settings">清单设置</a></div></div>
+  <div class="wl-head"><div><a href="/work/lists{{ '?archived=1' if item.archived else '' }}">全部清单</a><h1>{{ item.title }}</h1><p>{{ item.description }}</p></div><div class="wl-actions">{% if not item.archived %}<a class="btn" href="/work/list-import?list_id={{ item.id }}">Excel 导入</a><a class="btn" href="/work/lists/{{ item.id }}/records/new">新增记录</a>{% endif %}<a href="/work/lists/{{ item.id }}/settings">清单设置</a></div></div>
   {% if item.archived %}<p class="wl-notice">此清单已归档，可以查看和导出。需要编辑时请在清单设置中恢复。</p>{% endif %}
   <form class="wl-toolbar" method="get"><input name="q" value="{{ q }}" aria-label="搜索记录" placeholder="搜索字段、客户或备注"><select name="status" aria-label="记录状态"><option value="">全部状态</option><option value="pending" {{ 'selected' if status == 'pending' else '' }}>待处理</option><option value="done" {{ 'selected' if status == 'done' else '' }}>已完成</option></select><button type="submit">筛选</button><a href="/work/lists/{{ item.id }}">重置</a><a href="/work/lists/{{ item.id }}/export.xlsx?q={{ q|urlencode }}&amp;status={{ status|urlencode }}">导出当前结果 Excel</a></form>
   <p class="wl-hint">共 {{ rows|length }} 条记录{% if q or status %}（筛选结果）{% endif %}</p>
@@ -13,3 +13,4 @@
   </tbody></table></div>
 </section>
 {% endblock %}
+
