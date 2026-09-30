@@ -6,3 +6,5 @@ python-multipart==0.0.32
 cryptography==50.0.1
 xlsxwriter==3.2.9
 httpx==0.28.1
+xlrd==2.0.2
+

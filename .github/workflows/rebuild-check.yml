@@ -146,6 +146,8 @@ jobs:
         run: |
           python tests/work_lists_contract.py
           python tests/work_lists_acceptance.py
+          python tests/work_list_import_contract.py
+          python tests/work_list_import_acceptance.py
 
       - name: Code governance inventory
         if: steps.scope.outputs.mode == 'full'
@@ -442,3 +444,4 @@ jobs:
       - name: Deployment skipped
         if: steps.scope.outputs.deploy != '1'
         run: echo "No Web runtime files changed; production deployment skipped."
+

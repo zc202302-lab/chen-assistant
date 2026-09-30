@@ -4,6 +4,7 @@
 <link rel="stylesheet" href="/static/work-lists.css?v=1670">
 <section class="wl-shell">
   <div class="wl-head"><div><a href="/work">工作</a><h1>清单</h1><p>按需定义字段，收集欠费、商机及其他工作信息。</p></div><a href="/work/lists?archived={{ 0 if archived else 1 }}">{{ '返回使用中' if archived else '已归档清单' }}</a></div>
+  <div class="wl-actions"><a class="btn" href="/work/list-import">从 Excel 导入</a></div>
   <form class="wl-toolbar" method="get"><input type="hidden" name="archived" value="{{ 1 if archived else 0 }}"><input name="q" value="{{ q }}" placeholder="搜索清单名称或说明" aria-label="搜索清单"><button type="submit">搜索</button></form>
   <div class="wl-grid">
   {% for item in lists %}<a class="wl-card" href="/work/lists/{{ item.id }}"><h2>{{ item.title }}</h2><p>{{ item.description or '暂无说明' }}</p><span>{{ item.record_count }} 条记录 · {{ '已归档' if item.archived else '使用中' }}</span></a>{% else %}<p class="wl-empty">{{ '暂无已归档清单。' if archived else '暂无清单。可以从下面新建一张。' }}</p>{% endfor %}
@@ -18,3 +19,4 @@
   </form></section>{% endif %}
 </section>
 {% endblock %}
+
