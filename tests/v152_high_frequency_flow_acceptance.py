@@ -105,6 +105,37 @@ def main():
 
             page.goto(f'http://127.0.0.1:8158/customers/{cid}', wait_until='networkidle')
             page.wait_for_timeout(900)
+            # Row numbers remain visible and stable while searching; profile text
+            # uses the shared clipboard helper and preserves its original label.
+            expect(page.locator('.v023-profile-card .v023-copy-mini')).to_have_count(0)
+            name_copy = page.locator('[data-customer-copy]').first
+            name_copy.click()
+            assert page.evaluate('navigator.clipboard.readText()') == 'v152高频缴费客户'
+            expect(name_copy).to_have_text('v152高频缴费客户')
+            assert page.locator('[data-payment-row] [data-row-number]').all_text_contents() == ['1', '2', '3']
+            expect(page.locator('.payment-sequence-head')).to_be_visible()
+            finder = page.locator('[data-v128-finder="payment"]')
+            finder.locator('[data-v128-finder-trigger]').click()
+            search = finder.locator('[data-v128-query]')
+            search.fill('ACC-V152-2')
+            expect(page.locator(f'[data-payment-row][data-service-id="{ids[1]}"] [data-row-number]')).to_have_text('2')
+            search.fill('')
+            finder.locator('[data-v128-finder-close]').click()
+            page.locator('[data-customer-tab="services"]').click()
+            assert page.locator('[data-business-row] [data-row-number]').all_text_contents() == ['1', '2', '3']
+            expect(page.locator('[data-business-row] [data-row-number]').first).to_be_visible()
+            page.locator('[data-customer-tab="payment"]').click()
+            # Reconciliation/reorder updates DOM order: renumber without touching
+            # amounts, review state, or service identity.
+            page.evaluate("""() => {
+                const list = document.querySelector('#paymentSortable');
+                const rows = list.querySelectorAll('[data-payment-row]');
+                list.insertBefore(rows[2], rows[0]);
+            }""")
+            page.wait_for_timeout(100)
+            assert page.locator('[data-payment-row] [data-row-number]').all_text_contents() == ['1', '2', '3']
+            page.reload(wait_until='networkidle')
+            page.wait_for_timeout(900)
             rows = [page.locator(f'[data-payment-row][data-service-id="{sid}"]') for sid in ids]
             for row in rows:
                 expect(row).to_have_attribute('data-confirmed', '0')

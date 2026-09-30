@@ -104,9 +104,17 @@
   };
 
   const syncCustomerHeader = freshDocument => {
-    syncText('.v023-name-line h1', freshDocument);
-    syncText('.v023-identity-strip > div:nth-child(1) b', freshDocument);
-    syncText('.v023-identity-strip > div:nth-child(2) b', freshDocument);
+    // Copyable labels must retain their button and update both text and payload.
+    for (const selector of ['.v023-name-line h1',
+      '.v023-identity-strip > div:nth-child(1) b',
+      '.v023-identity-strip > div:nth-child(2) b']) {
+      const current = document.querySelector(selector);
+      const fresh = freshDocument.querySelector(selector);
+      if (current && fresh && current.innerHTML !== fresh.innerHTML) {
+        current.replaceChildren(...[...fresh.childNodes].map(node => node.cloneNode(true)));
+        softlyMark(current);
+      }
+    }
     syncCopyValue('.v023-name-line .copy-btn', freshDocument);
     syncCopyValue('.v023-identity-strip > div:nth-child(1) .copy-btn', freshDocument);
     syncCopyValue('.v023-identity-strip > div:nth-child(2) .copy-btn', freshDocument);
