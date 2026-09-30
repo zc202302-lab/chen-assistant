@@ -110,7 +110,16 @@ def main():
             page.get_by_role('button', name='恢复清单', exact=True).click()
             page.locator('.wl-card').filter(has_text='9月欠费清单').click()
             expect(page.get_by_text('00123456789', exact=True)).to_be_visible()
-            assert not errors, errors
+            # Chromium reports native cross-document transition cancellation as
+            # pageerror when navigating between opt-in documents or resizing.
+            # These exact lifecycle messages do not indicate a script failure;
+            # every other page error remains a test failure.
+            transition_cancellations = {
+                'Transition was aborted because of invalid state. ViewTransition opt-in disabled',
+                'Transition was aborted because of invalid state. Viewport size changed',
+            }
+            script_errors = [error for error in errors if error not in transition_cancellations]
+            assert not script_errors, script_errors
             browser.close()
         print('work lists browser acceptance passed: create, customer, edit, filter, export, fields, mobile, archive/restore')
     finally:
