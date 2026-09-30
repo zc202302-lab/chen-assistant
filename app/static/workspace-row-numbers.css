@@ -1,0 +1,24 @@
+/* Row numbers occupy the existing leading gutter; business dragging stays available. */
+.v0211-workspace .customer-text-copy {
+  appearance:none; border:0; background:transparent; color:inherit; font:inherit;
+  padding:0; border-radius:4px; cursor:pointer; text-align:inherit; max-width:100%;
+}
+.v0211-workspace h1 .customer-text-copy { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+.v0211-workspace .v023-identity-strip .customer-text-copy { font:650 13px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; }
+.v0211-workspace .customer-text-copy:hover { color:#2563eb; }
+.v0211-workspace .customer-text-copy:focus-visible { outline:2px solid #2563eb; outline-offset:3px; }
+.v0211-workspace .workspace-row-number { color:#667085; font-size:12px; font-variant-numeric:tabular-nums; text-align:center; }
+.v0211-workspace .business-row-line-v029,
+.v0211-workspace .business-table-header-v030 { grid-template-columns:38px minmax(0,1fr)!important; }
+.v0211-workspace .business-drag-handle,
+.v0211-workspace .business-table-header-drag-v0211 { width:38px!important; }
+.v0211-workspace .v0211-payment-list.payment-auto-fit-v03 .v0211-payment-header,
+.v0211-workspace .v0211-payment-list.payment-auto-fit-v03 .v0211-payment-row {
+  grid-template-columns:38px repeat(var(--v03-payment-count,1),minmax(0,1fr)) 96px!important;
+}
+@media(max-width:760px) {
+  .v0211-workspace .v0211-payment-list.payment-auto-fit-v03 .v0211-payment-header,
+  .v0211-workspace .v0211-payment-list.payment-auto-fit-v03 .v0211-payment-row {
+    grid-template-columns:38px repeat(var(--v03-payment-count,1),minmax(0,1fr)) 74px!important;
+  }
+}

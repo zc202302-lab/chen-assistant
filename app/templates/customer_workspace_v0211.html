@@ -6,12 +6,11 @@
     <section class="v023-hero" id="overview">
       <div class="v023-profile-card">
         <div class="v023-name-line">
-          <div><span class="v023-kicker">客户</span><h1>{{ customer.name }}</h1></div>
-          <button class="copy-btn v023-copy-mini" data-copy="{{ customer.name }}">复制</button>
+          <div><span class="v023-kicker">客户</span><h1><button type="button" class="customer-text-copy" data-customer-copy="{{ customer.name }}" title="点击复制客户名称">{{ customer.name }}</button></h1></div>
         </div>
         <div class="v023-identity-strip">
-          <div><small>集团编码</small><b>{{ customer.group_code or '未填写' }}</b>{% if customer.group_code %}<button class="copy-btn v023-copy-mini" data-copy="{{ customer.group_code }}">复制</button>{% endif %}</div>
-          <div><small>税号</small><b>{{ customer.tax_id or '未填写' }}</b>{% if customer.tax_id %}<button class="copy-btn v023-copy-mini" data-copy="{{ customer.tax_id }}">复制</button>{% endif %}</div>
+          <div><small>集团编码</small>{% if customer.group_code %}<button type="button" class="customer-text-copy" data-customer-copy="{{ customer.group_code }}" title="点击复制集团编码">{{ customer.group_code }}</button>{% else %}<b>未填写</b>{% endif %}</div>
+          <div><small>税号</small>{% if customer.tax_id %}<button type="button" class="customer-text-copy" data-customer-copy="{{ customer.tax_id }}" title="点击复制税号">{{ customer.tax_id }}</button>{% else %}<b>未填写</b>{% endif %}</div>
           <details class="v023-customer-edit">
             <summary>编辑资料</summary>
             <form method="post" action="/customers/{{ customer.id }}/edit" class="stack v023-edit-form selectable-editors">
@@ -60,13 +59,13 @@
         {% if payment_items %}
         <div class="dense-payment-list v028-payment-list v0211-payment-list" id="paymentSortable" data-reorder-url="/customers/{{ customer.id }}/services/reorder" data-column-width-url="/customers/{{ customer.id }}/payment-column-widths-v0211" data-payment-column-keys="{{ payment_column_keys|join(',') }}" style="--payment-cols:{{ payment_grid_widths }};">
           <div class="dense-payment-header v028-payment-header v0211-payment-header">
-            <span class="payment-drag-gutter-v0211"></span>
+            <span class="workspace-row-number payment-sequence-head">序号</span>
             {% for col in payment_columns %}<div class="resizable-head payment-column-head-v0211" data-payment-column-head data-payment-attr-key="{{ col.key }}"><span>{{ col.label }}</span><i class="col-resizer" data-resize-payment-col="{{ col.key }}"></i></div>{% endfor %}
             <span class="payment-action-head-v0211">操作</span>
           </div>
           {% for item in payment_items %}{% set s=item.row %}{% set pe=item.payment %}
           <article class="dense-payment-row v028-payment-row v0211-payment-row {% if not pe.confirmed %}is-pending{% else %}is-confirmed{% endif %}" data-payment-row data-service-id="{{ s.id }}" data-confirmed="{{ 1 if pe.confirmed else 0 }}" data-mode="{{ item.rule.mode }}" data-payment-account="{{ s.account|e }}">
-            <button type="button" class="drag-handle" draggable="false" title="按住拖动改变位置">⠿</button>
+            <span class="workspace-row-number" data-row-number>{{ loop.index }}</span>
             {% for cell in item.payment_cells %}
               {% if cell.key == 'payment_amount' %}
               <div class="dense-amount payment-amount-cell-v0211" data-payment-cell data-payment-attr-key="payment_amount">
@@ -102,7 +101,7 @@
           {% for item in business_rows %}{% set s=item.row %}
           <article class="business-row-v028" data-business-row data-service-id="{{ s.id }}" data-filter-type="{{ (s.service_type or '未分类')|e }}" data-filter-due="{{ 1 if item.due else 0 }}" data-filter-mode="{{ item.rule.mode }}" data-filter-promo="{{ item.promo_filter }}" data-filter-invoice="{{ s.invoice_group_id or 'none' }}">
             <div class="business-row-line-v029">
-              <button type="button" class="business-drag-handle drag-handle" draggable="false" title="按住拖动改变位置">⠿</button>
+              <button type="button" class="business-drag-handle drag-handle workspace-row-number" data-row-number draggable="false" title="序号；按住拖动改变位置">{{ loop.index }}</button>
               <div class="business-attribute-grid" data-business-attrs>
                 {% for a in item.preview_attributes %}<div class="business-attribute" data-attr-key="{{ a.key }}" title="{{ a.label }}：{{ a.value }}"><small>{{ a.label }}</small><strong>{{ a.value }}</strong></div>{% endfor %}
               </div>
