@@ -21,7 +21,7 @@ os.environ.update(APP_DB_PATH=str(Path(TMP.name) / 'app.db'), APP_USERNAME='impo
 from fastapi.testclient import TestClient  # noqa: E402
 from app.db import db, init_db, now_iso  # noqa: E402
 from app.main import app  # noqa: E402
-from app.security import create_session, decrypt_secret  # noqa: E402
+from app.security import create_session, decrypt_secret, encrypt_secret  # noqa: E402
 from app.work_list_excel import ExcelTable, MAX_BYTES  # noqa: E402
 from app.work_list_import import ensure_work_list_import_schema  # noqa: E402
 from app.work_lists import ensure_work_lists_schema  # noqa: E402
@@ -142,6 +142,18 @@ def main():
             conn.execute("UPDATE work_list_imports SET expires_at='2000-01-01T00:00:00+00:00' WHERE token=?", (stale.rsplit('/', 1)[-1],))
         assert client.get(stale).status_code == 410
         assert client.post(stale + '/confirm', data={'csrf': csrf, 'revision': '3'}).status_code == 410
+        with db() as conn:
+            owner = conn.execute('SELECT owner FROM work_list_imports WHERE token=?', (path.rsplit('/', 1)[-1],)).fetchone()[0]
+            for index in range(10):
+                conn.execute('INSERT INTO work_list_imports(token,owner,payload_enc,expires_at) VALUES(?,?,?,?)',
+                    (f'completed-fixture-{index}', owner, encrypt_secret(json.dumps({'phase': 'done'})), '2099-01-01T00:00:00+00:00'))
+        upload()  # Completed receipts must never consume the ten active-preview slots.
+        with db() as conn:
+            for index in range(10):
+                conn.execute('INSERT INTO work_list_imports(token,owner,payload_enc,expires_at) VALUES(?,?,?,?)',
+                    (f'active-fixture-{index}', owner, encrypt_secret(json.dumps({'phase': 'config'})), '2099-01-01T00:00:00+00:00'))
+        limited = client.post('/work/list-import/upload', data={'csrf': csrf}, files={'file': ('file.xlsx', workbook())})
+        assert limited.status_code == 400 and '最多10份' in limited.text
     with db() as conn:
         assert dict(conn.execute('SELECT * FROM customers WHERE id=?', (customer_id,)).fetchone()) == customer_before
         assert [dict(r) for r in conn.execute('SELECT * FROM payment_entries')] == payments_before
