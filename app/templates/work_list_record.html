@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑' if record_id else '新增' }}记录 · {{ item.title }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/work-lists.css?v=1670">
+<section class="wl-shell"><div class="wl-head"><div><a href="/work/lists/{{ item.id }}">返回清单</a><h1>{{ '编辑' if record_id else '新增' }}记录</h1><p>{{ item.title }}</p></div></div>
+  <section class="wl-panel">{% if error %}<p class="wl-error" role="alert">{{ error }}</p>{% endif %}<form class="wl-form" method="post" action="/work/lists/{{ item.id }}/records/{{ (record_id|string + '/edit') if record_id else 'new' }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="list_revision" value="{{ item.revision }}"><input type="hidden" name="revision" value="{{ record.revision }}">
+  <label>关联客户（可选）<select name="customer_id"><option value="">不关联客户</option>{% for customer in customers %}<option value="{{ customer.id }}" {{ 'selected' if (record.customer_id|string) == (customer.id|string) else '' }}>{{ customer.name }}{% if customer.group_code %} · {{ customer.group_code }}{% endif %}</option>{% endfor %}</select></label>
+  <label>记录状态<select name="status"><option value="pending" {{ 'selected' if record.status == 'pending' else '' }}>待处理</option><option value="done" {{ 'selected' if record.status == 'done' else '' }}>已完成</option></select></label>
+  {% for field in fields if not field.hidden %}{% set value = record['values'].get(field.id|string, '') %}
+    {% if field.kind == 'multi' %}<fieldset class="wl-multi"><legend>{{ field.label }}</legend>{% for option in field.options %}<label><input type="checkbox" name="f_{{ field.id }}" value="{{ option }}" {{ 'checked' if option in value else '' }}>{{ option }}</label>{% endfor %}</fieldset>
+    {% elif field.kind == 'select' %}<label>{{ field.label }}<select name="f_{{ field.id }}"><option value="">未选择</option>{% for option in field.options %}<option value="{{ option }}" {{ 'selected' if option == value else '' }}>{{ option }}</option>{% endfor %}</select></label>
+    {% else %}<label>{{ field.label }}{% if field.kind == 'text' %}<textarea name="f_{{ field.id }}" rows="2" maxlength="4000">{{ value }}</textarea>{% else %}<input name="f_{{ field.id }}" value="{{ value }}" type="{{ 'date' if field.kind == 'date' else 'number' }}" {% if field.kind in ['number', 'money'] %}step="{{ '0.01' if field.kind == 'money' else 'any' }}"{% endif %}>{% endif %}</label>{% endif %}
+  {% endfor %}
+  <label>备注<textarea name="note" rows="5" maxlength="20000" placeholder="补充没有固定格式的信息">{{ record.note }}</textarea></label>
+  <div class="wl-actions"><button type="submit">保存记录</button><a href="/work/lists/{{ item.id }}">取消</a></div>
+  </form></section>
+</section>
+{% endblock %}

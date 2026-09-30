@@ -265,6 +265,12 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v161_responsive_polish_acceptance.py
 
+      - name: Work lists contract and browser acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: |
+          python tests/work_lists_contract.py
+          python tests/work_lists_acceptance.py
+
       - name: Legacy customer import browser acceptance
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v032_customer_import_acceptance.py

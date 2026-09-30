@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} · 清单{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/work-lists.css?v=1670">
+<section class="wl-shell">
+  <div class="wl-head"><div><a href="/work/lists{{ '?archived=1' if item.archived else '' }}">全部清单</a><h1>{{ item.title }}</h1><p>{{ item.description }}</p></div><div class="wl-actions">{% if not item.archived %}<a class="btn" href="/work/lists/{{ item.id }}/records/new">新增记录</a>{% endif %}<a href="/work/lists/{{ item.id }}/settings">清单设置</a></div></div>
+  {% if item.archived %}<p class="wl-notice">此清单已归档，可以查看和导出。需要编辑时请在清单设置中恢复。</p>{% endif %}
+  <form class="wl-toolbar" method="get"><input name="q" value="{{ q }}" aria-label="搜索记录" placeholder="搜索字段、客户或备注"><select name="status" aria-label="记录状态"><option value="">全部状态</option><option value="pending" {{ 'selected' if status == 'pending' else '' }}>待处理</option><option value="done" {{ 'selected' if status == 'done' else '' }}>已完成</option></select><button type="submit">筛选</button><a href="/work/lists/{{ item.id }}">重置</a><a href="/work/lists/{{ item.id }}/export.xlsx?q={{ q|urlencode }}&amp;status={{ status|urlencode }}">导出当前结果 Excel</a></form>
+  <p class="wl-hint">共 {{ rows|length }} 条记录{% if q or status %}（筛选结果）{% endif %}</p>
+  <div class="wl-table-wrap"><table class="wl-table"><thead><tr><th>序号</th><th>状态</th><th>关联客户</th>{% for field in fields if not field.hidden %}<th>{{ field.label }}</th>{% endfor %}<th>备注</th><th>操作</th></tr></thead><tbody>
+  {% for row in rows %}<tr><td>{{ loop.index }}</td><td>{{ '已完成' if row.status == 'done' else '待处理' }}</td><td>{% if row.customer_id %}<a href="/customers/{{ row.customer_id }}">{{ row.customer_name }}</a>{% else %}—{% endif %}</td>{% for field in fields if not field.hidden %}{% set value = row['values'].get(field.id|string, '') %}<td>{{ value|join('、') if field.kind == 'multi' else value }}</td>{% endfor %}<td class="wl-note">{{ row.note }}</td><td>{% if not item.archived %}<a href="/work/lists/{{ item.id }}/records/{{ row.id }}/edit">编辑</a>{% else %}—{% endif %}</td></tr>
+  {% else %}<tr><td colspan="{{ (fields|rejectattr('hidden')|list|length) + 5 }}" class="wl-empty">暂无符合条件的记录。</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}
