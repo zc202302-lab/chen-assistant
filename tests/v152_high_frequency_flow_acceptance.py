@@ -114,10 +114,17 @@ def main():
             expect(name_copy).to_have_text('v152高频缴费客户')
             assert page.locator('[data-payment-row] [data-row-number]').all_text_contents() == ['1', '2', '3']
             expect(page.locator('.payment-sequence-head')).to_be_visible()
-            search = page.locator('[data-v124-payment-search]')
+            finder = page.locator('[data-v128-finder="payment"]')
+            finder.locator('[data-v128-finder-trigger]').click()
+            search = finder.locator('[data-v128-query]')
             search.fill('ACC-V152-2')
             expect(page.locator(f'[data-payment-row][data-service-id="{ids[1]}"] [data-row-number]')).to_have_text('2')
             search.fill('')
+            finder.locator('[data-v128-finder-close]').click()
+            page.locator('[data-customer-tab="services"]').click()
+            assert page.locator('[data-business-row] [data-row-number]').all_text_contents() == ['1', '2', '3']
+            expect(page.locator('[data-business-row] [data-row-number]').first).to_be_visible()
+            page.locator('[data-customer-tab="payment"]').click()
             # Reconciliation/reorder updates DOM order: renumber without touching
             # amounts, review state, or service identity.
             page.evaluate("""() => {
