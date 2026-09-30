@@ -141,6 +141,12 @@ jobs:
           pip-audit -r requirements.txt
           bandit -q -r app storage_node -lll
 
+      - name: Work lists contract and browser acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: |
+          python tests/work_lists_contract.py
+          python tests/work_lists_acceptance.py
+
       - name: Code governance inventory
         if: steps.scope.outputs.mode == 'full'
         run: python tests/code_governance_inventory.py
@@ -264,12 +270,6 @@ jobs:
       - name: v1.6.1 responsive desktop/mobile acceptance
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v161_responsive_polish_acceptance.py
-
-      - name: Work lists contract and browser acceptance
-        if: steps.scope.outputs.mode == 'full'
-        run: |
-          python tests/work_lists_contract.py
-          python tests/work_lists_acceptance.py
 
       - name: Legacy customer import browser acceptance
         if: steps.scope.outputs.mode == 'full'
