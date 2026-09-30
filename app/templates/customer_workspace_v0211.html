@@ -9,8 +9,8 @@
           <div><span class="v023-kicker">客户</span><h1><button type="button" class="customer-text-copy" data-customer-copy="{{ customer.name }}" title="点击复制客户名称">{{ customer.name }}</button></h1></div>
         </div>
         <div class="v023-identity-strip">
-          <div><small>集团编码</small>{% if customer.group_code %}<button type="button" class="customer-text-copy" data-customer-copy="{{ customer.group_code }}" title="点击复制集团编码">{{ customer.group_code }}</button>{% else %}<b>未填写</b>{% endif %}</div>
-          <div><small>税号</small>{% if customer.tax_id %}<button type="button" class="customer-text-copy" data-customer-copy="{{ customer.tax_id }}" title="点击复制税号">{{ customer.tax_id }}</button>{% else %}<b>未填写</b>{% endif %}</div>
+          <div><small>集团编码</small><b>{% if customer.group_code %}<button type="button" class="customer-text-copy" data-customer-copy="{{ customer.group_code }}" title="点击复制集团编码">{{ customer.group_code }}</button>{% else %}未填写{% endif %}</b></div>
+          <div><small>税号</small><b>{% if customer.tax_id %}<button type="button" class="customer-text-copy" data-customer-copy="{{ customer.tax_id }}" title="点击复制税号">{{ customer.tax_id }}</button>{% else %}未填写{% endif %}</b></div>
           <details class="v023-customer-edit">
             <summary>编辑资料</summary>
             <form method="post" action="/customers/{{ customer.id }}/edit" class="stack v023-edit-form selectable-editors">
