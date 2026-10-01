@@ -138,6 +138,18 @@ def main():
             assert live.get('/api/reminders').status_code==200
             assert hasattr(app.state,'reminder_worker')
         assert app.state.reminder_worker.done()
+    # A broken optional push configuration must not take down existing pages.
+    from app import config
+    previous=config.APP_ENCRYPTION_KEY
+    config.APP_ENCRYPTION_KEY='invalid-key'
+    try:
+        with TestClient(app) as degraded:
+            assert degraded.get('/health').status_code==200
+            degraded.cookies.set('session_token',token)
+            assert degraded.get('/work').status_code==200
+            assert degraded.get('/api/reminders').status_code==503
+    finally:
+        config.APP_ENCRYPTION_KEY=previous
     print('Web Push contracts passed: auth, CSRF, SSRF rejection, persistent keys, encrypted subscriptions, concurrency, actual VAPID/encryption, retry, expiration, source collection, settings, device deletion, route regression, worker lifecycle')
 
 if __name__=='__main__': main()

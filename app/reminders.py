@@ -76,6 +76,8 @@ def ensure_reminder_schema():
                           serialization.PublicFormat.UncompressedPoint))
             conn.executemany('INSERT INTO app_meta(key,value) VALUES(?,?)', [
                 ('push_vapid_private', encrypt_secret(private)), ('push_vapid_public', public)])
+        # Validate the existing encryption key without replacing persistent keys.
+        decrypt_secret(conn.execute("SELECT value FROM app_meta WHERE key='push_vapid_private'").fetchone()[0])
         # Do not surprise users with historical number-submission notifications.
         if not conn.execute("SELECT 1 FROM app_meta WHERE key='push_number_baseline'").fetchone():
             exists = conn.execute("SELECT 1 FROM sqlite_master WHERE name='number_inbox'").fetchone()
@@ -258,8 +260,18 @@ def reminder_page(request: Request):
     return templates.TemplateResponse('reminders.html', ctx(request))
 
 
+def require_ready(request):
+    error = getattr(request.app.state, 'reminder_error', None)
+    if error:
+        raise HTTPException(503, error)
+    with db() as conn:
+        if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='reminders'").fetchone() or not conn.execute("SELECT 1 FROM app_meta WHERE key='push_vapid_public'").fetchone():
+            raise HTTPException(503, '手机推送尚未初始化')
+
+
 @router.get('/api/reminders')
-def reminder_state():
+def reminder_state(request: Request):
+    require_ready(request)
     with db() as conn:
         return {'types':TYPES, 'preferences':preferences(conn), 'unread_count':unread_count(conn),
             'public_key':conn.execute("SELECT value FROM app_meta WHERE key='push_vapid_public'").fetchone()[0],
@@ -269,6 +281,7 @@ def reminder_state():
 
 
 async def check_csrf(request):
+    require_ready(request)
     if int(request.headers.get('content-length','0')) > 12000:
         raise HTTPException(413,'请求过大')
     try:

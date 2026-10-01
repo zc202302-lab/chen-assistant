@@ -3,6 +3,7 @@ import re
 from starlette.routing import Match
 
 import asyncio
+import logging
 from . import config
 from .reminders import router as reminders_router, ensure_reminder_schema, worker as reminder_worker
 from .security import configured
@@ -222,10 +223,21 @@ async def current_asset_cache_policy(request, call_next):
 
 @app.on_event('startup')
 async def start_reminder_worker():
-    if configured():
+    app.state.reminder_error = None
+    if not configured():
+        app.state.reminder_error = '请先完成应用安全配置'
+        return
+    try:
         ensure_reminder_schema()
-        app.state.reminder_stop = asyncio.Event()
-        app.state.reminder_worker = asyncio.create_task(reminder_worker(app.state.reminder_stop))
+    except Exception:
+        # An optional notification feature must not stop the existing website.
+        # Keep encrypted secrets protected; report unavailable instead of falling
+        # back to plaintext or replacing an existing key.
+        app.state.reminder_error = '手机推送初始化失败，请检查服务器安全配置与数据库'
+        logging.getLogger(__name__).exception('Reminder initialization failed; existing site remains available')
+        return
+    app.state.reminder_stop = asyncio.Event()
+    app.state.reminder_worker = asyncio.create_task(reminder_worker(app.state.reminder_stop))
 
 
 @app.on_event('shutdown')
