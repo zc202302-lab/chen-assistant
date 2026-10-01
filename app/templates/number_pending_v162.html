@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>待录入号码</title>
+  <link rel="stylesheet" href="/static/number-inbox-v162.css?v=1621">
+</head>
+<body class="number-submit-page">
+  <main class="number-submit-shell">
+    <section class="number-submit-card number-pending-card">
+      <div class="number-submit-head"><h1>待录入号码（{{ items|length }}）</h1></div>
+      {% if result == 'success' %}<div class="number-submit-success" role="status">提交成功</div>{% elif result == 'duplicate' %}<div class="number-submit-success" role="status">这个号码已经在待录入列表中</div>{% endif %}
+      <div class="number-public-actions">
+        <a class="number-public-link" href="/number-submit/{{ token }}">继续填写号码</a>
+        <a class="number-public-link" href="/number-submit/{{ token }}/pending">刷新列表</a>
+      </div>
+      {% if items %}
+      <div class="number-pending-table-wrap">
+        <table class="number-pending-table">
+          <thead><tr><th>号码</th><th>提交时间</th><th>提交人</th></tr></thead>
+          <tbody>{% for item in items %}<tr><td>{{ item.number }}</td><td><time>{{ item.submitted_display }}</time></td><td>{{ item.submitter or '未填写提交人' }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+      {% else %}<p class="number-pending-empty">目前没有待录入号码</p>{% endif %}
+    </section>
+  </main>
+</body>
+</html>

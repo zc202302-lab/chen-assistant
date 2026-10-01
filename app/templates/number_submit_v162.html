@@ -4,29 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#111827">
-  <title>提交号码 · 晨的助手</title>
+  <title>请填写加集团号码</title>
   <link rel="stylesheet" href="/static/number-inbox-v162.css?v=1620">
 </head>
 <body class="number-submit-page">
   <main class="number-submit-shell">
     <section class="number-submit-card">
       <div class="number-submit-head">
-        <span>号码提交</span>
-        <h1>请填写需要录入的号码</h1>
-        <p>提交后会进入待处理列表，不需要再在微信群里重复提醒。</p>
+        <h1>请填写加集团号码</h1>
       </div>
-
-      {% if success %}
-      <div class="number-submit-success" role="status">
-        {% if duplicate %}
-        <strong>这个号码已经在待处理列表中</strong>
-        <span>{{ submitted_number }} 无需重复提交。</span>
-        {% else %}
-        <strong>提交成功</strong>
-        <span>{{ submitted_number }} 已进入待处理列表。</span>
-        {% endif %}
-      </div>
-      {% endif %}
 
       <form method="post" action="/number-submit/{{ token }}" class="number-submit-form">
         <label>
@@ -37,13 +23,11 @@
           <span>提交人</span>
           <input name="submitter" autocomplete="name" maxlength="40" placeholder="你的姓名">
         </label>
-        <label>
-          <span>备注</span>
-          <textarea name="note" maxlength="300" rows="3" placeholder="客户名称、办理事项等，可不填"></textarea>
-        </label>
         <button type="submit">提交号码</button>
       </form>
+      <a class="number-public-link" href="/number-submit/{{ token }}/pending">查看待录入号码</a>
     </section>
   </main>
 </body>
 </html>
+

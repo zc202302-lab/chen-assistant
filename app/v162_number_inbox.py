@@ -138,20 +138,33 @@ def _display_time(value: str) -> str:
         return value or ''
 
 
+def _pending_items(conn):
+    rows = conn.execute(
+        "SELECT number,submitted_at,submitter FROM number_inbox WHERE status='pending' "
+        "ORDER BY submitted_at DESC,id DESC"
+    ).fetchall()
+    return [dict(row, submitted_display=_display_time(row['submitted_at'])) for row in rows]
+
+
 @router.get('/number-submit/{token}', response_class=HTMLResponse)
 def public_number_submit_page(request: Request, token: str):
     with db() as conn:
         if not _token_matches(conn, token):
             raise HTTPException(404)
     return templates.TemplateResponse(
-        'number_submit_v162.html',
-        {
-            'request': request,
-            'token': token,
-            'success': False,
-            'duplicate': False,
-            'submitted_number': '',
-        },
+        'number_submit_v162.html', {'request': request, 'token': token},
+    )
+
+
+@router.get('/number-submit/{token}/pending', response_class=HTMLResponse)
+def public_number_pending_page(request: Request, token: str, result: str = ''):
+    with db() as conn:
+        if not _token_matches(conn, token):
+            raise HTTPException(404)
+        items = _pending_items(conn)
+    return templates.TemplateResponse(
+        'number_pending_v162.html',
+        {'request': request, 'token': token, 'items': items, 'result': result},
     )
 
 
@@ -161,64 +174,40 @@ def public_number_submit(
     token: str,
     number: str = Form(...),
     submitter: str = Form(''),
-    note: str = Form(''),
 ):
-    raw, normalized = _normalize_number(number)
-    submitter = (submitter or '').strip()[:40]
-    note = (note or '').strip()[:300]
-    duplicate = False
     with db() as conn:
         if not _token_matches(conn, token):
             raise HTTPException(404)
+        raw, normalized = _normalize_number(number)
+        submitter = (submitter or '').strip()[:40]
         cur = conn.execute(
-            '''INSERT OR IGNORE INTO number_inbox
+            """INSERT OR IGNORE INTO number_inbox
                (number,normalized_number,submitter,note,status,submitted_at,completed_at)
-               VALUES(?,?,?,?, 'pending', ?, '')''',
-            (raw, normalized, submitter, note, now_iso()),
+               VALUES(?,?,?, '', 'pending', ?, '')""",
+            (raw, normalized, submitter, now_iso()),
         )
-        duplicate = cur.rowcount == 0
-    return templates.TemplateResponse(
-        'number_submit_v162.html',
-        {
-            'request': request,
-            'token': token,
-            'success': True,
-            'duplicate': duplicate,
-            'submitted_number': raw,
-        },
-    )
+        result = 'duplicate' if cur.rowcount == 0 else 'success'
+    return RedirectResponse(f'/number-submit/{token}/pending?result={result}', status_code=303)
 
 
 public_number_submit.__public_token_authenticated__ = True
 
 
 @router.get('/work/number-inbox', response_class=HTMLResponse)
-def number_inbox_admin(request: Request, status: str = 'pending'):
-    if status not in {'pending', 'done', 'all'}:
-        status = 'pending'
+def number_inbox_admin(request: Request):
     with db() as conn:
         token = ensure_number_inbox_schema(conn)
         desktop_token = ensure_desktop_token(conn)
         pending_count = int(
             conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n']
         )
-        done_count = int(
-            conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='done'").fetchone()['n']
-        )
-        if status == 'all':
-            rows = conn.execute(
-                'SELECT * FROM number_inbox ORDER BY CASE status WHEN \'pending\' THEN 0 ELSE 1 END, submitted_at DESC, id DESC LIMIT 300'
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                'SELECT * FROM number_inbox WHERE status=? ORDER BY submitted_at DESC, id DESC LIMIT 300',
-                (status,),
-            ).fetchall()
+        rows = conn.execute(
+            "SELECT * FROM number_inbox WHERE status='pending' ORDER BY submitted_at DESC,id DESC"
+        ).fetchall()
     items = []
     for row in rows:
         item = dict(row)
         item['submitted_display'] = _display_time(item['submitted_at'])
-        item['completed_display'] = _display_time(item['completed_at'])
         items.append(item)
     share_url = f'https://jituan.zcassistant.site/number-submit/{token}'
     return templates.TemplateResponse(
@@ -226,9 +215,7 @@ def number_inbox_admin(request: Request, status: str = 'pending'):
         _ctx(
             request,
             items=items,
-            status=status,
             pending_count=pending_count,
-            done_count=done_count,
             share_url=share_url,
             desktop_token=desktop_token,
             desktop_api_url=str(request.base_url).rstrip('/') + '/api/number-inbox/pending',
@@ -257,7 +244,7 @@ def number_inbox_reopen(request: Request, item_id: int, csrf: str = Form(...)):
             "UPDATE OR IGNORE number_inbox SET status='pending',completed_at='' WHERE id=? AND status='done'",
             (item_id,),
         )
-    return RedirectResponse('/work/number-inbox?status=done', status_code=303)
+    return RedirectResponse('/work/number-inbox', status_code=303)
 
 
 @router.get('/api/number-inbox/pending')
@@ -349,3 +336,4 @@ def number_inbox_rotate_link(request: Request, csrf: str = Form(...)):
 def pending_number_count(conn) -> int:
     ensure_number_inbox_schema(conn)
     return int(conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'])
+

@@ -49,7 +49,10 @@ def main():
 
     page = client.get(f'/number-submit/{token}')
     assert page.status_code == 200, page.text
-    assert '请填写需要录入的号码' in page.text
+    assert '提交后会进入' not in page.text
+    assert 'name="note"' not in page.text
+    assert f'/number-submit/{token}/pending' in page.text
+    assert '请填写加集团号码' in page.text
 
     first = client.post(
         f'/number-submit/{token}',
@@ -57,13 +60,21 @@ def main():
     )
     assert first.status_code == 200, first.text
     assert '提交成功' in first.text
+    assert first.history[0].status_code == 303
+    assert first.url.path == f'/number-submit/{token}/pending'
+    assert '测试同事' in first.text
+    assert '<th>号码</th><th>提交时间</th><th>提交人</th>' in first.text
+    assert desktop_token not in first.text
+    assert 'assistant.ziboxiaozhushou.cn' not in first.text
+    assert client.get('/number-submit/wrong/pending').status_code == 404
+    assert client.post('/number-submit/wrong', data={'number': 'bad'}).status_code == 404
 
     duplicate = client.post(
         f'/number-submit/{token}',
         data={'number': '+86 13800138000', 'submitter': '另一同事', 'note': '重复提交'},
     )
     assert duplicate.status_code == 200, duplicate.text
-    assert '已经在待处理列表中' in duplicate.text
+    assert '已经在待录入列表中' in duplicate.text
 
     unauth_feed = client.get('/api/number-inbox/pending', follow_redirects=False)
     assert unauth_feed.status_code == 401, unauth_feed.text
@@ -88,6 +99,7 @@ def main():
         assert len(rows) == 1, len(rows)
         assert rows[0]['normalized_number'] == '13800138000'
         assert rows[0]['status'] == 'pending'
+        assert rows[0]['note'] == ''
         item_id = int(rows[0]['id'])
 
     desktop_done = client.post(
@@ -114,6 +126,10 @@ def main():
     assert '138 0013 8000' in admin.text
     assert '测试同事' in admin.text
     assert '1 个待录入' in client.get('/work').text
+    assert '查看待录入号码' in client.get('/').text
+    assert '已处理' not in admin.text
+    assert 'status=done' not in admin.text
+    assert 'status=all' not in admin.text
 
     done = client.post(
         f'/work/number-inbox/{item_id}/done',
@@ -126,6 +142,11 @@ def main():
         assert row['status'] == 'done'
         assert row['completed_at']
 
+    pending_page = client.get(f'/number-submit/{token}/pending')
+    assert '138 0013 8000' not in pending_page.text
+    assert '目前没有待录入号码' in pending_page.text
+    assert '138 0013 8000' not in client.get('/work/number-inbox?status=done').text
+
     reopened = client.post(
         f'/work/number-inbox/{item_id}/reopen',
         data={'csrf': csrf},
@@ -136,6 +157,29 @@ def main():
         row = conn.execute('SELECT status,completed_at FROM number_inbox WHERE id=?', (item_id,)).fetchone()
         assert row['status'] == 'pending'
         assert row['completed_at'] == ''
+
+    # Every pending entry is visible, including entries beyond the old 300-row cap.
+    with db() as conn:
+        for index in range(305):
+            conn.execute(
+                "INSERT INTO number_inbox(number,normalized_number,submitter,status,submitted_at) VALUES(?,?,?,'pending',?)",
+                (f'139{index:08d}', f'139{index:08d}', '<script>alert(1)</script>', '2026-10-01T00:00:00+00:00'),
+            )
+    public_pending = client.get(f'/number-submit/{token}/pending')
+    assert public_pending.text.count('<tr><td>') == 306
+    assert '10-01 08:00' in public_pending.text
+    assert '<script>alert(1)</script>' not in public_pending.text
+    assert '&lt;script&gt;' in public_pending.text
+    assert public_pending.headers['cache-control'] == 'no-store'
+    assert desktop_token not in public_pending.text
+    assert '13900000000' in public_pending.text and '13900000304' in public_pending.text
+    assert client.get('/work/number-inbox').text.count('title="点击复制号码"') == 306
+    bad_csrf = client.post(f'/work/number-inbox/{item_id}/done', data={'csrf': 'wrong'})
+    assert bad_csrf.status_code == 403
+    # Refreshing the redirected GET cannot submit the same number again.
+    client.get(str(first.url))
+    with db() as conn:
+        assert conn.execute('SELECT COUNT(*) n FROM number_inbox').fetchone()['n'] == 306
 
     rotate_desktop = client.post(
         '/work/number-inbox/rotate-desktop-token',
@@ -173,11 +217,13 @@ def main():
 
     old_link = client.get(f'/number-submit/{token}', follow_redirects=False)
     assert old_link.status_code == 404
+    assert client.get(f'/number-submit/{token}/pending').status_code == 404
     new_link = client.get(f'/number-submit/{new_token}')
     assert new_link.status_code == 200
 
-    print('v1.6.5 number inbox + cache-safe Windows updater assets contract passed')
+    print('number inbox submission, public pending list, admin pending-only and desktop contracts passed')
 
 
 if __name__ == '__main__':
     main()
+

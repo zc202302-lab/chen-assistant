@@ -51,44 +51,32 @@
     </form>
   </section>
 
-  <div class="number-inbox-tabs">
-    <a href="/work/number-inbox?status=pending"{% if status == 'pending' %} class="active"{% endif %}>待处理 <b>{{ pending_count }}</b></a>
-    <a href="/work/number-inbox?status=done"{% if status == 'done' %} class="active"{% endif %}>已处理 <b>{{ done_count }}</b></a>
-    <a href="/work/number-inbox?status=all"{% if status == 'all' %} class="active"{% endif %}>全部</a>
-  </div>
+  <h2>待录入号码（{{ pending_count }}）</h2>
 
   {% if items %}
   <div class="number-inbox-list">
     {% for item in items %}
-    <article class="number-inbox-item{% if item.status == 'done' %} is-done{% endif %}">
+    <article class="number-inbox-item">
       <div class="number-inbox-main">
         <button class="number-copy-value" type="button" data-copy-value="{{ item.number }}" title="点击复制号码">{{ item.number }}</button>
         <div class="number-inbox-meta">
-          <span>{{ item.submitter or '未填写提交人' }}</span>
           <time>{{ item.submitted_display }}</time>
-          {% if item.status == 'done' and item.completed_display %}<span>完成 {{ item.completed_display }}</span>{% endif %}
+          <span>{{ item.submitter or '未填写提交人' }}</span>
         </div>
-        {% if item.note %}<p>{{ item.note }}</p>{% endif %}
       </div>
       <div class="number-inbox-actions">
-        {% if item.status == 'pending' %}
         <form method="post" action="/work/number-inbox/{{ item.id }}/done">
           <input type="hidden" name="csrf" value="{{ csrf }}">
           <button class="v10-primary" type="submit">已录入</button>
         </form>
-        {% else %}
-        <form method="post" action="/work/number-inbox/{{ item.id }}/reopen">
-          <input type="hidden" name="csrf" value="{{ csrf }}">
-          <button class="v10-secondary" type="submit">恢复待处理</button>
-        </form>
-        {% endif %}
       </div>
     </article>
     {% endfor %}
   </div>
   {% else %}
-  <div class="v10-empty">{% if status == 'pending' %}目前没有待录入号码{% else %}这里还没有记录{% endif %}</div>
+  <div class="v10-empty">目前没有待录入号码</div>
   {% endif %}
 </section>
 <script src="/static/number-inbox-v162.js?v=1620"></script>
 {% endblock %}
+
