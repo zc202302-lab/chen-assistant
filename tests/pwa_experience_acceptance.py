@@ -73,7 +73,9 @@ def main():
             page.evaluate("document.querySelector('form[method=post]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}))")
             page.goto(base+'/customers/new')
             assert page.get_by_role('button',name='恢复草稿').is_visible()
-            page.goto(base+'/customers/123')
+            page.get_by_role('button',name='恢复草稿').click()
+            page.evaluate("document.querySelector('form[method=post]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}))")
+            page.goto(base+'/customers/123',referer=base+'/customers/new')
             raw=page.evaluate('JSON.stringify({...sessionStorage})')
             assert '成功客户' not in raw
             # Broken storage must not disable all enhancements or page navigation.
