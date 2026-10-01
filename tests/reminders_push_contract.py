@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.db import init_db, db, now_iso
 from app.security import create_session, decrypt_secret
-from app.reminders import ensure_reminder_schema,publish_reminder,collect_due,deliver_one,due_timestamp,b64
+from app.reminders import ensure_reminder_schema,publish_reminder,collect_due,deliver_one,due_timestamp,b64,vapid_subject,push_error
 from app.v162_number_inbox import ensure_number_inbox_schema
 from pywebpush import WebPushException
 
@@ -68,6 +68,7 @@ def main():
         kwargs=transport.call_args.kwargs
         assert kwargs['headers']['content-encoding']=='aes128gcm'
         assert 'authorization' in {k.lower() for k in kwargs['headers']}
+        assert kwargs['headers']['Urgency']=='high'
         assert isinstance(kwargs['data'],bytes) and '测试'.encode() not in kwargs['data']
     assert not deliver_one()
     with db() as conn:
@@ -107,8 +108,21 @@ def main():
     assert not deliver_one(now=now+200,sender=lambda **kw:None)
     assert client.post('/api/reminders/test',headers=headers,json={'device_id':device}).status_code==400
     client.post('/api/reminders/preferences',headers=headers,json={'all':True})
-    assert client.post('/api/reminders/test',headers=headers,json={'device_id':device}).status_code==200
+    assert client.post('/api/reminders/test',headers=headers,json={'device_id':device,'delay':True}).status_code==400
+    assert client.post('/api/reminders/test',headers=headers,json={'device_id':device,'delay':20}).status_code==200
     assert client.post('/api/reminders/test',headers=headers,json={'device_id':device}).status_code==429
+    scheduled=client.get('/api/reminders').json()['test_deliveries'][0]
+    assert scheduled['state']=='pending' and scheduled['attempts']==0
+    assert not deliver_one(now=time.time()+1,sender=lambda **kw:None)
+    assert deliver_one(now=time.time()+21,sender=lambda **kw:None)
+    assert client.get('/api/reminders').json()['test_deliveries'][0]['state']=='sent'
+    # Provider errors are useful without leaking raw response content or tokens.
+    rejected=Response();rejected.status_code=403;rejected._content=b'{"reason":"BadJwtToken","secret":"must-not-leak"}'
+    error=push_error(WebPushException('private endpoint',response=rejected))
+    assert '403' in error and 'VAPID' in error and 'must-not-leak' not in error
+    from app import config
+    with patch.object(config,'APP_BASE_URL','http://127.0.0.1:8010'), patch.dict(os.environ,{'WEB_PUSH_SUBJECT':''}):
+        assert vapid_subject()=='https://assistant.ziboxiaozhushou.cn'
     rid=client.get('/api/reminders').json()['items'][0]['id']
     before=client.get('/api/reminders').json()['unread_count']
     client.post(f'/api/reminders/{rid}/read',headers=headers,json={})

@@ -191,6 +191,42 @@ def unread_count(conn):
     return conn.execute('SELECT COUNT(*) FROM reminders WHERE read_at IS NULL AND resolved_at IS NULL').fetchone()[0]
 
 
+def vapid_subject():
+    explicit = os.getenv('WEB_PUSH_SUBJECT', '').strip()
+    if explicit:
+        return explicit
+    # APP_BASE_URL may be an internal HTTP health-check address. Apple needs
+    # a public contact URI, independent of the server's listen address.
+    candidate = urlsplit(config.APP_BASE_URL)
+    if candidate.scheme == 'https' and candidate.hostname and '.' in candidate.hostname and not candidate.username:
+        return config.APP_BASE_URL
+    return 'https://assistant.ziboxiaozhushou.cn'
+
+
+def push_error(exc):
+    response = getattr(exc, 'response', None)
+    status = getattr(response, 'status_code', None)
+    reasons = {'BadJwtToken': 'VAPID 签名或联系方式无效',
+               'VapidPkHashMismatch': '订阅与服务器密钥不匹配，请重新开启提醒',
+               'BadTtl': '通知有效期无效', 'BadUrgency': '通知优先级无效'}
+    reason = ''
+    if response is not None:
+        try:
+            reason = reasons.get(response.json().get('reason'), '')
+        except (ValueError, AttributeError, TypeError):
+            pass
+    if status in (404, 410):
+        return '设备订阅已失效，请在本机重新开启提醒'
+    if status:
+        return f'推送服务响应 {status}' + ('：' + reason if reason else '')
+    from requests.exceptions import Timeout, ConnectionError
+    if isinstance(exc, Timeout):
+        return '服务器连接推送服务超时，等待重试'
+    if isinstance(exc, ConnectionError):
+        return '服务器无法连接推送服务，等待重试'
+    return '推送发送失败，请检查服务器推送配置；等待重试'
+
+
 def deliver_one(now=None, sender=None):
     from pywebpush import webpush, WebPushException
     now = time.time() if now is None else now
@@ -217,18 +253,19 @@ def deliver_one(now=None, sender=None):
     state, error, retry, expire = 'sent', '', 0, False
     try:
         # HTTPS subject works without requiring the user to configure an email.
-        subject = os.getenv('WEB_PUSH_SUBJECT') or config.APP_BASE_URL or 'https://assistant.ziboxiaozhushou.cn'
+        subject = vapid_subject()
         sender(subscription_info=json.loads(decrypt_secret(row['subscription'])), data=payload,
-               vapid_private_key=private, vapid_claims={'sub':subject}, ttl=86400, timeout=10)
+               vapid_private_key=private, vapid_claims={'sub':subject}, ttl=86400, timeout=10,
+               headers={'Urgency': 'high'})
     except WebPushException as exc:
         status = getattr(exc.response, 'status_code', None)
         expire = status in (404,410)
         state = 'expired' if expire else ('failed' if row['attempts'] >= 7 else 'pending')
-        error = f'推送服务响应 {status or "连接失败"}'
+        error = push_error(exc)
         retry = now + min(3600, 30 * 2 ** row['attempts'])
-    except Exception:
+    except Exception as exc:
         state = 'failed' if row['attempts'] >= 7 else 'pending'
-        error = '推送连接失败，等待重试'
+        error = push_error(exc)
         retry = now + min(3600, 30 * 2 ** row['attempts'])
         log.warning('Web Push delivery failed for reminder %s', row['reminder_id'])
     with db() as conn:
@@ -243,6 +280,8 @@ def deliver_one(now=None, sender=None):
 async def worker(stop):
     while not stop.is_set():
         try:
+            with db() as conn:
+                conn.execute("INSERT OR REPLACE INTO app_meta(key,value) VALUES('push_worker_heartbeat',?)", (str(time.time()),))
             await asyncio.to_thread(collect_due)
             for _ in range(20):
                 if stop.is_set() or not await asyncio.to_thread(deliver_one):
@@ -273,7 +312,12 @@ def require_ready(request):
 def reminder_state(request: Request):
     require_ready(request)
     with db() as conn:
+        heartbeat = conn.execute("SELECT value FROM app_meta WHERE key='push_worker_heartbeat'").fetchone()
         return {'types':TYPES, 'preferences':preferences(conn), 'unread_count':unread_count(conn),
+            'worker_healthy': bool(heartbeat and time.time()-float(heartbeat[0]) < 360),
+            'test_deliveries':[dict(r) for r in conn.execute('''SELECT o.reminder_id,o.device_id,o.state,o.attempts,o.next_at,o.error,r.created_at
+                FROM push_outbox o JOIN reminders r ON r.id=o.reminder_id
+                WHERE r.event_key LIKE 'test:%' ORDER BY r.id DESC LIMIT 30''')],
             'public_key':conn.execute("SELECT value FROM app_meta WHERE key='push_vapid_public'").fetchone()[0],
             'devices':[dict(r) for r in conn.execute('SELECT id,name,enabled,created_at,updated_at,last_sent,error FROM push_devices ORDER BY created_at DESC')],
             'items':[dict(r) for r in conn.execute('SELECT * FROM reminders ORDER BY id DESC LIMIT 100')],
@@ -350,6 +394,9 @@ async def change_device(request: Request,device_id: str):
 async def test_push(request: Request):
     payload = await check_csrf(request)
     did = payload.get('device_id')
+    delay = payload.get('delay', 0)
+    if type(delay) is not int or delay not in (0, 20):
+        raise HTTPException(400, '测试延迟无效')
     with db() as conn:
         if not preferences(conn).get('all') or not preferences(conn).get('system'):
             raise HTTPException(400,'请先开启通知总开关和系统提醒')
@@ -357,9 +404,11 @@ async def test_push(request: Request):
             raise HTTPException(400,'请先在此设备开启手机提醒')
         if conn.execute("SELECT 1 FROM reminders WHERE event_key LIKE 'test:%' AND created_at>?",(time.time()-10,)).fetchone():
             raise HTTPException(429,'请稍后再发送测试提醒')
-        rid = publish_reminder(conn,kind='system',title='手机提醒已连接',body='关闭网页后，也可以接收提醒。',url='/reminders',event_key='test:'+secrets.token_urlsafe(12))
+        rid = publish_reminder(conn,kind='system',title='手机提醒测试',body='这是一条后台推送测试通知。',url='/reminders',event_key='test:'+secrets.token_urlsafe(12))
         conn.execute('DELETE FROM push_outbox WHERE reminder_id=? AND device_id<>?',(rid,did))
-    return {'ok':True,'reminder_id':rid,'message':'已加入推送队列，请留意手机通知'}
+        if delay:
+            conn.execute('UPDATE push_outbox SET next_at=? WHERE reminder_id=?', (time.time()+delay,rid))
+    return {'ok':True,'reminder_id':rid,'message': '已安排 20 秒后推送，请现在返回主屏幕并锁屏，等候约 45 秒。' if delay else '已加入推送队列；发送结果会显示在下方。'}
 
 
 @router.post('/api/reminders/{reminder_id}/read')

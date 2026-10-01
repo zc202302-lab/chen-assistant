@@ -1,4 +1,4 @@
-const CACHE='chen-assistant-v170-shell';
+const CACHE='chen-assistant-v171-shell';
 const ASSETS=['/static/icon-180.png','/static/icon-512.png','/manifest.webmanifest','/static/offline.html','/static/reminders.css'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
 self.addEventListener('activate',e=>{e.waitUntil(Promise.all([
@@ -46,3 +46,4 @@ self.addEventListener('notificationclick',event=>{
     return self.clients.openWindow(url.href);
   })());
 });
+

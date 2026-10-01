@@ -61,16 +61,28 @@
       items.append(row);
     }
     status();
+    const latest=(state.test_deliveries||[]).find(d=>d.device_id===deviceId);
+    let delivery='尚未测试后台推送。';
+    if(latest) {
+      if(latest.state==='sent')delivery='推送服务已接受测试通知。若手机仍未显示，请检查系统通知、锁屏显示和专注模式；这不代表手机已确认收到。';
+      else if(latest.error)delivery=`发送未成功：${latest.error}（已尝试 ${latest.attempts} 次）`;
+      else if(latest.state==='pending')delivery=latest.next_at>Date.now()/1000?'测试已安排，请返回主屏幕并锁屏等候。':'等待后台发送。';
+      else if(latest.state==='skipped')delivery='测试被跳过：提醒已读、已处理，或通知开关已关闭。';
+      else delivery='订阅已失效，请重新开启手机提醒。';
+    }
+    if(state.worker_healthy===false)delivery+=' 后台发送程序尚未运行或运行异常。';
+    $('push-delivery').textContent=delivery;
   }
   function status() {
     let message='点击开启手机提醒，允许接收通知。';
     if(ios&&!standalone)message='请先添加到主屏幕，再从主屏幕打开晨的助手。';
     else if(!supported)message='当前环境不支持推送，请使用 HTTPS 和支持通知的浏览器。';
     else if(Notification.permission==='denied')message='通知权限已关闭，请在系统设置中允许晨的助手通知。';
-    else if(deviceId)message=state.devices.find(d=>d.id===deviceId)?.enabled?'本机已订阅。可以关闭网页并发送测试提醒验证通知。':'本机提醒已关闭，点击开启手机提醒可恢复。';
+    else if(deviceId)message=state.devices.find(d=>d.id===deviceId)?.enabled?'本机已订阅。点击锁屏测试，然后返回主屏幕并锁屏。':'本机提醒已关闭，点击开启手机提醒可恢复。';
     $('push-status').textContent=message;
     $('push-enable').disabled=busy||!state||!supported||(ios&&!standalone)||Notification.permission==='denied';
     $('push-test').disabled=busy||!deviceId||!state.devices.find(d=>d.id===deviceId)?.enabled||!state.preferences.all||!state.preferences.system;
+    $('push-test-lock').disabled=$('push-test').disabled;
     $('push-disable').disabled=busy||!deviceId;
   }
   async function refresh() {state=await request('/api/reminders');render();}
@@ -93,6 +105,7 @@
       });
     });
     $('push-test').addEventListener('click',()=>action(async()=>{const r=await request('/api/reminders/test',{device_id:deviceId});feedback(r.message);}));
+    $('push-test-lock').addEventListener('click',()=>action(async()=>{const r=await request('/api/reminders/test',{device_id:deviceId,delay:20});feedback(r.message);}));
     $('push-disable').addEventListener('click',()=>action(async()=>{await request(`/api/reminders/devices/${encodeURIComponent(deviceId)}`,{delete:true});const sub=await reg?.pushManager.getSubscription();if(sub)await sub.unsubscribe();deviceId=null;feedback('本机提醒已关闭。');}));
   }
   function equalKey(a,b){return a.length===b.length&&a.every((v,i)=>v===b[i]);}
@@ -111,5 +124,8 @@
       }
     }catch(e){feedback(e.message);}
   })();
-  if(center)setInterval(()=>{if(!busy&&!document.hidden)refresh().catch(()=>{});},15000);
+  if(center) {
+    setInterval(()=>{if(!busy&&!document.hidden)refresh().catch(()=>{});},5000);
+    document.addEventListener('visibilitychange',()=>{if(!busy&&!document.hidden)refresh().catch(()=>{});});
+  }
 })();
