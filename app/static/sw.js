@@ -1,6 +1,6 @@
-const CACHE='chen-assistant-v171-shell';
-const ASSETS=['/static/icon-180.png','/static/icon-512.png','/manifest.webmanifest','/static/offline.html','/static/reminders.css'];
-self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
+const CACHE='chen-assistant-v172-shell';
+const ASSETS=['/static/icon-180.png','/static/icon-512.png','/manifest.webmanifest','/static/offline.html','/static/reminders.css','/static/pwa-experience.css','/static/pwa-experience.js'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
 self.addEventListener('activate',e=>{e.waitUntil(Promise.all([
   caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))),
   self.clients.claim()
@@ -47,3 +47,5 @@ self.addEventListener('notificationclick',event=>{
   })());
 });
 
+
+self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')event.waitUntil(self.skipWaiting());});

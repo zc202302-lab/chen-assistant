@@ -39,8 +39,9 @@
   <link rel="stylesheet" href="/static/reminders.css?v=1700">
   <title>{% block title %}晨的助手{% endblock %}</title>
   <link rel="stylesheet" href="/static/workspace-row-numbers.css?v=1661">
+<link rel="stylesheet" href="/static/pwa-experience.css?v=1720">
 </head>
-<body>
+<body data-pwa-scope="{{ csrf|default('') }}">
 {% set _path = request.url.path %}
 {% set _is_info = _path == '/info' or _path.startswith('/info/') or _path.startswith('/accounts') %}
 {% set _is_work = _path == '/work' or _path.startswith('/work/') or _path == '/search' or _path.startswith('/customers') or _path.startswith('/products') %}
@@ -128,6 +129,7 @@
 <script src="/static/v031_windows_bootstrap.js?v=15100"></script>
 <script src="/static/v033_payment_flow_patch.js?v=1590"></script>
 <script src="/static/v10.js?v=1000"></script>
+<script src="/static/pwa-experience.js?v=1720"></script>
 <script src="/static/global-back.js?v=1540"></script>
 <script src="/static/quick-search-v15.js?v=1600"></script>
 <script src="/static/v143_customer_status.js?v=1431"></script>
@@ -146,4 +148,5 @@
 <script src="/static/reminders.js?v=1710"></script>
 </body>
 </html>
+
 

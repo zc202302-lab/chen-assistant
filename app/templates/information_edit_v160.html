@@ -10,7 +10,7 @@
       <p>只固定最少字段，正文可以按你自己的格式记录。</p>
     </div>
   </div>
-  <form class="info-edit-v160" method="post" action="{% if item %}/info/{{ item.id }}/edit{% else %}/info/new{% endif %}">
+  <form class="info-edit-v160" data-pwa-draft="info" data-pwa-success="info" method="post" action="{% if item %}/info/{{ item.id }}/edit{% else %}/info/new{% endif %}">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <label><span>标题 *</span><input name="title" required value="{{ item.title if item else '' }}" placeholder="例如：美国 VPS 节点"></label>
     <div class="info-edit-two-v160">
@@ -27,3 +27,4 @@
   </form>
 </section>
 {% endblock %}
+

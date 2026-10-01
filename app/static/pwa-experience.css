@@ -1,0 +1,16 @@
+.chen-pwa { background:#f4f6fa; }
+.chen-pwa .bottom-nav a.pwa-active { color:#2563eb; background:#eff6ff; border-radius:12px; }
+.pwa-draft-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 12px; margin-bottom:12px; border-radius:10px; background:#f0f6ff; color:#475569; font-size:13px; }
+.pwa-draft-bar button,.pwa-update button { padding:8px 12px; border:1px solid #cbd5e1; border-radius:9px; background:white; color:#1e40af; font:inherit; }
+.pwa-draft-bar [hidden] { display:none; }
+.pwa-update { position:fixed; left:12px; right:12px; bottom:calc(86px + env(safe-area-inset-bottom)); z-index:2000; display:flex; align-items:center; gap:10px; padding:12px; border-radius:14px; background:#172554; color:white; box-shadow:0 8px 30px #0f172a33; }
+.pwa-update span { flex:1; }
+@media(max-width:760px) {
+ .chen-pwa .topbar { padding-top:max(10px,env(safe-area-inset-top)); }
+ .chen-pwa .bottom-nav { padding-bottom:max(8px,env(safe-area-inset-bottom)); }
+ .chen-pwa input,.chen-pwa textarea,.chen-pwa select { font-size:16px; scroll-margin-block:100px; }
+ .chen-pwa button,.chen-pwa .bottom-nav a { touch-action:manipulation; }
+ .chen-pwa .page { padding-bottom:calc(100px + env(safe-area-inset-bottom)); }
+ .chen-pwa.pwa-keyboard .bottom-nav { display:none; }
+ .chen-pwa.pwa-keyboard .pwa-update { display:none; }
+}

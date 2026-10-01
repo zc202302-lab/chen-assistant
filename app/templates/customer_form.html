@@ -34,7 +34,7 @@
     </div>
     <span class="badge ok">快速建档</span>
   </div>
-  <form method="post" action="/customers/new" class="stack v032-single-form">
+  <form method="post" action="/customers/new" class="stack v032-single-form" data-pwa-draft="customer" data-pwa-success="customer">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <label>集团名称 *<input name="name" required autocomplete="organization" placeholder="例如：淄博润泰物流有限公司"></label>
     <div class="form-grid">
@@ -179,3 +179,4 @@
 {% endif %}
 {% endif %}
 {% endblock %}
+

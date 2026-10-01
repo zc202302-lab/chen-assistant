@@ -146,6 +146,7 @@ jobs:
         run: |
           python tests/reminders_push_contract.py
           node tests/reminders_service_worker_contract.cjs
+          python tests/pwa_experience_acceptance.py
 
       - name: Work lists contract and browser acceptance
         if: steps.scope.outputs.mode == 'full'
@@ -450,5 +451,6 @@ jobs:
       - name: Deployment skipped
         if: steps.scope.outputs.deploy != '1'
         run: echo "No Web runtime files changed; production deployment skipped."
+
 
 
