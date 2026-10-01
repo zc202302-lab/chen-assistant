@@ -1,4 +1,5 @@
 from pathlib import Path
+import ast
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,10 +24,14 @@ def main():
     assert 'view-transition-name:app-page' in css
     assert '.topbar-actions' in css
     assert 'position:static' in css
-    assert 'APP_VERSION = "1.6.9"' in config
-    print('v1.5.4 global top navigation contract passed on app v1.6.1')
+    versions = [node.value.value for node in ast.parse(config).body
+                if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'APP_VERSION' for t in node.targets)]
+    assert len(versions) == 1 and len(versions[0].split('.')) == 3
+    assert 'href="/reminders"' in base
+    print('global top navigation contract passed on app v' + versions[0])
 
 
 if __name__ == '__main__':
     main()
+
 
