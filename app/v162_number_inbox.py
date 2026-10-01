@@ -220,7 +220,7 @@ def number_inbox_admin(request: Request, status: str = 'pending'):
         item['submitted_display'] = _display_time(item['submitted_at'])
         item['completed_display'] = _display_time(item['completed_at'])
         items.append(item)
-    share_url = str(request.base_url).rstrip('/') + f'/number-submit/{token}'
+    share_url = f'https://jituan.zcassistant.site/number-submit/{token}'
     return templates.TemplateResponse(
         'number_inbox_v162.html',
         _ctx(
