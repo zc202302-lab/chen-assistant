@@ -47,6 +47,9 @@ def ensure_number_inbox_schema(conn=None) -> str:
     try:
         conn.execute('CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
         conn.executescript(NUMBER_INBOX_SCHEMA)
+        columns = {row['name'] for row in conn.execute('PRAGMA table_info(number_inbox)')}
+        if 'submit_batch' not in columns:
+            conn.execute("ALTER TABLE number_inbox ADD COLUMN submit_batch TEXT NOT NULL DEFAULT ''")
         row = conn.execute('SELECT value FROM app_meta WHERE key=?', (TOKEN_META_KEY,)).fetchone()
         token = row['value'] if row else ''
         if not token:
@@ -138,12 +141,14 @@ def _display_time(value: str) -> str:
         return value or ''
 
 
-def _pending_items(conn):
+def _pending_items(conn, current_batch: str = ''):
+
     rows = conn.execute(
-        "SELECT number,submitted_at FROM number_inbox WHERE status='pending' "
+        "SELECT number,submitted_at,submit_batch FROM number_inbox WHERE status='pending' "
         "ORDER BY submitted_at DESC,id DESC"
     ).fetchall()
-    return [dict(row, submitted_display=_display_time(row['submitted_at'])) for row in rows]
+    return [dict(row, submitted_display=_display_time(row['submitted_at']),
+                 is_new=bool(current_batch) and row['submit_batch'] == current_batch) for row in rows]
 
 
 @router.get('/number-submit/{token}', response_class=HTMLResponse)
@@ -161,7 +166,7 @@ def public_number_pending_page(request: Request, token: str, result: str = ''):
     with db() as conn:
         if not _token_matches(conn, token):
             raise HTTPException(404)
-        items = _pending_items(conn)
+        items = _pending_items(conn, request.cookies.get('number_inbox_batch', ''))
     return templates.TemplateResponse(
         'number_pending_v162.html',
         {'request': request, 'token': token, 'items': items, 'result': result},
@@ -190,17 +195,22 @@ def public_number_submit(
                 'request': request, 'token': token, 'numbers': number, 'error': exc.detail,
             }, status_code=400)
         inserted = 0
+        batch = secrets.token_urlsafe(24)
         submitted_at = now_iso()
         for digits in dict.fromkeys(normalized):
             cur = conn.execute(
                 """INSERT OR IGNORE INTO number_inbox
-                   (number,normalized_number,submitter,note,status,submitted_at,completed_at)
-                   VALUES(?,?, '', '', 'pending', ?, '')""",
-                (digits, digits, submitted_at),
+                   (number,normalized_number,submitter,note,status,submitted_at,completed_at,submit_batch)
+                   VALUES(?,?, '', '', 'pending', ?, '', ?)""",
+                (digits, digits, submitted_at, batch),
             )
             inserted += cur.rowcount
         result = 'success' if inserted else 'duplicate'
-    return RedirectResponse(f'/number-submit/{token}/pending?result={result}', status_code=303)
+    response = RedirectResponse(f'/number-submit/{token}/pending?result={result}', status_code=303)
+    response.set_cookie('number_inbox_batch', batch, httponly=True,
+                        secure=request.url.scheme == 'https', samesite='lax',
+                        path=f'/number-submit/{token}')
+    return response
 
 
 public_number_submit.__public_token_authenticated__ = True

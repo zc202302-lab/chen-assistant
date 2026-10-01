@@ -62,10 +62,11 @@ def main():
     )
     assert first.status_code == 200, first.text
     assert '提交成功' in first.text
+    assert first.text.count('number-type-new') == 1
     assert first.history[0].status_code == 303
     assert first.url.path == f'/number-submit/{token}/pending'
     assert '提交人' not in first.text
-    assert '<th>号码</th><th>提交时间</th>' in first.text
+    assert '<th>类型</th><th>号码</th><th>提交时间</th>' in first.text
     assert desktop_token not in first.text
     assert 'assistant.ziboxiaozhushou.cn' not in first.text
     assert client.get('/number-submit/wrong/pending').status_code == 404
@@ -77,6 +78,8 @@ def main():
     )
     assert duplicate.status_code == 200, duplicate.text
     assert '已经在未加号码列表中' in duplicate.text
+    assert 'number-type-new' not in duplicate.text
+    assert 'number-type-previous' in duplicate.text
 
     unauth_feed = client.get('/api/number-inbox/pending', follow_redirects=False)
     assert unauth_feed.status_code == 401, unauth_feed.text
@@ -233,6 +236,13 @@ def main():
     })
     assert batch.status_code == 200, batch.text
     assert batch.history[0].status_code == 303
+    assert batch.text.count('number-type-new') == 2
+    refreshed = client.get(f'/number-submit/{new_token}/pending')
+    assert refreshed.text.count('number-type-new') == 2
+    another_client = TestClient(app)
+    assert 'number-type-new' not in another_client.get(f'/number-submit/{new_token}/pending').text
+    assert 'httponly' in batch.history[0].headers['set-cookie'].lower()
+    assert f'Path=/number-submit/{new_token}' in batch.history[0].headers['set-cookie']
     with db() as conn:
         batch_rows = conn.execute("SELECT * FROM number_inbox WHERE normalized_number IN ('13600000001','13600000002')").fetchall()
         assert len(batch_rows) == 2
