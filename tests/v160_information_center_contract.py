@@ -1,4 +1,5 @@
 from pathlib import Path
+import ast
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,11 +42,14 @@ def main():
     css = (ROOT / 'app' / 'static' / 'information-center-v160.css').read_text(encoding='utf-8')
     assert 'position:fixed' in css and 'bottom:calc(58px + env(safe-area-inset-bottom))' in css
     assert '.info-edit-v160 textarea{height:42vh;min-height:260px;max-height:460px}' in css
-    assert 'APP_VERSION = "1.6.0"' in config or 'APP_VERSION = "1.6.1"' in config or 'APP_VERSION = "1.6.3"' in config or 'APP_VERSION = "1.6.5"' in config or 'APP_VERSION = "1.6.6"' in config or 'APP_VERSION = "1.6.7"' in config or 'APP_VERSION = "1.6.9"' in config
+    version = next(node.value.value for node in ast.parse(config).body
+                   if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'APP_VERSION' for t in node.targets))
+    assert tuple(map(int, version.split('.'))) >= (1, 6, 0)
 
     print('v1.6.0 information center contract passed')
 
 
 if __name__ == '__main__':
     main()
+
 

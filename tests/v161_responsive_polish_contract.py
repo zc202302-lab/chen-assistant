@@ -1,4 +1,5 @@
 from pathlib import Path
+import ast
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -27,12 +28,15 @@ def main():
     assert '.customer-directory-list-v161{\n  display:grid;' in css
     assert 'grid-template-columns:repeat(2,minmax(0,1fr));' in css
     assert '@media(max-width:980px)' in css
-    assert 'APP_VERSION = "1.6.9"' in config
-    assert 'EXPECTED_VERSION="1.6.9"' in deploy
+    version = next(node.value.value for node in ast.parse(config).body
+                   if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'APP_VERSION' for t in node.targets))
+    assert tuple(map(int, version.split('.'))) >= (1, 6, 0)
+    assert f'EXPECTED_VERSION="{version}"' in deploy
 
     print('v1.6.1 responsive polish contract passed')
 
 
 if __name__ == '__main__':
     main()
+
 
