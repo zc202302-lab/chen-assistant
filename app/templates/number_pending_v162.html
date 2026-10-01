@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>未加号码</title>
-  <link rel="stylesheet" href="/static/number-inbox-v162.css?v=1623">
+  <link rel="stylesheet" href="/static/number-inbox-v162.css?v=1624">
 </head>
 <body class="number-submit-page">
   <main class="number-submit-shell">
@@ -18,6 +18,7 @@
       {% if items %}
       <div class="number-pending-table-wrap">
         <table class="number-pending-table">
+          <colgroup><col class="number-col-type"><col class="number-col-value"><col class="number-col-time"></colgroup>
           <thead><tr><th>类型</th><th>号码</th><th>提交时间</th></tr></thead>
           <tbody>{% for item in items %}<tr><td><span class="number-type {% if item.is_new %}number-type-new{% else %}number-type-previous{% endif %}">{% if item.is_new %}新增{% else %}之前{% endif %}</span></td><td>{{ item.number }}</td><td><time>{{ item.submitted_display }}</time></td></tr>{% endfor %}</tbody>
         </table>
