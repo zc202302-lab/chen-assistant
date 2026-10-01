@@ -1,0 +1,29 @@
+name: PWA production verification
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'requirements.txt'
+      - 'deploy.sh'
+      - 'scripts/check_pwa_production.py'
+      - '.github/workflows/pwa-production-check.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chen-assistant-pwa-production-check
+  cancel-in-progress: true
+
+jobs:
+  verify_online:
+    name: verify actual public PWA deployment
+    runs-on: [self-hosted, linux, x64, chen-assistant]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify public production version and push assets
+        run: python3 scripts/check_pwa_production.py
