@@ -141,6 +141,12 @@ jobs:
           pip-audit -r requirements.txt
           bandit -q -r app storage_node -lll
 
+      - name: Web Push and reminder contracts
+        if: steps.scope.outputs.mode == 'full'
+        run: |
+          python tests/reminders_push_contract.py
+          node tests/reminders_service_worker_contract.cjs
+
       - name: Work lists contract and browser acceptance
         if: steps.scope.outputs.mode == 'full'
         run: |
@@ -444,4 +450,5 @@ jobs:
       - name: Deployment skipped
         if: steps.scope.outputs.deploy != '1'
         run: echo "No Web runtime files changed; production deployment skipped."
+
 

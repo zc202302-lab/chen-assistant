@@ -2,7 +2,10 @@ import re
 
 from starlette.routing import Match
 
+import asyncio
 from . import config
+from .reminders import router as reminders_router, ensure_reminder_schema, worker as reminder_worker
+from .security import configured
 from .legacy_main import app
 from .v02_routes import router as v02_router
 from .v021_routes import router as v021_router
@@ -40,6 +43,7 @@ def _include(router):
     return app.router.routes[before:]
 
 
+_reminder_routes = _include(reminders_router)
 _v02_routes = _include(v02_router)
 _v021_routes = _include(v021_router)
 _v023_routes = _include(v023_router)
@@ -72,6 +76,7 @@ _work_list_import_routes = _include(work_list_import_router)
 # lives at /global-search. Customer/payment/business/promotion routes keep their
 # existing owners exactly as before.
 _ordered = (
+    _reminder_routes +
     _work_list_import_routes +
     _work_lists_routes +
     _v160_information_center_routes +
@@ -212,3 +217,19 @@ async def current_asset_cache_policy(request, call_next):
         )
     return response
 
+
+
+
+@app.on_event('startup')
+async def start_reminder_worker():
+    if configured():
+        ensure_reminder_schema()
+        app.state.reminder_stop = asyncio.Event()
+        app.state.reminder_worker = asyncio.create_task(reminder_worker(app.state.reminder_stop))
+
+
+@app.on_event('shutdown')
+async def stop_reminder_worker():
+    if hasattr(app.state, 'reminder_worker'):
+        app.state.reminder_stop.set()
+        await app.state.reminder_worker

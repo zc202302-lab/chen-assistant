@@ -36,6 +36,7 @@
   <link rel="stylesheet" href="/static/task-v164.css?v=1640">
   <link rel="stylesheet" href="/static/quick-search-v15.css?v=1510">
   <link rel="stylesheet" href="/static/high-frequency-v152.css?v=1525">
+  <link rel="stylesheet" href="/static/reminders.css?v=1700">
   <title>{% block title %}晨的助手{% endblock %}</title>
   <link rel="stylesheet" href="/static/workspace-row-numbers.css?v=1661">
 </head>
@@ -54,6 +55,7 @@
     <a href="/"{% if not _is_work and not _is_info and not _is_life %} class="active" aria-current="page"{% endif %}>首页</a>
     <a href="/work"{% if _is_work %} class="active" aria-current="page"{% endif %}>工作</a>
     <a href="/info"{% if _is_info %} class="active" aria-current="page"{% endif %}>资料</a>
+    <a href="/reminders">提醒<span data-reminder-badge class="reminder-nav-count" hidden></span></a>
     <a href="/life"{% if _is_life %} class="active" aria-current="page"{% endif %}>生活</a>
   </nav>
   <div class="topbar-actions">
@@ -141,5 +143,7 @@
 <script src="/static/live-refresh-modules-v15.js?v=1501"></script>
 <script src="/static/high-frequency-v152.js?v=15101"></script>
 <script src="/static/workspace-row-numbers.js?v=1661"></script>
+<script src="/static/reminders.js?v=1700"></script>
 </body>
 </html>
+

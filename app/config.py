@@ -3,7 +3,7 @@ import os
 
 ROOT = Path(__file__).resolve().parent.parent
 ENV_PATH = ROOT / ".env"
-APP_VERSION = "1.6.9"
+APP_VERSION = "1.7.0"
 
 
 def load_env(path: Path = ENV_PATH):
@@ -42,4 +42,5 @@ try:
     REMOTE_STORAGE_MAX_FILE_MB = max(1, min(500, int(os.getenv("REMOTE_STORAGE_MAX_FILE_MB", "50"))))
 except ValueError:
     REMOTE_STORAGE_MAX_FILE_MB = 50
+
 

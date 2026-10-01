@@ -99,7 +99,14 @@ async def auth_and_headers(request: Request, call_next):
     if not public:
         session = get_session(request.cookies.get('session_token'))
         if not session:
-            return RedirectResponse('/login', status_code=303)
+            response = RedirectResponse('/login', status_code=303)
+            # Keep notification deep links through a session-expiry login.
+            if request.method == 'GET' and not path.startswith('/api/'):
+                target = path + ('?' + request.url.query if request.url.query else '')
+                if target.startswith('/') and not target.startswith('//') and not any(c in target for c in ('\\', '\r', '\n', '\x00')):
+                    response.set_cookie('post_login_path', target, max_age=600, httponly=True,
+                                        secure=config.APP_SECURE_COOKIE, samesite='strict', path='/')
+            return response
         request.state.session = session
     response = await call_next(request)
     if path == '/static/win-assistants/update.json':
@@ -146,7 +153,11 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
     if not verify_login(username.strip(), password):
         return RedirectResponse('/login?error=用户名或密码错误', status_code=303)
     token, _, _ = create_session()
-    resp = RedirectResponse('/', status_code=303)
+    target = request.cookies.get('post_login_path', '/')
+    if not target.startswith('/') or target.startswith('//') or any(c in target for c in ('\\', '\r', '\n', '\x00')):
+        target = '/'
+    resp = RedirectResponse(target, status_code=303)
+    resp.delete_cookie('post_login_path', path='/')
     resp.set_cookie('session_token', token, max_age=30*86400, httponly=True, secure=config.APP_SECURE_COOKIE, samesite='strict', path='/')
     return resp
 
@@ -506,3 +517,4 @@ def account_delete(request: Request, account_id: int, csrf: str=Form(...)):
     with db() as conn:
         conn.execute('DELETE FROM website_accounts WHERE id=?',(account_id,))
     return RedirectResponse('/accounts',303)
+
