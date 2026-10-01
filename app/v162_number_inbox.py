@@ -209,7 +209,7 @@ def number_inbox_admin(request: Request):
         item = dict(row)
         item['submitted_display'] = _display_time(item['submitted_at'])
         items.append(item)
-    share_url = f'https://jituan.zcassistant.site/number-submit/{token}'
+    share_url = f'https://jituan.zbassistant.site/number-submit/{token}'
     return templates.TemplateResponse(
         'number_inbox_v162.html',
         _ctx(

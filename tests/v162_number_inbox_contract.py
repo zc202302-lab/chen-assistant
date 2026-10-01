@@ -125,6 +125,8 @@ def main():
     assert admin.status_code == 200, admin.text
     assert '138 0013 8000' in admin.text
     assert '测试同事' in admin.text
+    assert f'https://jituan.zbassistant.site/number-submit/{token}' in admin.text
+    assert 'zcassistant.site' not in admin.text
     assert '1 个待录入' in client.get('/work').text
     assert '查看待录入号码' in client.get('/').text
     assert '已处理' not in admin.text
