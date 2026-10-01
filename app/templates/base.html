@@ -50,12 +50,12 @@
 <header class="topbar">
   <div class="topbar-left">
     <a class="brand" href="/">晨的助手 <span>v{{ request.app.version }}</span></a>
+    <a class="reminder-entry" href="/reminders" aria-label="提醒中心" data-reminder-available="{{ 'false' if request.app.state.reminder_error|default(none) else 'true' }}">提醒<span data-reminder-badge class="reminder-nav-count" hidden></span></a>
   </div>
   <nav class="global-primary-nav" aria-label="主区域导航">
     <a href="/"{% if not _is_work and not _is_info and not _is_life %} class="active" aria-current="page"{% endif %}>首页</a>
     <a href="/work"{% if _is_work %} class="active" aria-current="page"{% endif %}>工作</a>
     <a href="/info"{% if _is_info %} class="active" aria-current="page"{% endif %}>资料</a>
-    <a href="/reminders">提醒<span data-reminder-badge class="reminder-nav-count" hidden></span></a>
     <a href="/life"{% if _is_life %} class="active" aria-current="page"{% endif %}>生活</a>
   </nav>
   <div class="topbar-actions">

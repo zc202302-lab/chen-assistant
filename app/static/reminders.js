@@ -2,6 +2,7 @@
   'use strict';
   const center = document.getElementById('reminder-center');
   const badge = document.querySelector('[data-reminder-badge]');
+  if (!center && document.querySelector('[data-reminder-available="false"]')) return;
   let state, reg, deviceId, busy = false;
   const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
