@@ -1,16 +1,22 @@
 {% extends "base.html" %}
-{% block title %}号码收集 · 晨的助手{% endblock %}
+{% block title %}{{ '号码收集设置' if view == 'settings' else '未加号码' }} · 晨的助手{% endblock %}
 {% block content %}
 <section class="v10-shell number-inbox-shell">
   <div class="v10-page-head number-inbox-head">
     <div>
       <span class="v10-kicker">工作 · 号码收集</span>
-      <h1>未加号码</h1>
-      <p>同事通过专用链接提交，处理前会一直保留在这里。</p>
+      <h1>{{ '号码收集设置' if view == 'settings' else '未加号码' }}</h1>
+      {% if view == 'settings' %}<p>管理同事提交链接和 Windows 提醒连接。</p>{% endif %}
     </div>
     <a class="v10-secondary" href="/work">返回工作</a>
   </div>
 
+  <nav class="number-inbox-tabs" aria-label="号码收集二级导航">
+    <a href="/work/number-inbox"{% if view != 'settings' %} class="active" aria-current="page"{% endif %}>未加号码 <b>{{ pending_count }}</b></a>
+    <a href="/work/number-inbox?view=settings"{% if view == 'settings' %} class="active" aria-current="page"{% endif %}>设置</a>
+  </nav>
+
+  {% if view == 'settings' %}
   <section class="v10-section number-inbox-share">
     <div class="v10-section-head">
       <div>
@@ -51,6 +57,7 @@
     </form>
   </section>
 
+  {% else %}
   <h2>未加号码（{{ pending_count }}）</h2>
 
   {% if items %}
@@ -75,7 +82,9 @@
   {% else %}
   <div class="v10-empty">目前没有未加号码</div>
   {% endif %}
+  {% endif %}
 </section>
 <script src="/static/number-inbox-v162.js?v=1622"></script>
 {% endblock %}
+
 

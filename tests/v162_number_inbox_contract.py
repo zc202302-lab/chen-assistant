@@ -131,7 +131,17 @@ def main():
     assert admin.status_code == 200, admin.text
     assert '13800138000' in admin.text
     assert '提交人' not in admin.text
-    assert f'https://jituan.zbassistant.site/number-submit/{token}' in admin.text
+    assert '号码收集二级导航' in admin.text
+    assert '同事提交入口' not in admin.text and 'Windows 提醒连接' not in admin.text
+    assert desktop_token not in admin.text and f'/number-submit/{token}' not in admin.text
+    settings = client.get('/work/number-inbox?view=settings')
+    assert settings.status_code == 200
+    assert '同事提交入口' in settings.text and 'Windows 提醒连接' in settings.text
+    assert desktop_token in settings.text
+    assert 'title="点击复制号码"' not in settings.text
+    assert '13800138000' not in settings.text
+    assert f'https://jituan.zbassistant.site/number-submit/{token}' in settings.text
+    assert '同事提交入口' not in client.get('/work/number-inbox?view=invalid').text
     assert 'zcassistant.site' not in admin.text
     assert '1 个未加' in client.get('/work').text
     assert '查看未加号码' in client.get('/').text
@@ -195,6 +205,7 @@ def main():
         follow_redirects=False,
     )
     assert rotate_desktop.status_code == 303
+    assert rotate_desktop.headers['location'] == '/work/number-inbox?view=settings'
     with db() as conn:
         new_desktop_token = conn.execute(
             'SELECT value FROM app_meta WHERE key=?',
@@ -219,6 +230,7 @@ def main():
         follow_redirects=False,
     )
     assert rotate.status_code == 303
+    assert rotate.headers['location'] == '/work/number-inbox?view=settings'
     with db() as conn:
         new_token = conn.execute('SELECT value FROM app_meta WHERE key=?', (TOKEN_META_KEY,)).fetchone()['value']
         assert new_token != token
@@ -262,4 +274,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 

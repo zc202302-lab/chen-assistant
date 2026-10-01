@@ -217,10 +217,11 @@ public_number_submit.__public_token_authenticated__ = True
 
 
 @router.get('/work/number-inbox', response_class=HTMLResponse)
-def number_inbox_admin(request: Request):
+def number_inbox_admin(request: Request, view: str = 'pending'):
+    view = 'settings' if view == 'settings' else 'pending'
     with db() as conn:
         token = ensure_number_inbox_schema(conn)
-        desktop_token = ensure_desktop_token(conn)
+        desktop_token = ensure_desktop_token(conn) if view == 'settings' else ''
         pending_count = int(
             conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n']
         )
@@ -237,6 +238,7 @@ def number_inbox_admin(request: Request):
         'number_inbox_v162.html',
         _ctx(
             request,
+            view=view,
             items=items,
             pending_count=pending_count,
             share_url=share_url,
@@ -340,7 +342,7 @@ def number_inbox_rotate_desktop_token(request: Request, csrf: str = Form(...)):
             'INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)',
             (DESKTOP_TOKEN_META_KEY, token),
         )
-    return RedirectResponse('/work/number-inbox', status_code=303)
+    return RedirectResponse('/work/number-inbox?view=settings', status_code=303)
 
 
 @router.post('/work/number-inbox/rotate-link')
@@ -353,10 +355,11 @@ def number_inbox_rotate_link(request: Request, csrf: str = Form(...)):
             'INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)',
             (TOKEN_META_KEY, token),
         )
-    return RedirectResponse('/work/number-inbox', status_code=303)
+    return RedirectResponse('/work/number-inbox?view=settings', status_code=303)
 
 
 def pending_number_count(conn) -> int:
     ensure_number_inbox_schema(conn)
     return int(conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'])
+
 
