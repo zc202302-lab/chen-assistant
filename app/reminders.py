@@ -268,7 +268,7 @@ def reminder_state():
             'delivery':{r['state']:r['n'] for r in conn.execute('SELECT state,COUNT(*) n FROM push_outbox GROUP BY state')}}
 
 
-async def mutation(request):
+async def check_csrf(request):
     if int(request.headers.get('content-length','0')) > 12000:
         raise HTTPException(413,'请求过大')
     try:
@@ -283,7 +283,7 @@ async def mutation(request):
 
 @router.post('/api/reminders/preferences')
 async def save_preferences(request: Request):
-    payload = await mutation(request)
+    payload = await check_csrf(request)
     if not payload or any(k not in ['all',*TYPES] or type(v) is not bool for k,v in payload.items()):
         raise HTTPException(400,'提醒类型无效')
     with db() as conn:
@@ -299,7 +299,7 @@ async def save_preferences(request: Request):
 
 @router.post('/api/reminders/subscriptions')
 async def subscribe(request: Request):
-    payload = await mutation(request)
+    payload = await check_csrf(request)
     try:
         subscription = validate_subscription(payload.get('subscription'))
     except (ValueError,TypeError) as exc:
@@ -320,7 +320,7 @@ async def subscribe(request: Request):
 
 @router.post('/api/reminders/devices/{device_id}')
 async def change_device(request: Request,device_id: str):
-    payload = await mutation(request)
+    payload = await check_csrf(request)
     with db() as conn:
         if payload.get('delete') is True:
             conn.execute('DELETE FROM push_devices WHERE id=?',(device_id,))
@@ -335,7 +335,7 @@ async def change_device(request: Request,device_id: str):
 
 @router.post('/api/reminders/test')
 async def test_push(request: Request):
-    payload = await mutation(request)
+    payload = await check_csrf(request)
     did = payload.get('device_id')
     with db() as conn:
         if not preferences(conn).get('all') or not preferences(conn).get('system'):
@@ -351,7 +351,7 @@ async def test_push(request: Request):
 
 @router.post('/api/reminders/{reminder_id}/read')
 async def mark_read(request: Request,reminder_id: int):
-    await mutation(request)
+    await check_csrf(request)
     with db() as conn:
         conn.execute('UPDATE reminders SET read_at=? WHERE id=?',(time.time(),reminder_id))
     return {'ok':True}
@@ -359,7 +359,7 @@ async def mark_read(request: Request,reminder_id: int):
 
 @router.post('/api/reminders/events')
 async def create_event(request: Request):
-    payload = await mutation(request)
+    payload = await check_csrf(request)
     try:
         with db() as conn:
             rid=publish_reminder(conn,kind=payload['kind'],title=payload['title'],body=payload.get('body',''),
@@ -371,7 +371,7 @@ async def create_event(request: Request):
 
 @router.post('/api/reminders/subscription-state')
 async def subscription_state(request: Request):
-    payload = await mutation(request)
+    payload = await check_csrf(request)
     with db() as conn:
         row=conn.execute('SELECT id,enabled FROM push_devices WHERE endpoint=?',(str(payload.get('endpoint','')),)).fetchone()
     return {'device_id':row['id'] if row else None,'enabled':bool(row['enabled']) if row else False}
