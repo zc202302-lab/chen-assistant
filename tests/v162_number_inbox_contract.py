@@ -51,19 +51,21 @@ def main():
     assert page.status_code == 200, page.text
     assert '提交后会进入' not in page.text
     assert 'name="note"' not in page.text
+    assert 'name="submitter"' not in page.text
+    assert 'id="add-number"' in page.text
     assert f'/number-submit/{token}/pending' in page.text
     assert '请填写加集团号码' in page.text
 
     first = client.post(
         f'/number-submit/{token}',
-        data={'number': '138 0013 8000', 'submitter': '测试同事', 'note': '首次提交'},
+        data={'number': '13800138000', 'submitter': '测试同事', 'note': '首次提交'},
     )
     assert first.status_code == 200, first.text
     assert '提交成功' in first.text
     assert first.history[0].status_code == 303
     assert first.url.path == f'/number-submit/{token}/pending'
-    assert '测试同事' in first.text
-    assert '<th>号码</th><th>提交时间</th><th>提交人</th>' in first.text
+    assert '提交人' not in first.text
+    assert '<th>号码</th><th>提交时间</th>' in first.text
     assert desktop_token not in first.text
     assert 'assistant.ziboxiaozhushou.cn' not in first.text
     assert client.get('/number-submit/wrong/pending').status_code == 404
@@ -74,7 +76,7 @@ def main():
         data={'number': '+86 13800138000', 'submitter': '另一同事', 'note': '重复提交'},
     )
     assert duplicate.status_code == 200, duplicate.text
-    assert '已经在待录入列表中' in duplicate.text
+    assert '已经在未加号码列表中' in duplicate.text
 
     unauth_feed = client.get('/api/number-inbox/pending', follow_redirects=False)
     assert unauth_feed.status_code == 401, unauth_feed.text
@@ -88,7 +90,7 @@ def main():
     assert payload['pending_count'] == 1
     assert len(payload['pending_ids']) == 1
     assert payload['latest_id'] > 0
-    assert payload['items'][0]['number'] == '138 0013 8000'
+    assert payload['items'][0]['number'] == '13800138000'
     assert feed.headers.get('cache-control') == 'no-store'
 
     desktop_done_unauth = client.post('/api/number-inbox/1/done', follow_redirects=False)
@@ -100,6 +102,7 @@ def main():
         assert rows[0]['normalized_number'] == '13800138000'
         assert rows[0]['status'] == 'pending'
         assert rows[0]['note'] == ''
+        assert rows[0]['submitter'] == ''
         item_id = int(rows[0]['id'])
 
     desktop_done = client.post(
@@ -123,12 +126,12 @@ def main():
     client.cookies.set('session_token', session_token)
     admin = client.get('/work/number-inbox')
     assert admin.status_code == 200, admin.text
-    assert '138 0013 8000' in admin.text
-    assert '测试同事' in admin.text
+    assert '13800138000' in admin.text
+    assert '提交人' not in admin.text
     assert f'https://jituan.zbassistant.site/number-submit/{token}' in admin.text
     assert 'zcassistant.site' not in admin.text
-    assert '1 个待录入' in client.get('/work').text
-    assert '查看待录入号码' in client.get('/').text
+    assert '1 个未加' in client.get('/work').text
+    assert '查看未加号码' in client.get('/').text
     assert '已处理' not in admin.text
     assert 'status=done' not in admin.text
     assert 'status=all' not in admin.text
@@ -145,9 +148,9 @@ def main():
         assert row['completed_at']
 
     pending_page = client.get(f'/number-submit/{token}/pending')
-    assert '138 0013 8000' not in pending_page.text
-    assert '目前没有待录入号码' in pending_page.text
-    assert '138 0013 8000' not in client.get('/work/number-inbox?status=done').text
+    assert '13800138000' not in pending_page.text
+    assert '目前没有未加号码' in pending_page.text
+    assert '13800138000' not in client.get('/work/number-inbox?status=done').text
 
     reopened = client.post(
         f'/work/number-inbox/{item_id}/reopen',
@@ -171,7 +174,7 @@ def main():
     assert public_pending.text.count('<tr><td>') == 306
     assert '10-01 08:00' in public_pending.text
     assert '<script>alert(1)</script>' not in public_pending.text
-    assert '&lt;script&gt;' in public_pending.text
+    assert '提交人' not in public_pending.text
     assert public_pending.headers['cache-control'] == 'no-store'
     assert desktop_token not in public_pending.text
     assert '13900000000' in public_pending.text and '13900000304' in public_pending.text
@@ -223,7 +226,28 @@ def main():
     new_link = client.get(f'/number-submit/{new_token}')
     assert new_link.status_code == 200
 
-    print('number inbox submission, public pending list, admin pending-only and desktop contracts passed')
+    # Multiple repeated form keys are submitted together and normalized/deduplicated.
+    batch = client.post(f'/number-submit/{new_token}', data={
+        'number': ['13600000001', '+86 13600000002', '136 0000 0001', '', '13800138000'],
+        'submitter': 'ignored legacy field',
+    })
+    assert batch.status_code == 200, batch.text
+    assert batch.history[0].status_code == 303
+    with db() as conn:
+        batch_rows = conn.execute("SELECT * FROM number_inbox WHERE normalized_number IN ('13600000001','13600000002')").fetchall()
+        assert len(batch_rows) == 2
+        assert batch_rows[0]['submitted_at'] == batch_rows[1]['submitted_at']
+        assert all(row['submitter'] == '' for row in batch_rows)
+        before = conn.execute('SELECT COUNT(*) n FROM number_inbox').fetchone()['n']
+    invalid_batch = client.post(f'/number-submit/{new_token}', data={'number': ['13600000003', 'bad']})
+    assert invalid_batch.status_code == 400
+    assert '13600000003' in invalid_batch.text
+    with db() as conn:
+        assert conn.execute('SELECT COUNT(*) n FROM number_inbox').fetchone()['n'] == before
+    assert client.post(f'/number-submit/{new_token}', data={'number': [' ', '']}).status_code == 400
+    assert client.post(f'/number-submit/{new_token}', data={'number': ['13600000004'] * 101}).status_code == 400
+    assert client.get('/static/number-submit-v162.js').status_code == 200
+    print('number inbox bulk submit, pending rows, validation, token and desktop contracts passed')
 
 
 if __name__ == '__main__':

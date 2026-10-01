@@ -5,7 +5,7 @@
   <div class="v10-page-head number-inbox-head">
     <div>
       <span class="v10-kicker">工作 · 号码收集</span>
-      <h1>待录入号码</h1>
+      <h1>未加号码</h1>
       <p>同事通过专用链接提交，处理前会一直保留在这里。</p>
     </div>
     <a class="v10-secondary" href="/work">返回工作</a>
@@ -51,7 +51,7 @@
     </form>
   </section>
 
-  <h2>待录入号码（{{ pending_count }}）</h2>
+  <h2>未加号码（{{ pending_count }}）</h2>
 
   {% if items %}
   <div class="number-inbox-list">
@@ -61,7 +61,6 @@
         <button class="number-copy-value" type="button" data-copy-value="{{ item.number }}" title="点击复制号码">{{ item.number }}</button>
         <div class="number-inbox-meta">
           <time>{{ item.submitted_display }}</time>
-          <span>{{ item.submitter or '未填写提交人' }}</span>
         </div>
       </div>
       <div class="number-inbox-actions">
@@ -74,9 +73,9 @@
     {% endfor %}
   </div>
   {% else %}
-  <div class="v10-empty">目前没有待录入号码</div>
+  <div class="v10-empty">目前没有未加号码</div>
   {% endif %}
 </section>
-<script src="/static/number-inbox-v162.js?v=1620"></script>
+<script src="/static/number-inbox-v162.js?v=1622"></script>
 {% endblock %}
 

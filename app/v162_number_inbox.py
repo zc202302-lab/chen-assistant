@@ -140,7 +140,7 @@ def _display_time(value: str) -> str:
 
 def _pending_items(conn):
     rows = conn.execute(
-        "SELECT number,submitted_at,submitter FROM number_inbox WHERE status='pending' "
+        "SELECT number,submitted_at FROM number_inbox WHERE status='pending' "
         "ORDER BY submitted_at DESC,id DESC"
     ).fetchall()
     return [dict(row, submitted_display=_display_time(row['submitted_at'])) for row in rows]
@@ -152,7 +152,7 @@ def public_number_submit_page(request: Request, token: str):
         if not _token_matches(conn, token):
             raise HTTPException(404)
     return templates.TemplateResponse(
-        'number_submit_v162.html', {'request': request, 'token': token},
+        'number_submit_v162.html', {'request': request, 'token': token, 'numbers': ['']},
     )
 
 
@@ -172,21 +172,34 @@ def public_number_pending_page(request: Request, token: str, result: str = ''):
 def public_number_submit(
     request: Request,
     token: str,
-    number: str = Form(...),
-    submitter: str = Form(''),
+    number: list[str] = Form(...),
 ):
     with db() as conn:
         if not _token_matches(conn, token):
             raise HTTPException(404)
-        raw, normalized = _normalize_number(number)
-        submitter = (submitter or '').strip()[:40]
-        cur = conn.execute(
-            """INSERT OR IGNORE INTO number_inbox
-               (number,normalized_number,submitter,note,status,submitted_at,completed_at)
-               VALUES(?,?,?, '', 'pending', ?, '')""",
-            (raw, normalized, submitter, now_iso()),
-        )
-        result = 'duplicate' if cur.rowcount == 0 else 'success'
+        values = [value.strip() for value in number if value.strip()]
+        if not values or len(number) > 100:
+            error = '请至少填写一个号码' if not values else '一次最多提交100个号码'
+            return templates.TemplateResponse('number_submit_v162.html', {
+                'request': request, 'token': token, 'numbers': number[:100] or [''], 'error': error,
+            }, status_code=400)
+        try:
+            normalized = [_normalize_number(value)[1] for value in values]
+        except HTTPException as exc:
+            return templates.TemplateResponse('number_submit_v162.html', {
+                'request': request, 'token': token, 'numbers': number, 'error': exc.detail,
+            }, status_code=400)
+        inserted = 0
+        submitted_at = now_iso()
+        for digits in dict.fromkeys(normalized):
+            cur = conn.execute(
+                """INSERT OR IGNORE INTO number_inbox
+                   (number,normalized_number,submitter,note,status,submitted_at,completed_at)
+                   VALUES(?,?, '', '', 'pending', ?, '')""",
+                (digits, digits, submitted_at),
+            )
+            inserted += cur.rowcount
+        result = 'success' if inserted else 'duplicate'
     return RedirectResponse(f'/number-submit/{token}/pending?result={result}', status_code=303)
 
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#111827">
   <title>请填写加集团号码</title>
-  <link rel="stylesheet" href="/static/number-inbox-v162.css?v=1620">
+  <link rel="stylesheet" href="/static/number-inbox-v162.css?v=1622">
 </head>
 <body class="number-submit-page">
   <main class="number-submit-shell">
@@ -15,19 +15,22 @@
       </div>
 
       <form method="post" action="/number-submit/{{ token }}" class="number-submit-form">
-        <label>
-          <span>号码 <b>必填</b></span>
-          <input name="number" inputmode="tel" autocomplete="tel" required maxlength="64" placeholder="例如：13800138000">
-        </label>
-        <label>
-          <span>提交人</span>
-          <input name="submitter" autocomplete="name" maxlength="40" placeholder="你的姓名">
-        </label>
+        {% if error %}<div class="number-submit-error" role="alert">{{ error }}</div>{% endif %}
+        <div id="number-inputs" class="number-inputs">
+          {% for value in numbers %}
+          <label class="number-input-row">
+            <span>号码 {{ loop.index }}</span>
+            <input name="number" inputmode="tel" autocomplete="tel" {% if loop.first %}required{% endif %} maxlength="64" placeholder="请输入号码" value="{{ value }}">
+          </label>
+          {% endfor %}
+        </div>
+        <button id="add-number" class="number-add-button" type="button" aria-label="增加下一条号码">＋</button>
         <button type="submit">提交号码</button>
       </form>
-      <a class="number-public-link" href="/number-submit/{{ token }}/pending">查看待录入号码</a>
+      <a class="number-public-link" href="/number-submit/{{ token }}/pending">查看未加号码</a>
     </section>
   </main>
+  <script src="/static/number-submit-v162.js?v=1622"></script>
 </body>
 </html>
 
