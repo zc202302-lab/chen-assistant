@@ -204,32 +204,27 @@ def _evaluate(cdp: Cdp, expression: str, context_id: int | None = None):
     return result.get("result", {}).get("value")
 
 
-_FIND_SEARCH_INPUT = r"""(() => {
+_SEARCH_MATCH = r"""(() => {
   const visible=e=>!!(e&&(e.offsetWidth||e.offsetHeight||e.getClientRects().length));
+  const compact=e=>String(e.innerText||e.value||e.textContent||'').replace(/\s/g,'');
+  const all=[...document.querySelectorAll('button,input[type=button],input[type=submit],a,span,div,[role=button]')].filter(visible).filter(e=>compact(e)==='搜索');
+  const buttons=all.filter(e=>!all.some(c=>c!==e&&e.contains(c)));
   const inputs=[...document.querySelectorAll('input')].filter(e=>visible(e)&&!['hidden','button','submit','radio','checkbox'].includes(e.type));
-  const exact=inputs.filter(e=>(e.placeholder||'').includes('您要查询的信息'));
-  if(exact.length===1)return {ok:true,selector:'placeholder',value:exact[0].value||''};
-  const buttons=[...document.querySelectorAll('button,input[type=button],input[type=submit],a')].filter(visible).filter(e=>(e.innerText||e.value||'').replace(/\s/g,'')==='搜索');
-  if(buttons.length!==1)return {ok:false,reason:'搜索按钮不唯一'};
-  const br=buttons[0].getBoundingClientRect();
-  const candidates=inputs.map(e=>{const r=e.getBoundingClientRect();return {e,r,score:Math.abs((r.top+r.bottom-br.top-br.bottom)/2)+Math.abs(br.left-r.right)/10}})
-   .filter(x=>x.r.right<=br.left&&Math.abs((x.r.top+x.r.bottom-br.top-br.bottom)/2)<=18).sort((a,b)=>a.score-b.score);
-  if(!candidates.length)return {ok:false,reason:'搜索框未找到'};
-  if(candidates.length>1&&Math.abs(candidates[0].score-candidates[1].score)<1)return {ok:false,reason:'搜索框匹配不唯一'};
-  return {ok:true,selector:'geometry',value:candidates[0].e.value||''};
+  const pairs=[];
+  for(const button of buttons){const br=button.getBoundingClientRect();for(const input of inputs){const r=input.getBoundingClientRect();const dy=Math.abs((r.top+r.bottom-br.top-br.bottom)/2);const gap=br.left-r.right;if(gap>=-3&&gap<=150&&dy<=18)pairs.push({input,button,score:dy+Math.max(0,gap)/10});}}
+  pairs.sort((a,b)=>a.score-b.score);
+  if(!pairs.length)return {ok:false,reason:'未找到同一行相邻的搜索框和搜索按钮',inputs:inputs.length,buttons:buttons.length};
+  if(pairs.length>1&&Math.abs(pairs[0].score-pairs[1].score)<1)return {ok:false,reason:'搜索控件匹配不唯一'};
+  return {ok:true,input:pairs[0].input,button:pairs[0].button};
 })()"""
 
-_SET_SEARCH_AND_CLICK = r"""((queryValue) => {
-  const visible=e=>!!(e&&(e.offsetWidth||e.offsetHeight||e.getClientRects().length));
-  const compact=s=>String(s||'').replace(/\s/g,'');
-  const inputs=[...document.querySelectorAll('input')].filter(e=>visible(e)&&!['hidden','button','submit','radio','checkbox'].includes(e.type));
-  const exact=inputs.filter(e=>(e.placeholder||'').includes('您要查询的信息'));
-  let input=exact.length===1?exact[0]:null;
-  const buttons=[...document.querySelectorAll('button,input[type=button],input[type=submit],a')].filter(visible).filter(e=>compact(e.innerText||e.value)==='搜索');
-  if(buttons.length!==1)return {ok:false,reason:'搜索按钮不唯一'};
-  if(!input){const br=buttons[0].getBoundingClientRect();const c=inputs.map(e=>{const r=e.getBoundingClientRect();return {e,r,dy:Math.abs((r.top+r.bottom-br.top-br.bottom)/2)}}).filter(x=>x.r.right<=br.left&&x.dy<=18).sort((a,b)=>a.dy-b.dy);if(!c.length||(c.length>1&&Math.abs(c[0].dy-c[1].dy)<1))return {ok:false,reason:'搜索框未找到或不唯一'};input=c[0].e;}
-  const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(input,queryValue);input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));buttons[0].click();return {ok:true};
+_FIND_SEARCH_INPUT = "(() => {const match=" + _SEARCH_MATCH + ";return {ok:match.ok,reason:match.reason,inputs:match.inputs,buttons:match.buttons};})()"
+_SET_SEARCH_AND_CLICK = "((queryValue) => {const match=" + _SEARCH_MATCH + r""";
+  if(!match.ok)return {ok:false,reason:match.reason};
+  const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+  setter.call(match.input,queryValue);match.input.dispatchEvent(new Event('input',{bubbles:true}));match.input.dispatchEvent(new Event('change',{bubbles:true}));match.button.click();return {ok:true};
 })(%s)"""
+
 
 _CLICK_LABEL = r"""((labelText) => {
  const visible=e=>!!(e&&(e.offsetWidth||e.offsetHeight||e.getClientRects().length));
@@ -523,11 +518,29 @@ class Agent:
                 return
             time.sleep(1.0)
 
+    def diagnose_browser(self):
+        main, _ = _find_targets(self.port)
+        cdp = Cdp(main["webSocketDebuggerUrl"])
+        results = []
+        try:
+            cdp.call("Page.enable")
+            tree = cdp.call("Page.getFrameTree").get("frameTree", {})
+            for frame_id in _frame_ids(tree):
+                try:
+                    world = cdp.call("Page.createIsolatedWorld", {"frameId": frame_id, "worldName": "chen-member-agent"})
+                    result = _evaluate(cdp, _FIND_SEARCH_INPUT, int(world["executionContextId"]))
+                    results.append({"frame": frame_id, "search": result})
+                except Exception as exc:
+                    results.append({"frame": frame_id, "error": str(exc)})
+        finally:
+            cdp.close()
+        print(json.dumps({"read_only": True, "frames": results}, ensure_ascii=False, indent=2), flush=True)
+
     def check_browser(self):
         main, _ = _find_targets(self.port)
         result = MemberAdder(self.port)._with_context(main, _FIND_SEARCH_INPUT)
         if not isinstance(result, dict) or not result.get("ok"):
-            raise AutomationError("业务页面尚未准备好：请重新登录，并打开带顶部搜索框的集团客户页面")
+            raise AutomationError("未识别业务搜索控件：" + str((result or {}).get("reason") or "页面框架无法读取；请运行 diagnose_browser.cmd"))
         return main
 
 
@@ -538,7 +551,11 @@ def main():
     parser.add_argument("--once", action="store_true", help="只处理当前号码加集团.xlsx 后退出")
     parser.add_argument("--check-file", type=Path, help="只校验 Excel 两列，不连接业务系统")
     parser.add_argument("--check-browser", action="store_true", help="只检查浏览器连接和业务搜索框，不提交成员")
+    parser.add_argument("--diagnose-browser", action="store_true", help="只读诊断页面框架和搜索控件")
     args = parser.parse_args()
+    if args.diagnose_browser:
+        Agent(args.bridge, args.port).diagnose_browser()
+        return
     if args.check_file:
         tasks = read_member_tasks_xlsx(args.check_file)
         print(json.dumps({"ok": True, "rows": len(tasks), "first_row": tasks[0].row_number}, ensure_ascii=False))

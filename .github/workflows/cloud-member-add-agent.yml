@@ -35,6 +35,7 @@ jobs:
           New-Item -ItemType Directory -Force package | Out-Null
           Copy-Item dist\CloudMemberAddAgent.exe package\
           Copy-Item windows\cloud-assistant\start_agent.cmd package\
+          Copy-Item windows\cloud-assistant\diagnose_browser.cmd package\
           Copy-Item windows\cloud-assistant\README.md package\
           Compress-Archive -Path package\* -DestinationPath CloudMemberAddAgent.zip -Force
       - uses: actions/upload-artifact@v4

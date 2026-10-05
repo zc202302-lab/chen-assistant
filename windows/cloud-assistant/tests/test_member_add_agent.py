@@ -29,7 +29,7 @@ class BrowserReadinessTests(unittest.TestCase):
         with patch("member_add_agent._find_targets", return_value=({"id": "main"}, [])), patch(
             "member_add_agent.MemberAdder._with_context", return_value={"ok": False}
         ):
-            with self.assertRaisesRegex(AutomationError, "重新登录"):
+            with self.assertRaisesRegex(AutomationError, "未识别业务搜索控件"):
                 Agent().check_browser()
 
     def test_connection_loss_before_claim_leaves_workbook_untouched(self):
