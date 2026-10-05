@@ -29,11 +29,16 @@ jobs:
         run: python -m py_compile windows/cloud-assistant/member_add_agent.py
       - name: Build executable
         run: pyinstaller --clean --noconfirm --onefile --name CloudMemberAddAgent windows/cloud-assistant/member_add_agent.py
+      - name: Build offline updater
+        run: pyinstaller --clean --noconfirm --onefile --name CloudOfflineUpdater windows/cloud-assistant/offline_update.py
       - name: Assemble package
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force package | Out-Null
           Copy-Item dist\CloudMemberAddAgent.exe package\
+          Copy-Item dist\CloudOfflineUpdater.exe package\
+          Copy-Item windows\cloud-assistant\sync_updates.cmd package\
+          @{version=$env:GITHUB_SHA} | ConvertTo-Json | Set-Content -Encoding ascii package\version.json
           Copy-Item windows\cloud-assistant\start_agent.cmd package\
           Copy-Item windows\cloud-assistant\diagnose_browser.cmd package\
           Copy-Item windows\cloud-assistant\README.md package\

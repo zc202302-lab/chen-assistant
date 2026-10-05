@@ -1,3 +1,7 @@
+## 2026-10-05 离线更新 WIP（PR #128）
+
+用户确认云电脑不能联网，改为在线本机 GitHub CLI 下载成功构建，私有仓库授权仅本机；共享目录 updates 转发，独立 CloudOfflineUpdater 在启动/两批之间校验 ZIP 并替换成员 EXE，保留 previous。中转 Excel 不参与更新。首次安装一次新版；本机需 gh auth login 并保持 sync_updates.cmd 运行。当前下载开发分支，稳定通道尚未切换。更新器本身不自更新；无业务功能健康回滚。新增 offline_update.py、sync_updates.cmd、测试；10 项本地测试通过，Windows CI 待验证。保留原主站，未合并部署。原业务搜索/新增仍待云电脑诊断实测。
+
 # 晨的小助手 · AI 开发接力文档
 
 ## 0. 当前接力状态（新聊天先看这里）

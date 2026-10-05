@@ -508,6 +508,12 @@ class Agent:
         self.prepare()
         print(f"助手已启动，等待任务：{self.bridge / '号码加集团.xlsx'}", flush=True)
         while True:
+            # Only between batches; updater replaces files after this process exits.
+            if getattr(sys, "frozen", False) and __import__("os").environ.get("CHEN_OFFLINE_UPDATE") == "1":
+                from offline_update import pending
+                if pending(self.bridge, Path(sys.executable).parent):
+                    print("发现新版，本批已结束，交由离线更新器安装。", flush=True)
+                    sys.exit(75)
             source = self.bridge / "号码加集团.xlsx"
             if source.exists():
                 self.check_browser()
