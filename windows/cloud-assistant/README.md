@@ -17,4 +17,10 @@
 
 ## 初次验证
 
+先将安装包解压到云电脑的固定目录（例如 `C:\Tools\CloudMemberAddAgent`），不要在 ZIP 内直接运行。共享任务目录仍是 `Y:\ChenBridge`，程序目录与共享目录可以分开。
+
+启动前可在程序目录运行 `CloudMemberAddAgent.exe --check-browser`。此命令只检查调试连接和业务搜索框，不提交成员。若提示未准备好，请使用调试快捷方式启动浏览器，重新登录集团系统并打开顶部搜索框所在页面。通过检查后双击 `start_agent.cmd`。
+
+助手启动时及领取每批 Excel 前会再次检查浏览器。连接失败或找不到搜索框时退出并显示原因，原 Excel 留在共享目录，修复连接后可以再次启动。找到搜索框不代表所有后续页面已验收；仍需先用一个号码验证真实流程。
+
 先运行 `CloudMemberAddAgent.exe --check-file "Y:\ChenBridge\号码加集团.xlsx"` 检查 Excel 格式。准备好业务页面后，再启动 `start_agent.cmd`。该助手只提交集团成员新增表单，不进行缴费操作。

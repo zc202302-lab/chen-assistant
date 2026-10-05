@@ -480,16 +480,27 @@ class Agent:
         return result_path
 
     def run(self, once: bool = False):
+        # Check the browser before claiming a workbook from shared storage.
+        self.check_browser()
         self.prepare()
+        print(f"助手已启动，等待任务：{self.bridge / '号码加集团.xlsx'}", flush=True)
         while True:
             source = self.bridge / "号码加集团.xlsx"
             if source.exists():
+                self.check_browser()
                 self.process(source)
                 if once:
                     return
             elif once:
                 return
             time.sleep(1.0)
+
+    def check_browser(self):
+        main, _ = _find_targets(self.port)
+        result = MemberAdder(self.port)._with_context(main, _FIND_SEARCH_INPUT)
+        if not isinstance(result, dict) or not result.get("ok"):
+            raise AutomationError("业务页面尚未准备好：请重新登录，并打开带顶部搜索框的集团客户页面")
+        return main
 
 
 def main():
@@ -498,10 +509,15 @@ def main():
     parser.add_argument("--port", type=int, default=9222)
     parser.add_argument("--once", action="store_true", help="只处理当前号码加集团.xlsx 后退出")
     parser.add_argument("--check-file", type=Path, help="只校验 Excel 两列，不连接业务系统")
+    parser.add_argument("--check-browser", action="store_true", help="只检查浏览器连接和业务搜索框，不提交成员")
     args = parser.parse_args()
     if args.check_file:
         tasks = read_member_tasks_xlsx(args.check_file)
         print(json.dumps({"ok": True, "rows": len(tasks), "first_row": tasks[0].row_number}, ensure_ascii=False))
+        return
+    if args.check_browser:
+        Agent(args.bridge, args.port).check_browser()
+        print("浏览器连接正常，业务搜索框已找到。此检查未提交成员。", flush=True)
         return
     Agent(args.bridge, args.port).run(args.once)
 
@@ -511,3 +527,7 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         sys.exit(0)
+    except Exception as exc:
+        print(f"助手未能继续：{exc}", file=sys.stderr, flush=True)
+        print("请确认共享目录已连接；用调试快捷方式打开浏览器，并重新登录业务系统后再启动。", file=sys.stderr, flush=True)
+        sys.exit(1)

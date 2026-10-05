@@ -2,6 +2,17 @@
 
 ## 0. 当前接力状态（新聊天先看这里）
 
+### 2026-10-05 当前进行中：号码加集团 / 云电脑助手（优先于下方历史状态）
+
+- 用户最后需求：继续上次开发，保留主站和已实现功能。此前已明确 Excel 第一列为待加号码，第二列固定 `c7210826122`；不使用客户管理.xlsm。
+- 正在开发：Draft PR #128，`feat/number-inbox-cloud-batch-export`，原 head `f1580eab0276da611d501c0a833c542e087ee915`，基于 main `f9786adea5f88a45c5b3100eb919d2f3f2e310e7`。尚未合并部署。
+- 已实现：网页批量导出无表头两列 `号码加集团.xlsx`；桌面浏览器记忆共享目录；已有文件时阻止覆盖；云电脑逐行搜索集团、查重、新增成员、等待姓名、选择集团通讯录、提交；结果写 results，工作簿归档 processed/errors，提交不确定时暂停。
+- 原 head 五项 PR CI 已完成 success：validation、stability gate、Foxmail helper、Cloud member add agent；promote Windows artifact 为 skipped。Windows 包已构建，真实业务系统端到端尚未验证。
+- 本轮修复：启动及领取任务前只读检查浏览器和搜索框；连接失败时保留共享目录原 Excel；新增 `--check-browser` 和中文控制台状态/错误；补充安装位置与初次验证说明。5 个单元测试及 Python 编译通过。新提交完整 CI 需再次确认，不能沿用原 head 的结果。
+- 核心文件：`windows/cloud-assistant/member_add_agent.py`、`tests/test_member_add_agent.py`、`README.md`；网页实现位于 `app/v162_number_inbox.py`、`app/static/number-inbox-v162.js`、`app/templates/number_inbox_v162.html`。
+- 下一步：确认新 head CI 与 Windows 构建；云电脑使用调试快捷方式打开浏览器并重新登录（上次截图显示会话过期），先 `--check-browser`，再用一个号码验证后续页面与提交回执。搜索框检查不等于登录状态或完整流程验收；未取得实机结果前保持 Draft。
+- 生产状态：本轮没有修改主站或执行部署，不从 GitHub CI 推断线上版本。
+
 - GitHub 当前功能/发布基准：main `12962abe34a84058e91b6863b1af2bb010ad1155`（2026-09-28，PR #116 已合并：win-assistants v0.5.4 将号码提醒改为独立置顶持久提醒窗，不再拉起整个主程序）。
 - 当前应用版本：Web main 为 `v1.6.5`；`win-assistants` main / release / 生产公网更新资产均为 `v0.5.4`。Web 生产版本如需声称必须另做 `/health` 取证。
 - 当前功能合并基准：`44b9b9355e2641281b5989a5e03bfd87e16888ba`（Merge PR #83：win-assistants v0.5.0 内置久坐助手）；之后 main 还有发布/文档类提交，因此“功能基准”不要误当作当前 main SHA。

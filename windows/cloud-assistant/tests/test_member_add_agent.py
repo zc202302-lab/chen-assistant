@@ -3,13 +3,45 @@ from __future__ import annotations
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from member_add_agent import read_member_tasks_xlsx
+from member_add_agent import Agent, AutomationError, read_member_tasks_xlsx
+
+
+class BrowserReadinessTests(unittest.TestCase):
+    def test_unavailable_browser_leaves_workbook_untouched(self):
+        with tempfile.TemporaryDirectory() as temp:
+            bridge = Path(temp)
+            source = bridge / "号码加集团.xlsx"
+            source.write_bytes(b"unconsumed workbook")
+            with patch("member_add_agent._find_targets", side_effect=RuntimeError("未连接")):
+                with self.assertRaisesRegex(RuntimeError, "未连接"):
+                    Agent(bridge).run(once=True)
+            self.assertEqual(source.read_bytes(), b"unconsumed workbook")
+            self.assertFalse((bridge / "processing").exists())
+
+    def test_page_without_search_is_not_ready(self):
+        with patch("member_add_agent._find_targets", return_value=({"id": "main"}, [])), patch(
+            "member_add_agent.MemberAdder._with_context", return_value={"ok": False}
+        ):
+            with self.assertRaisesRegex(AutomationError, "重新登录"):
+                Agent().check_browser()
+
+    def test_connection_loss_before_claim_leaves_workbook_untouched(self):
+        with tempfile.TemporaryDirectory() as temp:
+            bridge = Path(temp)
+            source = bridge / "号码加集团.xlsx"
+            source.write_bytes(b"unconsumed workbook")
+            with patch.object(Agent, "check_browser", side_effect=[{}, RuntimeError("连接中断")]):
+                with self.assertRaisesRegex(RuntimeError, "连接中断"):
+                    Agent(bridge).run(once=True)
+            self.assertEqual(source.read_bytes(), b"unconsumed workbook")
+            self.assertEqual(list((bridge / "processing").iterdir()), [])
 
 
 class MemberWorkbookTests(unittest.TestCase):
