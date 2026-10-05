@@ -1,3 +1,7 @@
+## 2026-10-05 同步下载卡住
+
+用户本机 gh auth status 确认登录正确；E:\ChenBridge 为本机共享目录，gh run list 成功，原 EXE traceback 显示卡在 gh run download（无超时）。添加可直接用 gh api 获取的 sync_updates.ps1：检查60秒/下载300秒超时，每10秒等待提示，成功版本验证后先ZIP后指针，每60秒重试。用于修复已有本机同步，不要求手动下载EXE。云电脑更新器不变；脚本只负责共享更新包。本机 PowerShell 5.1 实机仍待验证。用户优先自动同步，不再切回手动下载。
+
 ## 2026-10-05 搜索诊断后续
 
 用户完整诊断：59 个框架均 ok=false/buttons=0，少数 inputs>0；连接/框架读取成功，实际按钮 DOM 仍未知。扩展搜索精确文字匹配至所有标签（兼容 font/b/td），支持图片 alt/title/aria-label；仍需邻近输入框且唯一才点击。新增无输入值的标签/图片标签诊断；diagnose_browser.cmd 自动保存并打开记事本，减少用户命令操作。用户实际云电脑安装 E:\Assistants\CloudMemberAddAgent (2)\CloudMemberAddAgent，允许保持，无需搬动。离线同步配置暂停，先验证业务控件。修复尚未实机验证。
