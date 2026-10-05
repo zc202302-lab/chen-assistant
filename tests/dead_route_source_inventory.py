@@ -22,11 +22,8 @@ def route_signature(route):
 
 def main_report():
     live_ids = {id(route) for route in main.app.router.routes}
-    groups = []
-    for name, value in vars(main).items():
-        if name == "_legacy_routes" or (name.startswith("_v") and name.endswith("_routes")):
-            if isinstance(value, list):
-                groups.append((name, value))
+    groups = list(main.app.state.route_source_groups.items())
+    assert groups, "runtime routing registry must retain its source groups"
 
     print("=== ROUTE SOURCE GROUP INVENTORY ===")
     fully_dead = []
@@ -74,3 +71,4 @@ def main_report():
 
 if __name__ == "__main__":
     main_report()
+

@@ -45,3 +45,25 @@ GitHub Actions Runner、构建服务器、部署节点均属于动态基础设�
 - 构建与发布是否真正成功
 
 具体当前状态写入 AI_HANDOFF。
+
+
+## 本轮整理后的代码边界（2026-10-05）
+
+- app/main.py：应用生命周期、提醒worker及HTTP响应策略。
+- app/routing.py：唯一的路由注册/优先级入口、实际处理函数自检、运行时清单；历史模块的导入顺序保留，因为部分导入会安装兼容补丁。
+- docs/RUNTIME_ROUTES.json：整理前实际生效的186条路由基线；tests/routing_registry_contract.py核对完整顺序、方法、处理函数及客户静态路径边界。
+- app.state.route_source_groups：保留全部274条来源路由，含88条被优先级替代的来源，用于治理工具；不能把被替代的路由等同于整个模块无引用。
+- 客户整库Excel导出显式禁止文本转公式/网址；tests/customer_export_text_contract.py验证真实导出文件。
+
+云电脑独立Draft PR #128中的边界：
+
+- member_add_agent.py：CLI、批次调度、结果和归档。
+- member_models.py：任务/异常类型。
+- member_workbook.py：有限大小的XLSX解析及永久空表格式。
+- member_browser.py：CDP连接、frame/target和已知刷新弹窗。
+- member_page.py：页面探针和控件脚本。
+- member_flow.py：一条成员操作与集团身份、提交后核对。
+- relay_store.py：永久中转文件的短时句柄租约及比较清空；Windows锁拒绝写入/替换，POSIX仅协作锁，不宣称跨同步副本事务。
+- offline_update.py/sync_updates.ps1：更新链独立，仍只替换允许的EXE与版本文件。
+
+本轮未删除历史业务实现、未更改URL/数据库结构/页面导航，也未改旧win-assistants久坐模块。后续逐业务域收敛要先查直接函数引用、模板、JS、测试及发布依赖，再删除确无引用的实现。
