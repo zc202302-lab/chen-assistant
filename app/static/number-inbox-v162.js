@@ -68,8 +68,11 @@ document.addEventListener('click', async (event) => {
       await saveDirectory(directory);
 
       try {
-        await directory.getFileHandle(FILE_NAME);
-        throw new Error('共享文件夹中已有“号码加集团.xlsx”。请等云电脑助手读取并移走上一批文件后再导出。');
+        const existing = await (await directory.getFileHandle(FILE_NAME)).getFile();
+        const tail = new TextDecoder().decode(await existing.slice(-19).arrayBuffer());
+        if (!tail.endsWith('CHEN_EMPTY_RELAY_V1')) {
+          throw new Error('中转文件还有待处理内容，请等云电脑助手清空后再导出。');
+        }
       } catch (error) {
         if (error?.name !== 'NotFoundError') throw error;
       }
@@ -95,7 +98,6 @@ document.addEventListener('click', async (event) => {
         await writable.close();
       } catch (error) {
         await writable.abort().catch(() => {});
-        await directory.removeEntry(FILE_NAME).catch(() => {});
         throw error;
       }
       const count = Number(response.headers.get('X-Number-Count') || 0);
@@ -131,3 +133,4 @@ document.addEventListener('click', async (event) => {
     createWorkbookFile(handlePromise);
   });
 })();
+

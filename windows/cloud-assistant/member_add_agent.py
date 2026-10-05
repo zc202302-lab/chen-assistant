@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import posixpath
 import re
@@ -63,7 +64,7 @@ def _column_number(cell_ref: str) -> int:
     return value
 
 
-def read_member_tasks_xlsx(path: Path) -> list[MemberTask]:
+def read_member_tasks_xlsx(path: Path, allow_empty: bool = False) -> list[MemberTask]:
     """Read the no-header A=service number, B=group search value workbook."""
     try:
         archive = zipfile.ZipFile(path)
@@ -123,7 +124,7 @@ def read_member_tasks_xlsx(path: Path) -> list[MemberTask]:
             if not re.fullmatch(r"[A-Za-z0-9_-]{3,80}", group_search):
                 raise ValueError(f"第 {row_number} 行 B 列集团搜索值格式无效")
             tasks.append(MemberTask(row_number, service_number, group_search))
-        if not tasks:
+        if not tasks and not allow_empty:
             raise ValueError("任务文件中没有可执行号码")
         return tasks
 
@@ -431,6 +432,21 @@ class MemberAdder:
         return status, f"{name} · {detail}"
 
 
+EMPTY_RELAY_MARKER = b"CHEN_EMPTY_RELAY_V1"
+
+
+def empty_relay_workbook() -> bytes:
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>')
+        archive.writestr("_rels/.rels", '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>')
+        archive.writestr("xl/workbook.xml", f'<workbook xmlns="{XLSX_NS}" xmlns:r="{REL_NS}"><sheets><sheet name="号码加集团" sheetId="1" r:id="rId1"/></sheets></workbook>')
+        archive.writestr("xl/_rels/workbook.xml.rels", f'<Relationships xmlns="{PKG_REL_NS}"><Relationship Id="rId1" Type="{REL_NS}/worksheet" Target="worksheets/sheet1.xml"/></Relationships>')
+        archive.writestr("xl/worksheets/sheet1.xml", f'<worksheet xmlns="{XLSX_NS}"><sheetData/></worksheet>')
+        archive.comment = EMPTY_RELAY_MARKER
+    return output.getvalue()
+
+
 @dataclass
 class Agent:
     bridge: Path = DEFAULT_BRIDGE
@@ -442,16 +458,19 @@ class Agent:
 
     def process(self, source: Path) -> Path | None:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        claimed = self.bridge / "processing" / f"号码加集团_{stamp}_{uuid.uuid4().hex[:8]}.xlsx"
-        try:
-            source.replace(claimed)
-        except (FileNotFoundError, PermissionError, OSError):
+        payload = source.read_bytes()
+        batch_id = hashlib.sha256(payload).hexdigest()[:16]
+        if any((self.bridge / "results").glob(f"号码加集团_结果_*_{batch_id}.json")):
             return None
-
-        batch_id = hashlib.sha256(claimed.read_bytes()).hexdigest()[:16]
+        # The fixed relay file remains at its original path throughout processing.
+        claimed = self.bridge / "processing" / f"号码加集团_{stamp}_{uuid.uuid4().hex[:8]}.xlsx"
+        claimed.write_bytes(payload)
         result_path = self.bridge / "results" / f"号码加集团_结果_{stamp}_{batch_id}.json"
         try:
-            tasks = read_member_tasks_xlsx(claimed)
+            tasks = read_member_tasks_xlsx(claimed, allow_empty=True)
+            if not tasks:
+                claimed.unlink()
+                return None
             adder = MemberAdder(self.port)
             outcomes = []
             stop_reason = ""
@@ -482,6 +501,10 @@ class Agent:
         except OSError:
             # Result file remains authoritative if cloud-drive sync temporarily locks the archive move.
             pass
+        # Do not clear a newer batch written while this batch was being processed.
+        if source.read_bytes() == payload:
+            source.write_bytes(empty_relay_workbook())
+            print("本批处理结束，中转文件已清空并保留；结果：" + str(result_path), flush=True)
         return result_path
 
     def run(self, once: bool = False):

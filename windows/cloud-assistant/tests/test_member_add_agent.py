@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from member_add_agent import Agent, AutomationError, read_member_tasks_xlsx
+from member_add_agent import Agent, AutomationError, MemberTask, empty_relay_workbook, read_member_tasks_xlsx
 
 
 class BrowserReadinessTests(unittest.TestCase):
@@ -42,6 +42,40 @@ class BrowserReadinessTests(unittest.TestCase):
                     Agent(bridge).run(once=True)
             self.assertEqual(source.read_bytes(), b"unconsumed workbook")
             self.assertEqual(list((bridge / "processing").iterdir()), [])
+
+
+class PermanentRelayTests(unittest.TestCase):
+    def test_empty_workbook_is_valid_and_has_no_tasks(self):
+        with tempfile.TemporaryDirectory() as temp:
+            source = Path(temp) / "号码加集团.xlsx"
+            source.write_bytes(empty_relay_workbook())
+            self.assertEqual(read_member_tasks_xlsx(source, allow_empty=True), [])
+
+    def test_source_remains_during_execution_and_is_cleared_afterward(self):
+        with tempfile.TemporaryDirectory() as temp:
+            agent = Agent(Path(temp)); agent.prepare()
+            source = Path(temp) / "号码加集团.xlsx"
+            source.write_bytes(b"batch")
+            def add(task):
+                self.assertEqual(source.read_bytes(), b"batch")
+                return "已添加", "成功"
+            with patch("member_add_agent.read_member_tasks_xlsx", return_value=[MemberTask(1, "13800138000", "c7210826122")]), patch("member_add_agent.MemberAdder.add_one", side_effect=add):
+                result = agent.process(source)
+            self.assertTrue(result.exists())
+            self.assertTrue(source.exists())
+            self.assertEqual(read_member_tasks_xlsx(source, allow_empty=True), [])
+            self.assertIsNone(agent.process(source))
+
+    def test_newer_batch_is_not_cleared(self):
+        with tempfile.TemporaryDirectory() as temp:
+            agent = Agent(Path(temp)); agent.prepare()
+            source = Path(temp) / "号码加集团.xlsx"; source.write_bytes(b"batch")
+            def add(task):
+                source.write_bytes(b"new batch")
+                return "已添加", "成功"
+            with patch("member_add_agent.read_member_tasks_xlsx", return_value=[MemberTask(1, "13800138000", "c7210826122")]), patch("member_add_agent.MemberAdder.add_one", side_effect=add):
+                agent.process(source)
+            self.assertEqual(source.read_bytes(), b"new batch")
 
 
 class MemberWorkbookTests(unittest.TestCase):
