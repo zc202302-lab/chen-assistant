@@ -12,6 +12,20 @@ from relay_store import relay_lease, capture_relay, clear_if_unchanged
 
 
 class RelayLeaseTests(unittest.TestCase):
+    def test_busy_relay_is_not_consumed_and_explains_the_wait(self):
+        from member_add_agent import Agent
+        with tempfile.TemporaryDirectory() as root:
+            source = Path(root) / 'relay.xlsx'
+            source.write_bytes(b'pending')
+            agent = Agent(Path(root))
+            with patch('member_add_agent.capture_relay', side_effect=OSError('busy')), \
+                    patch('member_add_agent.print') as notice, patch('member_add_agent.MemberAdder') as adder:
+                self.assertIsNone(agent.process(source))
+                self.assertIsNone(agent.process(source))
+                adder.assert_not_called()
+                self.assertEqual(notice.call_count, 1)
+            self.assertEqual(source.read_bytes(), b'pending')
+
     def test_clear_keeps_path_and_newer_content(self):
         with tempfile.TemporaryDirectory() as root:
             source = Path(root) / 'relay.xlsx'

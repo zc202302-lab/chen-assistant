@@ -25,6 +25,7 @@ DEFAULT_BRIDGE = Path(r"Y:\ChenBridge")
 class Agent:
     bridge: Path = DEFAULT_BRIDGE
     port: int = 9222
+    relay_notice_at: float = 0.0
 
     def prepare(self):
         for folder in ("processing", "processed", "results", "errors", "logs"):
@@ -35,7 +36,12 @@ class Agent:
         try:
             payload = capture_relay(source)
         except OSError:
-            return None  # Excel/sync may hold the relay; try later without consuming it.
+            # Excel/sync may hold the relay. Explain the wait without flooding logs.
+            now = time.monotonic()
+            if not self.relay_notice_at or now - self.relay_notice_at >= 10:
+                print("云电脑暂时无法读取中转表；请确认共享目录可用，并保存、关闭 Excel。助手会继续等待，文件内容已保留。", flush=True)
+                self.relay_notice_at = now
+            return None
         batch_id = hashlib.sha256(payload).hexdigest()[:16]
         if any((self.bridge / "results").glob(f"号码加集团_结果_*_{batch_id}.json")):
             print("此批已有结果，已跳过；请查看results，失败或不确定批次不会自动重试。", flush=True)
@@ -169,5 +175,5 @@ if __name__ == "__main__":
         sys.exit(0)
     except Exception as exc:
         print(f"助手未能继续：{exc}", file=sys.stderr, flush=True)
-        print("请确认共享目录已连接；用调试快捷方式打开浏览器，并重新登录业务系统后再启动。", file=sys.stderr, flush=True)
+        print("请在云电脑检查共享目录映射；浏览器控件未识别时运行 diagnose_browser.cmd 做只读诊断。", file=sys.stderr, flush=True)
         sys.exit(1)
