@@ -25,6 +25,7 @@ function Run-Gh([string[]]$Arguments, [int]$Seconds) {
             if ($elapsed -ge $Seconds) {
                 $process.Kill()
                 $process.WaitForExit()
+                if ($Once) { throw '本次操作超时，本次手动更新已结束，请稍后重新点击更新。' }
                 throw '本次操作超时，60 秒后自动重试；原程序和数据保持不变。'
             }
         }
@@ -57,7 +58,8 @@ while ($true) {
         $pointer = Join-Path $updates 'latest.json'
         $previous = if (Test-Path $pointer) { (Get-Content $pointer -Raw | ConvertFrom-Json).version } else { '' }
         if ($previous -eq $revision) {
-            Write-Host '共享目录已是最新版；60 秒后再检查。'
+            if ($Once) { Write-Host '共享目录已是最新版，本次检查结束。' }
+            else { Write-Host '共享目录已是最新版；60 秒后再检查。' }
         } else {
             New-Item -ItemType Directory -Path $stage | Out-Null
             Write-Host '正在下载更新包，最多等待 5 分钟……'
@@ -82,7 +84,10 @@ while ($true) {
             Move-Item -LiteralPath $temporary -Destination $pointer -Force
             if ($Once) { Write-Host '本机已同步更新包，本次更新结束。' } else { Write-Host '本机已同步更新包。保持窗口打开，以后自动检查。' }
         }
-    } catch { Write-Host "同步未完成：$($_.Exception.Message)" }
+    } catch {
+        Write-Host "同步未完成：$($_.Exception.Message)"
+        if ($Once) { exit 1 }
+    }
     finally { Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue }
     if ($Once) { break }
     Start-Sleep -Seconds 60
