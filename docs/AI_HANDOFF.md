@@ -2,115 +2,37 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 审计检查点（2026-10-05）：用户授权只读代码审计，功能开发仍暂停；结果见[代码审计报告](CODE_AUDIT_2026-10-05.md)。已隔离复现中转清空竞态丢新批次和客户导出文本转公式；另确认搜索/回执判断过宽、单次更新失败反馈、失败批次去重与共享更新信任边界风险。本轮13项云电脑测试及Python编译通过，完整主站动态测试/Windows实机未运行。未修复或部署。当前唯一下一步：向用户说明审计结论，获得修复指示后优先处理竞态及业务身份/回执校验；旧讨论方案保持待定。
+- 更新时间：2026-10-05（Asia/Shanghai）。
+- **工作模式：用户已授权结构整理与审计修复。** 最新要求“按你的建议完成整理”覆盖此前暂停功能开发要求；没有安装、合并、生产发布或真实号码重试授权。
+- 当前任务：[结构整理检查点](STRUCTURE_REFACTOR_2026-10-05.md)；主站[Draft PR #129](https://github.com/zc202302-lab/chen-assistant/pull/129)，分支 `refactor/runtime-routing-and-export`，最后功能提交 `f50cfa9004b88b89d8ac2b2f706c2c1d9a0cc64e`；云电脑[Draft PR #128](https://github.com/zc202302-lab/chen-assistant/pull/128)，分支 `feat/number-inbox-cloud-batch-export`，最后功能提交 `7a499cd886506e3f356ac9fc5b3b4ff88b7c85a3`。head和CI实时查询，文档提交会使head前进。
+- 主站功能基准仍 `f9786adea5f88a45c5b3100eb919d2f3f2e310e7`，当前main的后续提交为交接文档；未合并两项Draft，生产精确head未知。
 
-- 更新时间：2026-10-05 16:13（Asia/Shanghai）；依据：本次用户要求、GitHub实际分支/PR/Actions、用户截图与任务结果。
-- **工作模式：暂停功能开发，讨论方案。** 用户明确要求“先不要开发，先讨论方案”；本轮只授权完善交接材料。不要自行继续开发、让用户安装新版或重新提交号码。
-- 用户最新决定：本机更新由用户手动触发；不随Windows登录自动启动，不长期保持CMD。后台单次更新是讨论中的方案，完成提示界面尚未验收。
-- 当前任务：云电脑成员批量添加与共享目录离线更新；下一步先讨论确认更新的入口、进度/完成提示与云电脑应用方式。用户恢复开发后再验证刷新弹窗和完整业务链路。
+### 已完成及验证层级
+- 主站路由装配集中到app/routing.py，186条实际生效路由顺序/路径/方法/处理函数完整一致；274条来源中88条被替代，保留有引用的历史实现。客户Excel文本转公式问题已修复并验证真实导出。
+- 云电脑分离表格/CDP/页面/单条成员流程/文件租约，保留CLI和两列格式；加文件上限、Windows租约比较清空、集团字段核对与成员表回执要求；确认阶段异常视为不确定，禁止自动重试。
+- 本地主站核心contract、v144审计与实际HTTP验收通过；云电脑19项测试中18通过、1项Windows锁跳过，待远端CI。
+- 主站功能head对应stability run37286438016成功；完整validation run37286438022在运行，尚不声称全部通过。本地Chromium下载受限，保留所有CI浏览器门禁。
+- 本轮未安装、未操作真实业务、未部署；此前已安装版本最近证据仍 `7d31237d49c7`，最后真实批次 `c755db18ca23c316` 搜索后检查失败。没有成功添加成员的端到端证据。
 
-### 仓库位置与发布边界
+### 保留的需求、风险与环境
+- 主站/PWA/客户/业务/缴费/旧Windows久坐模块保留；不能随意删除旧模块或合并历史Open PR。
+- 手动更新；不随Windows登录启动、不长期保持CMD。单次失败退出码已改，可见完成/失败提示仍未实现。更新器只替换成员EXE和version.json，未实现签名和健康回滚。
+- 永久 `号码加集团.xlsx` 不删除，处理后清空；A列5—20位数字号码，B列集团值，无表头。文件锁仅当前文件系统，不代表跨同步副本事务。并发同步和中断恢复需实机验证。
+- 新集团探针只认明确可见字段；当前页面结构是否匹配未知，失败应在新增前停止。剩余成员表上下文误判风险和完整业务验收未结束。
+- 失败批次依然去重，不自动重试；不确定提交禁止重试。已加查看results提示，但安全重试入口未实现。
+- 本机安装 `D:\Tools\CloudMemberAddAgent (2)\CloudMemberAddAgent`，共享 `E:\ChenBridge`；云电脑安装 `E:\Assistants\CloudMemberAddAgent (2)\CloudMemberAddAgent`，共享 `Y:\ChenBridge`，云电脑不能联网，安装坚持E盘。
+- 业务系统已登录、调试端口9222，不凭搜索识别失败要求重新登录。附件《客户管理.xlsm》与此流程无关，不读取或修改。
+- 旧审计详见[CODE_AUDIT_2026-10-05.md](CODE_AUDIT_2026-10-05.md)，其只读审计时点不覆盖本节最新授权；修复状态以结构检查点与实际代码为准。
+- **唯一下一步：完成对应head的CI并处理新增失败，更新验证证据。** 不自动安装、发布或重试业务号码；代码、CI、安装、业务验收、生产部署分别记录。
 
-- 主分支功能基准：`f9786adea5f88a45c5b3100eb919d2f3f2e310e7`；当前head要实时查询，文档提交可能使head前进。
-- 活动分支：`feat/number-inbox-cloud-batch-export`；[Draft PR #128](https://github.com/zc202302-lab/chen-assistant/pull/128)，未合并、未部署主站。
-- 最后功能提交：`0541dc2f693eabc32f287fc5c6bc95954cc4a273`（手动单次后台更新）。上一功能提交 `c6328d9efed96f4e6cd547c72ae3504f2757f474` 添加刷新确认及后台同步。
-- 开发分支存在已实现但未实机验收的代码，不可把“已经提交”当作“用户已接受或安装”。
-- 保留原有主站、PWA、客户/业务/缴费和原Windows久坐助手。本次交接维护只改文档；不合并PR #128，不改变生产部署。
-
-### 已完成与验证层级
-
-| 项目 | 已有证据 | 未确认事项 |
-| --- | --- | --- |
-| 永久Excel中转 | 代码与单元测试；实机截图显示原文件清空且保留 | 并发写入/长期多批实机验证 |
-| 本机下载→共享目录→云电脑替换 | 用户截图显示同步成功；云电脑显示“已更新 7d31237d49c7” | 最新功能head是否已被用户安装 |
-| 图片搜索按钮 | DevTools确认 `#topSearchDiv #search_btn.input_search_right`，按钮文字来自CSS背景；版本7d31237通过启动检查并实际触发搜索 | 搜索完整就绪及后续所有控件 |
-| 刷新弹窗 | 实机确认提示“集团客户统一视图Tab页已打开，是否刷新？”；后续代码加SearchRefreshGuard，精确匹配可信业务地址的confirm | 浏览器会话/新弹窗接管的真实兼容性尚未验收 |
-| 手动后台更新 | 已有 `background_sync.ps1`、`sync_updates.ps1 -Once`，移除该助手启动项，生成ManualUpdate入口 | 用户是否执行过安装命令、后台运行及反馈界面均未知 |
-| 测试与构建 | 本地13项测试通过；最后功能head的Cloud member add agent run 37281888077成功；刷新提交run 37281707209成功 | CI不等于真实业务验证；其余检查按对应head实时查询 |
-
-### 最后实机结果与已知问题
-
-- 已登录业务系统，调试端口9222可读。不要仅凭搜索识别失败反复要求重新登录。
-- 用户最近确认的云电脑安装版本是 `7d31237d49c7`。
-- 批次 `c755db18ca23c316`，count=1，结果“失败，已暂停”，detail“搜索后页面没有出现指定集团编号”；2026-10-05T08:01:06Z。截图显示搜索打开集团客户列表弹窗并出现刷新确认。
-- 该结果显示失败发生在搜索后的检查阶段，尚未进入代码的新增/提交阶段。尚无任何成功添加成员的端到端证据。
-- 控制台“本批处理结束”也会在失败时出现，不能当成功回执。
-- 不要重填失败号码让助手自动重试，除非用户恢复测试并核对结果/成员状态；提交结果不确定的号码禁止自动重试。
-- gh认证/版本查询已成功；更新包曾慢约5分钟，也出现TLS下载错误后重试成功。后台一次模式失败即结束，不会无限轮询。
-- 更新器目前仅替换成员EXE和version.json，不更新自身EXE、CMD或本机PS脚本；后续版本的客户端引导脚本仍可能需一次同步，不能承诺所有文件已统一自动更新。
-- 本机手动入口目前通过日志查看结果，没有实现此前讨论的完成状态弹窗。不能把讨论方案当成已实现。
-- 曾发布过登录自动启动脚本，随后用户明确否定；是否在本机安装未知。新版脚本可清理该助手专属启动项，不得清理其他软件启动项。
-- 附件《客户管理.xlsm》不用于此流程；不要读取或修改无关附件。
-
-### 两台电脑与固定数据格式
-
-| 项目 | 本机（可联网） | 云电脑（不能联网） |
-| --- | --- | --- |
-| 安装位置（用户截图） | `D:\Tools\CloudMemberAddAgent (2)\CloudMemberAddAgent` | `E:\Assistants\CloudMemberAddAgent (2)\CloudMemberAddAgent` |
-| 共享目录 | `E:\ChenBridge` | `Y:\ChenBridge` |
-| 职责 | 用户触发获取更新包并写入共享目录；网页/Windows产生任务 | 从共享目录读取更新与任务，操作内网业务系统 |
-
-- 云电脑安装必须保持E盘；不要再次建议D盘安装或搬动现有目录。
-- `号码加集团.xlsx` 无表头；A列服务号码（5—20位数字），B列集团值（当前固定 `c7210826122`）。
-- 原Excel永久保留，仅传递当前任务；处理后清空。结果保存在共享目录results，快照在processed/errors；读取后有新内容则不清空新任务。
-- 业务地址是 `https://10.19.89.56/esop/ngportal/mainFrameForNG.action`。截图确认实际页签叫“成员信息”。
-- 面向用户说明必须标明本机/云电脑，一次说清操作顺序，避免重复下载、改路径、碎片命令；截图本地路径缺失时可按上传file_id恢复，不要误称用户未上传。
-
-### 核心文件与恢复开发后的顺序
-
-- 云电脑：windows/cloud-assistant/member_add_agent.py、offline_update.py、tests/test_member_add_agent.py、tests/test_offline_update.py。
-- 本机：sync_updates.ps1、background_sync.ps1；启动/诊断CMD及Windows构建workflow。
-- 网页导出：app/v162_number_inbox.py、app/static/number-inbox-v162.js、app/templates/number_inbox_v162.html。
-- 先确认用户认可的手动更新体验，再检查代码和对应head构建；核对实机安装版本；单号码验证刷新确认→集团加载→成员信息→新增→姓名→集团通讯录→提交回执。
-- 新聊天开场先报告本节状态，并保持暂停；不要把下方历史“下一步”当当前指令。
 
 ---
 
 ## 历史记录（仅供追溯，不覆盖上方快照）
 
-## 2026-10-05 PowerShell 进程修正
-
-用户 sync_updates.ps1 实机检查时 ScriptHalted，怀疑 Start-Process 返回对象 ExitCode 空/空 stderr throw。改 System.Diagnostics.Process，异步读取两路输出避免缓冲阻塞，退出码错误保留信息。添加 -CheckProcess 并在 Windows CI 用 powershell.exe 验证 gh --version；验证待完成。脚本带 UTF8 BOM 兼容 PowerShell5.1；本机用户通过原 gh api 命令获取修正，不手动安装包。
-
-## 2026-10-05 同步下载卡住
-
-用户本机 gh auth status 确认登录正确；E:\ChenBridge 为本机共享目录，gh run list 成功，原 EXE traceback 显示卡在 gh run download（无超时）。添加可直接用 gh api 获取的 sync_updates.ps1：检查60秒/下载300秒超时，每10秒等待提示，成功版本验证后先ZIP后指针，每60秒重试。用于修复已有本机同步，不要求手动下载EXE。云电脑更新器不变；脚本只负责共享更新包。本机 PowerShell 5.1 实机仍待验证。用户优先自动同步，不再切回手动下载。
-
-## 2026-10-05 搜索诊断后续
-
-用户完整诊断：59 个框架均 ok=false/buttons=0，少数 inputs>0；连接/框架读取成功，实际按钮 DOM 仍未知。扩展搜索精确文字匹配至所有标签（兼容 font/b/td），支持图片 alt/title/aria-label；仍需邻近输入框且唯一才点击。新增无输入值的标签/图片标签诊断；diagnose_browser.cmd 自动保存并打开记事本，减少用户命令操作。用户实际云电脑安装 E:\Assistants\CloudMemberAddAgent (2)\CloudMemberAddAgent，允许保持，无需搬动。离线同步配置暂停，先验证业务控件。修复尚未实机验证。
-
-## 2026-10-05 离线更新 WIP（PR #128）
-
-用户确认云电脑不能联网，改为在线本机 GitHub CLI 下载成功构建，私有仓库授权仅本机；共享目录 updates 转发，独立 CloudOfflineUpdater 在启动/两批之间校验 ZIP 并替换成员 EXE，保留 previous。中转 Excel 不参与更新。首次安装一次新版；本机需 gh auth login 并保持 sync_updates.cmd 运行。当前下载开发分支，稳定通道尚未切换。更新器本身不自更新；无业务功能健康回滚。新增 offline_update.py、sync_updates.cmd、测试；10 项本地测试通过，Windows CI 待验证。保留原主站，未合并部署。原业务搜索/新增仍待云电脑诊断实测。
-
 # 晨的小助手 · AI 开发接力文档
 
 ## 历史接力状态（旧时点）
-
-### 2026-10-05 搜索框实机适配
-
-- 新固定中转版本已由用户安装。实机 startup 失败：找不到搜索框；完整截图确认用户已进入集团概况且顶部有搜索输入及橙色搜索控件，不能据此让用户反复登录。
-- 本轮统一 preflight 与执行搜索的匹配规则：支持 span/div/role button，去除嵌套父子重复，按同一行相邻输入框匹配，仍拒绝歧义；新增只读 `--diagnose-browser` 和 `diagnose_browser.cmd`，打印逐 frame 匹配/错误，不提交成员。
-- 8 个本地单元测试及 Node 嵌套搜索控件行为验证通过；Windows 新构建/CI 待确认，实机尚需检查。PR #128 保持 Draft。
-
-### 2026-10-05 最新需求：固定中转 Excel
-
-- 用户要求 `号码加集团.xlsx` 永久保留原路径，只作为临时中转，不删除文件。
-- 本轮修改：读取时复制快照，原文件不移动；结果落盘后清空为有效空工作簿，文件仍可打开；空工作簿不重复执行；若读取后源内容已变化，不清空新内容；网页识别助手清空标记，允许下一批写入，仍阻止覆盖非空任务。网页写入失败不删除中转文件。
-- 本地 8 项单元测试与 JS 语法验证通过；新 head CI/Windows 构建仍需确认。旧云电脑 EXE 尚未替换，不会自动获得此行为。PR #128 仍为 Draft，未部署。
-- 实机此前格式失败：第1行A列非5至20位数字，count=0，未执行添加。9222 调试端口已由截图确认开启，业务目标页面已出现。
-
-### 2026-10-05 当前进行中：号码加集团 / 云电脑助手（优先于下方历史状态）
-
-- 用户最后需求：继续上次开发，保留主站和已实现功能。此前已明确 Excel 第一列为待加号码，第二列固定 `c7210826122`；不使用客户管理.xlsm。
-- 正在开发：Draft PR #128，`feat/number-inbox-cloud-batch-export`，原 head `f1580eab0276da611d501c0a833c542e087ee915`，基于 main `f9786adea5f88a45c5b3100eb919d2f3f2e310e7`。尚未合并部署。
-- 已实现：网页批量导出无表头两列 `号码加集团.xlsx`；桌面浏览器记忆共享目录；已有文件时阻止覆盖；云电脑逐行搜索集团、查重、新增成员、等待姓名、选择集团通讯录、提交；结果写 results，工作簿归档 processed/errors，提交不确定时暂停。
-- 原 head 五项 PR CI 已完成 success：validation、stability gate、Foxmail helper、Cloud member add agent；promote Windows artifact 为 skipped。Windows 包已构建，真实业务系统端到端尚未验证。
-- 本轮修复：启动及领取任务前只读检查浏览器和搜索框；连接失败时保留共享目录原 Excel；新增 `--check-browser` 和中文控制台状态/错误；补充安装位置与初次验证说明。5 个单元测试及 Python 编译通过。新提交完整 CI 需再次确认，不能沿用原 head 的结果。
-- 核心文件：`windows/cloud-assistant/member_add_agent.py`、`tests/test_member_add_agent.py`、`README.md`；网页实现位于 `app/v162_number_inbox.py`、`app/static/number-inbox-v162.js`、`app/templates/number_inbox_v162.html`。
-- 下一步：确认新 head CI 与 Windows 构建；云电脑使用调试快捷方式打开浏览器并重新登录（上次截图显示会话过期），先 `--check-browser`，再用一个号码验证后续页面与提交回执。搜索框检查不等于登录状态或完整流程验收；未取得实机结果前保持 Draft。
-- 生产状态：本轮没有修改主站或执行部署，不从 GitHub CI 推断线上版本。
 
 - GitHub 当前功能/发布基准：main `12962abe34a84058e91b6863b1af2bb010ad1155`（2026-09-28，PR #116 已合并：win-assistants v0.5.4 将号码提醒改为独立置顶持久提醒窗，不再拉起整个主程序）。
 - 当前应用版本：Web main 为 `v1.6.5`；`win-assistants` main / release / 生产公网更新资产均为 `v0.5.4`。Web 生产版本如需声称必须另做 `/health` 取证。
