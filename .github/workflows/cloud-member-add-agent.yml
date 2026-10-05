@@ -1,0 +1,45 @@
+name: Cloud member add agent
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'windows/cloud-assistant/**'
+      - '.github/workflows/cloud-member-add-agent.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'windows/cloud-assistant/**'
+      - '.github/workflows/cloud-member-add-agent.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install build dependencies
+        run: python -m pip install --disable-pip-version-check -r windows/cloud-assistant/requirements.txt pyinstaller==6.16.0
+      - name: Run parser tests
+        run: python -m unittest discover -s windows/cloud-assistant/tests -v
+      - name: Compile source
+        run: python -m py_compile windows/cloud-assistant/member_add_agent.py
+      - name: Build executable
+        run: pyinstaller --clean --noconfirm --onefile --name CloudMemberAddAgent windows/cloud-assistant/member_add_agent.py
+      - name: Assemble package
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force package | Out-Null
+          Copy-Item dist\CloudMemberAddAgent.exe package\
+          Copy-Item windows\cloud-assistant\start_agent.cmd package\
+          Copy-Item windows\cloud-assistant\README.md package\
+          Compress-Archive -Path package\* -DestinationPath CloudMemberAddAgent.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CloudMemberAddAgent
+          path: CloudMemberAddAgent.zip
+          if-no-files-found: error
+          retention-days: 14
