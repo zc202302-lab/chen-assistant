@@ -1,3 +1,7 @@
+## 2026-10-05 搜索诊断后续
+
+用户完整诊断：59 个框架均 ok=false/buttons=0，少数 inputs>0；连接/框架读取成功，实际按钮 DOM 仍未知。扩展搜索精确文字匹配至所有标签（兼容 font/b/td），支持图片 alt/title/aria-label；仍需邻近输入框且唯一才点击。新增无输入值的标签/图片标签诊断；diagnose_browser.cmd 自动保存并打开记事本，减少用户命令操作。用户实际云电脑安装 E:\Assistants\CloudMemberAddAgent (2)\CloudMemberAddAgent，允许保持，无需搬动。离线同步配置暂停，先验证业务控件。修复尚未实机验证。
+
 ## 2026-10-05 离线更新 WIP（PR #128）
 
 用户确认云电脑不能联网，改为在线本机 GitHub CLI 下载成功构建，私有仓库授权仅本机；共享目录 updates 转发，独立 CloudOfflineUpdater 在启动/两批之间校验 ZIP 并替换成员 EXE，保留 previous。中转 Excel 不参与更新。首次安装一次新版；本机需 gh auth login 并保持 sync_updates.cmd 运行。当前下载开发分支，稳定通道尚未切换。更新器本身不自更新；无业务功能健康回滚。新增 offline_update.py、sync_updates.cmd、测试；10 项本地测试通过，Windows CI 待验证。保留原主站，未合并部署。原业务搜索/新增仍待云电脑诊断实测。

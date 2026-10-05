@@ -207,18 +207,20 @@ def _evaluate(cdp: Cdp, expression: str, context_id: int | None = None):
 _SEARCH_MATCH = r"""(() => {
   const visible=e=>!!(e&&(e.offsetWidth||e.offsetHeight||e.getClientRects().length));
   const compact=e=>String(e.innerText||e.value||e.textContent||'').replace(/\s/g,'');
-  const all=[...document.querySelectorAll('button,input[type=button],input[type=submit],a,span,div,[role=button]')].filter(visible).filter(e=>compact(e)==='搜索');
+  const labelled=e=>[compact(e),e.getAttribute('title'),e.getAttribute('alt'),e.getAttribute('aria-label')].some(t=>String(t||'').replace(/\s/g,'')==='搜索');
+  // Legacy pages may render the caption in font/b/td or in an image.
+  const all=[...document.querySelectorAll('*')].filter(visible).filter(labelled);
   const buttons=all.filter(e=>!all.some(c=>c!==e&&e.contains(c)));
   const inputs=[...document.querySelectorAll('input')].filter(e=>visible(e)&&!['hidden','button','submit','radio','checkbox'].includes(e.type));
   const pairs=[];
   for(const button of buttons){const br=button.getBoundingClientRect();for(const input of inputs){const r=input.getBoundingClientRect();const dy=Math.abs((r.top+r.bottom-br.top-br.bottom)/2);const gap=br.left-r.right;if(gap>=-3&&gap<=150&&dy<=18)pairs.push({input,button,score:dy+Math.max(0,gap)/10});}}
   pairs.sort((a,b)=>a.score-b.score);
-  if(!pairs.length)return {ok:false,reason:'未找到同一行相邻的搜索框和搜索按钮',inputs:inputs.length,buttons:buttons.length};
+  if(!pairs.length)return {ok:false,reason:'未找到同一行相邻的搜索框和搜索按钮',inputs:inputs.length,buttons:buttons.length,diagnostic:{tags:[...new Set([...document.querySelectorAll('*')].filter(visible).filter(e=>compact(e).includes('搜索')).map(e=>e.tagName))].slice(0,20),images:[...document.querySelectorAll('img,input[type=image]')].filter(visible).slice(0,15).map(e=>({tag:e.tagName,title:e.getAttribute('title'),alt:e.getAttribute('alt')}))}};
   if(pairs.length>1&&Math.abs(pairs[0].score-pairs[1].score)<1)return {ok:false,reason:'搜索控件匹配不唯一'};
   return {ok:true,input:pairs[0].input,button:pairs[0].button};
 })()"""
 
-_FIND_SEARCH_INPUT = "(() => {const match=" + _SEARCH_MATCH + ";return {ok:match.ok,reason:match.reason,inputs:match.inputs,buttons:match.buttons};})()"
+_FIND_SEARCH_INPUT = "(() => {const match=" + _SEARCH_MATCH + ";return {ok:match.ok,reason:match.reason,inputs:match.inputs,buttons:match.buttons,diagnostic:match.diagnostic};})()"
 _SET_SEARCH_AND_CLICK = "((queryValue) => {const match=" + _SEARCH_MATCH + r""";
   if(!match.ok)return {ok:false,reason:match.reason};
   const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
