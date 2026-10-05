@@ -162,7 +162,10 @@ jobs:
 
       - name: Dead route source inventory
         if: steps.scope.outputs.mode == 'full'
-        run: python tests/dead_route_source_inventory.py
+        run: |
+          python tests/dead_route_source_inventory.py
+          python tests/routing_registry_contract.py
+          python tests/customer_export_text_contract.py
 
       - name: Detached module reference inventory
         if: steps.scope.outputs.mode == 'full'
@@ -451,7 +454,6 @@ jobs:
       - name: Deployment skipped
         if: steps.scope.outputs.deploy != '1'
         run: echo "No Web runtime files changed; production deployment skipped."
-
 
 
 
