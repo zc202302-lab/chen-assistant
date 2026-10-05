@@ -32,13 +32,15 @@ jobs:
       - name: Build offline updater
         run: pyinstaller --clean --noconfirm --onefile --name CloudOfflineUpdater windows/cloud-assistant/offline_update.py
       - name: Assemble package
+        env:
+          AGENT_VERSION: ${{ github.event.pull_request.head.sha || github.sha }}
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force package | Out-Null
           Copy-Item dist\CloudMemberAddAgent.exe package\
           Copy-Item dist\CloudOfflineUpdater.exe package\
           Copy-Item windows\cloud-assistant\sync_updates.cmd package\
-          @{version=$env:GITHUB_SHA} | ConvertTo-Json | Set-Content -Encoding ascii package\version.json
+          @{version=$env:AGENT_VERSION} | ConvertTo-Json | Set-Content -Encoding ascii package\version.json
           Copy-Item windows\cloud-assistant\start_agent.cmd package\
           Copy-Item windows\cloud-assistant\diagnose_browser.cmd package\
           Copy-Item windows\cloud-assistant\README.md package\
