@@ -7,6 +7,7 @@ import io
 import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -158,7 +159,10 @@ def main():
     export = client.post('/work/number-inbox/export-group-batch', data={'csrf': csrf})
     assert export.status_code == 200, export.text
     assert export.headers['X-Number-Count'] == '1'
-    assert '号码加集团.xlsx' in export.headers['Content-Disposition']
+    disposition = export.headers['Content-Disposition']
+    assert "filename*=UTF-8''" in disposition
+    filename = unquote(disposition.split("filename*=UTF-8''", 1)[1])
+    assert filename == '号码加集团.xlsx'
     assert export.headers['Cache-Control'] == 'no-store'
     with zipfile.ZipFile(io.BytesIO(export.content)) as workbook:
         sheet = ET.fromstring(workbook.read('xl/worksheets/sheet1.xml'))
