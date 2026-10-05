@@ -25,6 +25,9 @@ jobs:
         run: python -m pip install --disable-pip-version-check -r windows/cloud-assistant/requirements.txt pyinstaller==6.16.0
       - name: Run parser tests
         run: python -m unittest discover -s windows/cloud-assistant/tests -v
+      - name: Verify Windows PowerShell sync process
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows/cloud-assistant/sync_updates.ps1 -CheckProcess
       - name: Compile source
         run: python -m py_compile windows/cloud-assistant/member_add_agent.py
       - name: Build executable

@@ -1,3 +1,7 @@
+## 2026-10-05 PowerShell 进程修正
+
+用户 sync_updates.ps1 实机检查时 ScriptHalted，怀疑 Start-Process 返回对象 ExitCode 空/空 stderr throw。改 System.Diagnostics.Process，异步读取两路输出避免缓冲阻塞，退出码错误保留信息。添加 -CheckProcess 并在 Windows CI 用 powershell.exe 验证 gh --version；验证待完成。脚本带 UTF8 BOM 兼容 PowerShell5.1；本机用户通过原 gh api 命令获取修正，不手动安装包。
+
 ## 2026-10-05 同步下载卡住
 
 用户本机 gh auth status 确认登录正确；E:\ChenBridge 为本机共享目录，gh run list 成功，原 EXE traceback 显示卡在 gh run download（无超时）。添加可直接用 gh api 获取的 sync_updates.ps1：检查60秒/下载300秒超时，每10秒等待提示，成功版本验证后先ZIP后指针，每60秒重试。用于修复已有本机同步，不要求手动下载EXE。云电脑更新器不变；脚本只负责共享更新包。本机 PowerShell 5.1 实机仍待验证。用户优先自动同步，不再切回手动下载。

@@ -1,13 +1,22 @@
-param([string]$Bridge = 'E:\ChenBridge')
+﻿param([string]$Bridge = 'E:\ChenBridge', [switch]$CheckProcess)
 $ErrorActionPreference = 'Stop'
 $repo = 'zc202302-lab/chen-assistant'
 $branch = 'feat/number-inbox-cloud-batch-export'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 function Run-Gh([string[]]$Arguments, [int]$Seconds) {
-    $output = Join-Path $env:TEMP ([guid]::NewGuid().ToString() + '.out')
-    $errors = $output + '.err'
+    $info = New-Object System.Diagnostics.ProcessStartInfo
+    $info.FileName = (Get-Command gh).Source
+    $info.Arguments = ($Arguments | ForEach-Object { '"' + $_.Replace('"','\"') + '"' }) -join ' '
+    $info.UseShellExecute = $false
+    $info.CreateNoWindow = $true
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $info
     try {
-        $process = Start-Process -FilePath (Get-Command gh).Source -ArgumentList $Arguments -NoNewWindow -PassThru -RedirectStandardOutput $output -RedirectStandardError $errors
+        $null = $process.Start()
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
         $elapsed = 0
         while (-not $process.WaitForExit(10000)) {
             $elapsed += 10
@@ -15,14 +24,21 @@ function Run-Gh([string[]]$Arguments, [int]$Seconds) {
             if ($elapsed -ge $Seconds) {
                 $process.Kill()
                 $process.WaitForExit()
-                throw '本次下载超时，60 秒后自动重试；原程序和数据保持不变。'
+                throw '本次操作超时，60 秒后自动重试；原程序和数据保持不变。'
             }
         }
-        if ($process.ExitCode -ne 0) { throw (Get-Content $errors -Raw) }
-        return (Get-Content $output -Raw)
-    } finally {
-        Remove-Item $output,$errors -Force -ErrorAction SilentlyContinue
-    }
+        $process.WaitForExit()
+        $result = $stdout.GetAwaiter().GetResult()
+        $failure = $stderr.GetAwaiter().GetResult()
+        if ($process.ExitCode -ne 0) { throw "GitHub CLI 退出码 $($process.ExitCode)：$failure" }
+        return $result
+    } finally { $process.Dispose() }
+}
+if ($CheckProcess) {
+    $result = Run-Gh @('--version') 30
+    if ($result -notmatch 'gh version') { throw '进程验证失败' }
+    Write-Host 'GitHub CLI 进程验证通过'
+    exit 0
 }
 Write-Host "本机同步已启动，共享目录：$Bridge"
 if (-not (Test-Path -LiteralPath $Bridge -PathType Container)) { throw '共享文件夹不存在，请确认路径。' }
