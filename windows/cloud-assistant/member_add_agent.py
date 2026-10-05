@@ -207,7 +207,7 @@ def _evaluate(cdp: Cdp, expression: str, context_id: int | None = None):
 _SEARCH_MATCH = r"""(() => {
   const visible=e=>!!(e&&(e.offsetWidth||e.offsetHeight||e.getClientRects().length));
   const compact=e=>String(e.innerText||e.value||e.textContent||'').replace(/\s/g,'');
-  const labelled=e=>[compact(e),e.getAttribute('title'),e.getAttribute('alt'),e.getAttribute('aria-label')].some(t=>String(t||'').replace(/\s/g,'')==='搜索');
+  const labelled=e=>(e.id==='search_btn'&&e.classList.contains('input_search_right')&&e.closest('#topSearchDiv'))||[compact(e),e.getAttribute('title'),e.getAttribute('alt'),e.getAttribute('aria-label')].some(t=>String(t||'').replace(/\s/g,'')==='搜索');
   // Legacy pages may render the caption in font/b/td or in an image.
   const all=[...document.querySelectorAll('*')].filter(visible).filter(labelled);
   const buttons=all.filter(e=>!all.some(c=>c!==e&&e.contains(c)));
