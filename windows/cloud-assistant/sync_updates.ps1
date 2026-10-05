@@ -1,4 +1,4 @@
-﻿param([string]$Bridge = 'E:\ChenBridge', [switch]$CheckProcess)
+﻿param([string]$Bridge = 'E:\ChenBridge', [switch]$CheckProcess, [switch]$Once)
 $ErrorActionPreference = 'Stop'
 if (Test-Path 'C:\Program Files\GitHub CLI\gh.exe') { $env:PATH = 'C:\Program Files\GitHub CLI;' + $env:PATH }
 $repo = 'zc202302-lab/chen-assistant'
@@ -80,9 +80,10 @@ while ($true) {
             $temporary = Join-Path $updates 'latest.tmp'
             $manifest | ConvertTo-Json | Set-Content -LiteralPath $temporary -Encoding ascii
             Move-Item -LiteralPath $temporary -Destination $pointer -Force
-            Write-Host '本机已同步更新包。保持窗口打开，以后自动检查。'
+            if ($Once) { Write-Host '本机已同步更新包，本次更新结束。' } else { Write-Host '本机已同步更新包。保持窗口打开，以后自动检查。' }
         }
     } catch { Write-Host "同步未完成：$($_.Exception.Message)" }
     finally { Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue }
+    if ($Once) { break }
     Start-Sleep -Seconds 60
 }
