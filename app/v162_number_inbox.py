@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import re
 import secrets
+import io
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from urllib.parse import quote
 
 from fastapi import APIRouter, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+import xlsxwriter
 
 from . import config
 from .db import db, now_iso
@@ -18,6 +21,7 @@ templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
 
 TOKEN_META_KEY = 'number_inbox_submit_token_v1'
 DESKTOP_TOKEN_META_KEY = 'number_inbox_desktop_token_v1'
+GROUP_BATCH_CODE = 'c7210826122'
 
 NUMBER_INBOX_SCHEMA = r'''
 CREATE TABLE IF NOT EXISTS number_inbox (
@@ -260,6 +264,40 @@ def number_inbox_done(request: Request, item_id: int, csrf: str = Form(...)):
     return RedirectResponse('/work/number-inbox?status=pending', status_code=303)
 
 
+@router.post('/work/number-inbox/export-group-batch')
+def number_inbox_export_group_batch(request: Request, csrf: str = Form(...)):
+    """Export every pending number as the two-column cloud-assistant input file."""
+    _csrf(request, csrf)
+    with db() as conn:
+        ensure_number_inbox_schema(conn)
+        rows = conn.execute(
+            "SELECT number FROM number_inbox WHERE status='pending' ORDER BY submitted_at,id"
+        ).fetchall()
+    if not rows:
+        raise HTTPException(409, '当前没有待添加号码')
+
+    output = io.BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    worksheet = workbook.add_worksheet('号码加集团')
+    text_format = workbook.add_format({'num_format': '@'})
+    worksheet.set_column(0, 1, 20)
+    for row_index, row in enumerate(rows):
+        worksheet.write_string(row_index, 0, str(row['number']), text_format)
+        worksheet.write_string(row_index, 1, GROUP_BATCH_CODE, text_format)
+    workbook.close()
+
+    filename = quote('号码加集团.xlsx')
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={
+            'Content-Disposition': f"attachment; filename*=UTF-8''{filename}",
+            'Cache-Control': 'no-store',
+            'X-Number-Count': str(len(rows)),
+        },
+    )
+
+
 @router.post('/work/number-inbox/{item_id}/reopen')
 def number_inbox_reopen(request: Request, item_id: int, csrf: str = Form(...)):
     _csrf(request, csrf)
@@ -361,5 +399,4 @@ def number_inbox_rotate_link(request: Request, csrf: str = Form(...)):
 def pending_number_count(conn) -> int:
     ensure_number_inbox_schema(conn)
     return int(conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'])
-
 

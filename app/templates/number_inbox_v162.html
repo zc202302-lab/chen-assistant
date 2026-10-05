@@ -61,6 +61,10 @@
   <h2>未加号码（{{ pending_count }}）</h2>
 
   {% if items %}
+  <div class="number-batch-export">
+    <button class="v10-primary" type="button" data-group-batch-export data-csrf="{{ csrf }}">批量加集团</button>
+    <span id="group-batch-export-status" role="status">导出所有待处理号码，生成“号码加集团.xlsx”。</span>
+  </div>
   <div class="number-inbox-list">
     {% for item in items %}
     <article class="number-inbox-item">
@@ -84,7 +88,5 @@
   {% endif %}
   {% endif %}
 </section>
-<script src="/static/number-inbox-v162.js?v=1622"></script>
+<script src="/static/number-inbox-v162.js?v=1625"></script>
 {% endblock %}
-
-
