@@ -7,6 +7,7 @@ import json
 import posixpath
 import re
 import sys
+import threading
 import time
 import urllib.request
 import uuid
@@ -151,14 +152,20 @@ class Cdp:
             raise RuntimeError("缺少 websocket-client 依赖")
         self.ws = websocket.create_connection(ws_url, timeout=8, suppress_origin=True)
         self.sequence = 0
+        self.events = []
 
-    def call(self, method: str, params: dict | None = None) -> dict:
+    def call(self, method: str, params: dict | None = None, session_id: str | None = None) -> dict:
         self.sequence += 1
         call_id = self.sequence
-        self.ws.send(json.dumps({"id": call_id, "method": method, "params": params or {}}))
+        command = {"id": call_id, "method": method, "params": params or {}}
+        if session_id:
+            command["sessionId"] = session_id
+        self.ws.send(json.dumps(command))
         while True:
             message = json.loads(self.ws.recv())
             if message.get("id") != call_id:
+                if message.get("method"):
+                    self.events.append(message)
                 continue
             if "error" in message:
                 raise RuntimeError(f"浏览器命令失败：{method}")
@@ -166,6 +173,77 @@ class Cdp:
 
     def close(self):
         self.ws.close()
+
+
+
+class SearchRefreshGuard:
+    """Observe search popups before their scripts run; accept only the known refresh."""
+    def __init__(self, port):
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/json/version", timeout=4) as response:
+            endpoint = json.load(response)["webSocketDebuggerUrl"]
+        self.cdp = Cdp(endpoint)
+        self.stopped = threading.Event()
+        self.error = None
+        self.sessions = {}
+
+    def __enter__(self):
+        self.cdp.call("Target.setAutoAttach", {"autoAttach": True, "waitForDebuggerOnStart": True, "flatten": True})
+        self.cdp.ws.settimeout(0.2)
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+        return self
+
+    def _handle(self, event):
+        method = event.get("method")
+        params = event.get("params", {})
+        if method == "Target.attachedToTarget":
+            session = params["sessionId"]
+            info = params.get("targetInfo", {})
+            self.sessions[session] = info
+            try:
+                if info.get("type") == "page":
+                    self.cdp.call("Page.enable", session_id=session)
+            finally:
+                if params.get("waitingForDebugger"):
+                    self.cdp.call("Runtime.runIfWaitingForDebugger", session_id=session)
+        elif method == "Page.javascriptDialogOpening":
+            session = event.get("sessionId")
+            url = params.get("url", "")
+            text = re.sub(r"\s", "", params.get("message", ""))
+            if (session and url.startswith("https://10.19.89.56/")
+                    and params.get("type") == "confirm"
+                    and text.rstrip("?？") == "集团客户统一视图Tab页已打开，是否刷新"):
+                self.cdp.call("Page.handleJavaScriptDialog", {"accept": True}, session)
+                print("已确认集团视图刷新", flush=True)
+
+    def _run(self):
+        try:
+            while not self.stopped.is_set():
+                if self.cdp.events:
+                    self.cdp.ws.settimeout(8)
+                    self._handle(self.cdp.events.pop(0))
+                    self.cdp.ws.settimeout(0.2)
+                    continue
+                try:
+                    event = json.loads(self.cdp.ws.recv())
+                except websocket.WebSocketTimeoutException:
+                    continue
+                if event.get("method"):
+                    self.cdp.ws.settimeout(8)
+                    self._handle(event)
+                    self.cdp.ws.settimeout(0.2)
+        except Exception as exc:
+            self.error = str(exc)
+
+    def __exit__(self, *args):
+        self.stopped.set()
+        self.thread.join(timeout=10)
+        try:
+            if not self.thread.is_alive():
+                self.cdp.ws.settimeout(4)
+                self.cdp.call("Target.setAutoAttach", {"autoAttach": False, "waitForDebuggerOnStart": False, "flatten": True})
+        finally:
+            self.cdp.close()
 
 
 def _frame_ids(tree: dict) -> list[str]:
@@ -395,16 +473,19 @@ class MemberAdder:
 
     def add_one(self, task: MemberTask) -> tuple[str, str]:
         main, _ = _find_targets(self.port)
-        self._action(main, _SET_SEARCH_AND_CLICK % json.dumps(task.group_search, ensure_ascii=False), "顶部集团搜索框或搜索按钮不唯一")
-        deadline = time.time() + 15
-        while time.time() < deadline:
-            check = self._with_context(main, "(() => (document.body?.innerText||'').includes(%s))()" % json.dumps(task.group_search, ensure_ascii=False))
-            if check:
-                break
-            time.sleep(0.4)
-        else:
-            raise AutomationError("搜索后页面没有出现指定集团编号")
-
+        with SearchRefreshGuard(self.port) as guard:
+            self._action(main, _SET_SEARCH_AND_CLICK % json.dumps(task.group_search, ensure_ascii=False), "顶部集团搜索框或搜索按钮不唯一")
+            started = time.time()
+            deadline = started + 25
+            while time.time() < deadline:
+                if guard.error:
+                    raise AutomationError("搜索刷新监听失败：" + guard.error)
+                check = self._with_context(main, "(() => (document.body?.innerText||'').includes(%s))()" % json.dumps(task.group_search, ensure_ascii=False))
+                if check and time.time() - started >= 2:
+                    break
+                time.sleep(0.4)
+            else:
+                raise AutomationError("搜索后页面没有出现指定集团编号")
         self._action(main, _CLICK_LABEL % json.dumps("成员信息", ensure_ascii=False), "成员信息入口不唯一或不存在")
         member_deadline = time.time() + 12
         while time.time() < member_deadline:

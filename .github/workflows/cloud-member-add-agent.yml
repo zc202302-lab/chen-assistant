@@ -27,7 +27,11 @@ jobs:
         run: python -m unittest discover -s windows/cloud-assistant/tests -v
       - name: Verify Windows PowerShell sync process
         shell: powershell
-        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows/cloud-assistant/sync_updates.ps1 -CheckProcess
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows/cloud-assistant/sync_updates.ps1 -CheckProcess
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'windows/cloud-assistant/background_sync.ps1'), [ref]$null, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
       - name: Compile source
         run: python -m py_compile windows/cloud-assistant/member_add_agent.py
       - name: Build executable

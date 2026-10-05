@@ -1,5 +1,6 @@
 ﻿param([string]$Bridge = 'E:\ChenBridge', [switch]$CheckProcess)
 $ErrorActionPreference = 'Stop'
+if (Test-Path 'C:\Program Files\GitHub CLI\gh.exe') { $env:PATH = 'C:\Program Files\GitHub CLI;' + $env:PATH }
 $repo = 'zc202302-lab/chen-assistant'
 $branch = 'feat/number-inbox-cloud-batch-export'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -40,6 +41,8 @@ if ($CheckProcess) {
     Write-Host 'GitHub CLI 进程验证通过'
     exit 0
 }
+$syncMutex = New-Object System.Threading.Mutex($false, 'Local\ChenCloudUpdateSyncV1')
+if (-not $syncMutex.WaitOne(0)) { Write-Host '后台同步已经运行'; exit 0 }
 Write-Host "本机同步已启动，共享目录：$Bridge"
 if (-not (Test-Path -LiteralPath $Bridge -PathType Container)) { throw '共享文件夹不存在，请确认路径。' }
 $updates = Join-Path $Bridge 'updates'

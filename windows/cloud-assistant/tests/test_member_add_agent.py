@@ -122,3 +122,38 @@ class MemberWorkbookTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RefreshDialogTests(unittest.TestCase):
+    def guard(self):
+        from member_add_agent import SearchRefreshGuard
+        from unittest.mock import Mock
+        guard = SearchRefreshGuard.__new__(SearchRefreshGuard)
+        guard.cdp = Mock()
+        guard.sessions = {}
+        return guard
+
+    def test_accepts_only_known_refresh_confirmation(self):
+        guard = self.guard()
+        guard._handle({"method": "Page.javascriptDialogOpening", "sessionId": "popup", "params": {
+            "url": "https://10.19.89.56/ngmarket/custmgt/queryNewGroupCustInformation.action",
+            "type": "confirm", "message": "集团客户统一视图Tab页已打开，是否刷新？"}})
+        guard.cdp.call.assert_called_once_with("Page.handleJavaScriptDialog", {"accept": True}, "popup")
+
+    def test_other_dialogs_are_untouched(self):
+        for url, kind, message in [
+            ("https://10.19.89.56/", "confirm", "是否提交成员？"),
+            ("https://example.com/", "confirm", "集团客户统一视图Tab页已打开，是否刷新？"),
+            ("https://10.19.89.56/", "alert", "集团客户统一视图Tab页已打开，是否刷新？")]:
+            guard = self.guard()
+            guard._handle({"method": "Page.javascriptDialogOpening", "sessionId": "popup", "params": {
+                "url": url, "type": kind, "message": message}})
+            guard.cdp.call.assert_not_called()
+
+    def test_paused_popup_resumes_even_if_page_enable_fails(self):
+        guard = self.guard()
+        guard.cdp.call.side_effect = [RuntimeError("enable failed"), {}]
+        with self.assertRaises(RuntimeError):
+            guard._handle({"method": "Target.attachedToTarget", "params": {
+                "sessionId": "popup", "waitingForDebugger": True, "targetInfo": {"type": "page"}}})
+        self.assertEqual(guard.cdp.call.call_args.args[0], "Runtime.runIfWaitingForDebugger")
