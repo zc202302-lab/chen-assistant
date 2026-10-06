@@ -9,6 +9,11 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tests'))
 from v152_high_frequency_flow_acceptance import seed
+from cryptography.fernet import Fernet
+# This broader regression also visits reminders; use a valid isolated test key.
+os.environ['APP_ENCRYPTION_KEY'] = Fernet.generate_key().decode()
+from app import config
+config.APP_ENCRYPTION_KEY = os.environ['APP_ENCRYPTION_KEY']
 
 
 def settled(page):

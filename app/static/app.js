@@ -79,7 +79,6 @@
     selectionState.add(el);
     if (!gesture || gesture.el !== el || !gesture.first || !gesture.plain ||
         gesture.moved || e.detail !== 1 || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
-    if (el.selectionStart != null && el.selectionEnd !== el.selectionStart) return;
     selectAllEditor(el);
   }, true);
   document.addEventListener('keydown', (e) => {
