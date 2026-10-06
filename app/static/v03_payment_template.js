@@ -63,7 +63,7 @@
   const headTitle = dialog.querySelector('.v03-mail-template-head h3');
   if (headTitle) headTitle.textContent = '缴费模板';
   const headKicker = dialog.querySelector('.v03-mail-template-head small');
-  if (headKicker) headKicker.textContent = '当前客户长期使用';
+  if (headKicker) headKicker.remove();
 
   const note = dialog.querySelector('.v03-mail-template-note span');
   if (note) {
