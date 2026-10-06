@@ -48,7 +48,8 @@ def prepare(page, editor, value):
         const rect = el.getBoundingClientRect(), style = getComputedStyle(el);
         const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
         ctx.font = style.font;
-        return {x:rect.x + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft),
+        return {left:parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft), top:parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop) + 10,
+                x:rect.x + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft),
                 y:rect.y + parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop) + 10,
                 char:ctx.measureText('0').width};
     }""")
@@ -56,10 +57,11 @@ def prepare(page, editor, value):
     return coords
 
 
-def drag(page, coords, start=2, end=5):
-    page.mouse.move(coords['x'] + coords['char'] * start, coords['y'])
+def drag(page, editor, coords, start=2, end=5):
+    editor.hover(position={'x':coords['left'] + coords['char'] * start, 'y':coords['top']})
     page.mouse.down()
-    page.mouse.move(coords['x'] + coords['char'] * end, coords['y'], steps=12)
+    box = editor.bounding_box()
+    page.mouse.move(box['x'] + coords['left'] + coords['char'] * end, box['y'] + coords['top'], steps=12)
     page.mouse.up()
     settled(page)
 
@@ -75,19 +77,19 @@ def exercise(page, editor, value='1234567890'):
           rect:el.getBoundingClientRect().toJSON(),font:getComputedStyle(el).font}),true);
       }
     }""")
-    drag(page, coords)
+    drag(page, editor, coords)
     assert selected(editor) == [2, 5], (selected(editor), coords, page.evaluate('window.selectionTrace'))
     # A fresh, ordinary single click still supports quick replacement.
     editor.evaluate('el => el.blur()')
-    page.mouse.click(coords['x'] + coords['char'] * 4, coords['y'])
+    editor.click(position={'x':coords['left'] + coords['char'] * 4, 'y':coords['top']})
     settled(page)
     assert selected(editor) == [0, len(value)], selected(editor)
     # Second AND third clicks set the caret rather than cycling back to select-all.
     for offset in (4, 6, 3):
-        page.mouse.click(coords['x'] + coords['char'] * offset, coords['y'])
+        editor.click(position={'x':coords['left'] + coords['char'] * offset, 'y':coords['top']})
         settled(page)
         assert selected(editor) == [offset, offset], selected(editor)
-    drag(page, coords)
+    drag(page, editor, coords)
     assert selected(editor) == [2, 5], selected(editor)
     editor.press('ArrowRight')
     editor.press('Shift+ArrowLeft')
@@ -97,10 +99,10 @@ def exercise(page, editor, value='1234567890'):
     assert selected(editor) == [0, len(value)]
     # Document capture must not swallow module click handlers.
     editor.evaluate("el => {el.dataset.clicks='0'; el.addEventListener('click', () => el.dataset.clicks=String(Number(el.dataset.clicks)+1));}")
-    page.mouse.click(coords['x'] + coords['char'] * 3, coords['y'])
+    editor.click(position={'x':coords['left'] + coords['char'] * 3, 'y':coords['top']})
     settled(page)
     assert editor.get_attribute('data-clicks') == '1'
-    assert selected(editor) == [3, 3]
+    assert selected(editor) == [3, 3], (selected(editor), coords, page.evaluate('window.selectionTrace'))
 
 
 def main():
