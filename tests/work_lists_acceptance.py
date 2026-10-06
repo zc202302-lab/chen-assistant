@@ -89,11 +89,11 @@ def main():
             page.get_by_label('记录状态').select_option('done')
             page.get_by_role('button', name='保存记录').click()
             page.get_by_label('记录状态').select_option('pending')
-            page.get_by_role('button', name='筛选').click()
+            page.get_by_role('button', name='筛选', exact=True).click()
             expect(page.get_by_text('暂无符合条件的记录。')).to_be_visible()
             page.get_by_role('link', name='重置', exact=True).click()
             page.get_by_label('搜索记录').fill('回款')
-            page.get_by_role('button', name='筛选').click()
+            page.get_by_role('button', name='筛选', exact=True).click()
             expect(page.get_by_text('00123456789', exact=True)).to_be_visible()
             with page.expect_download() as info:
                 page.get_by_role('link', name='导出当前结果 Excel').click()
