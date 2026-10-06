@@ -84,8 +84,8 @@ def main():
             assert abs(actual_width-original_width-50)<3, {'before':original_width,'after':actual_width,'handle':handle.get_attribute('aria-valuenow'),'table':page.locator('.ws-grid').get_attribute('style'),'box':box,'hit':hit}
             rowhandle=page.locator('.ws-grid tbody .ws-row-resize').first
             rowhandle.focus();rowhandle.press('ArrowDown');rowhandle.press('ArrowDown')
-            page.get_by_role('button',name='保存表格',exact=True).click()
-            page.wait_for_load_state('networkidle')
+            with page.expect_navigation(wait_until='networkidle'):
+                page.get_by_role('button',name='保存表格',exact=True).click()
             expect(page.locator('.ws-cell[data-row="0"][data-col="1"]')).to_have_value('保存后的值')
             data=json.loads(page.locator('#work-sheet-data').text_content())
             assert list(data['layout']['widths'].values())[0]>=195
