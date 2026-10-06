@@ -123,6 +123,7 @@ jobs:
           python tests/stability_contract.py
           python tests/v153_home_navigation_contract.py
           python tests/v10_workspace_isolation_acceptance.py
+          python tests/architecture_governance_contract.py
 
       - name: Check JavaScript syntax
         if: steps.scope.outputs.mode == 'full'
