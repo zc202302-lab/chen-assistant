@@ -63,8 +63,16 @@ def drag(page, coords, start=2, end=5):
 def exercise(page, editor, value='1234567890'):
     # A drag into an unfocused editor must survive mouseup and deferred work.
     coords = prepare(page, editor, value)
+    editor.evaluate("""el => {
+      window.selectionTrace=[];
+      for(const name of ['pointerdown','pointerup','click','focus']) {
+        el.addEventListener(name, e => window.selectionTrace.push({name:e.type,x:e.clientX,y:e.clientY,
+          start:el.selectionStart,end:el.selectionEnd,value:el.value,scroll:el.scrollLeft,
+          rect:el.getBoundingClientRect().toJSON(),font:getComputedStyle(el).font}),true);
+      }
+    }""")
     drag(page, coords)
-    assert selected(editor) == [2, 5], selected(editor)
+    assert selected(editor) == [2, 5], (selected(editor), coords, page.evaluate('window.selectionTrace'))
     # A fresh, ordinary single click still supports quick replacement.
     editor.evaluate('el => el.blur()')
     page.mouse.click(coords['x'] + coords['char'] * 4, coords['y'])
