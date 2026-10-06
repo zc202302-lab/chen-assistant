@@ -15,6 +15,7 @@ from member_browser import Cdp, SearchRefreshGuard, _find_targets, _frame_ids, _
 from member_page import _FIND_SEARCH_INPUT, _GROUP_IDENTITIES
 from member_flow import MemberAdder
 from relay_store import capture_relay, clear_if_unchanged
+from task_journal import BatchJournal, batch_lock, atomic_json
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -28,7 +29,7 @@ class Agent:
     relay_notice_at: float = 0.0
 
     def prepare(self):
-        for folder in ("processing", "processed", "results", "errors", "logs"):
+        for folder in ("processing", "processed", "results", "errors", "logs", "journals"):
             (self.bridge / folder).mkdir(parents=True, exist_ok=True)
 
     def process(self, source: Path) -> Path | None:
@@ -46,39 +47,51 @@ class Agent:
         if any((self.bridge / "results").glob(f"号码加集团_结果_*_{batch_id}.json")):
             print("此批已有结果，已跳过；请查看results，失败或不确定批次不会自动重试。", flush=True)
             return None
+        try:
+            with batch_lock(self.bridge / "journals", payload) as journal_path:
+                return self._process_claimed(source, payload, stamp, batch_id, journal_path)
+        except OSError:
+            print("任务被占用或记录未能保存；中转内容已保留，请检查共享目录后重启。", flush=True)
+            return None
+
+    def _process_claimed(self, source, payload, stamp, batch_id, journal_path):
         # The fixed relay file remains at its original path throughout processing.
         claimed = self.bridge / "processing" / f"号码加集团_{stamp}_{uuid.uuid4().hex[:8]}.xlsx"
         claimed.write_bytes(payload)
         result_path = self.bridge / "results" / f"号码加集团_结果_{stamp}_{batch_id}.json"
         try:
             tasks = read_member_tasks_xlsx(claimed, allow_empty=True)
-            if not tasks:
-                claimed.unlink()
-                return None
-            adder = MemberAdder(self.port)
-            outcomes = []
-            stop_reason = ""
-            for index, task in enumerate(tasks):
-                if stop_reason:
-                    outcomes.append({"row": task.row_number, "service_number": task.service_number, "group_search": task.group_search, "status": "未执行", "detail": stop_reason})
-                    continue
-                try:
-                    status, detail = adder.add_one(task)
-                    outcomes.append({"row": task.row_number, "service_number": task.service_number, "group_search": task.group_search, "status": status, "detail": detail})
-                except UncertainSubmission as exc:
-                    outcomes.append({"row": task.row_number, "service_number": task.service_number, "group_search": task.group_search, "status": "结果待人工核对", "detail": str(exc)})
-                    stop_reason = "前一行提交结果不确定，已暂停本批剩余号码"
-                except Exception as exc:
-                    outcomes.append({"row": task.row_number, "service_number": task.service_number, "group_search": task.group_search, "status": "失败，已暂停", "detail": str(exc)})
-                    stop_reason = f"第 {task.row_number} 行执行失败，已暂停本批剩余号码"
-            result = {"version": 1, "batch_id": batch_id, "source_file": "号码加集团.xlsx", "finished_at": datetime.now(timezone.utc).isoformat(), "count": len(tasks), "results": outcomes}
-            archive_dir = self.bridge / "processed"
         except Exception as exc:
             result = {"version": 1, "batch_id": batch_id, "source_file": "号码加集团.xlsx", "finished_at": datetime.now(timezone.utc).isoformat(), "count": 0, "error": str(exc), "results": []}
             archive_dir = self.bridge / "errors"
-        temp = result_path.with_suffix(result_path.suffix + ".tmp")
-        temp.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-        temp.replace(result_path)
+        else:
+            if not tasks:
+                claimed.unlink()
+                return None
+            journal = BatchJournal(journal_path, payload, tasks)
+            if journal.recovered:
+                outcomes = journal.recovered_outcomes()
+            else:
+                adder = MemberAdder(self.port)
+                stop_reason = ""
+                for index, task in enumerate(tasks):
+                    if stop_reason:
+                        journal.finish(index, "未执行", stop_reason)
+                        continue
+                    journal.begin(index)
+                    try:
+                        status, detail = adder.add_one(task)
+                    except UncertainSubmission as exc:
+                        status, detail = "结果待人工核对", str(exc)
+                        stop_reason = "前一行提交结果不确定，已暂停本批剩余号码"
+                    except Exception as exc:
+                        status, detail = "失败，已暂停", str(exc)
+                        stop_reason = f"第 {task.row_number} 行执行失败，已暂停本批剩余号码"
+                    journal.finish(index, status, detail)
+                outcomes = journal.data['rows']
+            result = {"version": 1, "batch_id": batch_id, "source_file": "号码加集团.xlsx", "finished_at": datetime.now(timezone.utc).isoformat(), "count": len(tasks), "results": outcomes}
+            archive_dir = self.bridge / "processed"
+        atomic_json(result_path, result)
         destination = archive_dir / claimed.name
         try:
             claimed.replace(destination)
