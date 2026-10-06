@@ -26,3 +26,57 @@
 .work-domain-body p{font-size:10px}
 .work-domain-meta span{font-size:9px}
 }
+
+/* Compact work landing, scoped to the module chooser. */
+.work-launcher{max-width:900px;padding-top:24px}
+.work-launcher .work-arch-head{margin-bottom:24px}
+.work-launcher .work-arch-head h1{font-size:30px;letter-spacing:-.03em}
+.work-launcher .work-arch-head p{font-size:14px;line-height:1.6}
+.work-launcher .work-domain-grid{grid-template-columns:repeat(3,minmax(0,210px));gap:16px;margin-bottom:28px}
+.work-launcher .work-domain-card{box-sizing:border-box;display:flex;flex-direction:column;align-items:flex-start;aspect-ratio:1;min-width:0;min-height:0;padding:20px;gap:12px;border:1px solid #e0e7f0;border-radius:20px;background:linear-gradient(145deg,#fff,#f8faff);box-shadow:0 6px 20px rgba(28,47,76,.04);opacity:1}
+.work-launcher .work-domain-card:hover{border-color:#9eafc6;box-shadow:0 10px 24px rgba(28,47,76,.09)}
+.work-launcher .work-domain-card:focus-visible,.work-launcher .work-legacy-grid a:focus-visible{outline:3px solid #4c7dc1;outline-offset:4px}
+.work-launcher .work-domain-library{background:linear-gradient(145deg,#fff,#f4faf7)}
+.work-launcher .work-domain-list{background:linear-gradient(145deg,#fff,#f7f5fc)}
+.work-launcher .work-domain-icon{flex-shrink:0;width:40px;height:40px;border-radius:12px}
+.work-launcher .work-domain-icon svg{width:23px;height:23px}
+.work-launcher .work-domain-list .work-domain-icon{background:#f0ebfb;color:#7558a5}
+.work-launcher .work-domain-body{min-width:0}
+.work-launcher .work-domain-title{display:flex;align-items:center;gap:6px}
+.work-launcher .work-domain-title h2{font-size:19px;line-height:1.3}
+.work-launcher .work-domain-title span{padding:3px 6px;font-size:10px;font-weight:600;background:#eef2f7}
+.work-launcher .work-domain-body p{margin:6px 0 0;font-size:12px;line-height:1.5;color:#64748b;white-space:normal}
+.work-launcher .work-domain-arrow{align-self:flex-start;margin-top:auto;font-size:12px;font-weight:600;color:#60748f}
+.work-launcher .work-launcher-shortcuts{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.work-launcher .work-launcher-shortcuts h2{font-size:14px;color:#64748b;font-weight:600}
+.work-launcher .work-legacy-grid{gap:10px}
+.work-launcher .work-legacy-grid a{padding:12px 14px;border-radius:12px;border-color:#e5eaf1;background:rgba(255,255,255,.7)}
+.work-launcher .work-legacy-grid a:hover{background:#fff;border-color:#c7d2e0}
+.work-launcher .work-legacy-grid b{font-size:13px;font-weight:600}
+.work-launcher .work-legacy-grid span{font-size:11px;line-height:1.5;color:#738095}
+@media(max-width:700px){
+ .work-launcher{padding:16px 4px 100px}
+ .work-launcher .work-arch-head{margin-bottom:20px}
+ .work-launcher .work-arch-head h1{font-size:27px}
+ .work-launcher .work-arch-head p{font-size:13px}
+ .work-launcher .work-domain-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:440px}
+ .work-launcher .work-domain-card{padding:14px;gap:10px;border-radius:17px}
+ .work-launcher .work-domain-icon{width:34px;height:34px;border-radius:10px}
+ .work-launcher .work-domain-icon svg{width:21px;height:21px}
+ .work-launcher .work-domain-title h2{font-size:17px}
+ .work-launcher .work-domain-title span{font-size:9px;padding:2px 5px}
+ .work-launcher .work-domain-body p{font-size:11px}
+ .work-launcher .work-domain-arrow{font-size:11px}
+ .work-launcher .work-legacy-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:360px){
+ .work-launcher .work-domain-card{padding:11px;gap:8px}
+ .work-launcher .work-domain-title{gap:4px}
+ .work-launcher .work-domain-title h2{font-size:16px}
+ .work-launcher .work-domain-title span{font-size:8px}
+}
+@media(prefers-reduced-motion:reduce){.work-launcher .work-domain-card{transition:none}.work-launcher .work-domain-card:hover{transform:none}}
+
+.work-launcher .work-domain-title span{position:absolute;top:25px;right:16px}
+@media(max-width:700px){.work-launcher .work-domain-title span{top:22px;right:12px}}
+@media(max-width:360px){.work-launcher .work-domain-title span{top:21px;right:10px}}

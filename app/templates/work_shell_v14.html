@@ -1,44 +1,44 @@
 {% extends "base.html" %}
 {% block title %}工作 · 晨的助手{% endblock %}
 {% block content %}
-<section class="v10-shell work-arch-shell">
+<section class="v10-shell work-arch-shell work-launcher">
   <div class="v10-page-head work-arch-head">
     <div>
       <span class="v10-kicker">工作空间</span>
       <h1>工作</h1>
-      <p>客户管理处理日常业务，清单收集灵活信息，工作资料用于查阅共享知识。</p>
+      <p>选择一个模块，开始今天的工作。</p>
     </div>
   </div>
 
   <div class="work-domain-grid" aria-label="工作模块">
     <a class="work-domain-card work-domain-customer" href="/work/customers">
-      <div class="work-domain-icon">客</div>
+      <div class="work-domain-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M21 20v-2a6 6 0 0 0-3-5"/></svg></div>
       <div class="work-domain-body">
         <div class="work-domain-title"><h2>客户管理</h2><span>{{ customer_count }} 个客户</span></div>
-        <p>缴费、业务、资料统一入口</p>
-        <div class="work-domain-meta"><span>日常高频</span></div>
+        <p>缴费、业务与客户资料</p>
+        
       </div>
       <strong class="work-domain-arrow">进入 →</strong>
     </a>
 
     <a class="work-domain-card work-domain-library" href="/work/library">
-      <div class="work-domain-icon">资</div>
+      <div class="work-domain-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h7l2 2h9v12H3zM3 10h18"/></svg></div>
       <div class="work-domain-body">
-        <div class="work-domain-title"><h2>工作资料</h2><span>公共资料</span></div>
-        <p>产品、资费、流程等共享资料</p>
-        <div class="work-domain-meta"><span>按需查阅</span></div>
+        <div class="work-domain-title"><h2>工作资料</h2></div>
+        <p>产品、资费与流程</p>
+        
       </div>
       <strong class="work-domain-arrow">进入 →</strong>
     </a>
-    <a class="work-domain-card work-domain-library" href="/work/lists">
-      <div class="work-domain-icon">单</div>
-      <div class="work-domain-body"><div class="work-domain-title"><h2>清单</h2><span>自由定义字段</span></div><p>欠费、商机等信息收集与跟进</p><div class="work-domain-meta"><span>灵活记录</span></div></div>
+    <a class="work-domain-card work-domain-list" href="/work/lists">
+      <div class="work-domain-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="m8 9 1 1 2-2M14 9h3m-9 6 1 1 2-2m3 1h3"/></svg></div>
+      <div class="work-domain-body"><div class="work-domain-title"><h2>清单</h2></div><p>欠费、商机与自由记录</p></div>
       <strong class="work-domain-arrow">进入 →</strong>
     </a>
   </div>
 
-  <section class="v10-section">
-    <div class="v10-section-head"><div><h2>辅助入口</h2><p>不进入主操作链路，需要时再使用。</p></div></div>
+  <section class="v10-section work-launcher-shortcuts">
+    <div class="v10-section-head"><div><h2>辅助入口</h2></div></div>
     <div class="work-legacy-grid">
       <a href="/customers"><b>全部客户</b><span>查找、新建与导入客户</span></a>
       <a href="/products"><b>产品汇总</b><span>{{ product_count }} 个业务类型</span></a>

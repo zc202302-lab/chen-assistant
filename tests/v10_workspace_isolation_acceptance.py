@@ -97,6 +97,30 @@ def main():
             expect(page.locator('.brand')).to_contain_text(f'v{config.APP_VERSION}')
             assert_history_nav(page)
 
+            # Module chooser remains compact and square despite later legacy styles.
+            for width in (1450, 768, 390, 320):
+                page.set_viewport_size({'width': width, 'height': 950})
+                cards = page.locator('.work-launcher .work-domain-card')
+                expect(cards).to_have_count(3)
+                boxes = [card.bounding_box() for card in cards.all()]
+                for card, box in zip(cards.all(), boxes):
+                    assert box and abs(box['width'] - box['height']) <= 2, (width, box)
+                    assert box['width'] <= 220, (width, box)
+                    assert card.evaluate('(el) => el.scrollHeight <= el.clientHeight + 1')
+                assert abs(boxes[0]['y'] - boxes[1]['y']) <= 2
+                if width > 700:
+                    assert abs(boxes[0]['y'] - boxes[2]['y']) <= 2
+                else:
+                    assert boxes[2]['y'] >= boxes[0]['y'] + boxes[0]['height']
+                assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
+                expect(page.get_by_role('heading', name='清单', exact=True)).to_be_visible()
+            page.set_viewport_size({'width': 1450, 'height': 950})
+            for href, heading in (('/work/customers', '客户管理'), ('/work/library', '工作资料'), ('/work/lists', '清单')):
+                page.locator(f'.work-domain-card[href="{href}"]').click()
+                expect(page).to_have_url('http://127.0.0.1:8141' + href)
+                assert_primary_nav(page, '工作')
+                page.goto('http://127.0.0.1:8141/work', wait_until='networkidle')
+
             page.goto('http://127.0.0.1:8141/work/customers', wait_until='networkidle')
             assert nav_labels(page) == ['工作', '客户', '资料', '搜索']
             assert_primary_nav(page, '工作')
