@@ -129,7 +129,7 @@ async def import_excel_prepare(request: Request, token: str):
                 _list(conn, payload['target'], True)
             reader = ExcelTable(base64.b64decode(payload['source']), payload['filename'])
             try:
-                payload['table'] = reader.read(payload['sheet'], payload['header'], payload['first'], payload['last'], payload['end'])
+                payload['table'] = reader.read(payload['sheet'], payload['header'], payload['first'], payload['last'], payload['end'], preserve_format=form.get('preserve_format') == '1')
             finally:
                 reader.close()
             payload['phase'] = 'mapping'
@@ -189,7 +189,7 @@ def _plan(conn, payload, form):
     payload['mapping'] = mapping
     rows, errors = [], []
     for source in payload['table']['rows']:
-        if not any(cell.strip() for cell, entry in zip(source['cells'], mapping) if entry['dest'] != 'skip'):
+        if not any(cell.strip() for cell, entry in zip(source['cells'], mapping) if entry['dest'] != 'skip') and (target or not payload['table'].get('layout')):
             continue
         values_form, note, status, customer_id = [], '', 'pending', None
         try:
@@ -243,7 +243,7 @@ def _plan(conn, payload, form):
     skipped = 0
     for row in rows:
         fingerprint = _fingerprint(row['values'], row['status'], row['note'], row['customer_id'], comparison_fields)
-        row['duplicate'] = duplicate_mode == 'skip' and fingerprint in seen
+        row['duplicate'] = duplicate_mode == 'skip' and fingerprint in seen and (any(row['values'].values()) or row['note'] or row['customer_id'] or row['status'] != 'pending' or not payload['table'].get('layout'))
         skipped += row['duplicate']
         seen.add(fingerprint)
     return {'fields': fields, 'rows': rows, 'list_revision': item['revision'] if item else 0,
@@ -318,16 +318,28 @@ async def import_excel_confirm(request: Request, token: str):
             for record in conn.execute('SELECT * FROM work_list_records WHERE list_id=?', (target,)):
                 seen.add(_fingerprint(json.loads(record['values_json']), record['status'], record['note'], record['customer_id'], all_fields))
         imported = skipped = 0
+        source_rows = {}
         for row in plan['rows']:
             values = {ids.get(key, key): value for key, value in row['values'].items()}
             fingerprint = _fingerprint(values, row['status'], row['note'], row['customer_id'], all_fields)
-            if plan['duplicates'] == 'skip' and fingerprint in seen:
+            if plan['duplicates'] == 'skip' and fingerprint in seen and (any(values.values()) or row['note'] or row['customer_id'] or row['status'] != 'pending' or not payload['table'].get('layout')):
                 skipped += 1
                 continue
-            conn.execute('''INSERT INTO work_list_records(list_id,customer_id,status,note,values_json,created_at,updated_at)
+            inserted = conn.execute('''INSERT INTO work_list_records(list_id,customer_id,status,note,values_json,created_at,updated_at)
                 VALUES(?,?,?,?,?,?,?)''', (target, row['customer_id'], row['status'], row['note'], json.dumps(values, ensure_ascii=False), now, now))
+            source_rows[str(row['source_row'])] = str(inserted.lastrowid)
             imported += 1
             seen.add(fingerprint)
+        if not payload['target'] and payload['table'].get('layout'):
+            from .work_list_sheet import import_layout
+            source_fields = {}
+            field_index = 0
+            for column, entry in zip(payload['table']['columns'], payload['mapping']):
+                if entry['dest'] == 'new' or entry['dest'].isdigit():
+                    field = plan['fields'][field_index]
+                    source_fields[column['key']] = ids.get(str(field['id']), str(field['id']))
+                    field_index += 1
+            import_layout(conn, target, payload['table'], source_fields, source_rows)
         conn.execute('UPDATE work_lists SET updated_at=? WHERE id=?', (now, target))
         # Once consumed, discard the uploaded workbook and previews, retaining only the receipt.
         receipt = {'phase': 'done', 'target': target, 'imported': imported, 'skipped': skipped}

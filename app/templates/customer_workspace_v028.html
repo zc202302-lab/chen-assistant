@@ -49,7 +49,7 @@
         <div class="v025-payment-head">
           <div>
             <div class="v023-payment-title-line"><span class="eyebrow">{{ payment_period }}</span><h2>缴费工作区</h2><span class="v023-review-count">本月应缴 <b>{{ payment_stats.due_count }}</b></span><span class="v023-review-count">需核对 <b id="requiredCount">{{ payment_stats.required }}</b></span><span class="v023-review-count pending">未核对 <b id="pendingCount">{{ payment_stats.pending }}</b></span></div>
-            <p class="hint">属性、号码、账号、金额四列可拖动表头分隔线调整宽度；仅当前客户保存。</p>
+            <p class="hint">拖动表头分隔线调整列宽。</p>
           </div>
           <div class="payment-total v023-total"><small>本月金额合计</small><strong id="paymentGrandTotal">¥{{ '%.2f'|format(payment_stats.total)|replace('.00','') }}</strong></div>
         </div>
@@ -75,7 +75,7 @@
 
     <section class="customer-panel" data-customer-panel="services" {% if active_tab!='services' %}hidden{% endif %}>
       <section class="card compact-card business-v028">
-        <div class="section-head"><div><h2>业务总览</h2><p class="hint">全部业务共用一套全局属性模板；在任意业务的“编辑”中新增、删除、拖动属性，其他客户同步生效。</p></div><span><b id="businessVisibleCount">{{ business_rows|length }}</b> / {{ business_rows|length }}</span></div>
+        <div class="section-head"><div><h2>业务总览</h2><p class="hint">属性模板对所有客户生效。</p></div><span><b id="businessVisibleCount">{{ business_rows|length }}</b> / {{ business_rows|length }}</span></div>
         <div class="business-filters" data-business-filters>
           <div class="filter-line"><b>类型</b><button type="button" class="filter-chip active" data-business-filter="type" data-value="">全部</button>{% for t in service_types %}<button type="button" class="filter-chip" data-business-filter="type" data-value="{{ t|e }}">{{ t }}</button>{% endfor %}</div>
           <div class="filter-line"><b>缴费</b><button type="button" class="filter-chip active" data-business-filter="due" data-value="">全部</button><button type="button" class="filter-chip" data-business-filter="due" data-value="1">本月应缴</button><button type="button" class="filter-chip" data-business-filter="due" data-value="0">本月不缴</button></div>
@@ -136,7 +136,7 @@
     <form method="dialog" class="business-attribute-editor-v028" data-business-attribute-form>
       <div class="attribute-dialog-head"><div><small>全局统一属性模板</small><h3>编辑业务</h3></div><button type="button" class="dialog-close" data-business-editor-close>×</button></div>
       <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="service_id">
-      <p class="hint">拖动属性可调整顺序；新增或删除属性会对所有客户全局生效。删除内置属性只从模板隐藏，不删除原业务数据。</p>
+      <p class="hint">拖动调整顺序。增删属性对所有客户生效；隐藏属性保留已有数据。</p>
       <div class="global-attribute-list-v028" data-global-attribute-list></div>
       <div class="attribute-editor-toolbar-v028"><button type="button" class="ghost" data-add-global-attribute>＋ 新增属性</button></div>
       <div class="attribute-dialog-actions"><button type="button" class="ghost" data-business-editor-close>取消</button><button type="submit" class="primary">保存并关闭</button></div>

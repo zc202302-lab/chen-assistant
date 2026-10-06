@@ -7,7 +7,7 @@
     <div>
       <span class="v10-kicker">信息库</span>
       <h1>{% if item %}编辑资料{% else %}新建资料{% endif %}</h1>
-      <p>只固定最少字段，正文可以按你自己的格式记录。</p>
+      
     </div>
   </div>
   <form class="info-edit-v160" data-pwa-draft="info" data-pwa-success="info" method="post" action="{% if item %}/info/{{ item.id }}/edit{% else %}/info/new{% endif %}">

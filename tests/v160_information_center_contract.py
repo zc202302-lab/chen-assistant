@@ -43,7 +43,8 @@ def main():
     assert 'information-center-v160.css?v=1600' in base
     assert 'work-architecture-v14.css?v=1400">\\n' not in base, 'literal newline must not render above the header'
     assert '网站 / 平台账户' not in work
-    assert '账户密码仍保留为专用子功能，不再属于工作模块。' in center
+    assert '账户密码仍保留为专用子功能，不再属于工作模块。' not in center
+    assert '<span>账户库</span>' in center
     assert 'href="/accounts"' in center
     assert '<h2>资料 <small>{{ information|length }}</small></h2>' in search
     assert '网址账户' not in work_search

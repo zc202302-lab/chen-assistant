@@ -1,0 +1,45 @@
+/* Scoped spreadsheet UI, horizontal scrolling stays inside the sheet. */
+body:has(.wl-sheet-shell) .page{max-width:1520px}
+.wl-sheet-shell{max-width:1480px}
+.ws-editor{min-width:0;margin:18px 0}
+.ws-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ws-editor .ws-toolbar button{border:1px solid #d7dfe9;background:#fff;color:#34465e;border-radius:8px;padding:8px 12px;font:inherit;font-size:13px;cursor:pointer}
+.ws-editor .ws-toolbar button[data-sheet-save]{background:#245baa;color:#fff;border-color:#245baa}
+.ws-editor .ws-toolbar button:disabled{opacity:.5;cursor:default}
+.ws-status{font-size:12px;color:#60718a;margin-left:auto}
+.ws-notice{display:block;min-height:20px;color:#546780;font-size:12px;margin:8px 0}
+.ws-stage{overflow:auto;max-height:65vh;border:1px solid #cdd7e3;border-radius:8px;background:#fff;max-width:100%;overscroll-behavior:contain}
+.ws-grid{border-spacing:0;border-collapse:separate;table-layout:fixed;width:auto;min-width:0;font-size:13px;color:#243149}
+.ws-grid th,.ws-grid td{box-sizing:border-box;padding:0;border-right:1px solid #dce3eb;border-bottom:1px solid #dce3eb;position:relative;vertical-align:middle}
+.ws-grid thead{position:sticky;top:0;z-index:4}
+.ws-letters{height:26px;background:#eef2f7;color:#7c889b}
+.ws-letters th{font-size:11px;font-weight:500}
+.ws-index{width:42px;min-width:42px;max-width:42px;text-align:center;background:#eef2f7;color:#7a879a;font-size:11px;font-weight:400;position:sticky!important;left:0;z-index:2}
+.ws-corner{position:sticky!important;left:0;background:#e8edf4;z-index:3}
+.ws-headers{background:#f3f6fa}
+.ws-header-input{width:100%;height:100%;min-height:0;border:0!important;border-radius:0!important;padding:5px 25px 5px 7px!important;box-sizing:border-box;background:transparent!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;margin:0!important}
+.ws-data-cell{background:#fff}
+.ws-editor .ws-cell{display:block;box-sizing:border-box;width:100%;height:100%;min-height:0;border:0!important;border-radius:0!important;padding:4px 7px!important;margin:0!important;resize:none;overflow:hidden;background:transparent!important;color:inherit!important;font:inherit!important;text-align:inherit;line-height:1.35;white-space:inherit}
+.ws-editor .ws-cell:focus,.ws-header-input:focus{outline:2px solid #3979cc;outline-offset:-2px;box-shadow:none!important}
+.ws-editor .ws-filter-button{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:23px;height:23px;border:0;border-radius:4px;background:transparent;color:#738197;padding:0;cursor:pointer;font-size:15px}
+.ws-editor .ws-filter-button.has-filter{color:#245baa;background:#dceafe}
+.ws-filter-popover{position:absolute;left:0;top:100%;padding:10px;min-width:190px;background:white;box-shadow:0 6px 22px #24314922;border:1px solid #d0dae7;border-radius:8px;z-index:8}
+.ws-filter-popover[hidden]{display:none}
+.ws-filter-popover input{width:100%;box-sizing:border-box;border:1px solid #d3dce7;padding:8px;border-radius:5px;font:inherit}
+.ws-editor .ws-filter-popover button{margin-top:8px;border:0;background:#eef3f9;padding:6px 10px;border-radius:5px;color:#34465e;cursor:pointer}
+.ws-col-resize{position:absolute;right:0;top:0;bottom:0;width:10px;cursor:col-resize;touch-action:none;z-index:5}
+.ws-row-resize{position:absolute;bottom:0;left:0;right:0;height:8px;cursor:row-resize;touch-action:none;z-index:5}
+.ws-col-resize:hover,.ws-row-resize:hover,.ws-col-resize:focus-visible,.ws-row-resize:focus-visible{background:#6094d866;outline:none}
+.ws-paging{display:flex;gap:8px;align-items:center;margin-top:10px}
+.ws-editor .ws-paging button{border:1px solid #d7dfe9;background:#fff;border-radius:7px;padding:6px 10px;color:#60718a}
+.ws-editor .ws-paging button:disabled{opacity:.4}
+.ws-record-details{margin-top:24px;border-top:1px solid #dce3eb;padding-top:14px}
+.ws-record-details summary{cursor:pointer;color:#60718a;font-size:13px;padding:8px 0;margin-bottom:10px}
+.ws-new-title{max-width:600px}
+.wl-new-menu{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.wl-section-nav.wl-sheet-nav{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ws-template-options{margin-top:12px;color:#738095;font-size:13px}
+.ws-template-options summary{cursor:pointer}
+@media(max-width:700px){.ws-toolbar{gap:6px}.ws-editor .ws-toolbar button{padding:7px 9px;font-size:12px}.ws-status{margin-left:0;width:100%}.ws-stage{max-height:60vh}.wl-sheet-shell{padding:12px 8px 100px}.wl-section-nav.wl-sheet-nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.wl-sheet-nav a{font-size:12px;padding:10px 6px}}
+
+.ws-editor[data-readonly="1"] .ws-col-resize,.ws-editor[data-readonly="1"] .ws-row-resize{display:none}

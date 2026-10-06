@@ -125,7 +125,9 @@ def main():
             dialog = page.locator('.v03-mail-template-dialog')
             dialog.wait_for(state='visible')
             assert dialog.locator('h3').inner_text() == '缴费模板'
-            assert '按客户长期保存' in dialog.inner_text()
+            assert '按客户长期保存' not in dialog.inner_text()
+            assert 'TXT附件文件名' in dialog.inner_text()
+            assert 'EXCEL附件文件名' in dialog.inner_text()
             assert dialog.locator('[data-v03-foxmail-bridge-state]').count() == 1
             helper_link = dialog.locator('.v03-foxmail-helper-download')
             assert helper_link.get_attribute('href') == '/static/chen_foxmail_helper.ps1'

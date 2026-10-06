@@ -184,12 +184,12 @@
   const dialog = document.querySelector('.v03-mail-template-dialog');
   if (!dialog) return;
   const note = dialog.querySelector('.v03-mail-template-note span');
-  if (note) note.textContent = '收件人、邮件主题、正文、TXT附件文件名和EXCEL附件文件名都只属于当前客户；TXT与EXCEL完全分离，任一未填写都不会互相推导。';
+  if (note) note.closest('.v03-mail-template-note')?.remove();
   const recipient = dialog.querySelector('[data-v03-mail-recipient]');
   const recipientCaption = recipient?.closest('.v03-mail-field')?.querySelector('span');
-  if (recipientCaption) recipientCaption.innerHTML = '收件人 <small>按当前客户长期保存，不与其他客户共用</small>';
+  if (recipientCaption) recipientCaption.innerHTML = '收件人';
   const attachment = dialog.querySelector('[data-v03-mail-attachment-filename]');
   const attachmentCaption = attachment?.closest('.v03-mail-field')?.querySelector('span');
-  if (attachmentCaption) attachmentCaption.innerHTML = 'TXT附件文件名 <small>生成TXT和邮件附件都只使用此名称；必填</small>';
+  if (attachmentCaption) attachmentCaption.innerHTML = 'TXT附件文件名 <small>必填</small>';
   if (attachment) attachment.placeholder = '例如：淄博润泰物流缴费明细.txt';
 })();
