@@ -112,9 +112,20 @@ class ExcelTable:
             raise ValueError('文件包含不支持的 XML 定义')
         return ET.fromstring(content)
 
-    def read(self, sheet_name, header=1, first='A', last='', end=0):
+    def read(self, sheet_name, header=1, first='A', last='', end=0, preserve_format=False):
         try:
-            return self._read(sheet_name, header, first, last, end)
+            table = self._read(sheet_name, header, first, last, end)
+            if preserve_format:
+                from .work_list_format import read_layout
+                first_col = int(table['columns'][0]['key'])
+                last_col = int(table['columns'][-1]['key'])
+                last_row = table['rows'][-1]['row']
+                if last_row - header > MAX_ROWS:
+                    raise ValueError('保留格式时范围不能超过5000行，请缩小范围')
+                populated = {r['row']: r for r in table['rows']}
+                table['rows'] = [populated.get(n, {'row': n, 'cells': [''] * len(table['columns'])}) for n in range(header + 1, last_row + 1)]
+                table['layout'] = read_layout(self, sheet_name, header, first_col, last_col, [r['row'] for r in table['rows']])
+            return table
         except (KeyError, IndexError, ET.ParseError, zipfile.BadZipFile, OverflowError, xlrd.XLRDError):
             raise ValueError('工作表数据损坏或格式不支持，请在 Excel 中另存后重试')
 

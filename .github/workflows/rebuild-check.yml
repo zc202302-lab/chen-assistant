@@ -156,6 +156,8 @@ jobs:
           python tests/work_lists_acceptance.py
           python tests/work_list_import_contract.py
           python tests/work_list_import_acceptance.py
+          python tests/work_sheet_contract.py
+          python tests/work_sheet_acceptance.py
 
       - name: Code governance inventory
         if: steps.scope.outputs.mode == 'full'

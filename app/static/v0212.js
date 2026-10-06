@@ -41,7 +41,7 @@
     });
     paymentDialog.querySelectorAll('option[value="payment_amount"]').forEach(option => option.remove());
     const help = paymentDialog.querySelector('.payment-columns-help-v0211');
-    if (help) help.textContent = '这里只选择缴费模块要显示的业务属性。缴费金额是缴费功能本身，不属于业务属性；它的位置直接在缴费表头拖动“缴费金额”标签调整。';
+    if (help) help.textContent = '拖动“缴费金额”表头可调整位置。';
     const trigger = root.querySelector('[data-payment-columns-settings]');
     if (trigger) trigger.textContent = '显示属性';
   };

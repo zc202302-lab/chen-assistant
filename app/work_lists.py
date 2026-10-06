@@ -8,7 +8,7 @@ from decimal import Decimal, InvalidOperation
 
 import xlsxwriter
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, JSONResponse
 from .templating import Jinja2Templates
 
 from . import config
@@ -50,6 +50,8 @@ def ensure_work_lists_schema():
         for statement in SCHEMA.split(';'):
             if statement.strip():
                 conn.execute(statement)
+        from .work_list_sheet import ensure_sheet_schema
+        ensure_sheet_schema(conn)
 
 
 def _ctx(request, **kwargs):
@@ -138,7 +140,14 @@ async def create_work_list(request: Request):
         now = now_iso()
         cur = conn.execute('INSERT INTO work_lists(title,description,created_at,updated_at) VALUES(?,?,?,?)', (title, description, now, now))
         list_id = cur.lastrowid
-        for position, (label, kind, options) in enumerate(PRESETS[preset]):
+        if form.get('sheet_payload') and preset == 'blank':
+            from .work_list_sheet import create_grid
+            try:
+                data = json.loads(str(form['sheet_payload']))
+            except (ValueError, TypeError):
+                raise HTTPException(400, '表格数据无效')
+            create_grid(conn, list_id, data)
+        for position, (label, kind, options) in enumerate([] if form.get('sheet_payload') and preset == 'blank' else PRESETS[preset]):
             conn.execute('INSERT INTO work_list_fields(list_id,label,kind,options_json,position) VALUES(?,?,?,?,?)',
                          (list_id, label, kind, json.dumps(options, ensure_ascii=False), position))
     return RedirectResponse(f'/work/lists/{list_id}', 303)
@@ -148,7 +157,9 @@ async def create_work_list(request: Request):
 def work_list_page(request: Request, list_id: int, q: str = '', status: str = ''):
     with db() as conn:
         item, fields, rows = _list(conn, list_id), _fields(conn, list_id), _rows(conn, list_id, q, status)
-    return templates.TemplateResponse(request, 'work_list_detail.html', _ctx(request, item=item, fields=fields, rows=rows, q=q, status=status))
+        from .work_list_sheet import snapshot
+        sheet = snapshot(conn, item, fields, rows)
+    return templates.TemplateResponse(request, 'work_list_detail.html', _ctx(request, item=item, fields=fields, rows=rows, q=q, status=status, sheet=sheet, sheet_readonly=bool(item['archived'] or q or status)))
 
 
 @router.get('/work/lists/{list_id}/settings', response_class=HTMLResponse)
@@ -160,6 +171,21 @@ def work_list_settings(request: Request, list_id: int):
 
 @router.post('/work/lists/{list_id}/settings')
 async def save_work_list_settings(request: Request, list_id: int):
+    if request.headers.get('content-type', '').split(';')[0] == 'application/json':
+        raw = await request.body()
+        if len(raw) > 12 * 1024 * 1024:
+            raise HTTPException(413, '表格内容过大')
+        try:
+            data = json.loads(raw)
+        except (ValueError, TypeError):
+            raise HTTPException(400, '表格数据无效')
+        if not isinstance(data, dict):
+            raise HTTPException(400, '表格数据无效')
+        _csrf(request, data.get('csrf'))
+        from .work_list_sheet import save_grid
+        with db(immediate=True) as conn:
+            saved = save_grid(conn, list_id, data)
+        return JSONResponse(saved)
     form = await request.form()
     _csrf(request, form.get('csrf'))
     title = _text(form.get('title'), '名称', required=True)
@@ -322,6 +348,11 @@ def export_work_list(request: Request, list_id: int, q: str = '', status: str = 
         item = _list(conn, list_id)
         fields = [f for f in _fields(conn, list_id) if not f['hidden']]
         rows = _rows(conn, list_id, q, status)
+        from .work_list_sheet import export_grid
+        grid_content = export_grid(conn, item, fields, rows)
+    if grid_content is not None:
+        return Response(grid_content, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        headers={'Content-Disposition': f'attachment; filename="work-list-{item["id"]}.xlsx"'})
     output = io.BytesIO()
     with xlsxwriter.Workbook(output, {'in_memory': True, 'strings_to_formulas': False, 'strings_to_urls': False}) as book:
         sheet = book.add_worksheet('清单')

@@ -45,6 +45,7 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': base}])
             page = context.new_page()
             page.goto(base + '/work/lists', wait_until='networkidle')
+            page.get_by_role('link', name='新建清单', exact=True).click()
             page.get_by_role('link', name='从 Excel 导入').click()
             page.get_by_label('Excel 文件').set_input_files({'name': '欠费.xlsx', 'mimeType': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'buffer': workbook()})
             page.get_by_role('button', name='上传并选择范围').click()
@@ -68,6 +69,7 @@ def main():
             expect(page.get_by_role('heading', name='导入完成')).to_be_visible()
             page.get_by_role('link', name='查看清单', exact=True).click()
             expect(page.get_by_role('heading', name='导入验收欠费')).to_be_visible()
+            page.get_by_text('记录详情', exact=True).click()
             expect(page.get_by_text('000123', exact=True)).to_be_visible()
             expect(page.locator('.wl-table tbody tr')).to_have_count(2)
             with db() as conn:

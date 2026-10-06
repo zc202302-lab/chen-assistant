@@ -1,0 +1,11 @@
+<div class="ws-editor" data-work-sheet data-new="{{ 1 if new_sheet else 0 }}" data-readonly="{{ 1 if sheet_readonly else 0 }}"{% if not new_sheet %} data-list-id="{{ item.id }}" data-save-url="/work/lists/{{ item.id }}/settings" data-csrf="{{ csrf }}"{% endif %}>
+  <div class="ws-toolbar">
+    {% if not sheet_readonly %}<button type="button" data-sheet-add-row>＋ 增加行</button><button type="button" data-sheet-add-col>＋ 增加列</button>{% endif %}
+    <button type="button" data-sheet-clear-filters>清除筛选</button>
+    {% if not new_sheet and not sheet_readonly %}<button type="button" data-sheet-save>保存表格</button>{% endif %}
+    <span class="ws-status" data-sheet-count></span>
+  </div>
+  <div class="ws-stage" data-sheet-stage></div>
+  <div class="ws-paging"><button type="button" data-sheet-prev>上一页</button><button type="button" data-sheet-next>下一页</button></div>
+  <span class="ws-notice" data-sheet-notice role="status" aria-live="polite">{{ '只读' if sheet_readonly else '' }}</span>
+</div>

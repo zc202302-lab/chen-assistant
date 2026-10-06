@@ -2,7 +2,7 @@
 {% block title %}客户管理 · 晨的助手{% endblock %}
 {% block content %}
 <div class="home-v024 work-home-polish" data-home-tabs data-active-home-tab="{{ active_home_tab }}">
-  <section class="home-v024-head"><div><p class="eyebrow">客户管理</p><h1>{{ today.strftime('%Y年%m月%d日') }}</h1></div><p>缴费是默认工作视图；其他事项按需切换。</p></section>
+  <section class="home-v024-head"><div><p class="eyebrow">客户管理</p><h1>{{ today.strftime('%Y年%m月%d日') }}</h1></div></section>
 
   <nav class="home-v024-tabs" aria-label="客户管理功能">
     <button type="button" data-home-tab="payment" class="{% if active_home_tab=='payment' %}active{% endif %}">缴费 <b>{{ wait_notice|length + wait_initiate|length + wait_payment|length }}</b></button>
@@ -15,7 +15,7 @@
     <section class="home-v024-panel" data-home-panel="payment" {% if active_home_tab!='payment' %}hidden{% endif %}>
       <div class="card home-v024-card">
         <div class="section-head">
-          <div><h2>缴费</h2><small class="home-payment-helper-v1511">按流程阶段分组，优先处理已经发起但尚未完成的缴费。</small></div>
+          <div><h2>缴费</h2></div>
           <span>{{ wait_notice|length + wait_initiate|length + wait_payment|length }} 个客户待处理</span>
         </div>
         <div class="home-v024-payment-columns home-payment-columns-v1511">

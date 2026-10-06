@@ -169,7 +169,7 @@
 
   {% if import_token and not preview.errors %}
   <div class="v032-confirm-zone">
-    <div><strong>检查通过，等待最终确认</strong><p>点击后整批写入数据库。任何数据库错误都会整批回滚，不会留下“只导入一半”的客户。</p></div>
+    <div><strong>检查通过，等待最终确认</strong></div>
     <form method="post" action="/customers/import-v032-one-sheet/confirm"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="import_token" value="{{ import_token }}"><button class="primary" type="submit">确认导入全部客户</button></form>
   </div>
   {% else %}

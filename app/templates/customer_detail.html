@@ -72,7 +72,7 @@
     <div class="payment-readiness" id="paymentReadiness">{% if pending_payment_count %}还有 {{ pending_payment_count }} 项待核对；金额已沿用上次状态，但尚不能生成正式缴费 TXT。{% else %}本月需要人工核对的金额已全部确认。{% endif %}</div>
     {% if payment_txt_ready %}<a class="button primary" id="paymentTxtButton" href="/customers/{{ customer.id }}/payment.txt">生成缴费TXT</a>{% else %}<a class="button secondary disabled" id="paymentTxtButton" href="/customers/{{ customer.id }}/payment.txt" aria-disabled="true">生成缴费TXT</a>{% endif %}
   </div>
-  <p class="hint">0 元表示本月已核对但无需缴费，生成 TXT 时自动排除。TXT 只输出“号码|金额”，没有标题、合计或说明。</p>
+  <p class="hint">0 元项目不会进入缴费 TXT。</p>
 
   {% if customer.payment_enabled %}
   <div class="payment-customer-status">

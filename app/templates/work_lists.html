@@ -3,27 +3,30 @@
 {% block content %}
 <link rel="stylesheet" href="/static/work-lists.css?v=1690">
 <section class="wl-shell wl-index">
-  <div class="wl-head"><div><a href="/work">工作</a><h1>清单</h1><p>按任务进入，管理工作信息。</p></div></div>
-  <nav class="wl-section-nav" aria-label="清单功能分类">
+  <div class="wl-head"><div><a href="/work">工作</a><h1>清单</h1></div></div>
+  <nav class="wl-section-nav wl-sheet-nav" aria-label="清单功能分类">
     <a href="/work/lists"{% if not archived and view != 'new' %} aria-current="page"{% endif %}>我的清单</a>
     <a href="/work/lists?view=new"{% if view == 'new' %} aria-current="page"{% endif %}>新建清单</a>
-    <a href="/work/list-import">从 Excel 导入</a>
     <a href="/work/lists?archived=1"{% if archived and view != 'new' %} aria-current="page"{% endif %}>已归档清单</a>
   </nav>
   {% if view != 'new' %}
   <h2 class="wl-section-heading">{{ '已归档清单' if archived else '我的清单' }}</h2>
   <form class="wl-toolbar" method="get"><input type="hidden" name="archived" value="{{ 1 if archived else 0 }}"><input name="q" value="{{ q }}" placeholder="搜索清单名称或说明" aria-label="搜索清单"><button type="submit">搜索</button></form>
   <div class="wl-grid">
-  {% for item in lists %}<a class="wl-card" href="/work/lists/{{ item.id }}"><h2>{{ item.title }}</h2><p>{{ item.description or '暂无说明' }}</p><span>{{ item.record_count }} 条记录 · {{ '已归档' if item.archived else '使用中' }}</span></a>{% else %}<p class="wl-empty">{{ '暂无已归档清单。' if archived else '暂无清单。点击“新建清单”或“从 Excel 导入”开始。' }}</p>{% endfor %}
+  {% for item in lists %}<a class="wl-card" href="/work/lists/{{ item.id }}"><h2>{{ item.title }}</h2>{% if item.description %}<p>{{ item.description }}</p>{% endif %}<span>{{ item.record_count }} 条记录 · {{ '已归档' if item.archived else '使用中' }}</span></a>{% else %}<p class="wl-empty">{{ '暂无已归档清单。' if archived else '暂无清单。' }}</p>{% endfor %}
   </div>
-  {% else %}<section class="wl-panel"><h2>新建清单</h2><form method="post" action="/work/lists" class="wl-form">
-    <input type="hidden" name="csrf" value="{{ csrf }}">
-    <label>清单名称<input name="title" required maxlength="200" placeholder="例如：9月欠费清单"></label>
-    <label>起步模板<select name="preset"><option value="blank">空白清单</option><option value="arrears">欠费清单</option><option value="opportunity">商机清单</option></select></label>
-    <label>说明<textarea name="description" maxlength="2000" rows="2" placeholder="记录用途、来源等信息"></textarea></label>
-    <p class="wl-hint">模板只是初始字段，创建后可以添加、改名和调整顺序。欠费清单不会自动修改客户缴费数据。</p>
-    <button type="submit">创建清单</button>
-  </form><a href="/work/lists">取消，返回我的清单</a></section>{% endif %}
+  {% else %}
+  <section class="wl-panel">
+    <div class="wl-new-menu"><a href="/work/lists?view=new" aria-current="page">空白表格</a><a class="btn" href="/work/list-import">从 Excel 导入</a></div>
+    <form method="post" action="/work/lists" class="wl-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="sheet_payload" value="">
+      <label class="ws-new-title">清单名称<input name="title" required maxlength="200" placeholder="清单名称"></label>
+      {% set new_sheet = true %}{% set sheet_readonly = false %}{% include "work_sheet_grid.html" %}
+      <details class="ws-template-options"><summary>按字段模板创建</summary><label>起步模板<select name="preset"><option value="blank">空白表格</option><option value="arrears">欠费清单</option><option value="opportunity">商机清单</option></select></label></details>
+      <button type="submit">创建清单</button>
+    </form>
+    <a href="/work/lists">取消，返回我的清单</a>
+  </section>{% endif %}
 </section>
+{% if view == 'new' %}<link rel="stylesheet" href="/static/work-sheet.css?v=1"><script src="/static/work-sheet.js?v=1" defer></script>{% endif %}
 {% endblock %}
-

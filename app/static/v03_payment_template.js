@@ -67,7 +67,7 @@
 
   const note = dialog.querySelector('.v03-mail-template-note span');
   if (note) {
-    note.textContent = '邮件主题、正文、TXT文件名和EXCEL文件名长期绑定当前客户；TXT与EXCEL文件名完全独立。';
+    note.closest('.v03-mail-template-note')?.remove();
   }
 
   const subjectInput = dialog.querySelector('[data-v03-mail-subject]');
@@ -80,7 +80,7 @@
     const field = document.createElement('label');
     field.className = 'v03-mail-field v03-payment-attachment-field';
     field.innerHTML = `
-      <span>TXT附件文件名 <small>按客户长期保存；不写 .txt 会自动补全</small></span>
+      <span>TXT附件文件名</span>
       <input type="text" maxlength="160" data-v03-mail-attachment-filename
              placeholder="例如：淄博润泰物流缴费明细.txt；留空使用自动文件名">`;
     subjectField.insertAdjacentElement('afterend', field);
@@ -92,7 +92,7 @@
     const field = document.createElement('label');
     field.className = 'v03-mail-field v03-payment-excel-attachment-field';
     field.innerHTML = `
-      <span>EXCEL附件文件名 <small>仅用于“生成缴费EXCEL”；与TXT完全独立</small></span>
+      <span>EXCEL附件文件名</span>
       <input type="text" maxlength="160" data-v03-mail-excel-attachment-filename
              placeholder="例如：淄博润泰物流缴费明细.xlsx">`;
     attachmentInput.closest('.v03-mail-field')?.insertAdjacentElement('afterend', field);

@@ -3,22 +3,23 @@
 {% block content %}
 <link rel="stylesheet" href="/static/work-lists.css?v=1680">
 <section class="wl-shell">
-  <div class="wl-head"><div><a href="/work/lists">返回清单</a><h1>Excel 导入</h1><p>上传 → 选择工作表和范围 → 匹配字段 → 预览确认</p></div></div>
+  <div class="wl-head"><div><a href="/work/lists?view=new">返回新建清单</a><h1>Excel 导入</h1></div></div>
   {% if error %}<p class="wl-error" role="alert" style="white-space:pre-wrap">{{ error }}</p>{% endif %}
   {% if data.phase == 'upload' %}
   <section class="wl-panel"><form class="wl-form" method="post" action="/work/list-import/upload" enctype="multipart/form-data">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <label>Excel 文件<input type="file" name="file" accept=".xlsx,.xlsm,.xls" required></label>
     <label>导入目标<select name="target" aria-label="导入目标"><option value="0">新建一张清单</option>{% for list in lists %}<option value="{{ list.id }}" {{ 'selected' if list.id == data.target else '' }}>{{ list.title }}</option>{% endfor %}</select></label>
-    <p class="wl-hint">支持 XLSX、XLSM、XLS；文件最多5 MB，每次最多5000行、50列。上传不会新增记录。预览仅本次登录可见，有效期24小时，完成后清除上传文件。公式读取文件已保存的结果，不执行公式或宏。</p>
+    <p class="wl-hint">XLSX / XLSM / XLS，最多5 MB、5000行、50列。公式需先在 Excel 中计算并保存。</p>
     <button type="submit">上传并选择范围</button>
   </form></section>
   {% elif data.phase == 'done' %}
-  <section class="wl-panel"><h2>导入完成</h2><p>新增 {{ data.imported }} 条记录，跳过 {{ data.skipped }} 条完全重复记录。</p><p class="wl-hint">导入只追加清单记录，不覆盖原有记录，也不修改客户缴费数据。</p><a class="btn" href="/work/lists/{{ data.target }}">查看清单</a></section>
+  <section class="wl-panel"><h2>导入完成</h2><p>新增 {{ data.imported }} 条记录，跳过 {{ data.skipped }} 条完全重复记录。</p><a class="btn" href="/work/lists/{{ data.target }}">查看清单</a></section>
   {% else %}
   <details class="wl-panel" {{ 'open' if data.phase == 'config' else '' }}><summary>工作表及导入范围 · {{ data.filename }}</summary>
   <form class="wl-form" method="post" action="/work/list-import/{{ job.token }}/prepare">
     <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ job.revision }}">
+    <input type="hidden" name="preserve_format" value="1">
     <label>工作表<select name="sheet" aria-label="工作表">{% for sheet in data.sheets %}<option value="{{ sheet }}" {{ 'selected' if sheet == data.sheet else '' }}>{{ sheet }}</option>{% endfor %}</select></label>
     <div class="wl-import-range"><label>表头行<input type="number" name="header" value="{{ data.header }}" min="1" max="1000" required></label><label>开始列<input name="first" value="{{ data.first }}" maxlength="3" required placeholder="A"></label><label>结束列（可选）<input name="last" value="{{ data.last }}" maxlength="3" placeholder="例如 G"></label><label>结束行（可选）<input name="end" type="number" value="{{ data.end if data.end else '' }}" min="2" placeholder="留空至末尾"></label></div>
     <p class="wl-hint">数据从表头下一行开始，空白行会跳过。表格左侧有汇总时，可只选右侧明细列，例如 D 至 G。合并或空白表头会生成列名，可在下一步修改。</p>
