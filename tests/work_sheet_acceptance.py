@@ -74,8 +74,9 @@ def main():
             original_width=page.locator('.ws-letters th').nth(1).bounding_box()['width']
             handle.scroll_into_view_if_needed()
             page.evaluate('window.scrollTo(0,0)')
+            handle.click(trial=True)
             box=handle.bounding_box()
-            hit=page.evaluate('p=>document.elementFromPoint(p.x,p.y)?.outerHTML',{'x':box['x']+box['width']/2,'y':box['y']+box['height']/2})
+            hit=page.evaluate('p=>document.elementFromPoint(p.x,p.y)?.tagName',{'x':box['x']+box['width']/2,'y':box['y']+box['height']/2})
             page.mouse.move(box['x']+box['width']/2,box['y']+box['height']/2)
             page.mouse.down();page.mouse.move(box['x']+box['width']/2+50,box['y']+box['height']/2);page.mouse.up()
             actual_width=page.locator('.ws-letters th').nth(1).bounding_box()['width']

@@ -52,6 +52,7 @@ def main():
         data['csrf']=csrf
         data['rows'][0]['values'][0]='000123'
         data['rows'][1]['values'][0]='=SUM(1,2)'
+        data['rows'][0]['values'][1]='  保留空格  '
         data['fields'][0]['label']='号码'
         r,c=data['rows'][0]['id'],data['fields'][0]['id']
         data['layout'].update(widths={c:240},heights={r:64},cells={'h|'+c:{'bold':True,'background':'#225588','color':'#FFFFFF'}})
@@ -59,6 +60,7 @@ def main():
         assert result.status_code==200,result.text
         saved=result.json()
         assert saved['rows'][0]['values'][0]=='000123'
+        assert saved['rows'][0]['values'][1]=='  保留空格  '
         assert saved['layout']['widths'][c]==240 and saved['layout']['heights'][r]==64
         assert client.post(path+'/settings',json=data).status_code==409
         broken=copy.deepcopy(saved)|{'csrf':csrf}

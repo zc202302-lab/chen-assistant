@@ -212,6 +212,12 @@ def save_grid(conn, list_id, data):
             else:
                 raise HTTPException(400, '单元格内容类型无效')
         values = _values(FormData(form), validated_fields, previous['values'] if previous else {})
+        for field, raw in zip(validated_fields, row['values']):
+            if field['kind'] == 'text':
+                text = str(raw)
+                if len(text) > 4000:
+                    raise HTTPException(400, '单元格内容不能超过4000字')
+                values[str(field['id'])] = text
         now = now_iso()
         if previous:
             record_id = previous['id']
