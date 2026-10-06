@@ -2,6 +2,25 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-06（Asia/Shanghai）。本轮用户需求已完成：清单升级为网页Excel式表格，并全站审计清理纯说明性冗余文案；代码已合并，生产公网验证通过。PR #132已合并，功能合并提交 cf509e3844a7b3c552de136fc7cc4aeda4227b08；完整验收head dcc89366068983f4de7ea71c92b23980f68aaa21。文档提交不作为新功能，当前main SHA请实时查询。
+- #132完整验证：validation [37420879779](https://github.com/zc202302-lab/chen-assistant/actions/runs/37420879779)、stability [37420879714](https://github.com/zc202302-lab/chen-assistant/actions/runs/37420879714) 均success。安全审计、清单/导入契约和真实浏览器、架构治理、原客户/缴费/资料/菜谱/提醒及桌面手机全量回归通过。用户明确删除的旧文案断言改为检查简洁展示与必要入口/字段，功能断言继续保留；旧页面同名定位精确化，异步保存等待实际导航，未删除或跳过测试。
+- #132生产证据：[PWA公网验证 37421656762](https://github.com/zc202302-lab/chen-assistant/actions/runs/37421656762) / job112132129384 success，2026-10-06 14:04:54（Asia/Shanghai）返回 ONLINE VERIFIED v1.7.3。work-sheet.js、work-sheet.css及既有工作/清单/推送资产SHA256与本次源码一致，health、PWA manifest、根Service Worker scope和未登录提醒路由正常。部署切换期间首次404、第二次502，第三次完整验证通过；不存在持续失败。未读取生产git HEAD，不声称精确运行commit，也未在生产创建真实业务数据。
+- 清单新建默认4个数据行、3列，标题与单元格直接编辑；增加行列、逐列筛选、清除筛选、Excel多格文本粘贴、拖动或键盘调整行高列宽，编辑后点击“保存表格”。大表每页100行，筛选覆盖全部记录；保留前导零与文本首尾空格。
+- Excel导入归入“新建清单”菜单，清单首页为“我的清单 / 新建清单 / 已归档”。新建导入保留所选范围字体、填色、边框、对齐、数字格式、行列尺寸、内部空行与完整合并区域，导出真实XLSX恢复布局。向现有清单追加时跳过空行、不替换已有布局，保留重复校验、预览确认及数字精度/公式缓存限制。
+- 数据兼容：继续使用既有字段和记录ID，关联客户、状态、备注、隐藏字段保留；整表事务保存检查清单与每条记录revision及完整行列快照，拒绝并发覆盖和部分写入，归档只读。原字段模板、记录详情和设置按需进入。没有新增URL，186条原路由保留，Web APP_VERSION仍1.7.3。
+- 表格边界：支持上述编辑与常用Excel格式往返，公式读取Excel已保存结果；不运行宏，不提供公式计算引擎，图片、图表、条件格式不在此编辑器范围。导出公式样式文本为安全文本，不执行公式或URL。
+- 核心代码：app/work_list_sheet.py（布局/事务保存/导出）、app/work_list_format.py（XLSX/XLS格式读取）、app/work_lists.py、app/work_list_excel.py、app/work_list_import.py、work_sheet_grid.html、work-sheet.js/css；新增tests/work_sheet_contract.py与tests/work_sheet_acceptance.py。
+- 文案审计：检查原有全部63份HTML模板及46份静态JavaScript，21份文件删除或缩短产品背景、重复介绍及实现机制说明。必填、错误、状态、操作约束、安全边界和必要人工发送步骤保留。记录docs/SPREADSHEET_AND_COPY_AUDIT_2026-10-06.md；长期要求写入PRODUCT_REQUIREMENTS，分层原则继续适用于全站。
+- 本轮前序交付继续保留：#129审阅修复/治理已合并并验证；#130清单分层已部署；#131工作首页紧凑正方形模块已合并部署，merge594718c55714576d88ba95ecfa5ab8f9f4dc1e17，公网验证37415137983成功。详细证据见历史区。
+- 云电脑PR #128（feat/number-inbox-cloud-batch-export）仍为Draft，本轮未合并、未发布Windows包或操作真实云电脑业务。其余号码导出/云电脑改动仍需独立审阅与实机验收；不能借用#132网页验证声称云电脑已验收。手动单次更新、不注册Windows登录启动、本机E:\\ChenBridge与云电脑Y:\\ChenBridge等既定约束继续保留。
+- 唯一下一步：本轮已完成，按用户下一项明确需求继续；如恢复云电脑工作，先独立检查#128实际head、CI及剩余实机验收，不直接合并历史Draft。
+
+---
+
+## 历史记录（仅供追溯，不覆盖上方快照）
+
+### 2026-10-06 清单改造前与实施检查点（历史）
+
 - 更新时间：2026-10-06（Asia/Shanghai）；本轮新需求：清单网页Excel（默认4行3列、增行列、筛选、拖动行列尺寸、导入格式保留/导出）及全站冗余说明文案审计。活动分支feat/work-list-spreadsheet，实施中；用户要求/work客户管理等模块缩小、正方形并提升整体美观。工作首页改造#131已合并并部署，merge 594718c55714576d88ba95ecfa5ab8f9f4dc1e17，验收head d586cd5ef0a16c708f8a8bdea511f04cad4eeb34；#130清单分层已部署。
 - #131验证：validation37414476957和stability37414476965均success；1450/768/390/320屏宽保持紧凑方形、内容无溢出、桌面三列/手机两列、三个入口跳转正常，原有功能全量回归通过。生产验证37415137983/job112111986996 success，公网work-architecture-v14.css与本次源码SHA256一致，health/PWA/清单/推送资源正常；未读取生产git HEAD。
 - 本轮设计：工作首页三张紧凑方形入口，桌面三列、手机两列；蓝/绿/紫图标与简短说明，辅助入口轻量展示。样式限定work-launcher，不改客户/缴费数据或共享导航。
@@ -22,9 +41,7 @@
 - #132 WIP验证：d4ad37c70a3d95884cb8919ea3450bcf6aff0e7b的新增数据完整性契约和桌面/手机网页表格浏览器验收通过，原清单测试同名表头定位需精确化后重跑；本条不代表完整CI或部署完成。
 - 唯一下一步：完成#132完整CI与稳定性门禁后合并、验证生产并更新此快照；#128仍Draft，不在本轮合并。
 
----
 
-## 历史记录（仅供追溯，不覆盖上方快照）
 
 # 晨的小助手 · AI 开发接力文档
 
@@ -1112,4 +1129,5 @@ git show origin/main:scripts/install_auto_deploy_timer.sh | sudo bash
 - AI 自动整理/自动标签。
 - 将工作资料迁入资料中心。
 - 改写现有账户密码表结构或删除历史账户数据。
+
 
