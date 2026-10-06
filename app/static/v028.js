@@ -25,13 +25,6 @@
     setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 180); }, 1200);
   };
 
-  const selectEditor = (el) => {
-    if (!el || el.readOnly || el.disabled) return;
-    if (el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'radio' || el.type === 'hidden') return;
-    requestAnimationFrame(() => {
-      try { el.select(); } catch (_) { try { el.setSelectionRange(0, el.value.length); } catch (_) {} }
-    });
-  };
 
   const formatDateDigits = (value) => {
     const d = String(value || '').replace(/\D/g, '').slice(0, 8);
@@ -73,10 +66,7 @@
   const root = document.querySelector('.v028-workspace');
   if (!root) return;
 
-  root.addEventListener('click', e => {
-    const editor = e.target.closest('input,textarea');
-    if (editor) selectEditor(editor);
-  });
+
   root.querySelectorAll('.manual-date').forEach(bindDateInput);
 
   // 客户横向标签。
@@ -258,7 +248,7 @@
     }, true);
     workbench.querySelectorAll('.quick-amount').forEach(input => {
       input.addEventListener('focus', () => { activeAmount = input; });
-      input.addEventListener('click', () => selectAmount(input));
+
     });
 
     // 号码/账号复制不提示，并保持正在编辑的金额框。

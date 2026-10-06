@@ -101,14 +101,5 @@
     syncPromotionPanel(freshDocument);
   });
 
-  // Rows introduced by a live refresh should keep the spreadsheet-like amount
-  // interaction even though the original page controller was initialized earlier.
-  const paymentPanel = root.querySelector('[data-customer-panel="payment"]');
-  paymentPanel?.addEventListener('focusin', event => {
-    const input = event.target.closest?.('.quick-amount');
-    if (!input) return;
-    requestAnimationFrame(() => {
-      try { input.setSelectionRange(0, input.value.length); } catch (_) { try { input.select(); } catch (_) {} }
-    });
-  });
+  // 全站委托处理也覆盖实时刷新新增的输入框，避免焦点回调覆盖鼠标选区。
 })();

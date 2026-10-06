@@ -35,9 +35,9 @@
   window.ChenToast = toast;
   window.ChenCopyText = copyText;
 
-  // 所有手动输入框统一：第一次单击全选；第二次单击保留浏览器原生光标，
-  // 方便只修改局部内容。失焦后再次点击重新按“第一次”处理。
-  const selectionState = new WeakMap();
+  // 首次普通鼠标单击可全选；拖选和同一次编辑中的后续点击完全交给浏览器。
+  const selectionState = new WeakSet();
+  let pointerGesture = null;
   const manualEditor = (el) => {
     if (!el || el.disabled || el.readOnly) return false;
     if (el.tagName === 'TEXTAREA') return true;
@@ -48,25 +48,41 @@
   const selectAllEditor = (el) => {
     if (!manualEditor(el)) return;
     try { el.focus({preventScroll:true}); } catch (_) { el.focus?.(); }
-    requestAnimationFrame(() => {
-      try { el.select(); }
-      catch (_) { try { el.setSelectionRange(0, String(el.value || '').length); } catch (_) {} }
-      selectionState.set(el, true);
-    });
+    // 同步完成，避免下一帧覆盖用户已经建立的光标或选区。
+    try { el.select(); }
+    catch (_) { try { el.setSelectionRange(0, String(el.value || '').length); } catch (_) {} }
+    selectionState.add(el);
   };
   window.ChenSelectAllInput = selectAllEditor;
 
-  // 使用捕获阶段，是为了在“第二次点击”时阻止旧工作区控制器再次强制全选；
-  // 不 preventDefault，因此浏览器仍会把光标放到用户真正点击的位置。
+  document.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest?.('input,textarea');
+    pointerGesture = manualEditor(el) ? {
+      el, id:e.pointerId, x:e.clientX, y:e.clientY, moved:false,
+      first:document.activeElement !== el && !selectionState.has(el),
+      plain:e.pointerType === 'mouse' && e.button === 0 &&
+        !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey
+    } : null;
+  }, true);
+  document.addEventListener('pointermove', (e) => {
+    if (pointerGesture?.id === e.pointerId &&
+        (Math.abs(e.clientX - pointerGesture.x) > 0 || Math.abs(e.clientY - pointerGesture.y) > 0)) {
+      pointerGesture.moved = true;
+    }
+  }, true);
+  document.addEventListener('pointercancel', () => { pointerGesture = null; }, true);
   document.addEventListener('click', (e) => {
+    const gesture = pointerGesture;
+    pointerGesture = null;
     const el = e.target.closest?.('input,textarea');
     if (!manualEditor(el)) return;
-    if (selectionState.get(el) === true) {
-      selectionState.set(el, false);
-      e.stopPropagation();
-      return;
-    }
+    selectionState.add(el);
+    if (!gesture || gesture.el !== el || !gesture.first || !gesture.plain ||
+        gesture.moved || e.detail !== 1 || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
     selectAllEditor(el);
+  }, true);
+  document.addEventListener('keydown', (e) => {
+    if (manualEditor(e.target)) selectionState.add(e.target);
   }, true);
   document.addEventListener('focusout', (e) => {
     if (manualEditor(e.target)) selectionState.delete(e.target);

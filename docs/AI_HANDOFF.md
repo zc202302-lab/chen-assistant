@@ -2,9 +2,9 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-06（Asia/Shanghai）。工作模式：开发中。用户新需求：全站输入框允许拖动选择部分文字，松开鼠标不能被自动全选覆盖。活动分支fix/preserve-input-text-selection（即将从本检查点建立），修复及浏览器回归待提交。
-- 已定位全站app.js的延迟click全选与循环状态切换，以及v028.js、live-refresh-modules-v15.js的重复点击/焦点全选。保留首次普通单击与连续缴费录入的便利，拖选、后续点击、键盘选字使用原生行为。
-- 上轮#132已完成，合并cf509e3844a7b3c552de136fc7cc4aeda4227b08；完整验收head dcc89366068983f4de7ea71c92b23980f68aaa21，validation37420879779/stability37420879714 success；生产验证37421656762 success。Web1.7.3，186条路由。当前新修复尚未部署。
+- 更新时间：2026-10-06（Asia/Shanghai）。工作模式：开发中。用户新需求：全站输入框允许拖动选择部分文字，松开鼠标不能被自动全选覆盖。活动分支fix/preserve-input-text-selection，修复及浏览器回归已提交，待CI。
+- 已修复全站app.js的延迟click全选与循环状态切换，以及v028.js、live-refresh-modules-v15.js的重复点击/焦点全选。保留首次普通单击与连续缴费录入的便利，拖选、后续点击、键盘选字使用原生行为。
+- 上轮#132已完成，合并cf509e3844a7b3c552de136fc7cc4aeda4227b08；完整验收head dcc89366068983f4de7ea71c92b23980f68aaa21，validation37420879779/stability37420879714 success；生产验证37421656762 success。Web1.7.3，186条路由。新修复待完整CI、合并与部署。
 - #128云电脑仍Draft，本轮不操作。核心范围app.js、v028.js、live-refresh-modules-v15.js及缓存版本/浏览器测试，保留原缴费与清单功能。
 - 唯一下一步：提交选择交互修复，完成真实浏览器与完整CI后合并并验证生产。
 
