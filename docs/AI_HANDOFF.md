@@ -2,11 +2,17 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-06（Asia/Shanghai）。工作模式：开发中。用户新需求：全站输入框允许拖动选择部分文字，松开鼠标不能被自动全选覆盖。活动分支fix/preserve-input-text-selection，修复及浏览器回归已提交，待CI。
-- 已修复全站app.js的延迟click全选与循环状态切换，以及v028.js、live-refresh-modules-v15.js的重复点击/焦点全选。保留首次普通单击与连续缴费录入的便利，拖选、后续点击、键盘选字使用原生行为。
-- 上轮#132已完成，合并cf509e3844a7b3c552de136fc7cc4aeda4227b08；完整验收head dcc89366068983f4de7ea71c92b23980f68aaa21，validation37420879779/stability37420879714 success；生产验证37421656762 success。Web1.7.3，186条路由。新修复待完整CI、合并与部署。
-- #128云电脑仍Draft，本轮不操作。核心范围app.js、v028.js、live-refresh-modules-v15.js及缓存版本/浏览器测试，保留原缴费与清单功能。
-- 唯一下一步：提交选择交互修复，完成真实浏览器与完整CI后合并并验证生产。
+- 更新时间：2026-10-06（Asia/Shanghai）。本轮需求已完成：全站输入框拖动选取局部文字后，松开鼠标不再被自动全选覆盖。PR [#133](https://github.com/zc202302-lab/chen-assistant/pull/133) 已合并；功能合并提交 0c22ce807f14a0c5a957e8dc30c6b973afd3903a，完整验收head 0f2b8a3c7b37e95a1d3ba4e6554ef695658ee0ab。fix/preserve-input-text-selection为已完成历史分支，不是活动WIP。文档提交不作为新功能，当前main SHA实时查询。
+- 全站app.js只对首次普通鼠标单击同步全选；拖动、同一次编辑中的第二/第三/后续点击、Shift等组合键、双击和触摸保留原生行为。取消延迟选择与循环状态切换，不再在捕获阶段吞掉模块click。共享事件委托覆盖动态输入。
+- 客户工作区移除v028.js的重复click全选及live-refresh-modules-v15.js的延迟focus全选，保留原日期校验、明确打开编辑框的全选与缴费Enter连续录入。清单单元格相同值不重写；格式化显示需切换原值时在鼠标建立选区前处理，键盘进入仍可编辑原值，归档只读保留显示格式。
+- #133完整验证：[validation37425098630](https://github.com/zc202302-lab/chen-assistant/actions/runs/37425098630)、[stability37425098625](https://github.com/zc202302-lab/chen-assistant/actions/runs/37425098625) 均success，均对应上述验收head。新增tests/input_selection_acceptance.py真实鼠标/键盘回归覆盖首次拖选、首次普通全选、重复点击定位、再次拖选、Shift方向键/Ctrl+A、点击事件传递，客户金额/日期/textarea、1450与390屏宽清单及新增行、其他页面动态输入、缴费Enter目标全选。原清单/Excel导入导出、客户/缴费/实时刷新/资料/菜谱/提醒、桌面手机与架构治理完整回归通过。
+- 新验收准备曾受平滑滚动、强制右对齐与输入内部横向滚动影响；测试最终使用即时定位、明确文字尺寸及真实落点检查，按输入框实时坐标操作。所有选区与原功能断言保留，没有删除或跳过旧测试；v1510契约仅同步实际缓存版本。
+- #133生产证据：[PWA公网验证37426002092](https://github.com/zc202302-lab/chen-assistant/actions/runs/37426002092) / job112145682129 success，2026-10-06 14:50:58（Asia/Shanghai）ONLINE VERIFIED v1.7.3。app.js、v028.js、live-refresh-modules-v15.js、work-sheet.js及原工作/清单/推送资产SHA256与修复源码一致；health、manifest、根Service Worker scope和未登录提醒路由正常。部署切换时第一次app.js尚旧，第二次完整检查通过。未读取生产git HEAD，不声称精确运行commit，未修改真实生产业务数据。
+- 缓存版本：app.js?v=0321、v028.js?v=15102、live-refresh-modules-v15.js?v=1502、work-sheet.js?v=2。核心文件上述4份脚本、共享base.html、两份清单模板、生产验证脚本与输入浏览器验收。未新增业务路由或数据库变更，186条原路由保留，Web APP_VERSION仍1.7.3。
+- 上轮#132网页Excel式清单与全站冗余文案审计保留，合并cf509e3844a7b3c552de136fc7cc4aeda4227b08，validation37420879779/stability37420879714和生产37421656762 success；#129审阅修复、#130分层、#131紧凑方形模块继续保留。详情见历史区。
+- 云电脑PR #128仍Draft，本轮未合并、未发布Windows包或操作真实云电脑业务。需要独立审阅与实机验收；不能用网页CI声称云电脑已验收。手动单次更新、不注册登录启动等既定约束保留。
+- 唯一下一步：本轮已完成，按用户下一项明确需求继续；如恢复云电脑工作，先检查#128实际head、CI与剩余实机验收。
+
 
 ---
 
