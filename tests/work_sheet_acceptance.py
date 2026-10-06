@@ -72,11 +72,14 @@ def main():
             page.locator('.ws-cell[data-row="0"][data-col="1"]').fill('保存后的值')
             handle=page.locator('.ws-col-resize').first
             original_width=page.locator('.ws-letters th').nth(1).bounding_box()['width']
+            handle.scroll_into_view_if_needed()
+            page.evaluate('window.scrollTo(0,0)')
             box=handle.bounding_box()
+            hit=page.evaluate('p=>document.elementFromPoint(p.x,p.y)?.outerHTML',{'x':box['x']+box['width']/2,'y':box['y']+box['height']/2})
             page.mouse.move(box['x']+box['width']/2,box['y']+box['height']/2)
             page.mouse.down();page.mouse.move(box['x']+box['width']/2+50,box['y']+box['height']/2);page.mouse.up()
             actual_width=page.locator('.ws-letters th').nth(1).bounding_box()['width']
-            assert abs(actual_width-original_width-50)<3, {'before':original_width,'after':actual_width,'handle':handle.get_attribute('aria-valuenow'),'table':page.locator('.ws-grid').get_attribute('style')}
+            assert abs(actual_width-original_width-50)<3, {'before':original_width,'after':actual_width,'handle':handle.get_attribute('aria-valuenow'),'table':page.locator('.ws-grid').get_attribute('style'),'box':box,'hit':hit}
             rowhandle=page.locator('.ws-grid tbody .ws-row-resize').first
             rowhandle.focus();rowhandle.press('ArrowDown');rowhandle.press('ArrowDown')
             page.get_by_role('button',name='保存表格',exact=True).click()

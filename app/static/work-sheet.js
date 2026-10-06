@@ -195,7 +195,7 @@
       if (!mr.length || !mc.length) continue;
       const origin = model.rows.find(r => r.id === merge.rows[0]);
       const originCol = model.fields.findIndex(f => f.id === merge.cols[0]);
-      anchors.set(mr[0] + '|' + mc[0], {rowspan: mr.length, colspan: mc.length, value: origin?.values[originCol], origin, originCol});
+      anchors.set(mr[0] + '|' + mc[0], {rowspan: mr.length, colspan: mc.length, rows: mr, value: origin?.values[originCol], origin, originCol});
       mr.forEach(r => mc.forEach(c => { if (r !== mr[0] || c !== mc[0]) covered.add(r + '|' + c); }));
     }
     visible.forEach(({r, i}) => {
@@ -204,7 +204,7 @@
       tr.style.height = height + 'px';
       const index = node('th', 'ws-index', String(i + 1));
       index.scope = 'row';
-      resize(index, 'y', r.id, height, size => { tr.style.height = size + 'px'; tr.querySelectorAll('.ws-cell').forEach(el => { el.style.height = (size - 1) + 'px'; }); });
+      resize(index, 'y', r.id, height, size => { tr.style.height = size + 'px'; table.querySelectorAll('.ws-cell').forEach(el => { const ids = JSON.parse(el.dataset.heightRows); el.style.height = (ids.reduce((sum, id) => sum + (layout().heights[id] || 32), 0) - 1) + 'px'; }); });
       tr.append(index);
       model.fields.forEach((field, c) => {
         const key = r.id + '|' + field.id;
@@ -214,7 +214,9 @@
         const merge = anchors.get(key);
         if (merge) { td.rowSpan = merge.rowspan; td.colSpan = merge.colspan; }
         const cell = node('textarea', 'ws-cell');
-        cell.style.height = ((merge ? merge.rowspan * height : height) - 1) + 'px';
+        const heightRows = merge ? merge.rows : [r.id];
+        cell.dataset.heightRows = JSON.stringify(heightRows);
+        cell.style.height = (heightRows.reduce((sum, id) => sum + (formats.heights[id] || 32), 0) - 1) + 'px';
         cell.rows = 1; cell.maxLength = 4000; cell.readOnly = readonly;
         const currentValue = () => merge ? merge.origin.values[merge.originCol] : r.values[c];
         cell.value = formatted(currentValue(), formats.cells[key]);
