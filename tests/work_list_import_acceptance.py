@@ -60,18 +60,19 @@ def main():
             page.get_by_label('G列导入到', exact=True).select_option('customer_name')
             page.get_by_label('H列导入到', exact=True).select_option('note')
             page.get_by_role('button', name='检查数据并预览导入').click()
-            expect(page.get_by_text('将新增 2 条，跳过 1 条完全重复记录。', exact=True)).to_be_visible()
+            expect(page.get_by_text('将新增 3 条，跳过 1 条完全重复记录。', exact=True)).to_be_visible()
             with db() as conn:
                 assert conn.execute('SELECT COUNT(*) FROM work_list_records').fetchone()[0] == 0
             page.set_viewport_size({'width': 390, 'height': 844})
             assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 2')
-            page.get_by_role('button', name='确认导入 2 条', exact=True).click()
+            page.get_by_role('button', name='确认导入 3 条', exact=True).click()
             expect(page.get_by_role('heading', name='导入完成')).to_be_visible()
             page.get_by_role('link', name='查看清单', exact=True).click()
             expect(page.get_by_role('heading', name='导入验收欠费')).to_be_visible()
             page.get_by_text('记录详情', exact=True).click()
             expect(page.get_by_text('000123', exact=True)).to_be_visible()
-            expect(page.locator('.wl-table tbody tr')).to_have_count(2)
+            expect(page.locator('.wl-table tbody tr')).to_have_count(3)
+            expect(page.locator('.ws-cell[data-row="1"][data-col="0"]')).to_have_value('')
             with db() as conn:
                 list_id = conn.execute('SELECT id FROM work_lists').fetchone()[0]
             page.get_by_role('link', name='Excel 导入', exact=True).click()
@@ -88,7 +89,7 @@ def main():
             expect(page.get_by_text('将新增 0 条，跳过 3 条完全重复记录。', exact=True)).to_be_visible()
             page.get_by_role('button', name='确认导入 0 条', exact=True).click()
             with db() as conn:
-                assert conn.execute('SELECT COUNT(*) FROM work_list_records').fetchone()[0] == 2
+                assert conn.execute('SELECT COUNT(*) FROM work_list_records').fetchone()[0] == 3
             browser.close()
         print('Excel import browser acceptance passed: upload, sheet/range, mapping, no premature writes, mobile confirmation, customer linkage, repeat import')
     finally:

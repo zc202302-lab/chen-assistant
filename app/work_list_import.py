@@ -189,7 +189,7 @@ def _plan(conn, payload, form):
     payload['mapping'] = mapping
     rows, errors = [], []
     for source in payload['table']['rows']:
-        if not any(cell.strip() for cell, entry in zip(source['cells'], mapping) if entry['dest'] != 'skip') and not payload['table'].get('layout'):
+        if not any(cell.strip() for cell, entry in zip(source['cells'], mapping) if entry['dest'] != 'skip') and (target or not payload['table'].get('layout')):
             continue
         values_form, note, status, customer_id = [], '', 'pending', None
         try:
