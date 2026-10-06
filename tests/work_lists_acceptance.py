@@ -102,7 +102,7 @@ def main():
             page.get_by_role('link', name='清单设置', exact=True).click()
             page.get_by_label('字段1名称', exact=True).fill('业务号码')
             page.get_by_role('button', name='保存设置').click()
-            expect(page.get_by_role('columnheader', name='业务号码')).to_be_visible()
+            expect(page.get_by_role('columnheader', name='业务号码', exact=True)).to_be_visible()
             expect(page.get_by_text('00123456789', exact=True)).to_be_visible()
             page.get_by_role('link', name='清单设置', exact=True).click()
             page.get_by_label('字段名称', exact=True).fill('关注标签')
