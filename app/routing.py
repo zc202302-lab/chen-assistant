@@ -192,3 +192,18 @@ def assert_route_owners(app):
     _assert_payment_review_route_guard(app)
     _assert_payment_flow_v033_guard(app)
     _assert_v10_route_guard(app)
+
+
+def route_source_inventory(app):
+    from pathlib import Path
+    result = []
+    for route in app.router.routes:
+        endpoint = getattr(route, 'endpoint', None)
+        code = getattr(endpoint, '__code__', None)
+        result.append({
+            'path': getattr(route, 'path', None),
+            'methods': sorted(getattr(route, 'methods', [])),
+            'source': Path(code.co_filename).name if code else None,
+            'qualname': code.co_qualname if code else None,
+        })
+    return result

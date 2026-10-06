@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db
@@ -36,10 +36,8 @@ router.include_router(v12_tools_router)
 
 @router.on_event('startup')
 def startup_recipe_template_import_v101():
-    ensure_v101_recipe_templates()
-    ensure_v13_customer_documents()
-    ensure_customer_resources_v143()
-    ensure_number_inbox_schema()
+    from .schema import initialize_schema
+    initialize_schema("workspace")
 
 
 @router.get('/work', response_class=HTMLResponse)
@@ -102,3 +100,4 @@ def global_search_v101(request: Request, q: str = ''):
 # owned by the v1.x compatibility layer rather than a historical legacy router.
 work_home_v101.__module__ = 'app.v10_routes'
 work_search_v101.__module__ = 'app.v10_routes'
+

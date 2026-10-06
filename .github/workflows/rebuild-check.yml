@@ -166,6 +166,7 @@ jobs:
           python tests/dead_route_source_inventory.py
           python tests/routing_registry_contract.py
           python tests/customer_export_text_contract.py
+          python tests/architecture_governance_contract.py
 
       - name: Detached module reference inventory
         if: steps.scope.outputs.mode == 'full'

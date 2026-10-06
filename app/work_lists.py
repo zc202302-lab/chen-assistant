@@ -9,7 +9,7 @@ from decimal import Decimal, InvalidOperation
 import xlsxwriter
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
@@ -162,8 +162,7 @@ async def save_work_list_settings(request: Request, list_id: int):
     _csrf(request, form.get('csrf'))
     title = _text(form.get('title'), '名称', required=True)
     description = _text(form.get('description'), '说明', 2000)
-    with db() as conn:
-        conn.execute('BEGIN IMMEDIATE')
+    with db(immediate=True) as conn:
         item = _list(conn, list_id, True)
         _revision(form.get('revision'), item['revision'])
         fields = _fields(conn, list_id)
@@ -193,8 +192,7 @@ async def add_work_list_field(request: Request, list_id: int):
     options = list(dict.fromkeys(line.strip() for line in str(form.get('options', '')).splitlines() if line.strip()))
     if kind in {'select', 'multi'} and (not options or len(options) > 50 or any(len(v) > 100 for v in options)):
         raise HTTPException(400, '单选或多选需要1至50个选项，每个选项最多100个字符')
-    with db() as conn:
-        conn.execute('BEGIN IMMEDIATE')
+    with db(immediate=True) as conn:
         item = _list(conn, list_id, True)
         _revision(form.get('revision'), item['revision'])
         fields = _fields(conn, list_id)
@@ -210,8 +208,7 @@ async def add_work_list_field(request: Request, list_id: int):
 async def archive_work_list(request: Request, list_id: int):
     form = await request.form()
     _csrf(request, form.get('csrf'))
-    with db() as conn:
-        conn.execute('BEGIN IMMEDIATE')
+    with db(immediate=True) as conn:
         item = _list(conn, list_id)
         _revision(form.get('revision'), item['revision'])
         conn.execute('UPDATE work_lists SET archived=?,revision=revision+1,updated_at=? WHERE id=?', (1 - item['archived'], now_iso(), list_id))
@@ -282,8 +279,7 @@ async def save_work_list_record(request: Request, list_id: int, record_id: int |
     form = await request.form()
     _csrf(request, form.get('csrf'))
     try:
-        with db() as conn:
-            conn.execute('BEGIN IMMEDIATE')
+        with db(immediate=True) as conn:
             item = _list(conn, list_id, True)
             _revision(form.get('list_revision'), item['revision'])
             fields = _fields(conn, list_id)
@@ -348,3 +344,4 @@ def export_work_list(request: Request, list_id: int, q: str = '', status: str = 
         sheet.autofilter(0, 0, len(rows), len(labels) - 1)
     return Response(output.getvalue(), media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                     headers={'Content-Disposition': f'attachment; filename="work-list-{item["id"]}.xlsx"'})
+

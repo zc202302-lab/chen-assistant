@@ -5,7 +5,7 @@ from datetime import date
 
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
@@ -366,3 +366,4 @@ def edit_service_attributes_v023(
         'display_value_1': attr_value(service, display_attr_1),
         'display_value_2': attr_value(service, display_attr_2),
     })
+

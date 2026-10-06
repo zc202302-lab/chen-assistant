@@ -16,10 +16,8 @@ configure_routes(app)
 
 @app.on_event('startup')
 def startup_v10():
-    ensure_v10_schema()
-    ensure_v160_schema()
-    ensure_work_lists_schema()
-    ensure_work_list_import_schema()
+    from .schema import initialize_schema
+    initialize_schema("runtime")
 
 
 app.title = f'晨的助手 v{config.APP_VERSION}'

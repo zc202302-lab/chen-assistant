@@ -11,7 +11,7 @@ def main():
     workflow = (ROOT / '.github' / 'workflows' / 'rebuild-check.yml').read_text(encoding='utf-8')
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     back_js = (ROOT / 'app' / 'static' / 'global-back.js').read_text(encoding='utf-8')
-    review_patch = (ROOT / 'app' / 'v031_fixed_review_patch.py').read_text(encoding='utf-8')
+    review_patch = (ROOT / 'app' / 'payments.py').read_text(encoding='utf-8') + (ROOT / 'app' / 'v031_fixed_review_patch.py').read_text(encoding='utf-8')
 
     for token in (
         '新增功能不能破坏已经确定的功能',
@@ -72,3 +72,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

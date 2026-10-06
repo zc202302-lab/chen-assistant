@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
@@ -442,3 +442,4 @@ def payment_txt_v02(customer_id: int):
     safe = ''.join(ch for ch in customer['name'] if ch not in '\\/:*?"<>|') or '缴费'
     headers = {'Content-Disposition': f"attachment; filename=\"payment.txt\"; filename*=UTF-8''{quote(safe + '.txt')}"}
     return PlainTextResponse(body, media_type='text/plain; charset=utf-8', headers=headers)
+

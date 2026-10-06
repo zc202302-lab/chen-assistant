@@ -4,7 +4,7 @@ ROOT = Path(__file__).resolve().parents[1]
 base = (ROOT / 'app/templates/base.html').read_text(encoding='utf-8')
 js = (ROOT / 'app/static/v125_excel_review.js').read_text(encoding='utf-8')
 css = (ROOT / 'app/static/v125_excel_review.css').read_text(encoding='utf-8')
-patch = (ROOT / 'app/v031_fixed_review_patch.py').read_text(encoding='utf-8')
+patch = (ROOT / 'app/payments.py').read_text(encoding='utf-8')
 workspace = (ROOT / 'app/templates/customer_workspace_v0211.html').read_text(encoding='utf-8')
 
 assert '/static/v125_excel_review.css?v=1250' in base
@@ -34,3 +34,4 @@ assert 'data-payment-column-head' in workspace
 assert 'data-business-list' in workspace
 
 print('v1.2.5 contract passed: realtime derived review + Excel-style table header filters')
+

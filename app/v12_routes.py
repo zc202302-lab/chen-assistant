@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db
@@ -163,3 +163,4 @@ def knowledge_redirect_v12():
 @router.get('/life/records')
 def records_redirect_v12():
     return RedirectResponse('/life/recipes', status_code=302)
+

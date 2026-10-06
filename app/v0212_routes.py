@@ -6,7 +6,7 @@ import json
 
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
@@ -94,27 +94,6 @@ def _save_runtime(conn, service_id: int, *, status: str | None = None, deferred_
     )
 
 
-def _visible_keys(conn, template):
-    valid = [str(x['key']) for x in template]
-    raw = _meta_get(conn, BUSINESS_VISIBLE_KEY, '')
-    if not raw:
-        keys = valid[:5]
-        _meta_set(conn, BUSINESS_VISIBLE_KEY, json.dumps(keys, ensure_ascii=False))
-        return keys
-    try:
-        loaded = json.loads(raw)
-        keys = [str(x) for x in loaded] if isinstance(loaded, list) else valid[:5]
-    except Exception:
-        keys = valid[:5]
-    normalized = []
-    seen = set()
-    for key in keys:
-        if key in valid and key not in seen:
-            normalized.append(key)
-            seen.add(key)
-    if normalized != keys:
-        _meta_set(conn, BUSINESS_VISIBLE_KEY, json.dumps(normalized, ensure_ascii=False))
-    return normalized
 
 
 def _natural_due(service, period: str) -> bool:
@@ -175,7 +154,7 @@ def _schedule_state(service, runtime, period: str) -> str:
     return f"下次 {nxt.replace('-', '/')}" if nxt else '暂不缴费'
 
 
-def payment_snapshot_v0212(conn, customer_id: int, period: str | None = None):
+def _payment_snapshot_base_v0212(conn, customer_id: int, period: str | None = None):
     period = period or current_period()
     rows = conn.execute(
         '''SELECT s.*, g.name invoice_group_name
@@ -231,43 +210,6 @@ def payment_snapshot_v0212(conn, customer_id: int, period: str | None = None):
     }
 
 
-def _business_payload_v0212(conn, customer_id: int, template, services, promo_rows, visible_keys, runtime):
-    custom = _custom_map(conn, [s['id'] for s in services])
-    promo_by_service = defaultdict(list)
-    for promo in promo_rows:
-        promo_by_service[promo['service_id']].append(promo)
-    rows = []
-    period = current_period()
-    visible_set = set(visible_keys)
-    for service in services:
-        promos = promo_by_service.get(service['id'], [])
-        buckets = [promotion_bucket(p['expiry_date'], p['status']) for p in promos]
-        expired_n = buckets.count('expired')
-        soon_n = buckets.count('soon')
-        if expired_n:
-            promo_filter, promo_label = 'expired', f'已到期 {expired_n}'
-        elif soon_n:
-            promo_filter, promo_label = 'soon', f'即将到期 {soon_n}'
-        elif promos:
-            promo_filter, promo_label = 'normal', f'优惠 {len(promos)}'
-        else:
-            promo_filter, promo_label = 'none', '无优惠'
-        nearest = min(promos, key=lambda p: p['expiry_date'] or '9999-12-31') if promos else None
-        attrs = _service_attrs(service, template, custom[service['id']])
-        selected = [a for a in attrs if a['key'] in visible_set]
-        state = _schedule_state(service, runtime[service['id']], period)
-        preview = [{'key': '__payment_state__', 'label': '缴费状态', 'kind': 'state', 'value': state, 'raw': state}] + selected
-        rows.append({
-            'row': service,
-            'attributes': attrs,
-            'preview_attributes': preview,
-            'rule': effective_payment_rule(conn, service['id'], period, service),
-            'due': _service_due(service, runtime[service['id']], period),
-            'promo_filter': promo_filter,
-            'promo_label': promo_label,
-            'promo_nearest': date_text(nearest['expiry_date']) if nearest else '',
-        })
-    return rows
 
 
 @router.get('/health')
@@ -538,3 +480,30 @@ def payment_txt_v0212(customer_id: int):
             number = (item['row']['number'] or '').strip()
             lines.append(f"{number}|{format_fee(amount)}")
     return PlainTextResponse('\n'.join(lines), media_type='text/plain; charset=utf-8')
+
+
+
+# Stable compatibility entry points; providers are resolved at call time.
+def ensure_payment_entry(conn, service, period):
+    from .v031_fixed_review_patch import _ensure_payment_entry_review_aware
+    return _ensure_payment_entry_review_aware(conn, service, period)
+
+
+def payment_snapshot_v0212(conn, customer_id, period=None):
+    from .v031_fixed_review_patch import _review_snapshot
+    return _review_snapshot(conn, customer_id, period)
+
+
+def _visible_keys(conn, template, customer_id=None):
+    from .v0212_business_display_routes import _ordered_keys
+    return _ordered_keys(conn, template, customer_id)
+
+
+def _business_payload_v0212(conn, customer_id, template, services, promo_rows, visible_keys, runtime):
+    from .v0212_business_display_routes import _business_payload_customer_gate_v143
+    return _business_payload_customer_gate_v143(conn, customer_id, template, services, promo_rows, visible_keys, runtime)
+
+
+def _payment_run(conn, customer_id, period, stats):
+    from .v03_routes import _payment_run_v03
+    return _payment_run_v03(conn, customer_id, period, stats)

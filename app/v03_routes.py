@@ -131,7 +131,7 @@ def _payment_run_v03(conn, customer_id: int, period: str, stats):
 
 
 # The v0.2.12 workspace resolves this module-global name at request time.
-core._payment_run = _payment_run_v03
+
 
 
 def _mail_settings():
@@ -518,3 +518,4 @@ def send_payment_email_v03(
         'filename': filename,
         'message': '缴费TXT已通过邮件发送',
     })
+

@@ -68,7 +68,7 @@ def ensure_v031(conn):
         )
 
 
-def _run_v031(conn, customer_id: int, period: str | None = None):
+def _run_base_v031(conn, customer_id: int, period: str | None = None):
     period = period or current_period()
     customer_or_404(conn, customer_id)
     ensure_v031(conn)
@@ -126,7 +126,7 @@ def _run_v031(conn, customer_id: int, period: str | None = None):
     return run, stats
 
 
-def _paint_review_reset(conn, customer_id: int, period: str, run, items, stats):
+def _paint_review_reset_legacy(conn, customer_id: int, period: str, run, items, stats):
     """Preserve v0.3's reversible whole-review semantics, including fixed rows."""
     now = now_iso()
     run_id = int(run['id'])
@@ -476,3 +476,14 @@ def payment_mail_compose_v031(customer_id: int):
         'attachment_content_base64': base64.b64encode(txt_content.encode('utf-8')).decode('ascii'),
         'period': period,
     })
+
+
+
+def _run_v031(conn, customer_id, period=None):
+    from .v031_fixed_review_patch import _auto_review_run
+    return _auto_review_run(conn, customer_id, period)
+
+
+def _paint_review_reset(conn, customer_id, period, run, items, stats):
+    from .v031_fixed_review_patch import _fixed_amount_review
+    return _fixed_amount_review(conn, customer_id, period, run, items, stats)

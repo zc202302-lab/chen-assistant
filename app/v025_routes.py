@@ -5,7 +5,7 @@ from datetime import date, datetime
 
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
@@ -497,3 +497,4 @@ def close_promotion_v025(request: Request, promotion_id: int, csrf: str = Form(.
         conn.execute("UPDATE promotions SET status='ended' WHERE id=?", (promotion_id,))
         cid = old['customer_id']
     return RedirectResponse(f'/customers/{cid}?tab=promotions', 303)
+

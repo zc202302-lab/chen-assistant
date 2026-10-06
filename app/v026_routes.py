@@ -7,7 +7,7 @@ import re
 
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
@@ -465,3 +465,4 @@ def renew_promotion_v026(
         conn.execute("UPDATE promotions SET status='renewed',renewed_at=?,renewed_to_id=? WHERE id=?", (now_iso(), new_id, promotion_id))
         cid = old['customer_id']
     return RedirectResponse(f'/customers/{cid}?tab=promotions', 303)
+
