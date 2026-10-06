@@ -129,6 +129,55 @@ class ExcelTable:
         except (KeyError, IndexError, ET.ParseError, zipfile.BadZipFile, OverflowError, xlrd.XLRDError):
             raise ValueError('工作表数据损坏或格式不支持，请在 Excel 中另存后重试')
 
+    def read_whole(self, sheet_name, preserve_format=False):
+        try:
+            return self._read_whole(sheet_name, preserve_format)
+        except (KeyError, IndexError, ET.ParseError, zipfile.BadZipFile, OverflowError, xlrd.XLRDError):
+            raise ValueError('工作表数据损坏或格式不支持，请在 Excel 中另存后重试')
+
+    def _read_whole(self, sheet_name, preserve_format=False):
+        """Read A1 through actual cells/merges, never a stale Excel dimension."""
+        if sheet_name not in self.sheets:
+            raise ValueError('工作表不存在')
+        last_row = last_col = 0
+        if self.xls:
+            sheet = self.xls.sheet_by_name(sheet_name)
+            last_row, last_col = sheet.nrows, sheet.ncols
+            for r0, r1, c0, c1 in sheet.merged_cells:
+                last_row, last_col = max(last_row, r1), max(last_col, c1)
+        else:
+            root = self._xml(self.paths[sheet_name])
+            for cell in root.findall(f'{{{NS}}}sheetData/{{{NS}}}row/{{{NS}}}c'):
+                if not (cell.find(f'{{{NS}}}v') is not None or
+                        cell.find(f'{{{NS}}}is') is not None or
+                        cell.find(f'{{{NS}}}f') is not None or
+                        cell.attrib.get('s', '0') != '0'):
+                    continue
+                match = re.fullmatch(r'([A-Z]+)(\d+)', cell.attrib.get('r', ''))
+                if not match:
+                    raise ValueError('单元格坐标无效')
+                last_row = max(last_row, int(match.group(2)))
+                last_col = max(last_col, column_number(match.group(1)))
+            for merge in root.findall(f'{{{NS}}}mergeCells/{{{NS}}}mergeCell'):
+                match = re.fullmatch(r'([A-Z]+)(\d+):([A-Z]+)(\d+)', merge.attrib.get('ref', ''))
+                if not match:
+                    raise ValueError('合并单元格坐标无效')
+                last_row = max(last_row, int(match.group(2)), int(match.group(4)))
+                last_col = max(last_col, column_number(match.group(1)), column_number(match.group(3)))
+        if last_row > MAX_ROWS + 1 or last_col > MAX_COLS:
+            raise ValueError('完整工作表超过5000个数据行或50列，请拆分文件后导入')
+        if last_row < 2 or not last_col:
+            raise ValueError('工作表没有可导入的数据行')
+        table = self.read(sheet_name, 1, 'A', column_name(last_col), last_row)
+        if preserve_format:
+            from .work_list_format import read_layout
+            populated = {row['row']: row for row in table['rows']}
+            table['rows'] = [populated.get(number, {'row': number, 'cells': [''] * last_col})
+                             for number in range(2, last_row + 1)]
+            table['layout'] = read_layout(self, sheet_name, 1, 1, last_col,
+                                         [row['row'] for row in table['rows']])
+        return table
+
     def _read(self, sheet_name, header=1, first='A', last='', end=0):
         if sheet_name not in self.sheets:
             raise ValueError('工作表不存在')

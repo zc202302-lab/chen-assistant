@@ -122,14 +122,25 @@ async def import_excel_prepare(request: Request, token: str):
         if payload['phase'] == 'done':
             return RedirectResponse(f'/work/list-import/{token}', 303)
         try:
-            payload.update(sheet=str(form.get('sheet', '')), header=int(form.get('header', 1)), first=str(form.get('first', 'A')),
-                           last=str(form.get('last', '')), end=int(form.get('end', 0) or 0), target=int(form.get('target', 0) or 0),
+            target = int(form.get('target', 0) or 0)
+            whole_sheet = not target or form.get('whole_sheet') == '1'
+            payload.update(sheet=str(form.get('sheet', '')), target=target,
                            title=_text(form.get('title'), '新清单名称', required=True))
+            if whole_sheet:
+                payload.update(header=1, first='A', last='', end=0)
+            else:
+                # Existing append clients can still submit an explicit legacy range.
+                payload.update(header=int(form.get('header', 1)), first=str(form.get('first', 'A')),
+                               last=str(form.get('last', '')), end=int(form.get('end', 0) or 0))
             if payload['target']:
                 _list(conn, payload['target'], True)
             reader = ExcelTable(base64.b64decode(payload['source']), payload['filename'])
             try:
-                payload['table'] = reader.read(payload['sheet'], payload['header'], payload['first'], payload['last'], payload['end'], preserve_format=form.get('preserve_format') == '1')
+                preserve_format = form.get('preserve_format') == '1'
+                if whole_sheet:
+                    payload['table'] = reader.read_whole(payload['sheet'], preserve_format=preserve_format)
+                else:
+                    payload['table'] = reader.read(payload['sheet'], payload['header'], payload['first'], payload['last'], payload['end'], preserve_format=preserve_format)
             finally:
                 reader.close()
             payload['phase'] = 'mapping'
@@ -263,7 +274,7 @@ async def import_excel_preview(request: Request, token: str):
         job, payload = _job(conn, request, token)
         _revision(form.get('revision'), job['revision'])
         if payload['phase'] not in {'mapping', 'preview'}:
-            raise HTTPException(409, '请先选择工作表和范围')
+            raise HTTPException(409, '请先读取工作表')
         try:
             payload['plan'] = _plan(conn, payload, form)
             payload['phase'] = 'preview'

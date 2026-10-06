@@ -36,9 +36,47 @@ def main():
     assert [r['row'] for r in table['rows']] == [2, 3, 5]
     assert table['rows'][0]['cells'][:3] == ['000123', '125.5', '2026-09-30']
     assert table['columns'][0]['letter'] == 'D'
+    whole = reader.read_whole('欠费明细', preserve_format=True)
+    assert [col['letter'] for col in whole['columns']] == list('ABCDEFGH')
+    assert [row['row'] for row in whole['rows']] == [2, 3, 4, 5]
+    assert whole['rows'][0]['cells'][0] == '不应导入'
+    assert whole['rows'][0]['cells'][3:6] == ['000123', '125.5', '2026-09-30']
     reader.close()
     reader = ExcelTable(legacy_xls(), 'legacy.xls')
     assert reader.read(reader.sheets[0])['rows'][0]['cells'] == ['00123', '250']
+    assert reader.read_whole(reader.sheets[0], preserve_format=True)['rows'][0]['cells'] == ['00123', '250']
+    reader.close()
+    # Stale worksheet dimensions must not expand the import; actual styled cells
+    # and merged blank cells at the edge must not be clipped.
+    extended = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(workbook())) as source, zipfile.ZipFile(extended, 'w') as output:
+        for entry in source.infolist():
+            content = source.read(entry.filename)
+            if entry.filename == 'xl/worksheets/sheet2.xml':
+                xml = content.decode().replace('<sheetData>', '<dimension ref="A1:XFD1048576"/><sheetData>')
+                xml = xml.replace('</sheetData>', '<row r="7"><c r="J7" s="1"/></row></sheetData><mergeCells><mergeCell ref="I6:J8"/></mergeCells>')
+                content = xml.encode()
+            output.writestr(entry.filename, content)
+    reader = ExcelTable(extended.getvalue(), 'extended.xlsx')
+    whole = reader.read_whole('欠费明细', preserve_format=True)
+    assert len(whole['columns']) == 10 and len(whole['rows']) == 7
+    assert whole['layout']['merges'] == [{'rows': [6, 7, 8], 'cols': [9, 10]}]
+    assert '7|10' in whole['layout']['cells']
+    reader.close()
+    oversized = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(extended.getvalue())) as source, zipfile.ZipFile(oversized, 'w') as output:
+        for entry in source.infolist():
+            content = source.read(entry.filename)
+            if entry.filename == 'xl/worksheets/sheet2.xml':
+                content = content.replace(b'J7', b'AY7')
+            output.writestr(entry.filename, content)
+    reader = ExcelTable(oversized.getvalue(), 'oversized.xlsx')
+    try:
+        reader.read_whole('欠费明细', preserve_format=True)
+    except ValueError as exc:
+        assert '50列' in str(exc)
+    else:
+        raise AssertionError('oversized whole sheet must fail instead of truncating')
     reader.close()
     for content, filename in [(b'bad', 'bad.xlsx'), (b'bad', 'bad.exe'), (b'x' * (MAX_BYTES + 1), 'big.xlsx')]:
         try:
@@ -92,7 +130,7 @@ def main():
         def prepare(path, target=0):
             response = client.post(path + '/prepare', data={'csrf': csrf, 'revision': '1', 'sheet': '欠费明细', 'header': '1', 'first': 'D', 'last': 'H', 'title': 'Excel欠费清单', 'target': str(target)}, follow_redirects=False)
             assert response.status_code == 303, response.text
-        mapping = {'csrf': csrf, 'revision': '2', 'duplicates': 'skip', 'dest_4': 'new', 'label_4': '号码', 'kind_4': 'text',
+        mapping = {'dest_1': 'skip', 'dest_2': 'skip', 'dest_3': 'skip', 'csrf': csrf, 'revision': '2', 'duplicates': 'skip', 'dest_4': 'new', 'label_4': '号码', 'kind_4': 'text',
                    'dest_5': 'new', 'label_5': '金额', 'kind_5': 'money', 'dest_6': 'new', 'label_6': '日期', 'kind_6': 'date',
                    'dest_7': 'customer_name', 'dest_8': 'note'}
         bad_path = upload(workbook(bad=True))
@@ -104,6 +142,12 @@ def main():
             assert conn.execute('SELECT COUNT(*) FROM work_lists').fetchone()[0] == 0
         path = upload()
         prepare(path)
+        with db() as conn:
+            stored = conn.execute('SELECT payload_enc FROM work_list_imports WHERE token=?', (path.rsplit('/', 1)[-1],)).fetchone()[0]
+            prepared = json.loads(decrypt_secret(stored))
+            # Legacy crop inputs on a new-list request cannot truncate the sheet.
+            assert [col['letter'] for col in prepared['table']['columns']] == list('ABCDEFGH')
+            assert prepared['table']['rows'][0]['cells'][0] == '不应导入'
         assert client.post(path + '/confirm', data={'csrf': csrf, 'revision': '2'}).status_code == 409
         preview = client.post(path + '/preview', data=mapping)
         assert preview.status_code == 200 and '将新增 2 条' in preview.text and '跳过 1 条' in preview.text

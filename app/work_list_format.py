@@ -127,7 +127,7 @@ def read_layout(reader, sheet_name, header, first_col, last_col, row_numbers):
             info = sheet.rowinfo_map.get(row-1)
             if info and info.height:
                 layout['heights'][str(row)] = bounded(info.height/20*4/3,32,12,500)
-            for col in range(first_col,min(last_col,sheet.row_len(row-1))+1):
+            for col in range(first_col,min(last_col,sheet.row_len(row-1) if row <= sheet.nrows else 0)+1):
                 cell = sheet.cell(row-1,col-1)
                 xf = reader.xls.xf_list[cell.xf_index]
                 font = reader.xls.font_list[xf.font_index]
