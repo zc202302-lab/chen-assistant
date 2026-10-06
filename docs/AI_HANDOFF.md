@@ -2,6 +2,19 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-06（Asia/Shanghai）。工作模式：开发中。用户新需求：全站输入框允许拖动选择部分文字，松开鼠标不能被自动全选覆盖。活动分支fix/preserve-input-text-selection（即将从本检查点建立），修复及浏览器回归待提交。
+- 已定位全站app.js的延迟click全选与循环状态切换，以及v028.js、live-refresh-modules-v15.js的重复点击/焦点全选。保留首次普通单击与连续缴费录入的便利，拖选、后续点击、键盘选字使用原生行为。
+- 上轮#132已完成，合并cf509e3844a7b3c552de136fc7cc4aeda4227b08；完整验收head dcc89366068983f4de7ea71c92b23980f68aaa21，validation37420879779/stability37420879714 success；生产验证37421656762 success。Web1.7.3，186条路由。当前新修复尚未部署。
+- #128云电脑仍Draft，本轮不操作。核心范围app.js、v028.js、live-refresh-modules-v15.js及缓存版本/浏览器测试，保留原缴费与清单功能。
+- 唯一下一步：提交选择交互修复，完成真实浏览器与完整CI后合并并验证生产。
+
+---
+
+## 历史记录（仅供追溯，不覆盖上方快照）
+
+### 2026-10-06 #132完成快照（历史）
+
+
 - 更新时间：2026-10-06（Asia/Shanghai）。本轮用户需求已完成：清单升级为网页Excel式表格，并全站审计清理纯说明性冗余文案；代码已合并，生产公网验证通过。PR #132已合并，功能合并提交 cf509e3844a7b3c552de136fc7cc4aeda4227b08；完整验收head dcc89366068983f4de7ea71c92b23980f68aaa21。文档提交不作为新功能，当前main SHA请实时查询。
 - #132完整验证：validation [37420879779](https://github.com/zc202302-lab/chen-assistant/actions/runs/37420879779)、stability [37420879714](https://github.com/zc202302-lab/chen-assistant/actions/runs/37420879714) 均success。安全审计、清单/导入契约和真实浏览器、架构治理、原客户/缴费/资料/菜谱/提醒及桌面手机全量回归通过。用户明确删除的旧文案断言改为检查简洁展示与必要入口/字段，功能断言继续保留；旧页面同名定位精确化，异步保存等待实际导航，未删除或跳过测试。
 - #132生产证据：[PWA公网验证 37421656762](https://github.com/zc202302-lab/chen-assistant/actions/runs/37421656762) / job112132129384 success，2026-10-06 14:04:54（Asia/Shanghai）返回 ONLINE VERIFIED v1.7.3。work-sheet.js、work-sheet.css及既有工作/清单/推送资产SHA256与本次源码一致，health、PWA manifest、根Service Worker scope和未登录提醒路由正常。部署切换期间首次404、第二次502，第三次完整验证通过；不存在持续失败。未读取生产git HEAD，不声称精确运行commit，也未在生产创建真实业务数据。
@@ -15,9 +28,6 @@
 - 云电脑PR #128（feat/number-inbox-cloud-batch-export）仍为Draft，本轮未合并、未发布Windows包或操作真实云电脑业务。其余号码导出/云电脑改动仍需独立审阅与实机验收；不能借用#132网页验证声称云电脑已验收。手动单次更新、不注册Windows登录启动、本机E:\\ChenBridge与云电脑Y:\\ChenBridge等既定约束继续保留。
 - 唯一下一步：本轮已完成，按用户下一项明确需求继续；如恢复云电脑工作，先独立检查#128实际head、CI及剩余实机验收，不直接合并历史Draft。
 
----
-
-## 历史记录（仅供追溯，不覆盖上方快照）
 
 ### 2026-10-06 清单改造前与实施检查点（历史）
 
