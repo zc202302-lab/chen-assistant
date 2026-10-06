@@ -78,6 +78,7 @@
           button.className = 'quick-search-copy-v151';
           button.setAttribute('aria-label', '复制' + field.label);
           button.textContent = '复制';
+          button.setAttribute('aria-live', 'polite');
           let resetTimer;
           button.addEventListener('click', async event => {
             event.preventDefault();
@@ -90,10 +91,8 @@
             if (focused?.isConnected && overlay.classList.contains('is-open')) focused.focus({preventScroll:true});
             button.textContent = copied ? '已复制' : '复制失败';
             button.dataset.copyFeedback = '1';
-            button.setAttribute('aria-label', '复制' + field.label + '，' + button.textContent);
             resetTimer = setTimeout(() => {
               button.textContent = '复制';
-              button.setAttribute('aria-label', '复制' + field.label);
               delete button.dataset.copyFeedback;
             }, 1400);
           });
