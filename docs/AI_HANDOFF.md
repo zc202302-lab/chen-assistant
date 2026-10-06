@@ -2,11 +2,17 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-06（Asia/Shanghai）。工作模式：开发中。用户需求：仅在搜索预览中，鼠标悬停待复制信息时显示复制按钮，点击可复制集团信息。活动分支feat/search-preview-copy，已建立，Draft PR [#134](https://github.com/zc202302-lab/chen-assistant/pull/134)，最后已提交功能检查点e32860a091f7792a6e4ad1eee58e6500aa4a5c69；完整CI进行中。
-- 已确认顶部quick-search实时预览原来整行链接展示title/meta；已拆分集团名称、集团编码、税号，以及号码/账号等可见信息为独立复制项，复制不导航/关闭预览，键盘可用，触摸设备直接显示按钮。样式和事件仅限搜索弹层，不改其他页面复制交互。
-- 核心范围quick-search-v15.js/css、v124_work_patch.py的预览响应字段、缓存版本与浏览器回归。原搜索排序/限量/导航/鉴权、输入选区及业务数据功能保留。未完成CI、合并与新部署。
-- #133输入选区修复已合并0c22ce807f14a0c5a957e8dc30c6b973afd3903a；完整验收head0f2b8a3c7b37e95a1d3ba4e6554ef695658ee0ab，validation37425098630/stability37425098625 success，生产37426002092 success。Web1.7.3/186条路由。#128云电脑仍Draft，本轮不操作。
-- 唯一下一步：运行完整CI，核对真实剪贴板/导航/桌面手机验收；全部通过后合并并验证公网部署。
+- 更新时间：2026-10-06 15:46（Asia/Shanghai）。工作模式：本轮已完成，等待下一项明确需求。用户要求仅在搜索预览增加悬停复制；PR [#134](https://github.com/zc202302-lab/chen-assistant/pull/134)已合并，功能合并提交1a487b4888f31df8f2539fe5ca0f0fdb3564538d，完整验收head d9424574cced430ea81bace11b28bc2faa3a6840。feat/search-preview-copy为已完成历史分支，不是活动WIP；文档提交不作为新功能，main实时查询。
+- 顶部搜索预览将集团名称、集团编码、税号以及号码/账号等原可见信息作为独立复制项。桌面悬停对应信息显示复制按钮，键盘聚焦可用，触摸设备直接显示。复制完整原值，包括号码原有空格/连字符；点击复制保留查询、当前页面和预览，成功/失败反馈就地显示。导航链接和按钮为独立元素，文字链接仍正常进入原详情。样式和事件只限搜索弹层，其他页面复制与输入选区功能保留。
+- #134完整CI：[validation37430302341](https://github.com/zc202302-lab/chen-assistant/actions/runs/37430302341)、[stability37430302482](https://github.com/zc202302-lab/chen-assistant/actions/runs/37430302482)均success，对应上述head。真实Chromium验收覆盖桌面悬停、逐字段真实剪贴板、键盘Enter、复制失败、查询切换后号码/账号、工作与全局搜索、手机触摸、结果导航及手机无横向溢出。安全审计、全站输入选区、清单/Excel、客户/缴费/资料/实时刷新/菜谱/提醒、桌面手机及架构治理全量回归通过。原测试未删减，只将搜索验收提前运行。
+- #134生产证据：[PWA公网验证37431401658](https://github.com/zc202302-lab/chen-assistant/actions/runs/37431401658) / job112162866644 success，2026-10-06 15:45:36（Asia/Shanghai）ONLINE VERIFIED v1.7.3。新增精确核对quick-search-v15.js/css，以及原工作/清单/推送资产SHA256；health、manifest、根Service Worker scope和未登录提醒路由正常。部署切换前三次搜索JS尚旧，第四次短暂502，第五次完整通过。未读取生产git HEAD，不声称精确运行commit，未修改真实生产业务数据。合并main自身validation仍可继续运行，不将PR验收与main重跑混为同一证据。
+- 核心文件app/static/quick-search-v15.js/css、app/v124_work_patch.py的既有建议接口字段、app/templates/base.html、tests/v151_quick_search_live_acceptance.py、scripts/check_pwa_production.py。缓存JS?v=1601、CSS?v=1511。原搜索排序/限量/鉴权/原title-meta-href兼容字段保留；无新增URL或数据库变更，186条路由与Web APP_VERSION1.7.3保留。开发scratch路径/workspace/scratch/384d920d70ad，实际浏览器验收在GitHub自托管Linux runner。
+- #133输入选区、#132网页Excel/冗余说明审计、#129审阅修复、#130分层、#131紧凑方形模块保持，详情见历史。云电脑PR #128仍Draft，本轮未操作、未发布Windows包或执行真实云电脑业务；需要独立审阅和实机验收。
+- 唯一下一步：按用户下一项明确需求继续；如恢复云电脑工作，先核对#128实际head、CI与剩余实机验收。
+
+---
+
+## 历史记录（仅供追溯，不覆盖上方快照）
 
 
 ---
