@@ -44,7 +44,7 @@ def verify():
     manifest = json.loads(raw)
     if any(manifest.get(k) != v for k,v in {'id':'/','scope':'/','display':'standalone'}.items()):
         raise RuntimeError('PWA manifest is not current')
-    for path in ['app/static/sw.js','app/static/reminders.js','app/static/reminders.css','app/static/pwa-experience.js','app/static/pwa-experience.css','app/static/number-inbox-v162.css']:
+    for path in ['app/static/work-lists.css','app/static/sw.js','app/static/reminders.js','app/static/reminders.css','app/static/pwa-experience.js','app/static/pwa-experience.css','app/static/number-inbox-v162.css']:
         url = '/sw.js' if path.endswith('/sw.js') else '/' + path.removeprefix('app/')
         _, headers, raw = fetch(url)
         local = (ROOT / path).read_bytes()
@@ -56,7 +56,7 @@ def verify():
         final, _, _ = fetch(path)
         if urlsplit(final).path != '/login':
             raise RuntimeError(f'Unauthenticated reminder endpoint did not redirect to login: {path}')
-    return f'ONLINE VERIFIED: v{version}; PWA manifest, exact push assets, root worker scope and authenticated reminder routes'
+    return f'ONLINE VERIFIED: v{version}; PWA manifest, exact list and push assets, root worker scope and authenticated reminder routes'
 
 
 def main():

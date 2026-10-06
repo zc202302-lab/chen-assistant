@@ -37,6 +37,13 @@ def main():
     with TestClient(app) as client:
         assert client.get('/work/lists', follow_redirects=False).status_code == 303
         client.cookies.set('session_token', token)
+        landing = client.get('/work/lists').text
+        assert 'name="title"' not in landing and 'name="q"' in landing
+        creation = client.get('/work/lists?view=new').text
+        assert 'name="title"' in creation and 'name="q"' not in creation
+        assert 'class="wl-grid"' not in creation
+        assert 'name="title"' not in client.get('/work/lists?archived=1').text
+        assert client.get('/work/lists?view=invalid').status_code == 400
         assert client.post('/work/lists', data={'title': 'blocked'}).status_code == 403
         result = client.post('/work/lists', data={'csrf': csrf, 'title': '欠费测试', 'preset': 'arrears'}, follow_redirects=False)
         assert result.status_code == 303, result.text

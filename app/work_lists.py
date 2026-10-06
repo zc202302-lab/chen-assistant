@@ -114,13 +114,15 @@ def _rows(conn, list_id, q='', status=''):
 
 
 @router.get('/work/lists', response_class=HTMLResponse)
-def work_lists_page(request: Request, archived: int = 0, q: str = ''):
+def work_lists_page(request: Request, archived: int = 0, q: str = '', view: str = ''):
+    if view not in ('', 'new'):
+        raise HTTPException(400, '无效的清单页面')
     with db() as conn:
         lists = [dict(r) for r in conn.execute('''SELECT l.*,
             (SELECT COUNT(*) FROM work_list_records r WHERE r.list_id=l.id) record_count
             FROM work_lists l WHERE archived=? ORDER BY updated_at DESC,id DESC''', (int(bool(archived)),))]
     lists = [l for l in lists if q.strip().casefold() in (l['title'] + '\n' + l['description']).casefold()]
-    return templates.TemplateResponse(request, 'work_lists.html', _ctx(request, lists=lists, archived=bool(archived), q=q, error=''))
+    return templates.TemplateResponse(request, 'work_lists.html', _ctx(request, lists=lists, archived=bool(archived), q=q, view=view, error=''))
 
 
 @router.post('/work/lists')

@@ -2,3 +2,12 @@
 
 .wl-form{grid-template-columns:minmax(0,1fr);min-width:0}.wl-table-wrap{min-width:0;max-width:100%}.wl-head>div{min-width:0}.wl-head h1{overflow-wrap:anywhere}
 .wl-import-range{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.wl-import-range label{display:grid;gap:8px}.wl-panel summary{cursor:pointer;font-weight:600;margin-bottom:16px}@media(max-width:700px){.wl-import-range{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Layered list index: one task per view. */
+.wl-index{max-width:1100px}
+.wl-section-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 24px}
+.wl-section-nav a{display:flex;align-items:center;justify-content:center;min-height:48px;padding:12px 10px;border:1px solid #dce3ed;border-radius:12px;background:#fff;color:#34465e;text-align:center;text-decoration:none;font-weight:600}
+.wl-section-nav a[aria-current="page"]{background:#eaf2ff;border-color:#6093e8;color:#174fa7}
+.wl-section-nav a:focus-visible{outline:3px solid #6093e8;outline-offset:3px}
+.wl-section-heading{margin:0 0 16px;font-size:20px}
+@media(max-width:700px){.wl-section-nav{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:20px}}
