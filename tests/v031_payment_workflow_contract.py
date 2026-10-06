@@ -150,7 +150,7 @@ def main():
     assert '/static/v031_workflow_actions.js?v=1590' in base
     assert '/static/v031_workflow_runtime_fix.js?v=1590' in base
     assert '/static/v031_workflow_dom_guard.js?v=0315' in base
-    assert '/static/v033_payment_flow_patch.js?v=1590' in base
+    assert '/static/v033_payment_flow_patch.js?v=1591' in base
     assert '/static/v031_payment_workflow.css?v=0314' in base
     assert base.index('/static/v031_workflow_actions.js') > base.index('/static/v031_payment_workflow.js')
     assert base.index('/static/v031_workflow_runtime_fix.js') > base.index('/static/v031_workflow_actions.js')
