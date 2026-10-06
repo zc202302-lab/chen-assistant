@@ -82,10 +82,12 @@
           button.addEventListener('click', async event => {
             event.preventDefault();
             clearTimeout(resetTimer);
+            const focused = document.activeElement;
             button.disabled = true;
             let copied = false;
             try { copied = !!(await window.ChenCopyText?.(field.value)); } catch (_) {}
             button.disabled = false;
+            if (focused?.isConnected && overlay.classList.contains('is-open')) focused.focus({preventScroll:true});
             button.textContent = copied ? '已复制' : '复制失败';
             button.dataset.copyFeedback = '1';
             button.setAttribute('aria-label', '复制' + field.label + '，' + button.textContent);
