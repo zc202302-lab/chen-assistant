@@ -83,6 +83,18 @@ class UpdateTests(unittest.TestCase):
             self.assertEqual(main(), 1)
             sync.assert_called_once()
 
+    def test_failed_recovery_never_launches_partially_updated_agent(self):
+        with tempfile.TemporaryDirectory() as t:
+            install = Path(t)
+            (install / '.update-rollback.json').write_text('{}')
+            with patch('sys.argv', ['updater']), \
+                    patch('sys.frozen', True, create=True), \
+                    patch('sys.executable', str(install / 'CloudOfflineUpdater.exe')), \
+                    patch('offline_update.apply_update', side_effect=OSError('backup unavailable')), \
+                    patch('offline_update.subprocess.run') as launch:
+                self.assertEqual(main(), 1)
+                launch.assert_not_called()
+
     @patch('offline_update._verify_agent')
     def test_updater_is_staged_instead_of_overwriting_running_executable(self, verify):
         with tempfile.TemporaryDirectory() as t:

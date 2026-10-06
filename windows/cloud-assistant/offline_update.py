@@ -212,6 +212,9 @@ def main():
             try:
                 apply_update(args.bridge, install)
             except Exception as exc:
+                if (install / '.update-rollback.json').exists():
+                    print('更新恢复未完成，已停止启动助手：' + str(exc), flush=True)
+                    return 1
                 print('更新未完成，继续使用原版本：' + str(exc), flush=True)
                 update_ok = False
             environment = dict(os.environ, CHEN_OFFLINE_UPDATE='1' if update_ok else '0')
