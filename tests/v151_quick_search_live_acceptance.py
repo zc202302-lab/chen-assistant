@@ -73,6 +73,35 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8147'}])
             page = context.new_page()
 
+
+            # The inline dashboard search is a separate mature interaction from
+            # the top-bar overlay. Exercise its real initializer and navigation
+            # at both desktop and phone sizes after page-scoped asset loading.
+            for viewport in [{'width': 1440, 'height': 900}, {'width': 390, 'height': 844}]:
+                page.set_viewport_size(viewport)
+                page.goto('http://127.0.0.1:8147/work/customers', wait_until='networkidle')
+                dashboard_url = page.url
+                inline = page.locator('[data-v03-home-search]')
+                expect(inline).to_have_count(1)
+                field = inline.locator('[data-v03-search-input]')
+                expect(field).to_be_visible()
+                field.fill('欧木')
+                expect(page).to_have_url(dashboard_url)
+                result = inline.locator('[data-v03-search-result]').filter(has_text='欧木自动搜索客户')
+                expect(result).to_be_visible(timeout=4000)
+                expect(result).to_have_attribute('href', f'/customers/{cid}')
+                field.press('ArrowDown')
+                field.press('Enter')
+                expect(page).to_have_url(f'http://127.0.0.1:8147/customers/{cid}', timeout=5000)
+                page.goto('http://127.0.0.1:8147/work/customers', wait_until='networkidle')
+                field = page.locator('[data-v03-search-input]')
+                field.fill('OM-151')
+                result = page.locator('[data-v03-search-result]').filter(has_text='欧木自动搜索客户')
+                expect(result).to_be_visible(timeout=4000)
+                result.click()
+                expect(page).to_have_url(f'http://127.0.0.1:8147/customers/{cid}', timeout=5000)
+            page.set_viewport_size({'width': 1440, 'height': 900})
+
             # Work quick search stays on the current document while typing and
             # shows customer results first, before any detail-hit sections.
             page.goto('http://127.0.0.1:8147/work', wait_until='networkidle')
