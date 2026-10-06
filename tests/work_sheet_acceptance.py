@@ -71,9 +71,11 @@ def main():
             url=page.url
             page.locator('.ws-cell[data-row="0"][data-col="1"]').fill('保存后的值')
             handle=page.locator('.ws-col-resize').first
+            original_width=page.locator('.ws-letters th').nth(1).bounding_box()['width']
             box=handle.bounding_box()
             page.mouse.move(box['x']+box['width']/2,box['y']+box['height']/2)
             page.mouse.down();page.mouse.move(box['x']+box['width']/2+50,box['y']+box['height']/2);page.mouse.up()
+            assert abs(page.locator('.ws-letters th').nth(1).bounding_box()['width']-original_width-50)<3
             rowhandle=page.locator('.ws-grid tbody .ws-row-resize').first
             rowhandle.focus();rowhandle.press('ArrowDown');rowhandle.press('ArrowDown')
             page.get_by_role('button',name='保存表格',exact=True).click()

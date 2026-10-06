@@ -124,6 +124,8 @@
     stage.replaceChildren();
     const table = node('table', 'ws-grid');
     table.setAttribute('aria-label', '清单表格');
+    const updateTableWidth = () => { table.style.width = (42 + model.fields.reduce((sum, f) => sum + (layout().widths[f.id] || 150), 0)) + 'px'; };
+    updateTableWidth();
     const cols = node('colgroup');
     const gutter = node('col'); gutter.style.width = '42px'; cols.append(gutter);
     const colElements = model.fields.map(f => {
@@ -135,14 +137,14 @@
     letters.append(node('th', 'ws-corner', ''));
     model.fields.forEach((field, c) => {
       const th = node('th', '', (() => { let n = c + 1, s = ''; while (n) { n--; s = String.fromCharCode(65 + n % 26) + s; n = Math.floor(n / 26); } return s; })());
-      resize(th, 'x', field.id, formats.widths[field.id] || 150, size => { colElements[c].style.width = size + 'px'; });
+      resize(th, 'x', field.id, formats.widths[field.id] || 150, size => { colElements[c].style.width = size + 'px'; updateTableWidth(); });
       letters.append(th);
     });
     head.append(letters);
     const headers = node('tr', 'ws-headers');
     headers.style.height = (formats.heights.h || 36) + 'px';
     const headerIndex = node('th', 'ws-index', '标题');
-    resize(headerIndex, 'y', 'h', formats.heights.h || 36, size => { headers.style.height = size + 'px'; });
+    resize(headerIndex, 'y', 'h', formats.heights.h || 36, size => { headers.style.height = size + 'px'; headers.querySelectorAll('.ws-header-input').forEach(el => { el.style.height = (size - 1) + 'px'; }); });
     headers.append(headerIndex);
     const headerCovered = new Set(), headerAnchors = new Map();
     for (const merge of formats.merges.filter(m => m.rows.includes('h'))) {
@@ -155,7 +157,7 @@
       if (headerAnchors.has(field.id)) th.colSpan = headerAnchors.get(field.id);
       applyStyle(th, formats.cells['h|' + field.id]);
       const input = node('input', 'ws-header-input');
-      input.value = field.label; input.maxLength = 80; input.readOnly = readonly;
+      input.value = field.label; input.style.height = ((formats.heights.h || 36) - 1) + 'px'; input.maxLength = 80; input.readOnly = readonly;
       input.setAttribute('aria-label', '第' + (c + 1) + '列标题');
       input.addEventListener('input', () => { field.label = input.value; mark(); });
       const trigger = node('button', 'ws-filter-button', '▾');
@@ -202,7 +204,7 @@
       tr.style.height = height + 'px';
       const index = node('th', 'ws-index', String(i + 1));
       index.scope = 'row';
-      resize(index, 'y', r.id, height, size => { tr.style.height = size + 'px'; });
+      resize(index, 'y', r.id, height, size => { tr.style.height = size + 'px'; tr.querySelectorAll('.ws-cell').forEach(el => { el.style.height = (size - 1) + 'px'; }); });
       tr.append(index);
       model.fields.forEach((field, c) => {
         const key = r.id + '|' + field.id;
@@ -212,6 +214,7 @@
         const merge = anchors.get(key);
         if (merge) { td.rowSpan = merge.rowspan; td.colSpan = merge.colspan; }
         const cell = node('textarea', 'ws-cell');
+        cell.style.height = ((merge ? merge.rowspan * height : height) - 1) + 'px';
         cell.rows = 1; cell.maxLength = 4000; cell.readOnly = readonly;
         const currentValue = () => merge ? merge.origin.values[merge.originCol] : r.values[c];
         cell.value = formatted(currentValue(), formats.cells[key]);
