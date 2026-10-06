@@ -42,7 +42,7 @@ def prepare(page, editor, value):
         el.blur();
         el.scrollLeft = 0;
         el.scrollTop = 0;
-        el.scrollIntoView({block:'center', inline:'nearest'});
+        el.scrollIntoView({behavior:'instant', block:'center', inline:'nearest'});
     }""")
     editor.click(trial=True)
     settled(page)
