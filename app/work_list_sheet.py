@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 import json
 import re
+from datetime import datetime
 
 import xlsxwriter
 from fastapi import HTTPException
@@ -325,7 +326,9 @@ def export_grid(conn, item, fields, rows):
             if (r, c) in covered:
                 continue
             style = layout.get('cells', {}).get(r + '|' + c, {})
-            if r != 'h' and style.get('numeric') and re.fullmatch(r'-?\d+(\.\d+)?', value) and len(value) < 100:
+            if r != 'h' and style.get('numeric') and re.fullmatch(r'\d{4}-\d{2}-\d{2}(T[\d:]+)?', value) and re.search('[yd]', style.get('number_format', ''), re.I):
+                sheet.write_datetime(row_positions[r], col_positions[c], datetime.fromisoformat(value), cell_format(r, c))
+            elif r != 'h' and style.get('numeric') and re.fullmatch(r'-?\d+(\.\d+)?', value) and len(value) < 100:
                 sheet.write_number(row_positions[r], col_positions[c], float(value), cell_format(r, c))
             else:
                 sheet.write_string(row_positions[r], col_positions[c], value, cell_format(r, c))

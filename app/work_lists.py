@@ -172,9 +172,13 @@ def work_list_settings(request: Request, list_id: int):
 @router.post('/work/lists/{list_id}/settings')
 async def save_work_list_settings(request: Request, list_id: int):
     if request.headers.get('content-type', '').split(';')[0] == 'application/json':
-        raw = await request.body()
-        if len(raw) > 12 * 1024 * 1024:
-            raise HTTPException(413, '表格内容过大')
+        chunks, size = [], 0
+        async for chunk in request.stream():
+            size += len(chunk)
+            if size > 12 * 1024 * 1024:
+                raise HTTPException(413, '表格内容过大')
+            chunks.append(chunk)
+        raw = b''.join(chunks)
         try:
             data = json.loads(raw)
         except (ValueError, TypeError):

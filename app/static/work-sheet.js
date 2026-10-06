@@ -21,11 +21,17 @@
   const display = value => Array.isArray(value) ? value.join('、') : String(value ?? '');
   const formatted = (value, style = {}) => {
     const text = display(value), fmt = style.number_format || '';
-    if (!style.numeric || !/^-?\d+(\.\d+)?$/.test(text)) return text;
+    if (!style.numeric) return text;
+    if (/^\d{4}-\d{2}-\d{2}/.test(text) && /[yd]/i.test(fmt)) {
+      const [y, m, d] = text.slice(0, 10).split('-');
+      return fmt.replace(/"([^"]*)"/g, '$1').replace(/yyyy|yy|mm|m|dd|d/gi, token => ({yyyy:y, yy:y.slice(2), mm:m, m:String(Number(m)), dd:d, d:String(Number(d))})[token.toLowerCase()]);
+    }
+    if (!/^-?\d+(\.\d+)?$/.test(text)) return text;
     const n = Number(text); if (!Number.isFinite(n)) return text;
+    const decimals = Math.min(20, (fmt.split('.')[1] || '').replace(/[^0]/g, '').length);
     if (/^0{2,30}$/.test(fmt) && Number.isInteger(n) && n >= 0) return text.padStart(fmt.length, '0');
-    if (fmt.includes('%')) return (n * 100).toFixed((fmt.split('.')[1] || '').replace(/[^0]/g, '').length) + '%';
-    if (/^[#0,.]+$/.test(fmt)) return n.toLocaleString('en-US', {useGrouping: fmt.includes(','), minimumFractionDigits: (fmt.split('.')[1] || '').replace(/[^0]/g, '').length, maximumFractionDigits: Math.max((fmt.split('.')[1] || '').replace(/[^0]/g, '').length, 0)});
+    if (fmt.includes('%')) return (n * 100).toFixed(decimals) + '%';
+    if (/^[#0,.]+$/.test(fmt)) return n.toLocaleString('en-US', {useGrouping: fmt.includes(','), minimumFractionDigits: decimals, maximumFractionDigits: decimals});
     return text;
   };
   const lower = value => display(value).trim().toLocaleLowerCase();
@@ -228,10 +234,13 @@
           const text = e.clipboardData?.getData('text/plain');
           if (!text || (!text.includes('\t') && !text.includes('\n')) || readonly || merge) return;
           e.preventDefault();
+          if ([...filters.values()].some(Boolean)) { notice.textContent = '先清除筛选再粘贴多格'; return; }
           const matrix = text.replace(/\r/g, '').replace(/\n$/, '').split('\n').map(line => line.split('\t'));
           if (i + matrix.length > 5000 || c + Math.max(...matrix.map(line => line.length)) > 50) {
             notice.textContent = '粘贴范围不能超过5000行、50列'; return;
           }
+          const crossingMerge = layout().merges.some(m => matrix.some((line, ri) => line.some((_, ci) => m.rows.includes(model.rows[i + ri]?.id) && m.cols.includes(model.fields[c + ci]?.id))));
+          if (crossingMerge) { notice.textContent = '合并区域请逐格编辑'; return; }
           while (model.fields.length < c + Math.max(...matrix.map(line => line.length))) addColumn(false);
           while (model.rows.length < i + matrix.length) addRow(false);
           matrix.forEach((line, ri) => line.forEach((value, ci) => {
