@@ -1,6 +1,14 @@
 from pathlib import Path
+import sys
+import os
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+_TEMP = tempfile.TemporaryDirectory()
+os.environ['APP_DB_PATH'] = str(Path(_TEMP.name) / 'app.db')
+from app.main import app
+from starlette.routing import Match
 
 
 def main():
@@ -15,7 +23,10 @@ def main():
     inventory = (ROOT / 'tests/code_governance_inventory.py').read_text(encoding='utf-8')
     assert '("GET", "/customers/{customer_id}"): ("app.v0212_routes", "customer_workspace_v0212")' in inventory
     assert "'customer_workspace_v0211.html'" in routes
-    assert "getattr(_route, 'path', '') == '/customers/{customer_id}'" in main_py
+    detail = next(r for r in app.routes if getattr(r, 'path', '') == '/customers/{customer_id}' and 'GET' in getattr(r, 'methods', set()))
+    assert detail.endpoint.__module__ == 'app.v0212_routes'
+    assert detail.matches({'type': 'http', 'path': '/customers/new', 'method': 'GET'})[0] == Match.NONE
+    assert detail.matches({'type': 'http', 'path': '/customers/123', 'method': 'GET'})[0] == Match.FULL
     assert 'class="customer-workspace v028-workspace' in template
     assert '/static/v028.js?v=15101' in base
 
@@ -43,3 +54,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

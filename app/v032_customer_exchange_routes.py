@@ -326,7 +326,7 @@ def _build_blank_template() -> bytes:
     output = BytesIO()
     with db() as conn:
         template, _ = _attr_signature(conn)
-    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True, 'strings_to_formulas': False, 'strings_to_urls': False})
     workbook.set_properties({'title': '晨的助手 v0.3.2 一客户一Sheet导入模板', 'author': '晨的助手'})
     ws = workbook.add_worksheet('客户1')
     _write_customer_sheet(workbook, ws, template, blank=True)
@@ -336,7 +336,7 @@ def _build_blank_template() -> bytes:
 
 def _build_export() -> bytes:
     output = BytesIO()
-    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True, 'strings_to_formulas': False, 'strings_to_urls': False})
     workbook.set_properties({'title': '晨的助手全部客户导出', 'author': '晨的助手'})
     used = set()
     with db() as conn:
@@ -641,3 +641,4 @@ def confirm_one_sheet_v032(request: Request, csrf: str = Form(...), import_token
     except ValueError as exc: return _render_new(request, mode='batch', error=f'导入前再次检查失败：{exc}', preview=payload)
     _delete_stage(import_token)
     return RedirectResponse(f"/customers/new?mode=batch&imported={result['customers']}&services={result['services']}&contacts={result['contacts']}&promotions={result['promotions']}", 303)
+
