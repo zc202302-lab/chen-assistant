@@ -100,12 +100,18 @@ class UpdateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             bridge, install, package = self.prepare(Path(t))
             (install / 'CloudOfflineUpdater.exe').write_bytes(b'running updater')
-            with zipfile.ZipFile(package, 'a') as z:
+            (install / 'start_agent.cmd').write_bytes(b'old launcher')
+            with zipfile.ZipFile(package, 'w') as z:
+                z.writestr('CloudMemberAddAgent.exe', b'new')
+                z.writestr('version.json', json.dumps({'version': 'a' * 40, 'protocol': 2, 'channel': 'development'}))
                 z.writestr('CloudOfflineUpdater.exe', b'next updater')
+                for name in ('start_agent.cmd', 'sync_updates.cmd', 'sync_updates.ps1', 'background_sync.ps1', 'diagnose_browser.cmd', 'README.md'):
+                    z.writestr(name, b'updated support file')
             (bridge / 'updates' / 'latest.json').write_text(json.dumps({'version': 'a' * 40, 'sha256': hashlib.sha256(package.read_bytes()).hexdigest()}))
             apply_update(bridge, install)
             self.assertEqual((install / 'CloudOfflineUpdater.exe').read_bytes(), b'running updater')
             self.assertEqual((install / 'CloudOfflineUpdater.next.exe').read_bytes(), b'next updater')
+            self.assertEqual((install / 'start_agent.cmd').read_bytes(), b'updated support file')
 
 if __name__ == '__main__':
     unittest.main()

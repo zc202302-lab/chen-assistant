@@ -20,7 +20,7 @@ REPO = 'zc202302-lab/chen-assistant'
 CHANNELS = {'stable': 'main', 'development': 'feat/number-inbox-cloud-batch-export'}
 BRANCH = CHANNELS['stable']
 ALLOW = {'CloudMemberAddAgent.exe', 'version.json'}
-SUPPORT_FILES = {'sync_updates.cmd', 'sync_updates.ps1', 'background_sync.ps1', 'diagnose_browser.cmd', 'README.md'}
+SUPPORT_FILES = {'start_agent.cmd', 'sync_updates.cmd', 'sync_updates.ps1', 'background_sync.ps1', 'diagnose_browser.cmd', 'README.md'}
 
 def digest(path):
     value = hashlib.sha256()
