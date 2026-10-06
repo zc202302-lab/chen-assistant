@@ -70,6 +70,7 @@ def main():
         with sync_playwright() as p:
             browser = p.chromium.launch()
             context = browser.new_context(viewport={'width': 1440, 'height': 900})
+            context.grant_permissions(['clipboard-read', 'clipboard-write'], origin='http://127.0.0.1:8147')
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8147'}])
             page = context.new_page()
 
@@ -118,6 +119,42 @@ def main():
             expect(groups.nth(0)).to_contain_text('欧木自动搜索客户')
             assert page.locator('[data-quick-search-form] input[name="q"]').count() == 0
 
+            # Hover reveals just this field's button; copying preserves the preview
+            # and writes the original individual value into the real clipboard.
+            def copy_field(group, label, value, query):
+                button = group.get_by_role('button', name='复制' + label, exact=True)
+                button.locator('..').hover()
+                expect(button).to_have_css('opacity', '1')
+                button.click()
+                expect(button).to_have_text('已复制')
+                assert page.evaluate('navigator.clipboard.readText()') == value
+                expect(page).to_have_url(start_url)
+                expect(search_input).to_have_value(query)
+                expect(live).to_be_visible()
+
+            name_button = groups.nth(0).get_by_role('button', name='复制集团名称', exact=True)
+            page.mouse.move(0, 0)
+            expect(name_button).to_have_css('opacity', '0')
+            copy_field(groups.nth(0), '集团名称', '欧木自动搜索客户', '欧木')
+            copy_field(groups.nth(0), '集团编码', 'OM-151', '欧木')
+            tax_button = groups.nth(0).get_by_role('button', name='复制税号', exact=True)
+            page.mouse.move(0, 0)
+            tax_button.focus()
+            expect(tax_button).to_have_css('opacity', '1')
+            tax_button.press('Enter')
+            expect(tax_button).to_have_text('已复制')
+            assert page.evaluate('navigator.clipboard.readText()') == 'TAX-151'
+            expect(page).to_have_url(start_url)
+            expect(live).to_be_visible()
+
+            # Denied clipboard access gives feedback without submitting or navigating.
+            page.evaluate('window.originalCopy = window.ChenCopyText; window.ChenCopyText = async () => false')
+            tax_button.click()
+            expect(tax_button).to_have_text('复制失败')
+            expect(page).to_have_url(start_url)
+            expect(live).to_be_visible()
+            page.evaluate('window.ChenCopyText = window.originalCopy; delete window.originalCopy')
+
             # A precise phone query keeps customer as the first section and exposes
             # the concrete service hit underneath without navigating automatically.
             search_input.fill('13900000151')
@@ -128,6 +165,9 @@ def main():
             service_link = groups.nth(1).locator('[data-quick-search-result]').first
             expect(service_link).to_contain_text('139 0000-0151')
             expect(service_link).to_have_attribute('href', f'/customers/{cid}?tab=services&focus_service={sid}')
+
+            copy_field(groups.nth(1), '号码', '139 0000-0151', '13900000151')
+            copy_field(groups.nth(1), '账号', 'OM-ACC-151', '13900000151')
 
             # Choosing a result is the moment navigation happens.
             service_link.click()
@@ -145,8 +185,36 @@ def main():
             expect(home_groups.nth(0).locator('.quick-search-group-head-v151 strong')).to_have_text('客户', timeout=4000)
             expect(home_groups.nth(0)).to_contain_text('欧木自动搜索客户')
 
+            home_copy = home_groups.nth(0).get_by_role('button', name='复制集团编码', exact=True)
+            home_copy.locator('..').hover()
+            home_copy.click()
+            expect(home_copy).to_have_text('已复制')
+            assert page.evaluate('navigator.clipboard.readText()') == 'OM-151'
+            expect(page).to_have_url(home_url)
+
+            # Actual touch emulation: buttons need no hover and fit the phone card.
+            mobile = browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
+            mobile.grant_permissions(['clipboard-read', 'clipboard-write'], origin='http://127.0.0.1:8147')
+            mobile.add_cookies([{'name': 'session_token', 'value': token, 'url': 'http://127.0.0.1:8147'}])
+            phone = mobile.new_page()
+            phone.goto(start_url, wait_until='networkidle')
+            phone.locator('[data-quick-search-trigger]').tap()
+            phone.locator('[data-quick-search-input]').fill('欧木')
+            phone_group = phone.locator('.quick-search-group-v151').first
+            phone_copy = phone_group.get_by_role('button', name='复制集团编码', exact=True)
+            expect(phone_copy).to_be_visible(timeout=4000)
+            expect(phone_copy).to_have_css('opacity', '1')
+            phone_copy.tap()
+            expect(phone_copy).to_have_text('已复制')
+            assert phone.evaluate('navigator.clipboard.readText()') == 'OM-151'
+            expect(phone).to_have_url(start_url)
+            expect(phone.locator('[data-quick-search-results]')).to_be_visible()
+            assert phone.locator('.quick-search-card-v15').evaluate('(el) => el.scrollWidth <= el.clientWidth')
+            phone_group.locator('[data-quick-search-result]').first.tap()
+            expect(phone).to_have_url(f'http://127.0.0.1:8147/customers/{cid}', timeout=5000)
+            mobile.close()
             browser.close()
-        print('v1.5.1 live quick-search suggestions acceptance passed')
+        print('v1.5.1 live quick-search and clipboard desktop/keyboard/touch acceptance passed')
     finally:
         proc.terminate()
         try:
