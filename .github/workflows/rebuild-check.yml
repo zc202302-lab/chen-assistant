@@ -149,6 +149,10 @@ jobs:
           node tests/reminders_service_worker_contract.cjs
           python tests/pwa_experience_acceptance.py
 
+      - name: Input selection browser acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/input_selection_acceptance.py
+
       - name: Work lists contract and browser acceptance
         if: steps.scope.outputs.mode == 'full'
         run: |
