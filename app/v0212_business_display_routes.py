@@ -95,7 +95,7 @@ def _normalize_requested(template, requested):
     return ordered
 
 
-def _business_payload_ordered(conn, customer_id: int, template, services, promo_rows, visible_keys, runtime):
+def _business_payload_ordered_base(conn, customer_id: int, template, services, promo_rows, visible_keys, runtime):
     custom = _custom_map(conn, [s['id'] for s in services])
     promo_by_service = defaultdict(list)
     for promo in promo_rows:
@@ -179,8 +179,8 @@ def _customer_rows_payload(conn, customer_id: int, template, ordered=None):
 
 
 # Existing customer workspace resolves these names at request time.
-core._visible_keys = _ordered_keys
-core._business_payload_v0212 = _business_payload_ordered
+
+
 
 
 @router.get('/customers/{customer_id}/business-columns-v0212')
@@ -309,8 +309,8 @@ def _save_customer_status_v143(conn, customer_id: int, status: str):
     conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), int(customer_id)))
 
 
-_BASE_PAYMENT_SNAPSHOT_V143 = core.payment_snapshot_v0212
-_BASE_BUSINESS_PAYLOAD_V143 = _business_payload_ordered
+_BASE_PAYMENT_SNAPSHOT_V143 = core._payment_snapshot_base_v0212
+_BASE_BUSINESS_PAYLOAD_V143 = _business_payload_ordered_base
 
 
 def _payment_snapshot_customer_gate_v143(conn, customer_id: int, period: str | None = None):
@@ -349,29 +349,13 @@ def _business_payload_customer_gate_v143(conn, customer_id: int, template, servi
 # Rebind the names looked up dynamically by the mature workspace. The v1.4.1
 # row-review patch imports after this module, so its snapshot wrapper inherits
 # this customer-level gate instead of bypassing it.
-core.payment_snapshot_v0212 = _payment_snapshot_customer_gate_v143
-_business_payload_ordered = _business_payload_customer_gate_v143
-core._business_payload_v0212 = _business_payload_customer_gate_v143
 
 
-# Older payment reminder dashboards imported customer_is_due by value. Keep
-# those compatibility routes gated as well even though current /work no longer
-# renders them directly.
-from . import payment_v02 as _payment_core_v143  # noqa: E402
-_BASE_CUSTOMER_IS_DUE_V143 = _payment_core_v143.customer_is_due
 
 
-def _customer_is_due_v143(conn, customer_id: int) -> bool:
-    return _customer_active_v143(conn, customer_id) and _BASE_CUSTOMER_IS_DUE_V143(conn, customer_id)
 
-
-_payment_core_v143.customer_is_due = _customer_is_due_v143
-for _module_name in ('v025_home', 'v026_home', 'v027_home'):
-    try:
-        _module = __import__(f'app.{_module_name}', fromlist=['customer_is_due'])
-        _module.customer_is_due = _customer_is_due_v143
-    except Exception:
-        pass
+def _business_payload_ordered(conn, customer_id, template, services, promo_rows, visible_keys, runtime):
+    return _business_payload_customer_gate_v143(conn, customer_id, template, services, promo_rows, visible_keys, runtime)
 
 
 @router.get('/customers/{customer_id}/runtime-v143')
@@ -409,3 +393,4 @@ def save_customer_runtime_v143(
         'payment_reminders_enabled': status == 'active',
         'rows': rows,
     })
+

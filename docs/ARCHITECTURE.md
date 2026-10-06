@@ -45,3 +45,39 @@ GitHub Actions Runner、构建服务器、部署节点均属于动态基础设�
 - 构建与发布是否真正成功
 
 具体当前状态写入 AI_HANDOFF。
+
+
+## 本轮整理后的代码边界（2026-10-05）
+
+- app/main.py：应用生命周期、提醒worker及HTTP响应策略。
+- app/routing.py：唯一的路由注册/优先级入口、实际处理函数自检、运行时清单；历史模块的注册顺序保留；业务调用使用显式兼容入口，不再在导入时重绑跨模块业务函数。
+- docs/RUNTIME_ROUTES.json：整理前实际生效的186条路由基线；tests/routing_registry_contract.py核对完整顺序、方法、处理函数及客户静态路径边界。
+- app.state.route_source_groups：保留全部274条来源路由，含88条被优先级替代的来源，用于治理工具；不能把被替代的路由等同于整个模块无引用。
+- 客户整库Excel导出显式禁止文本转公式/网址；tests/customer_export_text_contract.py验证真实导出文件。
+
+云电脑独立Draft PR #128中的边界：
+
+- member_add_agent.py：CLI、批次调度、结果和归档。
+- member_models.py：任务/异常类型。
+- member_workbook.py：有限大小的XLSX解析及永久空表格式。
+- member_browser.py：CDP连接、frame/target和已知刷新弹窗。
+- member_page.py：页面探针和控件脚本。
+- member_flow.py：一条成员操作与集团身份、提交后核对。
+- relay_store.py：永久中转文件的短时句柄租约及比较清空；Windows锁拒绝写入/替换，POSIX仅协作锁，不宣称跨同步副本事务。
+- offline_update.py：唯一更新实现；sync_updates.ps1仅为手动启动包装，协议2以白名单整体更新EXE、版本和配套脚本。
+
+本轮未删除历史业务实现、未更改URL/数据库结构/页面导航，也未改旧win-assistants久坐模块。后续逐业务域收敛要先查直接函数引用、模板、JS、测试及发布依赖，再删除确无引用的实现。
+
+## 治理后的边界（2026-10-06）
+
+- `app/payments.py`：当前付款核对服务；历史路由/公共函数显式委托，兼容入口不通过修改别的模块函数实现。
+- `app/templating.py`：项目模板调用适配；不修改Starlette类方法。
+- `app/db.py`：连接所有权、事务作用域和逐语句schema执行；借用连接不擅自提交/关闭，DDL不隐式提交外层业务。
+- `app/schema.py`：base/workspace/runtime启动阶段注册及顺序；各业务迁移仍在原所有者模块，尚未全部搬到单一迁移文件。
+- `docs/RUNTIME_ROUTE_SOURCES.json`：实际源码位置清单，独立于兼容函数的owner元数据；旧186条路由语义清单继续保留。
+- `docs/LEGACY_MODULES.json`：43个历史版本模块的受控基线；文件有直接引用，禁止批量删除，新增业务应进入职责模块。
+- `docs/FRONTEND_ASSETS.json`：资源顺序和依赖基线；首页/资料/工作6个脚本，生活8个，客户37个。29份样式暂保留以保护级联行为。
+- `task_journal.py`：批次独占锁、逐行持久化状态；操作前记录执行中，中断后结果不明的行必须人工核对，不能自动重办。
+- 更新协议2：整体备份/回滚、启动恢复、无业务自检、更新器next暂存；本机只手动同步，云电脑通过共享目录离线更新。协议1旧安装不能凭空自升级。
+
+架构回归入口：`tests/architecture_governance_contract.py`。详细证据与剩余债务见 `STRUCTURE_GOVERNANCE_2026-10-06.md`。

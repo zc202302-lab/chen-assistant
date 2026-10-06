@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
-from .db import db, now_iso
+from .db import execute_schema, connection_scope, db, now_iso
 from .security import decrypt_secret, encrypt_secret, require_csrf
 
 router = APIRouter()
@@ -32,15 +32,8 @@ CREATE INDEX IF NOT EXISTS idx_information_records_category
 
 
 def ensure_v160_schema(conn=None):
-    owns = conn is None
-    if owns:
-        cm = db()
-        conn = cm.__enter__()
-    try:
-        conn.executescript(V160_SCHEMA)
-    finally:
-        if owns:
-            cm.__exit__(None, None, None)
+    with connection_scope(conn) as conn:
+        execute_schema(conn, V160_SCHEMA)
 
 
 def _ctx(request: Request, **extra):
@@ -236,3 +229,4 @@ async def information_archive_v160(request: Request, record_id: int):
             (now_iso(), record_id),
         )
     return RedirectResponse('/info', status_code=303)
+

@@ -8,7 +8,7 @@ import uuid
 
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
@@ -554,3 +554,4 @@ def reorder_promotions_v028(
             raise HTTPException(400, '优惠排序数据不属于当前客户')
         _meta_set(conn, f'promo_order:{customer_id}:{group_key}', json.dumps(ids))
     return JSONResponse({'ok': True})
+

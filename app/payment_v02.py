@@ -112,7 +112,7 @@ def service_active_in_period(row, period: str) -> bool:
     return True
 
 
-def customer_is_due(conn: sqlite3.Connection, customer_id: int) -> bool:
+def _customer_is_due_base(conn: sqlite3.Connection, customer_id: int) -> bool:
     period = current_period()
     rows = conn.execute('SELECT * FROM services WHERE customer_id=?', (customer_id,)).fetchall()
     return any(service_active_in_period(r, period) and service_is_due(r) for r in rows)
@@ -290,3 +290,9 @@ def valid_invoice_group(conn: sqlite3.Connection, customer_id: int, raw: str) ->
     if not row:
         raise HTTPException(400, '开票分组不属于该客户')
     return gid
+
+
+
+def customer_is_due(conn, customer_id):
+    from .v0212_business_display_routes import _customer_active_v143
+    return _customer_active_v143(conn, customer_id) and _customer_is_due_base(conn, customer_id)

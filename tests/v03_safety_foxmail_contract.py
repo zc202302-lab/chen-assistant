@@ -1,6 +1,12 @@
 from pathlib import Path
+import sys
+import os
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+_TEMP = tempfile.TemporaryDirectory()
+os.environ['APP_DB_PATH'] = str(Path(_TEMP.name) / 'app.db')
 
 
 def main():
@@ -105,7 +111,9 @@ def main():
     main_py = (ROOT / 'app' / 'main.py').read_text(encoding='utf-8')
     assert "connect-src 'self' http://127.0.0.1:18763 http://localhost:18763" in main_py
     assert "('.js', '.css', '.ps1')" in main_py
-    assert '_assert_payment_flow_v033_guard' in main_py
+    from app.main import app
+    from app.routing import assert_route_owners
+    assert_route_owners(app)
 
     bootstrap = (ROOT / 'app' / 'static' / 'chen_foxmail_bootstrap.ps1').read_text(encoding='utf-8')
     assert 'UpdateIntervalMinutes = 5' in bootstrap
@@ -120,3 +128,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

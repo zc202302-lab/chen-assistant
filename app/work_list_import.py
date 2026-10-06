@@ -116,8 +116,7 @@ def import_excel_draft(request: Request, token: str, edit: int = 0):
 async def import_excel_prepare(request: Request, token: str):
     form = await request.form()
     _csrf(request, form.get('csrf'))
-    with db() as conn:
-        conn.execute('BEGIN IMMEDIATE')
+    with db(immediate=True) as conn:
         job, payload = _job(conn, request, token)
         _revision(form.get('revision'), job['revision'])
         if payload['phase'] == 'done':
@@ -260,8 +259,7 @@ def re_split(value):
 async def import_excel_preview(request: Request, token: str):
     form = await request.form()
     _csrf(request, form.get('csrf'))
-    with db() as conn:
-        conn.execute('BEGIN IMMEDIATE')
+    with db(immediate=True) as conn:
         job, payload = _job(conn, request, token)
         _revision(form.get('revision'), job['revision'])
         if payload['phase'] not in {'mapping', 'preview'}:
@@ -284,8 +282,7 @@ async def import_excel_preview(request: Request, token: str):
 async def import_excel_confirm(request: Request, token: str):
     form = await request.form()
     _csrf(request, form.get('csrf'))
-    with db() as conn:
-        conn.execute('BEGIN IMMEDIATE')
+    with db(immediate=True) as conn:
         job, payload = _job(conn, request, token)
         if payload['phase'] == 'done':
             return RedirectResponse(f'/work/list-import/{token}', 303)
@@ -336,3 +333,4 @@ async def import_excel_confirm(request: Request, token: str):
         receipt = {'phase': 'done', 'target': target, 'imported': imported, 'skipped': skipped}
         _save(conn, job, receipt)
     return RedirectResponse(f'/work/list-import/{token}', 303)
+

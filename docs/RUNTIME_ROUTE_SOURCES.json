@@ -1,0 +1,1492 @@
+[
+  {
+    "path": "/reminders",
+    "methods": [
+      "GET"
+    ],
+    "source": "reminders.py",
+    "qualname": "reminder_page"
+  },
+  {
+    "path": "/api/reminders",
+    "methods": [
+      "GET"
+    ],
+    "source": "reminders.py",
+    "qualname": "reminder_state"
+  },
+  {
+    "path": "/api/reminders/preferences",
+    "methods": [
+      "POST"
+    ],
+    "source": "reminders.py",
+    "qualname": "save_preferences"
+  },
+  {
+    "path": "/api/reminders/subscriptions",
+    "methods": [
+      "POST"
+    ],
+    "source": "reminders.py",
+    "qualname": "subscribe"
+  },
+  {
+    "path": "/api/reminders/devices/{device_id}",
+    "methods": [
+      "POST"
+    ],
+    "source": "reminders.py",
+    "qualname": "change_device"
+  },
+  {
+    "path": "/api/reminders/test",
+    "methods": [
+      "POST"
+    ],
+    "source": "reminders.py",
+    "qualname": "test_push"
+  },
+  {
+    "path": "/api/reminders/{reminder_id}/read",
+    "methods": [
+      "POST"
+    ],
+    "source": "reminders.py",
+    "qualname": "mark_read"
+  },
+  {
+    "path": "/api/reminders/events",
+    "methods": [
+      "POST"
+    ],
+    "source": "reminders.py",
+    "qualname": "create_event"
+  },
+  {
+    "path": "/api/reminders/subscription-state",
+    "methods": [
+      "POST"
+    ],
+    "source": "reminders.py",
+    "qualname": "subscription_state"
+  },
+  {
+    "path": "/reminders/open/{reminder_id}",
+    "methods": [
+      "GET"
+    ],
+    "source": "reminders.py",
+    "qualname": "open_reminder"
+  },
+  {
+    "path": "/work/list-import",
+    "methods": [
+      "GET"
+    ],
+    "source": "work_list_import.py",
+    "qualname": "import_excel_page"
+  },
+  {
+    "path": "/work/list-import/upload",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_list_import.py",
+    "qualname": "import_excel_upload"
+  },
+  {
+    "path": "/work/list-import/{token}",
+    "methods": [
+      "GET"
+    ],
+    "source": "work_list_import.py",
+    "qualname": "import_excel_draft"
+  },
+  {
+    "path": "/work/list-import/{token}/prepare",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_list_import.py",
+    "qualname": "import_excel_prepare"
+  },
+  {
+    "path": "/work/list-import/{token}/preview",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_list_import.py",
+    "qualname": "import_excel_preview"
+  },
+  {
+    "path": "/work/list-import/{token}/confirm",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_list_import.py",
+    "qualname": "import_excel_confirm"
+  },
+  {
+    "path": "/work/lists",
+    "methods": [
+      "GET"
+    ],
+    "source": "work_lists.py",
+    "qualname": "work_lists_page"
+  },
+  {
+    "path": "/work/lists",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_lists.py",
+    "qualname": "create_work_list"
+  },
+  {
+    "path": "/work/lists/{list_id}",
+    "methods": [
+      "GET"
+    ],
+    "source": "work_lists.py",
+    "qualname": "work_list_page"
+  },
+  {
+    "path": "/work/lists/{list_id}/settings",
+    "methods": [
+      "GET"
+    ],
+    "source": "work_lists.py",
+    "qualname": "work_list_settings"
+  },
+  {
+    "path": "/work/lists/{list_id}/settings",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_lists.py",
+    "qualname": "save_work_list_settings"
+  },
+  {
+    "path": "/work/lists/{list_id}/fields",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_lists.py",
+    "qualname": "add_work_list_field"
+  },
+  {
+    "path": "/work/lists/{list_id}/archive",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_lists.py",
+    "qualname": "archive_work_list"
+  },
+  {
+    "path": "/work/lists/{list_id}/records/new",
+    "methods": [
+      "GET"
+    ],
+    "source": "work_lists.py",
+    "qualname": "work_list_record_new"
+  },
+  {
+    "path": "/work/lists/{list_id}/records/{record_id}/edit",
+    "methods": [
+      "GET"
+    ],
+    "source": "work_lists.py",
+    "qualname": "work_list_record_edit"
+  },
+  {
+    "path": "/work/lists/{list_id}/records/{record_id}/edit",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_lists.py",
+    "qualname": "save_work_list_record"
+  },
+  {
+    "path": "/work/lists/{list_id}/records/new",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_lists.py",
+    "qualname": "save_work_list_record"
+  },
+  {
+    "path": "/work/lists/{list_id}/export.xlsx",
+    "methods": [
+      "GET"
+    ],
+    "source": "work_lists.py",
+    "qualname": "export_work_list"
+  },
+  {
+    "path": "/info",
+    "methods": [
+      "GET"
+    ],
+    "source": "v160_information_center.py",
+    "qualname": "information_center_v160"
+  },
+  {
+    "path": "/info/new",
+    "methods": [
+      "GET"
+    ],
+    "source": "v160_information_center.py",
+    "qualname": "information_new_page_v160"
+  },
+  {
+    "path": "/info/new",
+    "methods": [
+      "POST"
+    ],
+    "source": "v160_information_center.py",
+    "qualname": "information_new_v160"
+  },
+  {
+    "path": "/info/{record_id}",
+    "methods": [
+      "GET"
+    ],
+    "source": "v160_information_center.py",
+    "qualname": "information_detail_v160"
+  },
+  {
+    "path": "/info/{record_id}/edit",
+    "methods": [
+      "GET"
+    ],
+    "source": "v160_information_center.py",
+    "qualname": "information_edit_page_v160"
+  },
+  {
+    "path": "/info/{record_id}/edit",
+    "methods": [
+      "POST"
+    ],
+    "source": "v160_information_center.py",
+    "qualname": "information_edit_v160"
+  },
+  {
+    "path": "/info/{record_id}/archive",
+    "methods": [
+      "POST"
+    ],
+    "source": "v160_information_center.py",
+    "qualname": "information_archive_v160"
+  },
+  {
+    "path": "/number-submit/{token}",
+    "methods": [
+      "GET"
+    ],
+    "source": "v162_number_inbox.py",
+    "qualname": "public_number_submit_page"
+  },
+  {
+    "path": "/number-submit/{token}/pending",
+    "methods": [
+      "GET"
+    ],
+    "source": "v162_number_inbox.py",
+    "qualname": "public_number_pending_page"
+  },
+  {
+    "path": "/number-submit/{token}",
+    "methods": [
+      "POST"
+    ],
+    "source": "v162_number_inbox.py",
+    "qualname": "public_number_submit"
+  },
+  {
+    "path": "/work/number-inbox",
+    "methods": [
+      "GET"
+    ],
+    "source": "v162_number_inbox.py",
+    "qualname": "number_inbox_admin"
+  },
+  {
+    "path": "/work/number-inbox/{item_id}/done",
+    "methods": [
+      "POST"
+    ],
+    "source": "v162_number_inbox.py",
+    "qualname": "number_inbox_done"
+  },
+  {
+    "path": "/work/number-inbox/{item_id}/reopen",
+    "methods": [
+      "POST"
+    ],
+    "source": "v162_number_inbox.py",
+    "qualname": "number_inbox_reopen"
+  },
+  {
+    "path": "/api/number-inbox/pending",
+    "methods": [
+      "GET"
+    ],
+    "source": "v162_number_inbox.py",
+    "qualname": "number_inbox_desktop_pending"
+  },
+  {
+    "path": "/api/number-inbox/{item_id}/done",
+    "methods": [
+      "POST"
+    ],
+    "source": "v162_number_inbox.py",
+    "qualname": "number_inbox_desktop_done"
+  },
+  {
+    "path": "/work/number-inbox/rotate-desktop-token",
+    "methods": [
+      "POST"
+    ],
+    "source": "v162_number_inbox.py",
+    "qualname": "number_inbox_rotate_desktop_token"
+  },
+  {
+    "path": "/work/number-inbox/rotate-link",
+    "methods": [
+      "POST"
+    ],
+    "source": "v162_number_inbox.py",
+    "qualname": "number_inbox_rotate_link"
+  },
+  {
+    "path": "/life/recipes/new",
+    "methods": [
+      "POST"
+    ],
+    "source": "v144_audit_hardening.py",
+    "qualname": "recipe_new_validation_v144"
+  },
+  {
+    "path": "/life/recipes/{recipe_id}/edit",
+    "methods": [
+      "POST"
+    ],
+    "source": "v144_audit_hardening.py",
+    "qualname": "recipe_edit_validation_v144"
+  },
+  {
+    "path": "/life/knowledge/new",
+    "methods": [
+      "POST"
+    ],
+    "source": "v144_audit_hardening.py",
+    "qualname": "knowledge_new_validation_v144"
+  },
+  {
+    "path": "/life/knowledge/{item_id}/edit",
+    "methods": [
+      "POST"
+    ],
+    "source": "v144_audit_hardening.py",
+    "qualname": "knowledge_edit_validation_v144"
+  },
+  {
+    "path": "/services/{service_id}/toggle-fixed",
+    "methods": [
+      "POST"
+    ],
+    "source": "v143_payment_controls_patch.py",
+    "qualname": "toggle_fixed_v143_compat"
+  },
+  {
+    "path": "/customers/{customer_id}/resource-items-v143",
+    "methods": [
+      "GET"
+    ],
+    "source": "v143_customer_resources.py",
+    "qualname": "list_customer_resources_v143"
+  },
+  {
+    "path": "/customers/{customer_id}/resource-items-v143",
+    "methods": [
+      "POST"
+    ],
+    "source": "v143_customer_resources.py",
+    "qualname": "save_customer_resource_v143"
+  },
+  {
+    "path": "/customers/{customer_id}/resource-items-v143/{item_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "source": "v143_customer_resources.py",
+    "qualname": "delete_customer_resource_v143"
+  },
+  {
+    "path": "/customers/{customer_id}/documents-v13",
+    "methods": [
+      "POST"
+    ],
+    "source": "v143_customer_resources.py",
+    "qualname": "upload_document_free_category_v143"
+  },
+  {
+    "path": "/services/{service_id}/payment-current",
+    "methods": [
+      "POST"
+    ],
+    "source": "v124_work_patch.py",
+    "qualname": "payment_save_preserve_reviews_v032"
+  },
+  {
+    "path": "/quick-search-suggest",
+    "methods": [
+      "GET"
+    ],
+    "source": "v124_work_patch.py",
+    "qualname": "quick_search_suggest_v151"
+  },
+  {
+    "path": "/search",
+    "methods": [
+      "GET"
+    ],
+    "source": "v124_work_patch.py",
+    "qualname": "work_search_v124"
+  },
+  {
+    "path": "/customers/{customer_id}/documents-v13",
+    "methods": [
+      "GET"
+    ],
+    "source": "v13_customer_documents.py",
+    "qualname": "list_documents_v13"
+  },
+  {
+    "path": "/customers/{customer_id}/documents-v13/{document_id}/download",
+    "methods": [
+      "GET"
+    ],
+    "source": "v13_customer_documents.py",
+    "qualname": "download_document_v13"
+  },
+  {
+    "path": "/customers/{customer_id}/documents-v13/{document_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "source": "v13_customer_documents.py",
+    "qualname": "delete_document_v13"
+  },
+  {
+    "path": "/life/recipes/{recipe_id}/print",
+    "methods": [
+      "GET"
+    ],
+    "source": "v101_recipe_template_patch.py",
+    "qualname": "recipe_print_v101"
+  },
+  {
+    "path": "/life/recipes/{recipe_id}/cook/start",
+    "methods": [
+      "POST"
+    ],
+    "source": "v101_recipe_template_patch.py",
+    "qualname": "recipe_cook_start_disabled_v101"
+  },
+  {
+    "path": "/life",
+    "methods": [
+      "GET"
+    ],
+    "source": "v12_tools_routes.py",
+    "qualname": "life_home_v12"
+  },
+  {
+    "path": "/life/recipes",
+    "methods": [
+      "GET"
+    ],
+    "source": "v12_tools_routes.py",
+    "qualname": "recipe_list_v12"
+  },
+  {
+    "path": "/life/tools",
+    "methods": [
+      "GET"
+    ],
+    "source": "v12_tools_routes.py",
+    "qualname": "cooking_tools_v12"
+  },
+  {
+    "path": "/life/knowledge",
+    "methods": [
+      "GET"
+    ],
+    "source": "v12_tools_routes.py",
+    "qualname": "knowledge_redirect_v12"
+  },
+  {
+    "path": "/work",
+    "methods": [
+      "GET"
+    ],
+    "source": "v101_workspace_routes.py",
+    "qualname": "work_home_v101"
+  },
+  {
+    "path": "/work/customers",
+    "methods": [
+      "GET"
+    ],
+    "source": "v101_workspace_routes.py",
+    "qualname": "work_customer_management_v14"
+  },
+  {
+    "path": "/work/library",
+    "methods": [
+      "GET"
+    ],
+    "source": "v101_workspace_routes.py",
+    "qualname": "work_library_v14"
+  },
+  {
+    "path": "/global-search",
+    "methods": [
+      "GET"
+    ],
+    "source": "v101_workspace_routes.py",
+    "qualname": "global_search_v101"
+  },
+  {
+    "path": "/",
+    "methods": [
+      "GET"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "home_v10"
+  },
+  {
+    "path": "/life/recipes/new",
+    "methods": [
+      "GET"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "recipe_new_page_v10"
+  },
+  {
+    "path": "/life/recipes/{recipe_id}",
+    "methods": [
+      "GET"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "recipe_detail_v10"
+  },
+  {
+    "path": "/life/recipes/{recipe_id}/edit",
+    "methods": [
+      "GET"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "recipe_edit_page_v10"
+  },
+  {
+    "path": "/life/recipes/{recipe_id}/versions",
+    "methods": [
+      "GET"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "recipe_versions_v10"
+  },
+  {
+    "path": "/life/recipes/{recipe_id}/versions/{version_id}/restore",
+    "methods": [
+      "POST"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "recipe_restore_v10"
+  },
+  {
+    "path": "/life/cook/{session_id}",
+    "methods": [
+      "GET"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "cook_mode_v10"
+  },
+  {
+    "path": "/life/cook/{session_id}/step",
+    "methods": [
+      "POST"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "cook_step_v10"
+  },
+  {
+    "path": "/life/cook/{session_id}/adjustments",
+    "methods": [
+      "POST"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "cook_adjustment_v10"
+  },
+  {
+    "path": "/life/cook/{session_id}/complete",
+    "methods": [
+      "GET"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "cook_complete_page_v10"
+  },
+  {
+    "path": "/life/cook/{session_id}/complete",
+    "methods": [
+      "POST"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "cook_complete_v10"
+  },
+  {
+    "path": "/life/records",
+    "methods": [
+      "GET"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "cook_records_v10"
+  },
+  {
+    "path": "/life/records/{session_id}",
+    "methods": [
+      "GET"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "cook_record_detail_v10"
+  },
+  {
+    "path": "/life/records/{session_id}/promote",
+    "methods": [
+      "POST"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "cook_record_promote_v10"
+  },
+  {
+    "path": "/life/knowledge/new",
+    "methods": [
+      "GET"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "knowledge_new_page_v10"
+  },
+  {
+    "path": "/life/knowledge/{item_id}/edit",
+    "methods": [
+      "GET"
+    ],
+    "source": "v10_routes.py",
+    "qualname": "knowledge_edit_page_v10"
+  },
+  {
+    "path": "/customers/{customer_id}/mail-template-v03",
+    "methods": [
+      "GET"
+    ],
+    "source": "v033_payment_flow_patch.py",
+    "qualname": "get_customer_payment_template_v033"
+  },
+  {
+    "path": "/customers/{customer_id}/mail-template-v03",
+    "methods": [
+      "POST"
+    ],
+    "source": "v033_payment_flow_patch.py",
+    "qualname": "save_customer_payment_template_v033"
+  },
+  {
+    "path": "/customers/{customer_id}/payment.txt",
+    "methods": [
+      "GET"
+    ],
+    "source": "v033_payment_flow_patch.py",
+    "qualname": "payment_txt_current_workflow_v033"
+  },
+  {
+    "path": "/customers/{customer_id}/payment.xlsx",
+    "methods": [
+      "GET"
+    ],
+    "source": "v033_payment_flow_patch.py",
+    "qualname": "payment_xlsx_current_workflow_v158"
+  },
+  {
+    "path": "/customers/{customer_id}/payment-mail-compose-v031",
+    "methods": [
+      "GET"
+    ],
+    "source": "v033_payment_flow_patch.py",
+    "qualname": "payment_mail_compose_customer_scoped_v033"
+  },
+  {
+    "path": "/customers/{customer_id}/payment-mail-draft-v03",
+    "methods": [
+      "GET"
+    ],
+    "source": "v033_payment_flow_patch.py",
+    "qualname": "payment_mail_draft_customer_scoped_v033"
+  },
+  {
+    "path": "/customers/import-template-v032-one-sheet.xlsx",
+    "methods": [
+      "GET"
+    ],
+    "source": "v032_customer_exchange_routes.py",
+    "qualname": "download_one_sheet_template_v032"
+  },
+  {
+    "path": "/customers/export-v032.xlsx",
+    "methods": [
+      "GET"
+    ],
+    "source": "v032_customer_exchange_routes.py",
+    "qualname": "export_all_customers_v032"
+  },
+  {
+    "path": "/customers/import-v032-one-sheet/preview",
+    "methods": [
+      "POST"
+    ],
+    "source": "v032_customer_exchange_routes.py",
+    "qualname": "preview_one_sheet_v032"
+  },
+  {
+    "path": "/customers/import-v032-one-sheet/confirm",
+    "methods": [
+      "POST"
+    ],
+    "source": "v032_customer_exchange_routes.py",
+    "qualname": "confirm_one_sheet_v032"
+  },
+  {
+    "path": "/customers/new",
+    "methods": [
+      "GET"
+    ],
+    "source": "v032_customer_import_routes.py",
+    "qualname": "customer_new_v032"
+  },
+  {
+    "path": "/customers/new",
+    "methods": [
+      "POST"
+    ],
+    "source": "v032_customer_import_routes.py",
+    "qualname": "customer_new_post_v032"
+  },
+  {
+    "path": "/customers/import-template-v032.xlsx",
+    "methods": [
+      "GET"
+    ],
+    "source": "v032_customer_import_routes.py",
+    "qualname": "customer_import_template_v032"
+  },
+  {
+    "path": "/customers/import-v032/preview",
+    "methods": [
+      "POST"
+    ],
+    "source": "v032_customer_import_routes.py",
+    "qualname": "customer_import_preview_v032"
+  },
+  {
+    "path": "/customers/import-v032/confirm",
+    "methods": [
+      "POST"
+    ],
+    "source": "v032_customer_import_routes.py",
+    "qualname": "customer_import_confirm_v032"
+  },
+  {
+    "path": "/services/{service_id}/payment-review-toggle",
+    "methods": [
+      "POST"
+    ],
+    "source": "v031_fixed_review_patch.py",
+    "qualname": "payment_review_toggle_preserve_reviews_v032"
+  },
+  {
+    "path": "/health",
+    "methods": [
+      "GET"
+    ],
+    "source": "v031_payment_workflow_routes.py",
+    "qualname": "health_v031"
+  },
+  {
+    "path": "/customers/{customer_id}/payment-workflow-v031",
+    "methods": [
+      "GET"
+    ],
+    "source": "v031_payment_workflow_routes.py",
+    "qualname": "payment_workflow_v031"
+  },
+  {
+    "path": "/customers/{customer_id}/payment-workflow-v031",
+    "methods": [
+      "POST"
+    ],
+    "source": "v031_payment_workflow_routes.py",
+    "qualname": "update_payment_workflow_v031"
+  },
+  {
+    "path": "/customers/{customer_id}/payment-mail-compose-v03",
+    "methods": [
+      "GET"
+    ],
+    "source": "v03_mail_draft_routes.py",
+    "qualname": "payment_mail_compose_v03"
+  },
+  {
+    "path": "/services/{service_id}/status-v03",
+    "methods": [
+      "POST"
+    ],
+    "source": "v03_mail_draft_routes.py",
+    "qualname": "save_service_status_customer_display_v03"
+  },
+  {
+    "path": "/services/{service_id}/payment-status-v03",
+    "methods": [
+      "POST"
+    ],
+    "source": "v03_mail_draft_routes.py",
+    "qualname": "save_payment_status_customer_display_v03"
+  },
+  {
+    "path": "/customers/{customer_id}/workflow-state-v03",
+    "methods": [
+      "GET"
+    ],
+    "source": "v031_runtime_routes.py",
+    "qualname": "workflow_state_v03"
+  },
+  {
+    "path": "/customers/{customer_id}/payment-run",
+    "methods": [
+      "POST"
+    ],
+    "source": "v03_payment_routes.py",
+    "qualname": "set_payment_run_v03_safe"
+  },
+  {
+    "path": "/customers/{customer_id}/payment-run-v03",
+    "methods": [
+      "GET"
+    ],
+    "source": "v03_routes.py",
+    "qualname": "get_payment_run_v03"
+  },
+  {
+    "path": "/api/v03/customers/search",
+    "methods": [
+      "GET"
+    ],
+    "source": "v03_routes.py",
+    "qualname": "customer_search_v03"
+  },
+  {
+    "path": "/customers/{customer_id}/payment-email-v03",
+    "methods": [
+      "POST"
+    ],
+    "source": "v03_routes.py",
+    "qualname": "send_payment_email_v03"
+  },
+  {
+    "path": "/customers/{customer_id}/business-columns-v0212",
+    "methods": [
+      "GET"
+    ],
+    "source": "v0212_business_display_routes.py",
+    "qualname": "get_business_columns_v0212"
+  },
+  {
+    "path": "/customers/{customer_id}/business-columns-v0212",
+    "methods": [
+      "POST"
+    ],
+    "source": "v0212_business_display_routes.py",
+    "qualname": "save_business_columns_v0212"
+  },
+  {
+    "path": "/services/{service_id}/runtime-v0212",
+    "methods": [
+      "POST"
+    ],
+    "source": "v0212_business_display_routes.py",
+    "qualname": "save_service_runtime_display_order_v0212"
+  },
+  {
+    "path": "/customers/{customer_id}/runtime-v143",
+    "methods": [
+      "GET"
+    ],
+    "source": "v0212_business_display_routes.py",
+    "qualname": "get_customer_runtime_v143"
+  },
+  {
+    "path": "/customers/{customer_id}/runtime-v143",
+    "methods": [
+      "POST"
+    ],
+    "source": "v0212_business_display_routes.py",
+    "qualname": "save_customer_runtime_v143"
+  },
+  {
+    "path": "/customers/{customer_id}",
+    "methods": [
+      "GET"
+    ],
+    "source": "v0212_routes.py",
+    "qualname": "customer_workspace_v0212"
+  },
+  {
+    "path": "/services/{service_id}/runtime-v0212",
+    "methods": [
+      "GET"
+    ],
+    "source": "v0212_routes.py",
+    "qualname": "service_runtime_v0212"
+  },
+  {
+    "path": "/services/{service_id}/defer-v0212",
+    "methods": [
+      "POST"
+    ],
+    "source": "v0212_routes.py",
+    "qualname": "defer_service_v0212"
+  },
+  {
+    "path": "/services/{service_id}/delete-v0212",
+    "methods": [
+      "POST"
+    ],
+    "source": "v0212_routes.py",
+    "qualname": "delete_service_v0212"
+  },
+  {
+    "path": "/services/{service_id}/promotions-editor-v029",
+    "methods": [
+      "GET"
+    ],
+    "source": "v0211_promotion_routes.py",
+    "qualname": "service_promotions_editor_v0211"
+  },
+  {
+    "path": "/services/{service_id}/promotions-editor-v029",
+    "methods": [
+      "POST"
+    ],
+    "source": "v0211_promotion_routes.py",
+    "qualname": "save_service_promotion_v0211"
+  },
+  {
+    "path": "/promotions/{promotion_id}/name-v030",
+    "methods": [
+      "POST"
+    ],
+    "source": "v0211_promotion_routes.py",
+    "qualname": "rename_promotion_v0211"
+  },
+  {
+    "path": "/promotions/{promotion_id}/close-editor-v029",
+    "methods": [
+      "POST"
+    ],
+    "source": "v0211_promotion_routes.py",
+    "qualname": "close_service_promotion_v0211"
+  },
+  {
+    "path": "/customers/{customer_id}/payment-columns-v0211",
+    "methods": [
+      "POST"
+    ],
+    "source": "v0211_routes.py",
+    "qualname": "save_payment_columns_v0211"
+  },
+  {
+    "path": "/customers/{customer_id}/payment-column-widths-v0211",
+    "methods": [
+      "POST"
+    ],
+    "source": "v0211_routes.py",
+    "qualname": "save_payment_widths_v0211"
+  },
+  {
+    "path": "/customers/{customer_id}/services/reorder",
+    "methods": [
+      "POST"
+    ],
+    "source": "v0211_routes.py",
+    "qualname": "reorder_services_v0211"
+  },
+  {
+    "path": "/services/{service_id}/attributes-v028",
+    "methods": [
+      "GET"
+    ],
+    "source": "v028_routes.py",
+    "qualname": "service_attributes_v028"
+  },
+  {
+    "path": "/services/{service_id}/attributes-v028",
+    "methods": [
+      "POST"
+    ],
+    "source": "v028_routes.py",
+    "qualname": "save_service_attributes_v028"
+  },
+  {
+    "path": "/customers/{customer_id}/display-attributes",
+    "methods": [
+      "POST"
+    ],
+    "source": "v028_routes.py",
+    "qualname": "display_attributes_v028"
+  },
+  {
+    "path": "/promotions/{promotion_id}/expiry-v028",
+    "methods": [
+      "POST"
+    ],
+    "source": "v028_routes.py",
+    "qualname": "update_promotion_expiry_v028"
+  },
+  {
+    "path": "/customers/{customer_id}/promotions/reorder-v028",
+    "methods": [
+      "POST"
+    ],
+    "source": "v028_routes.py",
+    "qualname": "reorder_promotions_v028"
+  },
+  {
+    "path": "/customers/{customer_id}/payment-column-widths",
+    "methods": [
+      "POST"
+    ],
+    "source": "v027_routes.py",
+    "qualname": "payment_column_widths_v027"
+  },
+  {
+    "path": "/customers/{customer_id}/promotions-v027",
+    "methods": [
+      "POST"
+    ],
+    "source": "v027_routes.py",
+    "qualname": "add_promotion_by_number_v027"
+  },
+  {
+    "path": "/promotions/{promotion_id}/expiry-v027",
+    "methods": [
+      "POST"
+    ],
+    "source": "v027_routes.py",
+    "qualname": "update_promotion_expiry_v027"
+  },
+  {
+    "path": "/customers/{customer_id}/promotions/reorder-v027",
+    "methods": [
+      "POST"
+    ],
+    "source": "v027_routes.py",
+    "qualname": "reorder_promotions_v027"
+  },
+  {
+    "path": "/services/{service_id}/attributes",
+    "methods": [
+      "POST"
+    ],
+    "source": "v026_routes.py",
+    "qualname": "edit_service_attributes_v026"
+  },
+  {
+    "path": "/customers/{customer_id}/services-v026",
+    "methods": [
+      "POST"
+    ],
+    "source": "v026_routes.py",
+    "qualname": "add_service_v026"
+  },
+  {
+    "path": "/services/{service_id}/edit-v026",
+    "methods": [
+      "POST"
+    ],
+    "source": "v026_routes.py",
+    "qualname": "edit_service_form_v026"
+  },
+  {
+    "path": "/customers/{customer_id}/promotions",
+    "methods": [
+      "POST"
+    ],
+    "source": "v026_routes.py",
+    "qualname": "add_promotion_v026"
+  },
+  {
+    "path": "/promotions/{promotion_id}/renew",
+    "methods": [
+      "POST"
+    ],
+    "source": "v026_routes.py",
+    "qualname": "renew_promotion_v026"
+  },
+  {
+    "path": "/customers/{customer_id}/services-v025",
+    "methods": [
+      "POST"
+    ],
+    "source": "v025_routes.py",
+    "qualname": "add_service_v025"
+  },
+  {
+    "path": "/services/{service_id}/edit-v025",
+    "methods": [
+      "POST"
+    ],
+    "source": "v025_routes.py",
+    "qualname": "edit_service_form_v025"
+  },
+  {
+    "path": "/promotions/{promotion_id}/close",
+    "methods": [
+      "POST"
+    ],
+    "source": "v025_routes.py",
+    "qualname": "close_promotion_v025"
+  },
+  {
+    "path": "/customers/{customer_id}/visits",
+    "methods": [
+      "GET"
+    ],
+    "source": "v023_routes.py",
+    "qualname": "old_customer_subpage_redirect_v023"
+  },
+  {
+    "path": "/customers/{customer_id}/tasks",
+    "methods": [
+      "GET"
+    ],
+    "source": "v023_routes.py",
+    "qualname": "old_customer_subpage_redirect_v023"
+  },
+  {
+    "path": "/customers/{customer_id}/contacts",
+    "methods": [
+      "GET"
+    ],
+    "source": "v023_routes.py",
+    "qualname": "old_customer_subpage_redirect_v023"
+  },
+  {
+    "path": "/customers/{customer_id}/services",
+    "methods": [
+      "GET"
+    ],
+    "source": "v023_routes.py",
+    "qualname": "old_customer_subpage_redirect_v023"
+  },
+  {
+    "path": "/customers/{customer_id}/payment",
+    "methods": [
+      "GET"
+    ],
+    "source": "v023_routes.py",
+    "qualname": "old_customer_subpage_redirect_v023"
+  },
+  {
+    "path": "/services/{service_id}/quick-edit",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "quick_edit_v021"
+  },
+  {
+    "path": "/customers/{customer_id}/invoice-groups",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "invoice_group_add_v021"
+  },
+  {
+    "path": "/invoice-groups/{group_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "invoice_group_delete_v021"
+  },
+  {
+    "path": "/customers/{customer_id}/services",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "service_add_v021"
+  },
+  {
+    "path": "/services/{service_id}/edit",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "service_edit_v021"
+  },
+  {
+    "path": "/services/{service_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "service_stop_v021"
+  },
+  {
+    "path": "/customers/{customer_id}/contacts",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "contact_add_v021"
+  },
+  {
+    "path": "/contacts/{contact_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "contact_delete_v021"
+  },
+  {
+    "path": "/customers/{customer_id}/tasks",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "task_add_v021"
+  },
+  {
+    "path": "/tasks/{task_id}/edit",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "task_edit_v164"
+  },
+  {
+    "path": "/tasks/{task_id}/toggle",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "task_toggle_v021"
+  },
+  {
+    "path": "/customers/{customer_id}/visits",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "visit_add_v021"
+  },
+  {
+    "path": "/customers/{customer_id}/payment-status",
+    "methods": [
+      "POST"
+    ],
+    "source": "v021_routes.py",
+    "qualname": "payment_status_v021"
+  },
+  {
+    "path": "/customers",
+    "methods": [
+      "GET"
+    ],
+    "source": "v02_routes.py",
+    "qualname": "customers_v02"
+  },
+  {
+    "path": "/products",
+    "methods": [
+      "GET"
+    ],
+    "source": "v02_routes.py",
+    "qualname": "products_v02"
+  },
+  {
+    "path": "/openapi.json",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "source": "applications.py",
+    "qualname": "FastAPI.setup.<locals>.openapi"
+  },
+  {
+    "path": "/docs",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "source": "applications.py",
+    "qualname": "FastAPI.setup.<locals>.swagger_ui_html"
+  },
+  {
+    "path": "/docs/oauth2-redirect",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "source": "applications.py",
+    "qualname": "FastAPI.setup.<locals>.swagger_ui_redirect"
+  },
+  {
+    "path": "/redoc",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "source": "applications.py",
+    "qualname": "FastAPI.setup.<locals>.redoc_html"
+  },
+  {
+    "path": "/static",
+    "methods": [],
+    "source": null,
+    "qualname": null
+  },
+  {
+    "path": "/manifest.webmanifest",
+    "methods": [
+      "GET"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "manifest"
+  },
+  {
+    "path": "/sw.js",
+    "methods": [
+      "GET"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "service_worker"
+  },
+  {
+    "path": "/login",
+    "methods": [
+      "GET"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "login_page"
+  },
+  {
+    "path": "/login",
+    "methods": [
+      "POST"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "login"
+  },
+  {
+    "path": "/logout",
+    "methods": [
+      "POST"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "logout"
+  },
+  {
+    "path": "/customers/{customer_id}/edit",
+    "methods": [
+      "POST"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "customer_edit"
+  },
+  {
+    "path": "/services/{service_id}/promotions",
+    "methods": [
+      "POST"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "promotion_add"
+  },
+  {
+    "path": "/promotions/{promotion_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "promotion_delete"
+  },
+  {
+    "path": "/accounts",
+    "methods": [
+      "GET"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "accounts"
+  },
+  {
+    "path": "/accounts/new",
+    "methods": [
+      "GET"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "account_new_page"
+  },
+  {
+    "path": "/accounts/new",
+    "methods": [
+      "POST"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "account_new"
+  },
+  {
+    "path": "/accounts/{account_id}",
+    "methods": [
+      "GET"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "account_detail"
+  },
+  {
+    "path": "/accounts/{account_id}/edit",
+    "methods": [
+      "POST"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "account_edit"
+  },
+  {
+    "path": "/accounts/{account_id}/password",
+    "methods": [
+      "POST"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "account_password"
+  },
+  {
+    "path": "/accounts/{account_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "source": "legacy_main.py",
+    "qualname": "account_delete"
+  }
+]

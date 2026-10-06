@@ -6,10 +6,10 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
-from .db import db, now_iso
+from .db import execute_schema, connection_scope, db, now_iso
 from .security import decrypt_secret, require_csrf
 from .v160_information_center import ensure_v160_schema
 from .v10_seed import KNOWLEDGE_SEED, RECIPE_CATALOG, STRUCTURED_RECIPES
@@ -181,12 +181,8 @@ def _seed_recipe(conn, name: str, category: str, tags: str):
 
 
 def ensure_v10_schema(conn=None):
-    owns = conn is None
-    if owns:
-        cm = db()
-        conn = cm.__enter__()
-    try:
-        conn.executescript(V10_SCHEMA)
+    with connection_scope(conn) as conn:
+        execute_schema(conn, V10_SCHEMA)
         for name, category, tags in RECIPE_CATALOG:
             _seed_recipe(conn, name, category, tags)
         now = now_iso()
@@ -196,9 +192,6 @@ def ensure_v10_schema(conn=None):
                    VALUES(?,?,?,?,?,?)''',
                 (category, title, content, 'excel-knowledge', now, now),
             )
-    finally:
-        if owns:
-            cm.__exit__(None, None, None)
 
 
 def _recipe_or_404(conn, recipe_id: int):
@@ -1016,3 +1009,7 @@ async def knowledge_edit_v10(request: Request, item_id: int):
             (str(form.get('category', '')).strip(), title, str(form.get('content', '')).strip(), now_iso(), item_id),
         )
     return RedirectResponse('/life/knowledge', status_code=303)
+
+
+# Compatibility marker; safety is implemented in this original function.
+ensure_v10_schema.__v144_transaction_safe__ = True

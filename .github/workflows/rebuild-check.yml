@@ -123,6 +123,7 @@ jobs:
           python tests/stability_contract.py
           python tests/v153_home_navigation_contract.py
           python tests/v10_workspace_isolation_acceptance.py
+          python tests/architecture_governance_contract.py
 
       - name: Check JavaScript syntax
         if: steps.scope.outputs.mode == 'full'
@@ -162,7 +163,11 @@ jobs:
 
       - name: Dead route source inventory
         if: steps.scope.outputs.mode == 'full'
-        run: python tests/dead_route_source_inventory.py
+        run: |
+          python tests/dead_route_source_inventory.py
+          python tests/routing_registry_contract.py
+          python tests/customer_export_text_contract.py
+          python tests/architecture_governance_contract.py
 
       - name: Detached module reference inventory
         if: steps.scope.outputs.mode == 'full'

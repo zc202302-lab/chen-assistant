@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .db import db, now_iso
+from .db import connection_scope, db, now_iso
 from .v10_routes import ensure_v10_schema
 from .v12_seed import STANDARD_RECIPES
 
@@ -75,11 +75,7 @@ def _import_one(conn, name: str, payload: dict):
 
 
 def ensure_v12_schema(conn=None):
-    owns = conn is None
-    if owns:
-        manager = db()
-        conn = manager.__enter__()
-    try:
+    with connection_scope(conn) as conn:
         ensure_v10_schema(conn)
         conn.execute(
             'CREATE TABLE IF NOT EXISTS app_data_migrations (migration_key TEXT PRIMARY KEY, applied_at TEXT NOT NULL)'
@@ -101,6 +97,4 @@ def ensure_v12_schema(conn=None):
             'INSERT INTO app_data_migrations(migration_key,applied_at) VALUES(?,?)',
             (MIGRATION_KEY, now_iso()),
         )
-    finally:
-        if owns:
-            manager.__exit__(None, None, None)
+

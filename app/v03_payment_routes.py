@@ -18,7 +18,7 @@ router = APIRouter()
 # their unconfirmed state until the whole review is confirmed again. A small source marker
 # lets the normal fixed-fee engine distinguish this deliberate reset from an ordinary fixed
 # entry that should auto-confirm immediately.
-_original_ensure_payment_entry = core.ensure_payment_entry
+from .payment_v02 import ensure_payment_entry as _original_ensure_payment_entry
 
 
 def _ensure_payment_entry_review_aware(conn, service, period: str):
@@ -44,7 +44,7 @@ def _ensure_payment_entry_review_aware(conn, service, period: str):
     return _original_ensure_payment_entry(conn, service, period)
 
 
-core.ensure_payment_entry = _ensure_payment_entry_review_aware
+
 
 
 def _review_action(request: Request, customer_id: int, csrf: str):
@@ -183,3 +183,4 @@ def set_payment_run_v03_safe(
         csrf=csrf,
         action=action,
     )
+

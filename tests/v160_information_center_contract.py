@@ -1,7 +1,14 @@
 from pathlib import Path
 import ast
+import sys
+import os
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+_TEMP = tempfile.TemporaryDirectory()
+os.environ['APP_DB_PATH'] = str(Path(_TEMP.name) / 'app.db')
+from app.main import app
 
 
 def main():
@@ -25,7 +32,10 @@ def main():
     assert "@router.get('/info/{record_id}'" in routes
     assert "@router.post('/info/{record_id}/edit')" in routes
     assert "@router.post('/info/{record_id}/archive')" in routes
-    assert '_v160_information_center_routes +' in main_py
+    live = [r for r in app.routes if getattr(getattr(r, 'endpoint', None), '__module__', '') == 'app.v160_information_center']
+    assert len(live) == 7
+    assert any(r.path == '/info' and 'GET' in r.methods for r in live)
+    assert any(r.path == '/info/{record_id}/archive' and 'POST' in r.methods for r in live)
 
     assert "{% set _is_info" in base
     assert 'href="/info"' in base and '>资料</a>' in base
@@ -51,5 +61,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 

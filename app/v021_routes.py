@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
@@ -630,3 +630,4 @@ def payment_status_v021(request: Request, customer_id: int, csrf: str = Form(...
         else:
             raise HTTPException(400)
     return RedirectResponse(f'/customers/{customer_id}/payment', 303)
+
