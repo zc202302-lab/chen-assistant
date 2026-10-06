@@ -30,20 +30,24 @@ def prepare(page, editor, value):
     editor.evaluate("""el => {
         el.style.font = '16px monospace';
         el.style.letterSpacing = '0px';
+        el.style.lineHeight = '20px';
         el.style.textAlign = 'left';
         el.style.width = '260px';
         el.style.padding = '8px';
         el.style.boxSizing = 'border-box';
         el.blur();
         el.scrollLeft = 0;
+        el.scrollTop = 0;
+        el.scrollIntoView({block:'center', inline:'nearest'});
     }""")
     editor.click(trial=True)
+    settled(page)
     return editor.evaluate("""el => {
         const rect = el.getBoundingClientRect(), style = getComputedStyle(el);
         const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
         ctx.font = style.font;
         return {x:rect.x + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft),
-                y:rect.y + parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop) + 8,
+                y:rect.y + parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop) + 10,
                 char:ctx.measureText('0').width};
     }""")
 
