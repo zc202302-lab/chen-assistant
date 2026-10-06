@@ -220,7 +220,15 @@
         cell.rows = 1; cell.maxLength = 4000; cell.readOnly = readonly;
         const currentValue = () => merge ? merge.origin.values[merge.originCol] : r.values[c];
         cell.value = formatted(currentValue(), formats.cells[key]);
-        cell.addEventListener('focus', () => { cell.value = display(currentValue()); });
+        const showRawValue = () => {
+          const value = display(currentValue());
+          if (cell.value !== value) cell.value = value;
+        };
+        if (!readonly) {
+          // 在浏览器建立鼠标选区前切换格式；相同值不重写，以免光标跳到末尾。
+          cell.addEventListener('pointerdown', event => { if (event.button === 0) showRawValue(); });
+          cell.addEventListener('focus', showRawValue);
+        }
         cell.addEventListener('blur', () => { cell.value = formatted(currentValue(), formats.cells[key]); });
         cell.dataset.row = String(i); cell.dataset.col = String(c);
         cell.setAttribute('aria-label', '第' + (i + 1) + '行 ' + field.label);

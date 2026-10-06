@@ -28,7 +28,7 @@ def selected(editor):
 def prepare(page, editor, value):
     editor.fill(value)
     editor.evaluate("""el => {
-        el.style.font = '16px monospace';
+        el.style.setProperty('font', '16px monospace', 'important');
         el.style.letterSpacing = '0px';
         el.style.lineHeight = '20px';
         el.style.textAlign = 'left';
