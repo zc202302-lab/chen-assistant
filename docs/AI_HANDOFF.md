@@ -2,7 +2,7 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-06 15:46（Asia/Shanghai）。工作模式：本轮已完成，等待下一项明确需求。用户要求仅在搜索预览增加悬停复制；PR [#134](https://github.com/zc202302-lab/chen-assistant/pull/134)已合并，功能合并提交1a487b4888f31df8f2539fe5ca0f0fdb3564538d，完整验收head d9424574cced430ea81bace11b28bc2faa3a6840。feat/search-preview-copy为已完成历史分支，不是活动WIP；文档提交不作为新功能，main实时查询。
+- 更新时间：2026-10-06 15:47（Asia/Shanghai）。工作模式：本轮已完成，等待下一项明确需求。用户要求仅在搜索预览增加悬停复制；PR [#134](https://github.com/zc202302-lab/chen-assistant/pull/134)已合并，功能合并提交1a487b4888f31df8f2539fe5ca0f0fdb3564538d，完整验收head d9424574cced430ea81bace11b28bc2faa3a6840。feat/search-preview-copy为已完成历史分支，不是活动WIP；文档提交不作为新功能，main实时查询。
 - 顶部搜索预览将集团名称、集团编码、税号以及号码/账号等原可见信息作为独立复制项。桌面悬停对应信息显示复制按钮，键盘聚焦可用，触摸设备直接显示。复制完整原值，包括号码原有空格/连字符；点击复制保留查询、当前页面和预览，成功/失败反馈就地显示。导航链接和按钮为独立元素，文字链接仍正常进入原详情。样式和事件只限搜索弹层，其他页面复制与输入选区功能保留。
 - #134完整CI：[validation37430302341](https://github.com/zc202302-lab/chen-assistant/actions/runs/37430302341)、[stability37430302482](https://github.com/zc202302-lab/chen-assistant/actions/runs/37430302482)均success，对应上述head。真实Chromium验收覆盖桌面悬停、逐字段真实剪贴板、键盘Enter、复制失败、查询切换后号码/账号、工作与全局搜索、手机触摸、结果导航及手机无横向溢出。安全审计、全站输入选区、清单/Excel、客户/缴费/资料/实时刷新/菜谱/提醒、桌面手机及架构治理全量回归通过。原测试未删减，只将搜索验收提前运行。
 - #134生产证据：[PWA公网验证37431401658](https://github.com/zc202302-lab/chen-assistant/actions/runs/37431401658) / job112162866644 success，2026-10-06 15:45:36（Asia/Shanghai）ONLINE VERIFIED v1.7.3。新增精确核对quick-search-v15.js/css，以及原工作/清单/推送资产SHA256；health、manifest、根Service Worker scope和未登录提醒路由正常。部署切换前三次搜索JS尚旧，第四次短暂502，第五次完整通过。未读取生产git HEAD，不声称精确运行commit，未修改真实生产业务数据。合并main自身validation仍可继续运行，不将PR验收与main重跑混为同一证据。
