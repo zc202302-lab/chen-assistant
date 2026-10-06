@@ -75,7 +75,8 @@ def main():
             box=handle.bounding_box()
             page.mouse.move(box['x']+box['width']/2,box['y']+box['height']/2)
             page.mouse.down();page.mouse.move(box['x']+box['width']/2+50,box['y']+box['height']/2);page.mouse.up()
-            assert abs(page.locator('.ws-letters th').nth(1).bounding_box()['width']-original_width-50)<3
+            actual_width=page.locator('.ws-letters th').nth(1).bounding_box()['width']
+            assert abs(actual_width-original_width-50)<3, {'before':original_width,'after':actual_width,'handle':handle.get_attribute('aria-valuenow'),'table':page.locator('.ws-grid').get_attribute('style')}
             rowhandle=page.locator('.ws-grid tbody .ws-row-resize').first
             rowhandle.focus();rowhandle.press('ArrowDown');rowhandle.press('ArrowDown')
             page.get_by_role('button',name='保存表格',exact=True).click()

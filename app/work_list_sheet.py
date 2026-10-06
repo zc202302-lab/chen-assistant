@@ -274,7 +274,7 @@ def import_layout(conn, list_id, table, field_ids, row_ids):
 
 def export_grid(conn, item, fields, rows):
     layout = get_layout(conn, item['id'])
-    if not layout or layout.get('legacy'):
+    if not layout:
         return None
     output = io.BytesIO()
     with xlsxwriter.Workbook(output, {'in_memory': True, 'strings_to_formulas': False, 'strings_to_urls': False}) as book:

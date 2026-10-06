@@ -27,8 +27,8 @@ body:has(.wl-sheet-shell) .page{max-width:1520px}
 .ws-filter-popover[hidden]{display:none}
 .ws-filter-popover input{width:100%;box-sizing:border-box;border:1px solid #d3dce7;padding:8px;border-radius:5px;font:inherit}
 .ws-filter-popover button{margin-top:8px;border:0;background:#eef3f9;padding:6px 10px;border-radius:5px;color:#34465e;cursor:pointer}
-.ws-col-resize{position:absolute;right:-3px;top:0;bottom:0;width:8px;cursor:col-resize;touch-action:none;z-index:5}
-.ws-row-resize{position:absolute;bottom:-3px;left:0;right:0;height:8px;cursor:row-resize;touch-action:none;z-index:5}
+.ws-col-resize{position:absolute;right:0;top:0;bottom:0;width:10px;cursor:col-resize;touch-action:none;z-index:5}
+.ws-row-resize{position:absolute;bottom:0;left:0;right:0;height:8px;cursor:row-resize;touch-action:none;z-index:5}
 .ws-col-resize:hover,.ws-row-resize:hover,.ws-col-resize:focus-visible,.ws-row-resize:focus-visible{background:#6094d866;outline:none}
 .ws-paging{display:flex;gap:8px;align-items:center;margin-top:10px}
 .ws-paging button{border:1px solid #d7dfe9;background:#fff;border-radius:7px;padding:6px 10px;color:#60718a}
