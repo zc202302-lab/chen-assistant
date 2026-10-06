@@ -33,7 +33,7 @@ def prepare(page, editor, value):
         el.style.setProperty('line-height', '20px', 'important');
         el.style.setProperty('height', el.tagName === 'TEXTAREA' ? '64px' : '40px', 'important');
         el.style.setProperty('min-height', '0', 'important');
-        el.style.textAlign = 'left';
+        el.style.setProperty('text-align', 'left', 'important');
         el.style.setProperty('width', '260px', 'important');
         el.style.setProperty('min-width', '260px', 'important');
         el.style.setProperty('max-width', 'none', 'important');
