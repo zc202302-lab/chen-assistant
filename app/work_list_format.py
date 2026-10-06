@@ -130,9 +130,13 @@ def read_layout(reader, sheet_name, header, first_col, last_col, row_numbers):
             for col in range(first_col,min(last_col,sheet.row_len(row-1) if row <= sheet.nrows else 0)+1):
                 cell = sheet.cell(row-1,col-1)
                 xf = reader.xls.xf_list[cell.xf_index]
-                font = reader.xls.font_list[xf.font_index]
-                style = {'numeric': cell.ctype == 2, 'font':font.name[:80],'size':bounded(font.height/20,11,6,72),'bold':bool(font.bold),'italic':bool(font.italic),'wrap':bool(xf.alignment.text_wrapped)}
-                fg,bg = palette(font.colour_index),palette(xf.background.pattern_colour_index)
+                # Old BIFF workbooks may omit FONT records and rely on defaults.
+                font = reader.xls.font_list[xf.font_index] if xf.font_index < len(reader.xls.font_list) else None
+                style = {'numeric': cell.ctype == 2, 'font':font.name[:80] if font else 'Arial',
+                         'size':bounded(font.height/20,11,6,72) if font else 11,
+                         'bold':bool(font.bold) if font else False, 'italic':bool(font.italic) if font else False,
+                         'wrap':bool(xf.alignment.text_wrapped)}
+                fg,bg = palette(font.colour_index) if font else None,palette(xf.background.pattern_colour_index)
                 if fg:
                     style['color'] = fg
                 if bg and xf.background.fill_pattern:
