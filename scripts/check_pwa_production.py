@@ -44,7 +44,7 @@ def verify():
     manifest = json.loads(raw)
     if any(manifest.get(k) != v for k,v in {'id':'/','scope':'/','display':'standalone'}.items()):
         raise RuntimeError('PWA manifest is not current')
-    for path in ['app/static/app.js','app/static/v028.js','app/static/live-refresh-modules-v15.js','app/static/work-sheet.js','app/static/work-sheet.css','app/static/work-architecture-v14.css','app/static/work-lists.css','app/static/sw.js','app/static/reminders.js','app/static/reminders.css','app/static/pwa-experience.js','app/static/pwa-experience.css','app/static/number-inbox-v162.css']:
+    for path in ['app/static/app.js','app/static/v028.js','app/static/live-refresh-modules-v15.js','app/static/quick-search-v15.js','app/static/quick-search-v15.css','app/static/work-sheet.js','app/static/work-sheet.css','app/static/work-architecture-v14.css','app/static/work-lists.css','app/static/sw.js','app/static/reminders.js','app/static/reminders.css','app/static/pwa-experience.js','app/static/pwa-experience.css','app/static/number-inbox-v162.css']:
         url = '/sw.js' if path.endswith('/sw.js') else '/' + path.removeprefix('app/')
         _, headers, raw = fetch(url)
         local = (ROOT / path).read_bytes()

@@ -56,17 +56,51 @@
       section.appendChild(head);
 
       items.forEach(item => {
-        const link = document.createElement('a');
-        link.className = 'quick-search-result-v151';
-        link.href = item.href || '#';
-        link.dataset.quickSearchResult = '1';
-
-        const title = document.createElement('strong');
-        title.textContent = item.title || '';
-        const meta = document.createElement('span');
-        meta.textContent = item.meta || '';
-        link.append(title, meta);
-        section.appendChild(link);
+        const row = document.createElement('div');
+        row.className = 'quick-search-result-v151';
+        const metadata = document.createElement('div');
+        metadata.className = 'quick-search-meta-v151';
+        const fields = Array.isArray(item.copy_fields) ? item.copy_fields : [
+          {label: '标题', value: item.title}, {label: '信息', value: item.meta}
+        ];
+        fields.filter(field => typeof field?.value === 'string' && field.value).forEach((field, index) => {
+          const wrapper = document.createElement('span');
+          wrapper.className = 'quick-search-copy-field-v151';
+          const link = document.createElement('a');
+          link.href = item.href || '#';
+          link.title = field.label + '：' + field.value;
+          const text = document.createElement(index === 0 ? 'strong' : 'span');
+          text.textContent = field.value;
+          link.appendChild(text);
+          if (index === 0) link.dataset.quickSearchResult = '1';
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'quick-search-copy-v151';
+          button.setAttribute('aria-label', '复制' + field.label);
+          button.textContent = '复制';
+          let resetTimer;
+          button.addEventListener('click', async event => {
+            event.preventDefault();
+            clearTimeout(resetTimer);
+            button.disabled = true;
+            let copied = false;
+            try { copied = !!(await window.ChenCopyText?.(field.value)); } catch (_) {}
+            button.disabled = false;
+            button.textContent = copied ? '已复制' : '复制失败';
+            button.dataset.copyFeedback = '1';
+            button.setAttribute('aria-label', '复制' + field.label + '，' + button.textContent);
+            resetTimer = setTimeout(() => {
+              button.textContent = '复制';
+              button.setAttribute('aria-label', '复制' + field.label);
+              delete button.dataset.copyFeedback;
+            }, 1400);
+          });
+          wrapper.append(link, button);
+          if (index === 0) row.appendChild(wrapper);
+          else metadata.appendChild(wrapper);
+        });
+        row.appendChild(metadata);
+        section.appendChild(row);
       });
       results.appendChild(section);
     });

@@ -110,8 +110,13 @@ def _compact_number(value: str) -> str:
     return ''.join(ch for ch in (value or '') if ch.isdigit())
 
 
-def _suggest_item(kind: str, title: str, meta: str, href: str) -> dict[str, str]:
-    return {'kind': kind, 'title': title or '', 'meta': meta or '', 'href': href}
+def _suggest_item(kind: str, title: str, meta: str, href: str,
+                  copy_fields: list[tuple[str, str]] | None = None) -> dict:
+    item = {'kind': kind, 'title': title or '', 'meta': meta or '', 'href': href}
+    if copy_fields is not None:
+        item['copy_fields'] = [{'label': label, 'value': value}
+                               for label, value in copy_fields if value]
+    return item
 
 
 @router.get('/quick-search-suggest')
@@ -150,6 +155,7 @@ def quick_search_suggest_v151(q: str = '', scope: str = 'work'):
                         'customer', row['name'],
                         ' · '.join(x for x in (row['group_code'], row['tax_id']) if x),
                         f"/customers/{row['id']}",
+                        [('集团名称', row['name']), ('集团编码', row['group_code']), ('税号', row['tax_id'])],
                     ) for row in customers
                 ],
             })
@@ -173,6 +179,11 @@ def quick_search_suggest_v151(q: str = '', scope: str = 'work'):
                         row['number'] or row['account'] or row['holder_name'] or row['service_type'] or '业务',
                         ' · '.join(x for x in (row['customer_name'], row['holder_name'], row['account'] if row['number'] else '') if x),
                         f"/customers/{row['customer_id']}?tab=services&focus_service={row['service_id']}",
+                        [('号码' if row['number'] else '账号' if row['account'] else '姓名' if row['holder_name'] else '业务',
+                          row['number'] or row['account'] or row['holder_name'] or row['service_type'] or '业务'),
+                         ('集团名称', row['customer_name']),
+                         ('姓名', row['holder_name'] if row['number'] or row['account'] else ''),
+                         ('账号', row['account'] if row['number'] else '')],
                     ) for row in services
                 ],
             })

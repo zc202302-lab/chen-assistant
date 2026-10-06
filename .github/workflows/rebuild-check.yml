@@ -142,6 +142,10 @@ jobs:
           pip-audit -r requirements.txt
           bandit -q -r app storage_node -lll
 
+      - name: v1.5.1 live quick-search acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/v151_quick_search_live_acceptance.py
+
       - name: Web Push and reminder contracts
         if: steps.scope.outputs.mode == 'full'
         run: |
@@ -270,10 +274,6 @@ jobs:
       - name: v1.5 customer live refresh acceptance
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v150_live_refresh_acceptance.py
-
-      - name: v1.5.1 live quick-search acceptance
-        if: steps.scope.outputs.mode == 'full'
-        run: python tests/v151_quick_search_live_acceptance.py
 
       - name: v1.5.2 high-frequency payment flow acceptance
         if: steps.scope.outputs.mode == 'full'
