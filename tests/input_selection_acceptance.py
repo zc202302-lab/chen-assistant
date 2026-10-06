@@ -30,10 +30,12 @@ def prepare(page, editor, value):
     editor.evaluate("""el => {
         el.style.setProperty('font', '16px monospace', 'important');
         el.style.letterSpacing = '0px';
-        el.style.lineHeight = '20px';
+        el.style.setProperty('line-height', '20px', 'important');
+        el.style.setProperty('height', el.tagName === 'TEXTAREA' ? '64px' : '40px', 'important');
+        el.style.setProperty('min-height', '0', 'important');
         el.style.textAlign = 'left';
         el.style.width = '260px';
-        el.style.padding = '8px';
+        el.style.setProperty('padding', '8px', 'important');
         el.style.boxSizing = 'border-box';
         el.blur();
         el.scrollLeft = 0;
@@ -42,7 +44,7 @@ def prepare(page, editor, value):
     }""")
     editor.click(trial=True)
     settled(page)
-    return editor.evaluate("""el => {
+    coords = editor.evaluate("""el => {
         const rect = el.getBoundingClientRect(), style = getComputedStyle(el);
         const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
         ctx.font = style.font;
@@ -50,6 +52,8 @@ def prepare(page, editor, value):
                 y:rect.y + parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop) + 10,
                 char:ctx.measureText('0').width};
     }""")
+    assert editor.evaluate("(el, c) => document.elementFromPoint(c.x + c.char * 2, c.y) === el", coords), (coords, editor.evaluate("el => ({rect:el.getBoundingClientRect().toJSON(),font:getComputedStyle(el).font})"))
+    return coords
 
 
 def drag(page, coords, start=2, end=5):
