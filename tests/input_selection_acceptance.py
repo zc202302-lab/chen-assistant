@@ -34,7 +34,9 @@ def prepare(page, editor, value):
         el.style.setProperty('height', el.tagName === 'TEXTAREA' ? '64px' : '40px', 'important');
         el.style.setProperty('min-height', '0', 'important');
         el.style.textAlign = 'left';
-        el.style.width = '260px';
+        el.style.setProperty('width', '260px', 'important');
+        el.style.setProperty('min-width', '260px', 'important');
+        el.style.setProperty('max-width', 'none', 'important');
         el.style.setProperty('padding', '8px', 'important');
         el.style.boxSizing = 'border-box';
         el.blur();
