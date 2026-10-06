@@ -99,6 +99,14 @@ assert [x for x in manifest['scripts'] if x not in {'v10.js', 'v12.js'}] == cust
 for path in ['/', '/info', '/work', '/work/lists', '/reminders']:
     assert 'v031_workflow_runtime_fix.js' not in scripts_for(path), path
     assert 'reminders.js' in scripts_for(path) and 'pwa-experience.js' in scripts_for(path), path
+# The dashboard has an inline search initializer in v03.js despite living in
+# /work. Keep only that necessary extra asset; other customer controllers stay scoped.
+for path in ['/work/customers', '/work/customers/']:
+    dashboard_scripts = scripts_for(path)
+    assert 'v03.js' in dashboard_scripts, path
+    assert 'v031_workflow_runtime_fix.js' not in dashboard_scripts, path
+for path in ['/', '/info', '/work', '/work/lists', '/work/customers-extra']:
+    assert 'v03.js' not in scripts_for(path), path
 assert 'v10.js' in scripts_for('/life/recipes/1')
 assert 'v12.js' in scripts_for('/life/tools')
 print('architecture governance passed: source ownership, no monkey patches, rollback, startup, page assets')
