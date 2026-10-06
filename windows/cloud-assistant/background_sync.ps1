@@ -1,4 +1,4 @@
-﻿﻿param([switch]$Background, [switch]$CheckSyntax)
+﻿param([switch]$Background, [switch]$CheckSyntax)
 $ErrorActionPreference = 'Stop'
 if ($CheckSyntax) { exit 0 }
 $sync = Join-Path $PSScriptRoot 'sync_updates.ps1'

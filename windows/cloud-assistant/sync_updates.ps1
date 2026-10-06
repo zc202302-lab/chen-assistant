@@ -1,4 +1,4 @@
-﻿﻿param([string]$Bridge = 'E:\ChenBridge', [switch]$CheckProcess, [switch]$Once)
+﻿param([string]$Bridge = 'E:\ChenBridge', [switch]$CheckProcess, [switch]$Once)
 $ErrorActionPreference = 'Stop'
 if (Test-Path 'C:\Program Files\GitHub CLI\gh.exe') { $env:PATH = 'C:\Program Files\GitHub CLI;' + $env:PATH }
 if ($CheckProcess) {

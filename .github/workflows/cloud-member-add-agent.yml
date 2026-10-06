@@ -29,6 +29,7 @@ jobs:
         shell: powershell
         run: |
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows/cloud-assistant/sync_updates.ps1 -CheckProcess
+          if ($LASTEXITCODE -ne 0) { throw 'Sync entry process check failed' }
           $parseErrors = $null
           [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'windows/cloud-assistant/background_sync.ps1'), [ref]$null, [ref]$parseErrors) | Out-Null
           if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
