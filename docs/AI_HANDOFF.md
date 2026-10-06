@@ -2,10 +2,15 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-06（Asia/Shanghai）。工作模式：开发中。最新用户需求：新建清单导入Excel取消选择范围，读取附件工作表全部有效范围。活动分支feat/list-import-whole-sheet已建立，Draft PR #135，已提交功能检查点fcfd94b180affd87a34d47da80c2894d4f288ff7，首轮CI发现旧BIFF XLS无FONT记录的格式读取问题，已补默认字体；完整CI重跑待完成；上轮#134已完成并通过生产验证。
-- 已去除表头行/开始列/结束列/结束行选择，由服务端自动确定完整工作表范围，保留有效内容、内部空行、字体/填色/合并及行列尺寸。多工作表仍由用户选择，原字段匹配、确认预览、重复校验与并发保护保留；历史追加API范围兼容保留。无新路由/数据库变更。
-- 现有5MB/5000行/50列安全限制继续生效，超限明确报错，不静默截断。核心文件work_list_excel.py、work_list_import.py、work_list_import.html及导入/网页表格验收。#128云电脑Draft未操作。环境不可用，本轮通过GitHub连接器开发与自托管CI验收。
-- 唯一下一步：实现自动完整范围读取、完成XLS/XLSX/XLSM契约及真实浏览器验收，完整CI后合并部署并验证。
+- 更新时间：2026-10-06 16:22（Asia/Shanghai）。工作模式：本轮已完成，等待下一项明确需求。用户要求新建清单Excel导入取消选择范围，读取上传工作表全部有效范围。PR [#135](https://github.com/zc202302-lab/chen-assistant/pull/135)已合并，功能合并提交76a5c0a6ab51221ef41184d0555bdf60882d9ac8，最后功能修复ee38eb8773dfef83ce27634ace052f56edfeb271，完整验收head 4403a9517b70fcd89c85881ffda0981aba8e51b9。feat/list-import-whole-sheet为已完成历史分支，不是活动WIP；文档提交不作为新功能，main实时查询。
+- 导入界面已去除表头行、开始列、结束列和结束行输入及范围说明，按钮改为“上传文件”和“读取工作表”。保留工作表选择、字段匹配、确认预览、客户关联、重复处理及并发保护。新建由服务端自动读取A1至实际内容/带格式空白单元格/合并区域的完整范围，保留内部空行和格式；不信任Excel失真的dimension。旧追加客户端显式范围API继续兼容，新界面追加也自动读取整表。
+- 安全边界保持5MB、5000个数据行及50列，整表超限明确拒绝而不静默截断；公式使用已保存结果，宏不执行。旧BIFF XLS缺失FONT记录时使用默认字体，不因格式读取丢弃数据。无新路由、数据库或版本补丁模块，186条原路由与APP_VERSION1.7.3保留。
+- 完整CI：[validation37434200500](https://github.com/zc202302-lab/chen-assistant/actions/runs/37434200500)、[stability37434200408](https://github.com/zc202302-lab/chen-assistant/actions/runs/37434200408)均success，对应上述验收head。覆盖XLS/XLSX/XLSM，全列/空行读取、伪造裁剪参数不截断新建导入、边缘格式与合并、失真dimension、超限拒绝，以及真实浏览器无范围控件、字段匹配、客户关联、重复追加、桌面手机和格式导出往返。原安全、搜索复制、输入选区、客户/缴费/资料/实时刷新/菜谱/提醒及架构治理完整回归通过。
+- 初轮新增XLS格式回归发现旧BIFF无FONT记录引发IndexError，已修复实际格式读取并重新完成完整CI；没有删除/跳过/弱化该用例。原范围读取底层契约保留；新建服务端契约追加检查全列读取，再明确匹配不需要的列，原重复/事务/会话/并发/关联数据断言保留。交接文档同步main后已在分支合入main检查点，最终无冲突。
+- 生产证据：[PWA公网验证37435328764](https://github.com/zc202302-lab/chen-assistant/actions/runs/37435328764) / job112175614088 success，2026-10-06 16:21:41（Asia/Shanghai）ONLINE VERIFIED v1.7.3。work-lists.css及原工作/搜索/清单/推送资产SHA256与本次源码一致，health、manifest、根Service Worker scope和未登录提醒路由正常。部署切换前四次work-lists.css尚旧，第五次完整通过。未读取生产git HEAD，不声称精确运行commit，未在真实生产写入业务数据；合并main的重复CI与PR验收分别判断。
+- 核心文件app/work_list_excel.py、work_list_import.py、work_list_format.py、templates/work_list_import.html、static/work-lists.css；tests/work_list_import_contract.py、work_list_import_acceptance.py、work_sheet_acceptance.py与PRODUCT_REQUIREMENTS。移除无引用范围样式，导入页CSS缓存?v=1681。执行环境不可用，本轮通过GitHub连接器提交与自托管Linux CI真实浏览器验收。
+- #134搜索预览复制、#133输入选区、#132网页Excel和冗余说明审计、#129审阅修复、#130分层、#131紧凑方形模块保留，详情见历史。云电脑PR #128仍Draft，本轮未操作或发布Windows包，需要独立审阅与实机验收。
+- 唯一下一步：按用户下一项明确需求继续；如恢复云电脑工作，先核对#128实际head、CI与剩余实机验收。
 
 ---
 
