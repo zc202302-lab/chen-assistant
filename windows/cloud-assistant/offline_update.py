@@ -186,6 +186,7 @@ def main():
     if channel not in CHANNELS:
         raise ValueError('更新通道无效')
     # Prevent two supervisors from starting agents against the same installation.
+    lock = None
     if os.name == 'nt':
         import msvcrt
         lock = open(install / ('sync.lock' if args.sync else 'agent.lock'), 'a+b')
@@ -196,32 +197,37 @@ def main():
         try:
             msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError:
+            lock.close()
             raise RuntimeError('助手已在运行，请勿重复启动')
-    while True:
-        if args.sync:
-            try:
-                sync_once(args.bridge, channel)
-                if getattr(sys, 'frozen', False):
-                    apply_update(args.bridge, install)
-            except Exception as exc:
-                print('本机同步暂未完成：' + str(exc), flush=True)
-                return 1
-            return 0  # Online PC updates are always manually triggered, once.
-        else:
-            update_ok = True
-            try:
-                apply_update(args.bridge, install)
-            except Exception as exc:
-                if (install / '.update-rollback.json').exists():
-                    print('更新恢复未完成，已停止启动助手：' + str(exc), flush=True)
+    try:
+        while True:
+            if args.sync:
+                try:
+                    sync_once(args.bridge, channel)
+                    if getattr(sys, 'frozen', False):
+                        apply_update(args.bridge, install)
+                except Exception as exc:
+                    print('本机同步暂未完成：' + str(exc), flush=True)
                     return 1
-                print('更新未完成，继续使用原版本：' + str(exc), flush=True)
-                update_ok = False
-            environment = dict(os.environ, CHEN_OFFLINE_UPDATE='1' if update_ok else '0')
-            result = subprocess.run([str(install / 'CloudMemberAddAgent.exe'), '--bridge', str(args.bridge), '--port', '9222'], env=environment)
-            if result.returncode != 75:
-                return result.returncode
-            time.sleep(2)
+                return 0  # Online PC updates are always manually triggered, once.
+            else:
+                update_ok = True
+                try:
+                    apply_update(args.bridge, install)
+                except Exception as exc:
+                    if (install / '.update-rollback.json').exists():
+                        print('更新恢复未完成，已停止启动助手：' + str(exc), flush=True)
+                        return 1
+                    print('更新未完成，继续使用原版本：' + str(exc), flush=True)
+                    update_ok = False
+                environment = dict(os.environ, CHEN_OFFLINE_UPDATE='1' if update_ok else '0')
+                result = subprocess.run([str(install / 'CloudMemberAddAgent.exe'), '--bridge', str(args.bridge), '--port', '9222'], env=environment)
+                if result.returncode != 75:
+                    return result.returncode
+                time.sleep(2)
+    finally:
+        if lock is not None:
+            lock.close()
 
 if __name__ == '__main__':
     try:
