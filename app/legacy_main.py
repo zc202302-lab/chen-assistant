@@ -9,7 +9,7 @@ import sqlite3
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import init_db, db, now_iso
@@ -25,7 +25,8 @@ templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
 
 @app.on_event('startup')
 def startup():
-    init_db()
+    from .schema import initialize_schema
+    initialize_schema("base")
 
 
 def current_period():
@@ -517,4 +518,5 @@ def account_delete(request: Request, account_id: int, csrf: str=Form(...)):
     with db() as conn:
         conn.execute('DELETE FROM website_accounts WHERE id=?',(account_id,))
     return RedirectResponse('/accounts',303)
+
 

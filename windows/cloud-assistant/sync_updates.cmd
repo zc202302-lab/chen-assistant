@@ -8,5 +8,5 @@ if errorlevel 1 (
   exit /b 1
 )
 set /p "bridge=请输入本机共享文件夹完整路径："
-CloudOfflineUpdater.exe --sync --bridge "%bridge%"
+CloudOfflineUpdater.exe --sync --once --bridge "%bridge%"
 pause

@@ -1,4 +1,4 @@
-﻿param([switch]$Background, [switch]$CheckSyntax)
+﻿﻿param([switch]$Background, [switch]$CheckSyntax)
 $ErrorActionPreference = 'Stop'
 if ($CheckSyntax) { exit 0 }
 $sync = Join-Path $PSScriptRoot 'sync_updates.ps1'
@@ -20,5 +20,11 @@ if (-not $Background) {
     $shortcut.Save()
 }
 $arguments = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $sync + '" -Bridge "E:\ChenBridge" -Once'
-Start-Process -FilePath $ps -ArgumentList $arguments -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $PSScriptRoot 'sync-background.log') -RedirectStandardError (Join-Path $PSScriptRoot 'sync-background-error.log') | Out-Null
+$process = Start-Process -FilePath $ps -ArgumentList $arguments -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $PSScriptRoot 'sync-background.log') -RedirectStandardError (Join-Path $PSScriptRoot 'sync-background-error.log') -PassThru -Wait
+$notice = New-Object -ComObject WScript.Shell
+if ($process.ExitCode -eq 0) {
+    $null = $notice.Popup('本次手动更新已完成。', 0, '晨的小助手', 64)
+} else {
+    $null = $notice.Popup('本次更新未完成，原版本已保留。请查看助手目录中的 sync-background.log 和 sync-background-error.log。', 0, '晨的小助手', 16)
+}
 if (-not $Background) { Write-Host '已取消自动启动，开始本次后台更新。以后双击 ManualUpdate。日志：sync-background.log' }

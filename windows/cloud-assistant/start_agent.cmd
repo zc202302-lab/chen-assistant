@@ -2,6 +2,10 @@
 chcp 65001 >nul
 title 晨的小助手 - 云电脑成员批量添加
 setlocal
+if not exist "%~dp0.update-rollback.json" if exist "%~dp0CloudOfflineUpdater.next.exe" (
+  move /y "%~dp0CloudOfflineUpdater.next.exe" "%~dp0CloudOfflineUpdater.exe" >nul
+  if errorlevel 1 exit /b 1
+)
 if exist "%~dp0CloudOfflineUpdater.exe" (
   "%~dp0CloudOfflineUpdater.exe" --bridge "Y:\ChenBridge"
 ) else if exist "%~dp0CloudMemberAddAgent.exe" (

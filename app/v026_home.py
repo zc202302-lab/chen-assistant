@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db
@@ -66,3 +66,4 @@ def dashboard_v026(request: Request, home: str = 'tasks'):
         ctx(request, active_home_tab=active_home_tab, tasks=tasks, wait_notice=wait_notice, wait_payment=wait_payment,
             promo_expired=promo_expired, promo_soon=promo_soon, recent=recent),
     )
+

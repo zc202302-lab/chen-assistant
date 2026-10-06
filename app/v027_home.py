@@ -5,7 +5,7 @@ from datetime import date
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db

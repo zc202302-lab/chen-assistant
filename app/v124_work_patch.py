@@ -5,7 +5,7 @@ from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
@@ -263,3 +263,4 @@ def work_search_v124(request: Request, q: str = ''):
 
 work_search_v124.__name__ = 'work_search_v101'
 work_search_v124.__module__ = 'app.v10_routes'
+

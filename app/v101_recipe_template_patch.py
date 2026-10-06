@@ -4,10 +4,10 @@ from collections import defaultdict
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
-from .db import db, now_iso
+from .db import connection_scope, db, now_iso
 from .v10_routes import _ctx, _current_version, _recipe_or_404, _scaled_amount, _version_payload, ensure_v10_schema
 from .v101_recipe_template_data import TEMPLATE_CATEGORIES, TEMPLATE_IMPORT_MARKER, TEMPLATE_RECIPES
 
@@ -23,11 +23,7 @@ def ensure_v101_recipe_templates(conn=None):
     current standard; otherwise it is appended to history without replacing the
     user's current standard.
     """
-    owns = conn is None
-    if owns:
-        cm = db()
-        conn = cm.__enter__()
-    try:
+    with connection_scope(conn) as conn:
         ensure_v10_schema(conn)
         now = now_iso()
         for name, payload in TEMPLATE_RECIPES.items():
@@ -88,9 +84,6 @@ def ensure_v101_recipe_templates(conn=None):
             # preserve their current standard and only append the Excel import.
             if version_count <= 1 or current_id is None:
                 conn.execute('UPDATE recipes SET current_version_id=?,updated_at=? WHERE id=?', (version_id, now, recipe_id))
-    finally:
-        if owns:
-            cm.__exit__(None, None, None)
 
 
 def _print_amount(row, version):
@@ -214,3 +207,7 @@ def recipe_print_v101(request: Request, recipe_id: int):
 def recipe_cook_start_disabled_v101(recipe_id: int):
     # The dedicated cooking-mode workflow was removed by design in v1.0.1.
     return RedirectResponse(f'/life/recipes/{recipe_id}', status_code=303)
+
+
+# Compatibility marker; safety is implemented in this original function.
+ensure_v101_recipe_templates.__v144_transaction_safe__ = True

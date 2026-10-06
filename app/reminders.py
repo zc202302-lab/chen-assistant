@@ -19,7 +19,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from . import config
-from .db import db
+from .db import execute_schema, db
 from .legacy_main import templates, ctx
 from .security import require_csrf, encrypt_secret, decrypt_secret
 
@@ -62,9 +62,8 @@ def b64(raw):
 
 
 def ensure_reminder_schema():
-    with db() as conn:
-        conn.executescript(SCHEMA)
-        conn.execute('BEGIN IMMEDIATE')
+    with db(immediate=True) as conn:
+        execute_schema(conn, SCHEMA)
         for kind in ['all', *TYPES]:
             conn.execute('INSERT OR IGNORE INTO reminder_preferences(kind) VALUES(?)', (kind,))
         # Encrypted in the existing backed-up database, so deploys/restarts keep
@@ -124,8 +123,7 @@ def due_timestamp(value):
 
 def collect_due(now=None):
     now = time.time() if now is None else now
-    with db() as conn:
-        conn.execute('BEGIN IMMEDIATE')
+    with db(immediate=True) as conn:
         for row in conn.execute("SELECT * FROM tasks WHERE done=0 AND COALESCE(NULLIF(remind_at,''),remind_date,'')<>''").fetchall():
             value = row['remind_at'] or row['remind_date']
             due = due_timestamp(value)
@@ -232,8 +230,7 @@ def deliver_one(now=None, sender=None):
     now = time.time() if now is None else now
     sender = sender or webpush
     token = now + 120
-    with db() as conn:
-        conn.execute('BEGIN IMMEDIATE')
+    with db(immediate=True) as conn:
         row = conn.execute('''SELECT o.*,r.kind,r.title,r.body,r.url,r.read_at,r.resolved_at,
             d.subscription,d.enabled FROM push_outbox o JOIN reminders r ON r.id=o.reminder_id
             JOIN push_devices d ON d.id=o.device_id
@@ -362,8 +359,7 @@ async def subscribe(request: Request):
     except (ValueError,TypeError) as exc:
         raise HTTPException(400,str(exc)) from exc
     name = str(payload.get('name','手机设备')).strip()[:60] or '手机设备'
-    with db() as conn:
-        conn.execute('BEGIN IMMEDIATE')
+    with db(immediate=True) as conn:
         old = conn.execute('SELECT id FROM push_devices WHERE endpoint=?', (subscription['endpoint'],)).fetchone()
         did = old['id'] if old else secrets.token_urlsafe(18)
         if not old and conn.execute('SELECT COUNT(*) FROM push_devices').fetchone()[0] >= 30:
@@ -448,3 +444,4 @@ def open_reminder(reminder_id: int):
         conn.execute('UPDATE reminders SET read_at=? WHERE id=?',(time.time(),reminder_id))
         target=safe_url(row['url'])
     return RedirectResponse(target,status_code=303)
+

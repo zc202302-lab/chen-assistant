@@ -90,17 +90,29 @@ def main():
     assert 'MutationObserver' not in rollback
     assert 'btn.textContent' not in rollback, '金额回退辅助脚本不得直接改四步按钮'
 
-    patch = (ROOT / 'app' / 'v031_fixed_review_patch.py').read_text(encoding='utf-8')
+    patch = (ROOT / 'app' / 'payments.py').read_text(encoding='utf-8') + (ROOT / 'app' / 'v031_fixed_review_patch.py').read_text(encoding='utf-8')
     for token in (
         'MANUAL_CHANGED_SOURCE', "confirmed = 0", "source = MANUAL_CHANGED_SOURCE",
         '_review_snapshot', '_auto_review_run', '_rollback_completed_payment',
         'payment_save_preserve_reviews_v032', 'payment_review_toggle_preserve_reviews_v032',
-        'core.payment_snapshot_v0212 = _review_snapshot',
-        'workflow._run_v031 = _auto_review_run',
-        'workflow._paint_review_reset = _fixed_amount_review',
         "reviewed_at='',notified_at='',initiated_at='',initiate_prepared_at='',paid_at=''",
     ):
         assert token in patch, token
+
+    # Verify the actual stable entry points call current row-review providers,
+    # rather than requiring historical import-time monkey-patch source text.
+    from unittest.mock import patch as mock_patch
+    from app import v0212_routes as core
+    from app import v031_payment_workflow_routes as workflow
+    with mock_patch('app.v031_fixed_review_patch._review_snapshot', return_value='snapshot') as provider:
+        assert core.payment_snapshot_v0212(None, 1, '2026-01') == 'snapshot'
+        provider.assert_called_once_with(None, 1, '2026-01')
+    with mock_patch('app.v031_fixed_review_patch._auto_review_run', return_value='run') as provider:
+        assert workflow._run_v031(None, 1, '2026-01') == 'run'
+        provider.assert_called_once_with(None, 1, '2026-01')
+    with mock_patch('app.v031_fixed_review_patch._fixed_amount_review', return_value='review') as provider:
+        assert workflow._paint_review_reset(None, 1, '2026-01', {}, [], {}) == 'review'
+        provider.assert_called_once_with(None, 1, '2026-01', {}, [], {})
 
     guard = (ROOT / 'app' / 'static' / 'v031_workflow_dom_guard.js').read_text(encoding='utf-8')
     for token in (
@@ -154,3 +166,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

@@ -166,7 +166,11 @@ def main():
     parser.add_argument("--check-file", type=Path, help="只校验 Excel 两列，不连接业务系统")
     parser.add_argument("--check-browser", action="store_true", help="只检查浏览器连接和业务搜索框，不提交成员")
     parser.add_argument("--diagnose-browser", action="store_true", help="只读诊断页面框架和搜索控件")
+    parser.add_argument("--self-check", action="store_true", help="只验证程序导入，不连接业务系统")
     args = parser.parse_args()
+    if args.self_check:
+        print("member-agent self-check ok", flush=True)
+        return
     if args.diagnose_browser:
         Agent(args.bridge, args.port).diagnose_browser()
         return

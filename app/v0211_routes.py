@@ -5,7 +5,7 @@ import json
 
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
@@ -372,3 +372,4 @@ def reorder_services_v0211(
         conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), customer_id))
 
     return JSONResponse({'ok': True, 'order': reordered})
+

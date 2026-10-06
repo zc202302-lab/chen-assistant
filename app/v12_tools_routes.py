@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db
@@ -83,3 +83,4 @@ recipe_list_v12.__module__ = 'app.v10_routes'
 recipe_list_v12.__name__ = 'recipe_list_v10'
 knowledge_redirect_v12.__module__ = 'app.v10_routes'
 knowledge_redirect_v12.__name__ = 'knowledge_list_v10'
+

@@ -13,7 +13,7 @@ from . import v031_payment_workflow_routes as workflow
 
 
 router = APIRouter()
-_original_data_change_rollback = review_patch._rollback_completed_payment
+_original_data_change_rollback = review_patch._rollback_completed_payment_exact
 
 
 def _snapshot_count(conn, run_id: int) -> int:
@@ -75,7 +75,7 @@ def _rollback_completed_payment_compat(conn, customer_id: int, period: str, run)
 # Replacing it here also fixes old completed records without weakening the normal
 # exact snapshot/restore path for every newer run. The four-stage workflow route
 # itself remains owned by app.v031_payment_workflow_routes for compatibility.
-review_patch._rollback_completed_payment = _rollback_completed_payment_compat
+
 
 
 @router.post('/services/{service_id}/toggle-fixed')
@@ -140,3 +140,4 @@ def toggle_fixed_v143_compat(
         payload['workflow_run'] = current_run
         payload['workflow_invalidated'] = new_mode == 'variable'
         return JSONResponse(payload)
+

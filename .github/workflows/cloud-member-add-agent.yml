@@ -38,6 +38,10 @@ jobs:
         run: pyinstaller --clean --noconfirm --onefile --name CloudMemberAddAgent windows/cloud-assistant/member_add_agent.py
       - name: Build offline updater
         run: pyinstaller --clean --noconfirm --onefile --name CloudOfflineUpdater windows/cloud-assistant/offline_update.py
+      - name: Executable import smoke
+        run: |
+          dist\CloudMemberAddAgent.exe --self-check
+          dist\CloudOfflineUpdater.exe --self-check
       - name: Assemble package
         env:
           AGENT_VERSION: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -47,7 +51,9 @@ jobs:
           Copy-Item dist\CloudMemberAddAgent.exe package\
           Copy-Item dist\CloudOfflineUpdater.exe package\
           Copy-Item windows\cloud-assistant\sync_updates.cmd package\
-          @{version=$env:AGENT_VERSION} | ConvertTo-Json | Set-Content -Encoding ascii package\version.json
+          Copy-Item windows\cloud-assistant\sync_updates.ps1 package\
+          Copy-Item windows\cloud-assistant\background_sync.ps1 package\
+          @{version=$env:AGENT_VERSION; channel=if ('${{ github.event_name }}' -eq 'pull_request') {'development'} else {'stable'}; protocol=2} | ConvertTo-Json | Set-Content -Encoding ascii package\version.json
           Copy-Item windows\cloud-assistant\start_agent.cmd package\
           Copy-Item windows\cloud-assistant\diagnose_browser.cmd package\
           Copy-Item windows\cloud-assistant\README.md package\
@@ -58,3 +64,4 @@ jobs:
           path: CloudMemberAddAgent.zip
           if-no-files-found: error
           retention-days: 14
+

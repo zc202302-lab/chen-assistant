@@ -9,11 +9,11 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 import xlsxwriter
 
 from . import config
-from .db import db, now_iso
+from .db import connection_scope, execute_schema, db, now_iso
 from .security import require_csrf
 
 router = APIRouter()
@@ -44,13 +44,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_number_inbox_one_pending
 
 
 def ensure_number_inbox_schema(conn=None) -> str:
-    owns = conn is None
-    if owns:
-        cm = db()
-        conn = cm.__enter__()
-    try:
+    with connection_scope(conn) as conn:
         conn.execute('CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
-        conn.executescript(NUMBER_INBOX_SCHEMA)
+        execute_schema(conn, NUMBER_INBOX_SCHEMA)
         columns = {row['name'] for row in conn.execute('PRAGMA table_info(number_inbox)')}
         if 'submit_batch' not in columns:
             conn.execute("ALTER TABLE number_inbox ADD COLUMN submit_batch TEXT NOT NULL DEFAULT ''")
@@ -63,9 +59,6 @@ def ensure_number_inbox_schema(conn=None) -> str:
                 (TOKEN_META_KEY, token),
             )
         return token
-    finally:
-        if owns:
-            cm.__exit__(None, None, None)
 
 
 def _ctx(request: Request, **extra):
@@ -104,11 +97,7 @@ def _token_matches(conn, token: str) -> bool:
 
 
 def ensure_desktop_token(conn=None) -> str:
-    owns = conn is None
-    if owns:
-        cm = db()
-        conn = cm.__enter__()
-    try:
+    with connection_scope(conn) as conn:
         ensure_number_inbox_schema(conn)
         row = conn.execute('SELECT value FROM app_meta WHERE key=?', (DESKTOP_TOKEN_META_KEY,)).fetchone()
         token = row['value'] if row else ''
@@ -119,9 +108,6 @@ def ensure_desktop_token(conn=None) -> str:
                 (DESKTOP_TOKEN_META_KEY, token),
             )
         return token
-    finally:
-        if owns:
-            cm.__exit__(None, None, None)
 
 
 def _desktop_token_from_request(request: Request) -> str:
@@ -399,4 +385,5 @@ def number_inbox_rotate_link(request: Request, csrf: str = Form(...)):
 def pending_number_count(conn) -> int:
     ensure_number_inbox_schema(conn)
     return int(conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'])
+
 

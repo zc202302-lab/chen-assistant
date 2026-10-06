@@ -7,7 +7,7 @@ import json
 
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
@@ -264,3 +264,4 @@ def reorder_promotions_v027(request: Request, customer_id: int, csrf: str = Form
                 raise HTTPException(400, '只能调整同一号码下优惠的顺序')
         _meta_set(conn, f'promo_order:{customer_id}:{group_key}', json.dumps(ids))
     return JSONResponse({'ok': True})
+

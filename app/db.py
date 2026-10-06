@@ -207,9 +207,11 @@ def connect():
 
 
 @contextmanager
-def db():
+def db(immediate=False):
     conn = connect()
     try:
+        if immediate:
+            conn.execute('BEGIN IMMEDIATE')
         yield conn
         conn.commit()
     except Exception:
@@ -217,6 +219,31 @@ def db():
         raise
     finally:
         conn.close()
+
+
+@contextmanager
+def connection_scope(conn=None):
+    """Borrow an existing transaction, or own a connection with real rollback."""
+    if conn is None:
+        with db() as owned:
+            owned.execute('BEGIN')
+            yield owned
+    else:
+        yield conn
+
+
+def execute_schema(conn, script):
+    """Execute complete SQL statements without executescript's implicit commit."""
+    if not conn.in_transaction:
+        conn.execute('BEGIN')
+    statement = ''
+    for char in script:
+        statement += char
+        if char == ';' and sqlite3.complete_statement(statement):
+            conn.execute(statement)
+            statement = ''
+    if statement.strip():
+        conn.execute(statement)
 
 
 def _has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
@@ -381,7 +408,7 @@ def _migrate(conn: sqlite3.Connection):
 
 def init_db():
     with db() as conn:
-        conn.executescript(SCHEMA)
+        execute_schema(conn, SCHEMA)
         _migrate(conn)
 
 
