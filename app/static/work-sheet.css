@@ -19,8 +19,8 @@ body:has(.wl-sheet-shell) .page{max-width:1520px}
 .ws-headers{background:#f3f6fa}
 .ws-header-input{width:100%;height:100%;min-height:0;border:0!important;border-radius:0!important;padding:5px 25px 5px 7px!important;box-sizing:border-box;background:transparent!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;margin:0!important}
 .ws-data-cell{background:#fff}
-.ws-cell{display:block;box-sizing:border-box;width:100%;height:100%;min-height:0;border:0!important;border-radius:0!important;padding:4px 7px!important;margin:0!important;resize:none;overflow:hidden;background:transparent!important;color:inherit!important;font:inherit!important;text-align:inherit;line-height:1.35;white-space:inherit}
-.ws-cell:focus,.ws-header-input:focus{outline:2px solid #3979cc;outline-offset:-2px;box-shadow:none!important}
+.ws-editor .ws-cell{display:block;box-sizing:border-box;width:100%;height:100%;min-height:0;border:0!important;border-radius:0!important;padding:4px 7px!important;margin:0!important;resize:none;overflow:hidden;background:transparent!important;color:inherit!important;font:inherit!important;text-align:inherit;line-height:1.35;white-space:inherit}
+.ws-editor .ws-cell:focus,.ws-header-input:focus{outline:2px solid #3979cc;outline-offset:-2px;box-shadow:none!important}
 .ws-editor .ws-filter-button{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:23px;height:23px;border:0;border-radius:4px;background:transparent;color:#738197;padding:0;cursor:pointer;font-size:15px}
 .ws-editor .ws-filter-button.has-filter{color:#245baa;background:#dceafe}
 .ws-filter-popover{position:absolute;left:0;top:100%;padding:10px;min-width:190px;background:white;box-shadow:0 6px 22px #24314922;border:1px solid #d0dae7;border-radius:8px;z-index:8}

@@ -69,6 +69,7 @@ def main():
             page.get_by_role('button',name='创建清单',exact=True).click()
             expect(page.get_by_role('heading',name='在线表格',exact=True)).to_be_visible()
             url=page.url
+            assert page.locator('.ws-cell').first.evaluate("el=>getComputedStyle(el).resize")=='none'
             page.locator('.ws-cell[data-row="0"][data-col="1"]').fill('保存后的值')
             handle=page.locator('.ws-col-resize').first
             original_width=page.locator('.ws-letters th').nth(1).bounding_box()['width']
