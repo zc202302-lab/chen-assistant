@@ -2,12 +2,13 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-08（Asia/Shanghai）。工作模式：开发中。用户要求win-assistants采用顶部导航，设置、检查更新等低频操作收进设置模块；用户明确“云电脑助手暂不开发”。本轮不修改、合并或发布云电脑Draft #128。
-- 活动分支：feat/win-top-navigation，基于main df3494763655203dcc48fea26800ceb60766bfd4。候选版本0.5.8。顶部短信/久坐/缴费连接/号码提醒/设置五个标签，默认短信；模块配置、启停、开机启动、旧工具接管、统一更新集中设置页。托盘检查更新显示设置页的实时进度。
-- 本地61个既有测试与编译通过；新增真实Tk页切换、隐藏、最小窗口布局验收，在Windows构建阶段运行。CI、EXE构建、线上发布及用户安装分别待验证，不互相推断。
-- 既有Web 1.7.3 / #135及生产证据保留，下方历史可查。本轮不修改Web业务；短信、久坐检测、强休、Foxmail人工发送和号码完成同步业务逻辑保留。
-- 核心文件windows/win-assistants/win_assistants/app.py、__init__.py、tests/test_navigation.py。开发路径/workspace/scratch/3b66fa5b4c20/chen-assistant。
-- 唯一下一步：完成本轮导航CI与Windows EXE构建验收，再交付客户端更新；云电脑助手暂停。
+- 更新时间：2026-10-08（Asia/Shanghai）。工作模式：win-assistants界面改造已合并，正在正式发布；云电脑助手按用户明确要求暂停，不修改、合并或发布Draft #128。
+- PR #136已合并，功能合并提交915ad283fe6c89dcbe479d1cfcd9666fc1ea2869；最终验收head2954386c9635be0fe682e62c74f848016b71926e。feat/win-top-navigation是已合并分支，不再是活动WIP。候选Windows版本0.5.8。
+- 顶部短信/久坐/缴费连接/号码提醒/设置五个标签，默认短信；模块启停、连接配置、开机启动、旧工具接管、统一更新集中设置页；切页不停止后台模块。设置支持小窗口滚动与控件上滚轮，托盘更新自动滚到进度。原短信、久坐检测/强休、Foxmail人工发送与号码完成同步保留。
+- PR完整validation37708894900、stability37708894867、Foxmail helper37708894933均success。Windows构建37708894826成功：Windows Python63项测试（真实Tk切页/隐藏/小窗口访问）、EXE smoke、PE与Artifact通过。早期Linux无Tk动态库导致GUI测试导入失败，已将Tk依赖限定到GUI验收环境；Windows仍强制运行所有GUI断言。
+- main正式发布构建37709813382进行中；公开更新清单尚未确认0.5.8。GitHub发布、线上同步、用户安装与真实摄像头/Foxmail业务分别判断，后两者待用户实机验证。Web 1.7.3/#135及生产历史证据保留，本轮未改Web业务。
+- 核心文件windows/win-assistants/win_assistants/app.py、__init__.py、tests/test_navigation.py与cross-build workflow。执行路径/workspace/scratch/3b66fa5b4c20/chen-assistant。云电脑#128恢复时须先核对并适配当前main导航，不能直接覆盖本次客户端布局。
+- 唯一下一步：确认正式发布构建与线上0.5.8更新清单/EXE一致后交付；云电脑助手继续暂停。
 
 ---
 
