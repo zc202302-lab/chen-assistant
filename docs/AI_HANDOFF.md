@@ -2,17 +2,17 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-08（Asia/Shanghai）。工作模式：号码收集批量添加实现、合并与正式发布完成，公网Windows整包校验进行中；云电脑Draft #128继续暂停。PR #139已合并，feat/number-inbox-batch-xlsx为历史分支，不再是WIP。
+- 更新时间：2026-10-08（Asia/Shanghai）。工作模式：号码收集批量添加实现、合并与正式发布完成，公网Windows整包校验通过；云电脑Draft #128继续暂停。PR #139已合并，feat/number-inbox-batch-xlsx为历史分支，不再是WIP。
 - 功能合并提交cfc2621c828c64a223d7bafb3dc0348fe9df690d；PR最终验收head89ec1e3a5f12e79d58a5cbc0db96fe7b7be133b5。Web版本1.7.3，Windows版本0.5.11。当前main head实时查询，文档提交不作为功能提交。
 - Web号码收集设置支持上传集团模板（第一张表A列，第一行标题）和B/E默认值；每个号码独立随机选择集团，允许重复。Windows内置127.0.0.1:18764桥接，目标为本机设置指定已有“批量添加集团成员.xlsx”。保留第一行、格式及格式说明工作表，清空第二行起数据，再连续写A/B/C/E；B默认MemberSort0102，E默认1，C号码按文本，其他列空。
 - 登录/CSRF保护、签名全量快照、防重放、并发锁、校验/备份/原子替换已实现。空列表不清空，超过5000条明确拒绝，Excel占用不改原文件，生成不标记号码完成。无需安装Excel或单独工具，不操作云电脑。
 - PR完整CI全部success：validation37731527978、stability37731527982、Foxmail37731527988、Windows37731528015。main完整validation37732363646、stability37732363648、Foxmail37732363612亦success。
 - 正式main构建发布37732363696全部success：源码测试、Windows Python、原生导航、冻结EXE更新重启/回滚及批量Excel写入/Windows独占文件锁验收通过，publish-release成功。
-- release分支update.json已为0.5.11，EXE71,661,761字节，SHA256 da0266257c1cb5a99c64d12534c32a876d508dc81a1cda68178dc13cbf8fe817。公网完整EXE校验run37733003202 / job113166167024仍in_progress，未声称已通过。
+- release分支update.json已为0.5.11，EXE71,661,761字节，SHA256 da0266257c1cb5a99c64d12534c32a876d508dc81a1cda68178dc13cbf8fe817。公网完整EXE校验run37733003202 / job113166167024已success，实际下载完整文件的大小与SHA256均通过。
 - Web公网验证37732363669 / job113164151881 success，2026-10-08 13:28:05（Asia/Shanghai）ONLINE VERIFIED v1.7.3；更新号码JS和其他受检资源与源码一致。切换期间旧资源和短暂502后第三次通过，不声称生产精确commit。
 - 用户安装0.5.11、本机目标路径与真实集团业务导入尚待实机确认。升级入口为Windows设置→检查更新；网页号码收集设置上传集团模板，Windows号码提醒设置填写连接码/已有XLSX路径并开启，再在未加号码点批量添加。
 - 核心文件app/number_inbox_batch.py、v162_number_inbox.py、number_inbox_admin.html、number-inbox-v162.js/css，Windows number_batch.py、number_batch_bridge.py、app.py、config.py与相应contract/browser/frozen acceptance。当前环境未建立git checkout，权威源码通过GitHub读取；不依赖先前scratch路径。
-- 唯一下一步：检查公网整包验证37733003202最终结论，失败则按实际日志修复，成功则更新交接并等待用户升级/本机写入结果；#128保持暂停，其他历史Open PR不自动作为活动任务。
+- 唯一下一步：用户升级0.5.11并反馈本机批量Excel写入结果，或按下一项明确需求继续；#128保持暂停，其他历史Open PR不自动作为活动任务。
 
 ---
 
