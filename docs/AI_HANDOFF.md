@@ -2,6 +2,18 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-08（Asia/Shanghai）。工作模式：修复用户实机批量添加失败，活动分支fix/number-batch-header-comments，PR待创建。云电脑Draft #128继续暂停。
+- 当前生产Web1.7.3、Windows0.5.11；用户截图确认已安装0.5.11且号码提醒连接正常。先前构建/发布验证通过不代表本机业务写入成功。
+- 用户原文件后缀XLSX，实际OLE/BIFF8 XLS；转换为标准XLSX后，官方模板A1/B1/C1/E1填写说明批注触发legacyDrawing全量拒绝。已通过真实上传文件确认，不是连接问题。
+- 修复候选Windows0.5.12：验证并保留仅表头A1:F1的标准批注/VML原始字节，继续拒绝数据行批注、非批注图形及额外对象；提供旧XLS/缺失工作簿结构的可操作错误。Windows号码提醒页独立显示最近批量结果，主线程弹出成功/失败提示，不被轮询连接状态覆盖。
+- 本地10项批量测试通过；用户转换后模板以虚构号码写入，通过openpyxl独立读取验证文本号码；只有主sheet XML发生变化，其他部件（含批注、VML、说明表、样式）逐字节不变。原上传文件未修改，未写真实业务号码。
+- 修复尚未合并/发布/安装；完整CI与Windows冻结EXE/文件锁/更新回滚验收待执行。核心文件windows/win-assistants/win_assistants/number_batch.py、number_batch_bridge.py、app.py、__init__.py及tests/test_number_batch.py。部分源码位于/workspace/scratch/6670fb78b201/chen-assistant，非完整git checkout。
+- 唯一下一步：提交修复PR，完整CI成功后合并并构建发布0.5.12，核对公网整包后让用户升级验证实际模板写入。用户无需再删除表头批注。
+
+---
+
+## 上一阶段快照（历史）
+
 - 更新时间：2026-10-08（Asia/Shanghai）。工作模式：号码收集批量添加实现、合并与正式发布完成，公网Windows整包校验通过；云电脑Draft #128继续暂停。PR #139已合并，feat/number-inbox-batch-xlsx为历史分支，不再是WIP。
 - 功能合并提交cfc2621c828c64a223d7bafb3dc0348fe9df690d；PR最终验收head89ec1e3a5f12e79d58a5cbc0db96fe7b7be133b5。Web版本1.7.3，Windows版本0.5.11。当前main head实时查询，文档提交不作为功能提交。
 - Web号码收集设置支持上传集团模板（第一张表A列，第一行标题）和B/E默认值；每个号码独立随机选择集团，允许重复。Windows内置127.0.0.1:18764桥接，目标为本机设置指定已有“批量添加集团成员.xlsx”。保留第一行、格式及格式说明工作表，清空第二行起数据，再连续写A/B/C/E；B默认MemberSort0102，E默认1，C号码按文本，其他列空。
