@@ -132,7 +132,7 @@
   });
 
   document.addEventListener('click', async (e) => {
-    const generic = e.target.closest('.copy-btn');
+    const generic = e.target.closest('.copy-btn,.copy-text');
     if (generic) {
       e.preventDefault();
       const ok = await copyText(generic.dataset.copy || '');
