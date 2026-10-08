@@ -313,8 +313,33 @@ jobs:
           python windows/win-assistants/tests/frozen_update_restart_acceptance.py windows/win-assistants/dist/win-assistants.exe
           if ($LASTEXITCODE -ne 0) { throw "Frozen update/restart acceptance failed" }
 
+
+  native-navigation:
+    runs-on: windows-2022
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Native Windows navigation and UI previews
+        shell: powershell
+        working-directory: windows/win-assistants
+        run: |
+          python -m unittest discover -s tests -p test_navigation.py -v
+          if ($LASTEXITCODE -ne 0) { throw "Native navigation acceptance failed" }
+          python -m pip install Pillow
+          if ($LASTEXITCODE -ne 0) { throw "Preview dependency failed" }
+          python tests/render_navigation.py
+          if ($LASTEXITCODE -ne 0) { throw "UI preview rendering failed" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-assistants-ui-preview
+          path: windows/win-assistants/dist/ui-preview
+          if-no-files-found: error
+
   publish-release:
-    needs: [source-validation, build-windows-exe, windows-update-validation]
+    needs: [source-validation, build-windows-exe, windows-update-validation, native-navigation]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, linux, x64, chen-assistant]
     defaults:
@@ -360,7 +385,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": f"v{version}：修复更新后重启引用旧临时运行目录；保留顶部导航。",
+              "notes": f"v{version}：优化客户端视觉、顶部导航及模块切换；保留可靠更新重启。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
