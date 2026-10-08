@@ -92,9 +92,11 @@ class WinAssistantsApp:
         style.configure("Footer.TLabel", background=CARD, foreground=MUTED, font=("Microsoft YaHei UI", 9))
         style.configure("TButton", font=("Microsoft YaHei UI", 9), padding=(12, 7),
                         background=SOFT, foreground=TEXT, borderwidth=0)
-        style.map("TButton", background=[("active", "#DCEBE4"), ("disabled", "#F0F2F1")])
+        style.map("TButton", background=[("disabled", "#F0F2F5"), ("pressed", "#D6E4FF"),
+                                        ("active", "#DBEAFE")])
         style.configure("Accent.TButton", background=GREEN, foreground="#FFFFFF", padding=(15, 8))
-        style.map("Accent.TButton", background=[("active", "#115746"), ("disabled", "#B9CBC4")],
+        style.map("Accent.TButton", background=[("disabled", "#B5C8E8"), ("pressed", "#1E40AF"),
+                                               ("active", "#1D4ED8")],
                   foreground=[("disabled", "#FFFFFF")])
         style.configure("Module.TCheckbutton", background=CARD, foreground=TEXT)
         style.map("Module.TCheckbutton", background=[("active", CARD)])
