@@ -131,12 +131,12 @@ class NumberBatchBridge:
                     if len(raw) != length:
                         raise ValueError('请求不完整')
                     result = bridge.execute(json.loads(raw))
-                    bridge.events.put(result)
-                    self.reply(200, result)
                 except (ValueError, OSError, KeyError, zipfile.BadZipFile, ET.ParseError) as exc:
                     result = {'ok': False, 'error': str(exc) or '写入失败，原文件未修改'}
-                    bridge.events.put(result)
-                    self.reply(400, result)
+                # A browser disconnect after the atomic write cannot turn a
+                # successful local result into a false failure notification.
+                bridge.events.put(result)
+                self.reply(200 if result.get('ok') else 400, result)
 
         # Imports here keep the error surface bounded without logging phone data.
         import zipfile
