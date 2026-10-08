@@ -2,13 +2,16 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-08 12:03（Asia/Shanghai）。工作模式：Windows客户端美化已完成，PR #138已合并，v0.5.10正式发布流水线运行中。云电脑#128保持暂停。
+- 更新时间：2026-10-08 12:14（Asia/Shanghai）。工作模式：Windows客户端美化已完成，PR #138已合并，v0.5.10正式发布与公网完整文件验证通过，等待用户升级/实机反馈。云电脑#128保持暂停。
 - 功能合并提交5d04da74e7f7b10265a98c84e2c9a94f5e32005c；验收head56dd96f18455cf331aa1e16e771b7531e0769965。feat/win-client-polish为已合并历史分支，不是WIP。
 - 蓝白配色、紧凑品牌栏、白色内容区、状态卡片与验证码层级；顶部平面导航固定尺寸、浅蓝选中和蓝色底线、悬停/按下反馈。保留Notebook页面所有权与后台模块，短促进入过渡可取消，快速切换恢复旧页面布局。支持Ctrl+Tab与导航左右键；设置集中且小窗口可滚动。
 - PR完整validation37724839725、stability37724839734、Foxmail37724839832、Windows构建37724839850全部success。Windows Python67项通过；native-navigation在真实windows-2022执行3项点击/键盘/快速切换/小窗口测试通过，五页截图已实际核查；冻结EXE真实更新重启、旧_MEI移除和失败回滚通过。未删除或弱化原测试。
-- 候选版本0.5.10；正式main构建/发布、公网EXE完整文件验证待完成。用户安装/摄像头等实机业务未知，不从CI推断。原v0.5.9更新隔离、SHA/大小检查与回滚保留。0.5.8及以前的一次性手动替换限制仍适用；0.5.9可用统一检查更新。
+- 正式main构建/发布[37725640931](https://github.com/zc202302-lab/chen-assistant/actions/runs/37725640931)全部success，含源码、Windows Python、原生导航、真实冻结EXE更新重启回滚及release发布。main合并后重复validation/stability被仅文档检查点取消，不能替代已通过的PR完整CI；文档head1a880aa110b864628c90da44dab2a586f1087ddd的stability37725672138另为success。
+- 公网[37726050476](https://github.com/zc202302-lab/chen-assistant/actions/runs/37726050476)/job113144340593 success，2026-10-08 12:13:19（Asia/Shanghai）ONLINE VERIFIED v0.5.10。完整EXE71,642,258字节，SHA-256 9e230dd4d6091592b125d0e28a54acce906aaa49683c95949a24d74e7ee47ab3，与release和公网清单一致。初始公网仍0.5.9，自动同步后整包下载校验通过，无需用户操作服务器。
+- 用户升级入口为设置→检查更新。用户安装/摄像头等实机业务未知，不从CI推断。原v0.5.9更新隔离、SHA/大小检查与回滚保留。0.5.8及以前的一次性手动替换限制仍适用；0.5.9可用统一检查更新。
 - 核心文件windows/win-assistants/win_assistants/app.py、__init__.py、tests/test_navigation.py、tests/render_navigation.py及cross-build workflow。无Web功能/真实业务数据/云电脑操作。
-- 唯一下一步：完成正式发布，核对release清单与公网完整EXE，更新最终交接。
+- 环境：/workspace/scratch/2359bea95f68/chen-assistant为本轮下载的部分源码而非git checkout；权威源码从GitHub main读取。五页Windows截图存于run37724839850的win-assistants-ui-preview artifact；不依赖临时截图路径接管。
+- 唯一下一步：用户通过设置→检查更新升级v0.5.10并反馈界面/实机业务，或按下一项明确需求继续；云电脑#128保持暂停。
 
 ---
 
