@@ -141,7 +141,7 @@ def _validated_home_shortcuts(value):
         if not isinstance(href, str) or not isinstance(title, str):
             raise ValueError("首页模块格式无效")
         # Internal section landing pages only: no off-site links, query strings or IDs.
-        if not __import__("re").fullmatch(r"/(?:(?:work|info|life)(?:/[a-z][a-z0-9_-]*){0,2}|customers|products|search)", href):
+        if not __import__("re").fullmatch(r"/(?:(?:work|info|life)(?:/[a-z][a-z0-9_-]*){0,2}|customers|products|search|accounts)", href):
             raise ValueError("首页模块地址无效")
         if not (1 <= len(title.strip()) <= 40) or href in seen:
             raise ValueError("首页模块重复或名称无效")
