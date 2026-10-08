@@ -124,3 +124,59 @@ def save_work_entry_layout(request: Request, csrf: str = Form(...), layout: str 
         conn.execute('INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)',
                      (LAYOUT_KEY, json.dumps(value)))
     return JSONResponse({'ok': True}, headers={'Cache-Control': 'no-store'})
+
+
+# Cross-space home shortcuts are a separate saved view; original modules stay in place.
+HOME_SHORTCUTS_KEY = "home_shortcuts_v1"
+HOME_SHORTCUTS_LIMIT = 30
+
+def _validated_home_shortcuts(value):
+    if not isinstance(value, list) or len(value) > HOME_SHORTCUTS_LIMIT:
+        raise ValueError("首页快捷模块数量无效")
+    items, seen = [], set()
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"href", "title"}:
+            raise ValueError("首页模块格式无效")
+        href, title = item["href"], item["title"]
+        if not isinstance(href, str) or not isinstance(title, str):
+            raise ValueError("首页模块格式无效")
+        # Internal section landing pages only: no off-site links, query strings or IDs.
+        if not __import__("re").fullmatch(r"/(?:work|info|life)(?:/[a-z][a-z0-9_-]*){0,2}", href):
+            raise ValueError("首页模块地址无效")
+        if not (1 <= len(title.strip()) <= 40) or href in seen:
+            raise ValueError("首页模块重复或名称无效")
+        seen.add(href)
+        items.append({"href": href, "title": title.strip()})
+    return items
+
+def home_shortcuts(conn):
+    row = conn.execute("SELECT value FROM app_meta WHERE key=?", (HOME_SHORTCUTS_KEY,)).fetchone()
+    if row is None:
+        return []
+    try:
+        return _validated_home_shortcuts(json.loads(row["value"]))
+    except (ValueError, TypeError):
+        return []
+
+@router.get("/home/shortcuts")
+def get_home_shortcuts(request: Request):
+    with db() as conn:
+        items = home_shortcuts(conn)
+    return JSONResponse({"ok": True, "items": items}, headers={"Cache-Control": "no-store"})
+
+@router.post("/home/shortcuts")
+def save_home_shortcuts(request: Request, csrf: str = Form(...), items: str = Form(...)):
+    try:
+        require_csrf(request.state.session, csrf)
+    except ValueError:
+        raise HTTPException(403, "CSRF校验失败")
+    try:
+        if len(items) > 8192:
+            raise ValueError("首页模块数据过大")
+        value = _validated_home_shortcuts(json.loads(items))
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(400, str(exc))
+    with db() as conn:
+        conn.execute("INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)",
+                     (HOME_SHORTCUTS_KEY, json.dumps(value, ensure_ascii=False)))
+    return JSONResponse({"ok": True}, headers={"Cache-Control": "no-store"})
