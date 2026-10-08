@@ -2,13 +2,16 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-08（Asia/Shanghai）。工作模式：修复用户实机批量添加失败，PR #140已合并，fix/number-batch-header-comments为历史分支。云电脑Draft #128继续暂停。
-- 当前生产Web1.7.3、Windows0.5.11；用户截图确认已安装0.5.11且号码提醒连接正常。先前构建/发布验证通过不代表本机业务写入成功。
-- 用户原文件后缀XLSX，实际OLE/BIFF8 XLS；转换为标准XLSX后，官方模板A1/B1/C1/E1填写说明批注触发legacyDrawing全量拒绝。已通过真实上传文件确认，不是连接问题。
-- 修复候选Windows0.5.12：验证并保留仅表头A1:F1的标准批注/VML原始字节，继续拒绝数据行批注、非批注图形及额外对象；提供旧XLS/缺失工作簿结构的可操作错误。Windows号码提醒页独立显示最近批量结果，主线程弹出成功/失败提示，不被轮询连接状态覆盖。
-- 本地11项批量测试通过；用户转换后模板以虚构号码写入，通过openpyxl独立读取验证文本号码；只有主sheet XML发生变化，其他部件（含批注、VML、说明表、样式）逐字节不变。原上传文件未修改，未写真实业务号码。
-- 修复合并提交4dfc770710d2c1bacf1b4003af95704347a00d04；PR最终head8de458985c54b95b777f1fa7f77f9486d53ff494完整CI全通过：validation37738711125、stability37738711211、Foxmail37738711117、Windows37738711201（含原生UI、冻结EXE更新重启/回滚、文件锁和表头批注原字节保留）。正式main发布37740638528排队中，尚未发布/安装；原main重复validation37740638540进行中，文档检查点可能取消该重复运行，不替代PR完整验收。。核心文件windows/win-assistants/win_assistants/number_batch.py、number_batch_bridge.py、app.py、__init__.py及tests/test_number_batch.py。部分源码位于/workspace/scratch/6670fb78b201/chen-assistant，非完整git checkout。
-- 唯一下一步：检查正式构建发布37740638528，完成后核对release与公网完整EXE，再让用户升级0.5.12验证实际模板写入。用户无需再删除表头批注。
+- 更新时间：2026-10-08（Asia/Shanghai）。工作模式：用户实机批量添加模板兼容修复已合并、正式发布和公网完整安装文件校验完成，等待用户升级验证。PR #140已合并，fix/number-batch-header-comments为历史分支。云电脑Draft #128继续暂停。
+- 最后功能合并提交4dfc770710d2c1bacf1b4003af95704347a00d04；PR最终验收head8de458985c54b95b777f1fa7f77f9486d53ff494。Windows0.5.12已正式发布，Web仍1.7.3，本轮无Web功能改动。当前main head实时查询，不预填文档自身SHA。
+- 用户截图确认0.5.11已安装、号码提醒连接正常，但本机批量写入失败。真实上传原文件虽后缀XLSX，内部实际OLE/BIFF8 XLS；另存为标准XLSX后，官方模板A1/B1/C1/E1填写说明批注被legacyDrawing全量拒绝。两处原因均以实际文件结构验证。
+- 0.5.12校验并保留仅表头A1:F1的标准批注及VML原字节，继续拒绝数据行批注、非批注图形和额外对象。旧XLS/缺失工作簿结构现在明确提示另存为真正XLSX。Windows号码提醒页独立显示最近批量结果，主线程弹出成功/失败信息，不被连接轮询覆盖；浏览器断开不能把已完成写入误报失败。
+- 本地11项批量测试通过。用户转换后真实模板以虚构号码成功写入，openpyxl独立读取确认前导零/长号码保持文本；仅主sheet XML变化，批注/VML/说明表/样式等其他部件逐字节保留。上传原件未修改，未执行真实业务添加。
+- PR完整CI全部success：validation37738711125、stability37738711211、Foxmail37738711117、Windows37738711201。原生Windows4项导航/可见批量状态验收通过；冻结EXE验收新增表头批注原字节保留，并通过DPAPI、实际Windows文件锁、备份、防重放、更新重启与失败回滚。
+- 正式main构建发布37740638528全部success：source-validation、build-windows-exe、native-navigation、windows-update-validation及publish-release；真实Windowsjob113192070186通过。main稳定性37740638525及Foxmail37740638526成功。main重复validation37740638540被仅文档交接提交取消，不代替已通过的PR完整CI；后续文档CI按实际状态核对。
+- release与公网清单已为0.5.12。完整EXE71,667,368字节，SHA256 11eacd2f7b0d2cafe2261e83390c5e77f3e691ec88a2ed7f15482bb71076e99e。公网完整文件校验37741364735/job113192582952 success，2026-10-08 15:09:18（Asia/Shanghai）ONLINE VERIFIED v0.5.12，文件大小与SHA256均通过。本地HTTPS亦确认公网清单0.5.12。
+- 核心文件windows/win-assistants/win_assistants/number_batch.py、number_batch_bridge.py、app.py、__init__.py及tests/test_number_batch.py、test_navigation.py、frozen_number_batch_acceptance.py。部分源码位于/workspace/scratch/6670fb78b201/chen-assistant，非完整git checkout；权威源码在GitHub main。
+- 唯一下一步：用户Windows助手“设置→检查更新”升级0.5.12，关闭目标Excel后在网页点击批量添加，验证实际模板写入与客户端提示。用户无需删除表头批注；仍须使用真正XLSX（旧XLS请另存为），目标路径应指向转换后文件。用户安装0.5.12与本机真实业务结果待确认，不从CI或发布成功推断。
 
 ---
 
