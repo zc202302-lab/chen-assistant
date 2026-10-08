@@ -1,0 +1,68 @@
+name: Cloud member add agent
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'windows/cloud-assistant/**'
+      - '.github/workflows/cloud-member-add-agent.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'windows/cloud-assistant/**'
+      - '.github/workflows/cloud-member-add-agent.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install build dependencies
+        run: python -m pip install --disable-pip-version-check -r windows/cloud-assistant/requirements.txt pyinstaller==6.16.0
+      - name: Run parser tests
+        run: python -m unittest discover -s windows/cloud-assistant/tests -v
+      - name: Verify Windows PowerShell sync process
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File windows/cloud-assistant/sync_updates.ps1 -CheckProcess
+          if ($LASTEXITCODE -ne 0) { throw 'Sync entry process check failed' }
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'windows/cloud-assistant/background_sync.ps1'), [ref]$null, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+      - name: Compile source
+        run: python -m py_compile windows/cloud-assistant/member_add_agent.py
+      - name: Build executable
+        run: pyinstaller --clean --noconfirm --onefile --name CloudMemberAddAgent windows/cloud-assistant/member_add_agent.py
+      - name: Build offline updater
+        run: pyinstaller --clean --noconfirm --onefile --name CloudOfflineUpdater windows/cloud-assistant/offline_update.py
+      - name: Executable import smoke
+        run: |
+          dist\CloudMemberAddAgent.exe --self-check
+          dist\CloudOfflineUpdater.exe --self-check
+      - name: Assemble package
+        env:
+          AGENT_VERSION: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force package | Out-Null
+          Copy-Item dist\CloudMemberAddAgent.exe package\
+          Copy-Item dist\CloudOfflineUpdater.exe package\
+          Copy-Item windows\cloud-assistant\sync_updates.cmd package\
+          Copy-Item windows\cloud-assistant\sync_updates.ps1 package\
+          Copy-Item windows\cloud-assistant\background_sync.ps1 package\
+          @{version=$env:AGENT_VERSION; channel=if ('${{ github.event_name }}' -eq 'pull_request') {'development'} else {'stable'}; protocol=2} | ConvertTo-Json | Set-Content -Encoding ascii package\version.json
+          Copy-Item windows\cloud-assistant\start_agent.cmd package\
+          Copy-Item windows\cloud-assistant\diagnose_browser.cmd package\
+          Copy-Item windows\cloud-assistant\README.md package\
+          Compress-Archive -Path package\* -DestinationPath CloudMemberAddAgent.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CloudMemberAddAgent
+          path: CloudMemberAddAgent.zip
+          if-no-files-found: error
+          retention-days: 14
+

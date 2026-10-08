@@ -3,7 +3,11 @@ from __future__ import annotations
 import os
 import sys
 import tempfile
+import io
+import zipfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
+from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -130,6 +134,7 @@ def main():
     admin = client.get('/work/number-inbox')
     assert admin.status_code == 200, admin.text
     assert '13800138000' in admin.text
+    assert 'data-group-batch-export' in admin.text
     assert '提交人' not in admin.text
     assert '号码收集二级导航' in admin.text
     assert '同事提交入口' not in admin.text and 'Windows 提醒连接' not in admin.text
@@ -148,6 +153,26 @@ def main():
     assert '已处理' not in admin.text
     assert 'status=done' not in admin.text
     assert 'status=all' not in admin.text
+
+    export_bad_csrf = client.post('/work/number-inbox/export-group-batch', data={'csrf': 'wrong'})
+    assert export_bad_csrf.status_code == 403
+    export = client.post('/work/number-inbox/export-group-batch', data={'csrf': csrf})
+    assert export.status_code == 200, export.text
+    assert export.headers['X-Number-Count'] == '1'
+    disposition = export.headers['Content-Disposition']
+    assert "filename*=UTF-8''" in disposition
+    filename = unquote(disposition.split("filename*=UTF-8''", 1)[1])
+    assert filename == '号码加集团.xlsx'
+    assert export.headers['Cache-Control'] == 'no-store'
+    with zipfile.ZipFile(io.BytesIO(export.content)) as workbook:
+        sheet = ET.fromstring(workbook.read('xl/worksheets/sheet1.xml'))
+        shared = ET.fromstring(workbook.read('xl/sharedStrings.xml'))
+        ns = {'x': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+        cells = {cell.attrib['r']: cell for cell in sheet.findall('.//x:c', ns)}
+        strings = [''.join(text.text or '' for text in item.findall('.//x:t', ns)) for item in shared.findall('x:si', ns)]
+        assert set(cells) == {'A1', 'B1'}, set(cells)
+        assert strings[int(cells['A1'].find('x:v', ns).text)] == '13800138000'
+        assert strings[int(cells['B1'].find('x:v', ns).text)] == 'c7210826122'
 
     done = client.post(
         f'/work/number-inbox/{item_id}/done',
@@ -251,6 +276,10 @@ def main():
     assert batch.text.count('number-type-new') == 2
     refreshed = client.get(f'/number-submit/{new_token}/pending')
     assert refreshed.text.count('number-type-new') == 2
+    export_script = client.get('/static/number-inbox-v162.js')
+    assert export_script.status_code == 200
+    assert 'showDirectoryPicker' in export_script.text
+    assert '号码加集团.xlsx' in export_script.text
     another_client = TestClient(app)
     assert 'number-type-new' not in another_client.get(f'/number-submit/{new_token}/pending').text
     assert 'httponly' in batch.history[0].headers['set-cookie'].lower()
@@ -274,5 +303,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
