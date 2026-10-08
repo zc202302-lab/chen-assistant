@@ -60,10 +60,15 @@ class NavigationTests(unittest.TestCase):
         self.root.geometry("740x560")
         self.app.navigation.select(self.app.settings_page)
         self.root.update()
-        for w in self.descendants(self.app.settings_page):
-            if w.winfo_ismapped():
-                self.assertLessEqual(w.winfo_rooty() + w.winfo_height(),
-                                     self.root.winfo_rooty() + self.root.winfo_height())
+        self.app.settings_canvas.yview_moveto(1.0)
+        self.root.update()
+        buttons = [w for w in self.descendants(self.app.settings_page)
+                   if isinstance(w, ttk.Button) and w.cget("text") == "检查更新"]
+        self.assertEqual(len(buttons), 1)
+        button = buttons[0]
+        self.assertGreaterEqual(button.winfo_rooty(), self.app.settings_canvas.winfo_rooty())
+        self.assertLessEqual(button.winfo_rooty() + button.winfo_height(),
+                             self.app.settings_canvas.winfo_rooty() + self.app.settings_canvas.winfo_height())
 
 
 if __name__ == "__main__":

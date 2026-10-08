@@ -141,9 +141,24 @@ class WinAssistantsApp:
                 ttk.Label(page, text="从网页版发起缴费后，在 Foxmail 中粘贴附件并人工发送。",
                           style="Detail.TLabel", wraplength=620).pack(anchor="w")
 
-        self.settings_page = ttk.Frame(self.navigation, padding=(20, 16), style="Card.TFrame")
+        self.settings_page = ttk.Frame(self.navigation, style="Card.TFrame")
         self.navigation.add(self.settings_page, text="设置")
-        ttk.Label(self.settings_page, text="模块设置", style="Module.TLabel").pack(anchor="w", pady=(0, 12))
+        self.settings_canvas = tk.Canvas(self.settings_page, bg=CARD, highlightthickness=0)
+        settings_scroll = ttk.Scrollbar(self.settings_page, orient="vertical", command=self.settings_canvas.yview)
+        settings_scroll.pack(side="right", fill="y")
+        self.settings_canvas.pack(side="left", fill="both", expand=True)
+        self.settings_canvas.configure(yscrollcommand=settings_scroll.set)
+        self.settings_content = ttk.Frame(self.settings_canvas, padding=(20, 16), style="Card.TFrame")
+        settings_window = self.settings_canvas.create_window((0, 0), window=self.settings_content, anchor="nw")
+        self.settings_content.bind("<Configure>", lambda _event: self.settings_canvas.configure(
+            scrollregion=self.settings_canvas.bbox("all")))
+        self.settings_canvas.bind("<Configure>", lambda event: self.settings_canvas.itemconfigure(
+            settings_window, width=event.width))
+        def settings_wheel(event) -> None:
+            self.settings_canvas.yview_scroll(-3 if event.delta > 0 else 3, "units")
+        self.settings_canvas.bind("<MouseWheel>", settings_wheel)
+        self.settings_content.bind("<MouseWheel>", settings_wheel)
+        ttk.Label(self.settings_content, text="模块设置", style="Module.TLabel").pack(anchor="w", pady=(0, 12))
         settings_actions = {
             "sms": ("短信连接", self._show_sms_settings),
             "sedentary": ("久坐设置", lambda: self._sedentary_command("show_settings")),
@@ -151,7 +166,7 @@ class WinAssistantsApp:
             "chen_helper": ("重新连接", lambda: self._start_one("chen_helper")),
         }
         for item in MODULES:
-            row = ttk.Frame(self.settings_page, style="Card.TFrame")
+            row = ttk.Frame(self.settings_content, style="Card.TFrame")
             row.pack(fill="x", pady=(0, 10))
             ttk.Checkbutton(row, text=item.name, variable=self.enabled_vars[item.key],
                             command=lambda key=item.key: self._toggle_module(key),
@@ -161,20 +176,20 @@ class WinAssistantsApp:
             if item.key == "sedentary":
                 ttk.Button(row, text="重新启动", command=self._restart_sedentary).pack(side="right", padx=8)
 
-        ttk.Separator(self.settings_page).pack(fill="x", pady=(6, 16))
-        ttk.Label(self.settings_page, text="启动与更新", style="Module.TLabel").pack(anchor="w", pady=(0, 10))
-        ttk.Checkbutton(self.settings_page, text="登录 Windows 后在托盘启动", variable=self.startup_var,
+        ttk.Separator(self.settings_content).pack(fill="x", pady=(6, 16))
+        ttk.Label(self.settings_content, text="启动与更新", style="Module.TLabel").pack(anchor="w", pady=(0, 10))
+        ttk.Checkbutton(self.settings_content, text="登录 Windows 后在托盘启动", variable=self.startup_var,
                         command=self._toggle_startup, style="Footer.TCheckbutton").pack(anchor="w")
-        buttons = ttk.Frame(self.settings_page, style="Card.TFrame")
+        buttons = ttk.Frame(self.settings_content, style="Card.TFrame")
         buttons.pack(fill="x", pady=(14, 0))
         ttk.Button(buttons, text="接管旧工具启动项", command=self._take_over).pack(side="left")
         ttk.Button(buttons, text="检查更新", command=self._request_update_check,
                    style="Accent.TButton").pack(side="right")
-        ttk.Label(self.settings_page, textvariable=self.update_status_var, style="Footer.TLabel",
+        ttk.Label(self.settings_content, textvariable=self.update_status_var, style="Footer.TLabel",
                   wraplength=620).pack(anchor="w", pady=(12, 0))
         self.update_progress_bar = ttk.Progressbar(
-            self.settings_page, mode="determinate", maximum=100, variable=self.update_progress_var)
-        ttk.Label(self.settings_page, text=f"版本 v{__version__}", style="Footer.TLabel").pack(anchor="w", pady=(12, 0))
+            self.settings_content, mode="determinate", maximum=100, variable=self.update_progress_var)
+        ttk.Label(self.settings_content, text=f"版本 v{__version__}", style="Footer.TLabel").pack(anchor="w", pady=(12, 0))
         self.navigation.select(self.module_pages["sms"])
 
     def _show_settings_page(self) -> None:
