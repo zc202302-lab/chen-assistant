@@ -24,7 +24,17 @@ optional_batch_route = {
 actual = route_inventory(app)
 known = {(row['path'], tuple(row['methods'])) for row in expected}
 extra = [row for row in actual if (row['path'], tuple(row['methods'])) not in known]
-assert extra in ([], [optional_batch_route]), 'unreviewed additional routes'
+# Home shortcut routes are intentionally added by PR #142. Preserve order and
+# the complete original route inventory; only these reviewed additions are legal.
+optional_home_routes = [
+    {'path': '/home/shortcuts', 'methods': ['GET'],
+     'module': 'app.v101_workspace_routes', 'name': 'get_home_shortcuts'},
+    {'path': '/home/shortcuts', 'methods': ['POST'],
+     'module': 'app.v101_workspace_routes', 'name': 'save_home_shortcuts'},
+]
+assert extra in (optional_home_routes, [optional_batch_route] + optional_home_routes), (
+    'unreviewed additional routes: ' + repr(extra)
+)
 retained = [row for row in actual if (row['path'], tuple(row['methods'])) in known]
 assert retained == expected, 'existing runtime route ownership/order changed'
 for path, owner in [('/customers/new', 'app.v032_customer_import_routes'),
