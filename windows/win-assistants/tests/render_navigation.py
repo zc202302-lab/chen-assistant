@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 from PIL import ImageGrab
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_navigation import NavigationTests
 
