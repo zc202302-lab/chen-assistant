@@ -23,13 +23,13 @@ from .startup import is_startup_enabled, set_startup, stop_legacy_foxmail_proces
 from .updater import fetch_manifest, launch_replacement, newer_version_available, stage_update, verify_staged_startup
 
 
-BG = "#F3F6F5"
+BG = "#F4F6FA"
 CARD = "#FFFFFF"
-GREEN = "#176D5C"
-TEXT = "#172D29"
-MUTED = "#657773"
-BORDER = "#DFE8E4"
-SOFT = "#EAF3EF"
+GREEN = "#2563EB"
+TEXT = "#18243B"
+MUTED = "#718096"
+BORDER = "#E2E8F0"
+SOFT = "#EBF2FF"
 
 
 class WinAssistantsApp:
@@ -72,7 +72,7 @@ class WinAssistantsApp:
 
     def _configure_window(self) -> None:
         self.root.title("晨的小助手 · Windows")
-        self.root.geometry("840x660")
+        self.root.geometry("880x660")
         self.root.minsize(740, 560)
         self.root.configure(bg=BG)
         self.root.protocol("WM_DELETE_WINDOW", self.root.withdraw)
@@ -101,34 +101,56 @@ class WinAssistantsApp:
         style.configure("Footer.TCheckbutton", background=CARD, foreground=TEXT)
         style.map("Footer.TCheckbutton", background=[("active", CARD)])
 
-        shell = ttk.Frame(self.root, padding=(24, 20, 24, 18))
+        style.configure("TLabel", background=BG, foreground=TEXT, font=("Microsoft YaHei UI", 10))
+        style.configure("TEntry", padding=7, fieldbackground=CARD, foreground=TEXT)
+        style.configure("Horizontal.TProgressbar", background=GREEN, troughcolor=SOFT,
+                        borderwidth=0, thickness=5)
+        style.configure("Status.TFrame", background=BG)
+        style.configure("Status.TLabel", background=BG, foreground=MUTED,
+                        font=("Microsoft YaHei UI", 10))
+        style.configure("PageTitle.TLabel", background=CARD, foreground=TEXT,
+                        font=("Microsoft YaHei UI", 20, "bold"))
+        shell = ttk.Frame(self.root, padding=(24, 20, 24, 14))
         shell.pack(fill="both", expand=True)
 
         header = ttk.Frame(shell)
-        header.pack(fill="x", pady=(0, 18))
-        ttk.Label(header, text="工作台 / WINDOWS", style="Eyebrow.TLabel").pack(anchor="w")
-        ttk.Label(header, text="晨的小助手", style="Title.TLabel").pack(anchor="w", pady=(3, 2))
-        ttk.Label(header, text="Windows 客户端", style="Sub.TLabel").pack(anchor="w")
+        header.pack(fill="x", pady=(0, 20))
+        tk.Label(header, text="晨", bg=GREEN, fg=CARD, padx=12, pady=5,
+                 font=("Microsoft YaHei UI", 16, "bold")).pack(side="left", padx=(0, 12))
+        brand = ttk.Frame(header)
+        brand.pack(side="left")
+        ttk.Label(brand, text="晨的小助手", style="Module.TLabel",
+                  background=BG).pack(anchor="w")
+        ttk.Label(brand, text="WINDOWS CLIENT", style="Sub.TLabel").pack(anchor="w", pady=(2, 0))
+        ttk.Label(header, text=f"v{__version__}", style="Sub.TLabel").pack(side="right")
 
-        style.configure("Navigation.TNotebook", background=BG, borderwidth=0, tabmargins=(0, 0, 0, 12))
-        style.configure("Navigation.TNotebook.Tab", padding=(18, 10), font=("Microsoft YaHei UI", 10),
-                        background=SOFT, foreground=MUTED)
-        style.map("Navigation.TNotebook.Tab", background=[("selected", GREEN), ("active", "#DCEBE4")],
-                  foreground=[("selected", "#FFFFFF")])
+        style.configure("Navigation.TNotebook", background=BG, borderwidth=0, tabmargins=(0, 0, 0, 10))
+        style.configure("Navigation.TNotebook.Tab", padding=(22, 12), font=("Microsoft YaHei UI", 10),
+                        background=BG, foreground=MUTED, borderwidth=0)
+        style.map("Navigation.TNotebook.Tab", background=[("selected", CARD), ("active", SOFT)],
+                  foreground=[("selected", GREEN), ("active", TEXT)])
         self.navigation = ttk.Notebook(shell, style="Navigation.TNotebook", takefocus=True)
         self.navigation.pack(fill="both", expand=True)
+        self.navigation.enable_traversal()
+        self._page_transition_job = None
+        self._page_transition_target = None
+        self.navigation.bind("<<NotebookTabChanged>>", self._on_page_changed)
         self.module_pages = {}
         labels = {"sms": "短信", "sedentary": "久坐", "chen_helper": "缴费连接", "number_inbox": "号码提醒"}
         for item in MODULES:
             page = ttk.Frame(self.navigation, padding=(20, 20), style="Card.TFrame")
             self.module_pages[item.key] = page
             self.navigation.add(page, text=labels[item.key])
-            ttk.Label(page, text=item.name, style="Module.TLabel").pack(anchor="w")
-            ttk.Label(page, textvariable=self.status_vars[item.key], style="Detail.TLabel",
-                      wraplength=620).pack(anchor="w", pady=(8, 24))
+            ttk.Label(page, text=labels[item.key], style="PageTitle.TLabel").pack(anchor="w", pady=(0, 20))
+            status_card = ttk.Frame(page, padding=(16, 14), style="Status.TFrame")
+            status_card.pack(fill="x", pady=(0, 24))
+            ttk.Label(status_card, text="当前状态", style="Status.TLabel").pack(anchor="w", pady=(0, 5))
+            ttk.Label(status_card, textvariable=self.status_vars[item.key], style="Status.TLabel",
+                      foreground=TEXT, wraplength=580).pack(anchor="w")
             if item.key == "sms":
+                ttk.Label(page, text="最新验证码", style="Detail.TLabel").pack(anchor="w")
                 tk.Label(page, textvariable=self.sms_code_var, bg=CARD, fg=GREEN,
-                         font=("Microsoft YaHei UI", 30, "bold"), wraplength=620).pack(anchor="w", pady=(12, 24))
+                         font=("Microsoft YaHei UI", 34, "bold"), wraplength=620).pack(anchor="w", pady=(8, 24))
                 ttk.Button(page, text="复制验证码", command=self._copy_sms_code,
                            style="Accent.TButton").pack(anchor="w")
             elif item.key == "sedentary":
@@ -191,6 +213,27 @@ class WinAssistantsApp:
             self.settings_content, mode="determinate", maximum=100, variable=self.update_progress_var)
         ttk.Label(self.settings_content, text=f"版本 v{__version__}", style="Footer.TLabel").pack(anchor="w", pady=(12, 0))
         self.navigation.select(self.module_pages["sms"])
+        footer = ttk.Frame(shell, padding=(0, 12, 0, 0))
+        footer.pack(fill="x")
+        ttk.Label(footer, text="晨的小助手 · Windows", style="Sub.TLabel").pack(side="left")
+        ttk.Label(footer, text="Ctrl + Tab 切换模块", style="Sub.TLabel").pack(side="right")
+
+    def _on_page_changed(self, _event=None) -> None:
+        """Small entrance motion; pages stay alive and background modules keep running."""
+        if self._page_transition_job is not None:
+            self.root.after_cancel(self._page_transition_job)
+            self._page_transition_job = None
+        if self._page_transition_target is not None:
+            self._page_transition_target.configure(padding=(20, 20))
+        selected = self.navigation.select()
+        page = next((p for p in self.module_pages.values() if str(p) == selected), None)
+        self._page_transition_target = page
+        if page is None:
+            return
+        def advance(offset: int) -> None:
+            page.configure(padding=(20, 20 + offset, 20, 20))
+            self._page_transition_job = self.root.after(16, advance, offset - 2) if offset else None
+        advance(8)
 
     def _show_settings_page(self) -> None:
         self.navigation.select(self.settings_page)
@@ -942,4 +985,5 @@ def run() -> None:
         root.mainloop()
     finally:
         instance.close()
+
 

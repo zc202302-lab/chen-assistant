@@ -71,6 +71,27 @@ class NavigationTests(unittest.TestCase):
         self.assertLessEqual(button.winfo_rooty() + button.winfo_height(),
                              self.app.settings_canvas.winfo_rooty() + self.app.settings_canvas.winfo_height())
 
+    def test_fast_switch_settles_and_keyboard_traversal(self):
+        nav = self.app.navigation
+        for page in self.app.module_pages.values():
+            nav.select(page)
+            self.root.update()
+        nav.select(self.app.settings_page)
+        self.root.update()
+        self.assertIsNone(self.app._page_transition_job)
+        nav.select(self.app.module_pages["sms"])
+        self.root.update()
+        self.root.after(150, self.root.quit)
+        self.root.mainloop()
+        self.assertIsNone(self.app._page_transition_job)
+        self.assertEqual(tuple(map(int, self.app.module_pages["sms"].cget("padding"))), (20, 20, 20, 20))
+        nav.focus_force()
+        nav.event_generate("<Control-Tab>")
+        self.root.update()
+        self.assertEqual(nav.select(), str(self.app.module_pages["sedentary"]))
+        self.assertEqual(self.app.sms_code_var.get(), "123456")
+
 
 if __name__ == "__main__":
     unittest.main()
+

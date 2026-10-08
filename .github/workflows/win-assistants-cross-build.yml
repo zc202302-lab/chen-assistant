@@ -360,7 +360,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": f"v{version}：修复更新后重启引用旧临时运行目录；保留顶部导航。",
+              "notes": f"v{version}：优化客户端视觉、顶部导航及模块切换；保留可靠更新重启。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
