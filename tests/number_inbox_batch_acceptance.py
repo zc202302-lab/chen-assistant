@@ -69,15 +69,19 @@ def main():
             page.locator('input[name=manual]').fill('0')
             page.get_by_role('button', name='保存批量设置').click()
             expect(page.locator('.number-batch-settings')).to_contain_text('2 个集团编码')
+            previews = ROOT / 'artifacts' / 'number-inbox-batch'
+            previews.mkdir(parents=True, exist_ok=True)
             for width, height in [(1440, 900), (390, 844)]:
                 page.set_viewport_size({'width': width, 'height': height})
                 page.goto(base + '/work/number-inbox?view=settings', wait_until='networkidle')
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 2')
+                page.locator('.number-batch-settings').locator('..').screenshot(path=str(previews / f'settings-{width}.png'))
             page.goto(base + '/work/number-inbox', wait_until='networkidle')
             button = page.get_by_role('button', name='批量添加', exact=True)
             button.evaluate('(el) => { el.click(); el.click(); }')
             expect(page.locator('[data-number-batch-status]')).to_contain_text('已写入 1 个号码')
             assert len(calls) == 1, 'double click must not submit twice'
+            page.locator('.number-inbox-shell').screenshot(path=str(previews / 'pending-written.png'))
             expect(page.locator('[data-copy-value]')).to_have_count(1)
             with db() as conn:
                 assert conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'] == 1

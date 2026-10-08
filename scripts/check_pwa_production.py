@@ -53,9 +53,11 @@ def verify():
         if url == '/sw.js' and headers.get('Service-Worker-Allowed') != '/':
             raise RuntimeError('Service Worker does not control the root scope')
     for path in ['/reminders','/api/reminders','/work/number-inbox']:
-        final, _, _ = fetch(path)
+        final, headers, _ = fetch(path)
         if urlsplit(final).path != '/login':
             raise RuntimeError(f'Unauthenticated reminder endpoint did not redirect to login: {path}')
+        if path == '/work/number-inbox' and 'http://127.0.0.1:18764' not in headers.get('Content-Security-Policy', ''):
+            raise RuntimeError('Online page CSP does not allow the signed number batch bridge')
     return f'ONLINE VERIFIED: v{version}; PWA manifest, exact work, list and push assets, root worker scope and authenticated reminder routes'
 
 
