@@ -327,7 +327,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": "v0.5.7：显示下载进度；安装前验证新程序，重启后确认启动，失败自动回退。",
+              "notes": f"v{version}：顶部导航分类展示；模块配置、启动和统一更新收进设置页。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
