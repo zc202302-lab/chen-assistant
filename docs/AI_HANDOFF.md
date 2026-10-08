@@ -2,13 +2,15 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-08（Asia/Shanghai）。工作模式：win-assistants界面改造已合并，正在正式发布；云电脑助手按用户明确要求暂停，不修改、合并或发布Draft #128。
-- PR #136已合并，功能合并提交915ad283fe6c89dcbe479d1cfcd9666fc1ea2869；最终验收head2954386c9635be0fe682e62c74f848016b71926e。feat/win-top-navigation是已合并分支，不再是活动WIP。候选Windows版本0.5.8。
-- 顶部短信/久坐/缴费连接/号码提醒/设置五个标签，默认短信；模块启停、连接配置、开机启动、旧工具接管、统一更新集中设置页；切页不停止后台模块。设置支持小窗口滚动与控件上滚轮，托盘更新自动滚到进度。原短信、久坐检测/强休、Foxmail人工发送与号码完成同步保留。
-- PR完整validation37708894900、stability37708894867、Foxmail helper37708894933均success。Windows构建37708894826成功：Windows Python63项测试（真实Tk切页/隐藏/小窗口访问）、EXE smoke、PE与Artifact通过。早期Linux无Tk动态库导致GUI测试导入失败，已将Tk依赖限定到GUI验收环境；Windows仍强制运行所有GUI断言。
-- main正式发布构建37709813382进行中；公开更新清单尚未确认0.5.8。GitHub发布、线上同步、用户安装与真实摄像头/Foxmail业务分别判断，后两者待用户实机验证。Web 1.7.3/#135及生产历史证据保留，本轮未改Web业务。
-- 核心文件windows/win-assistants/win_assistants/app.py、__init__.py、tests/test_navigation.py与cross-build workflow。执行路径/workspace/scratch/3b66fa5b4c20/chen-assistant。云电脑#128恢复时须先核对并适配当前main导航，不能直接覆盖本次客户端布局。
-- 唯一下一步：确认正式发布构建与线上0.5.8更新清单/EXE一致后交付；云电脑助手继续暂停。
+- 更新时间：2026-10-08 08:59（Asia/Shanghai）。工作模式：本轮已完成并发布win-assistants v0.5.8，等待用户安装/实机确认与下一项明确需求。云电脑助手按用户明确要求暂停；Draft #128未修改、未合并、未发布。
+- PR [#136](https://github.com/zc202302-lab/chen-assistant/pull/136)已合并，功能合并提交915ad283fe6c89dcbe479d1cfcd9666fc1ea2869，最终验收head2954386c9635be0fe682e62c74f848016b71926e。feat/win-top-navigation为已完成历史分支，不再是WIP；文档提交不作为新功能，main实时查询。
+- 顶部短信/久坐/缴费连接/号码提醒/设置五个标签，默认短信。日常页仅展示当前模块状态与操作；模块启停、连接配置、开机启动、旧工具接管、版本和统一更新集中设置页。设置支持小窗口滚动及控件上滚轮；托盘检查更新自动打开并滚到更新进度。切页不停止后台模块，原短信、久坐识别/强休、Foxmail人工发送和号码完成同步保留。
+- PR完整validation [37708894900](https://github.com/zc202302-lab/chen-assistant/actions/runs/37708894900)、stability37708894867、Foxmail helper37708894933均success。Windows构建 [37708894826](https://github.com/zc202302-lab/chen-assistant/actions/runs/37708894826)成功：Windows Python63项测试（真实Tk切页/隐藏/小窗口访问）、最终EXE smoke、PE与Artifact通过。Linux源码61项原测试通过，2项GUI测试在无显示环境不运行，Windows中全部强制执行且成功。早期Linux缺Tk动态库造成测试导入失败，已将Tk导入限定到GUI验收环境；未删除或弱化GUI断言。
+- 正式main构建/发布 [37709813382](https://github.com/zc202302-lab/chen-assistant/actions/runs/37709813382)全部success，对应上述功能合并提交；release分支update.json为0.5.8，notes已描述顶部导航。main stability37709813365、Foxmail37709813371成功；PR完整CI与main重复CI独立判断，不用文档提交代替功能验证。
+- 公网实际验证：HTTPS更新清单已为0.5.8；完整下载EXE共71,637,948字节，SHA-256 fa88543921e5c7ef9a6027c29e15759e46f531d0933962f571d6ba49b0b319a0，与release manifest完全一致，输出ONLINE VERIFIED。发布后初次公网仍为0.5.7，自动同步后切到0.5.8；无需用户手工进服务器。用户在当前客户端点击“检查更新”即可安装。安装成功、用户真实Windows摄像头/Foxmail等业务待实机确认，不从Wine测试推断。
+- 本轮不改Web业务。Web1.7.3/#135及生产历史证据保留，下方历史可查。核心文件windows/win-assistants/win_assistants/app.py、__init__.py、tests/test_navigation.py、README及cross-build workflow；开发路径/workspace/scratch/3b66fa5b4c20/chen-assistant。未使用上传旧EXE或修改Excel附件。
+- 云电脑#128恢复时先核对实际head/CI及当前main，适配并保留本次导航布局；不得直接覆盖客户端或把本轮Windows导航发布当云电脑功能发布。
+- 唯一下一步：接收用户安装v0.5.8后的界面/业务反馈，或按下一项明确需求继续；云电脑助手保持暂停。
 
 ---
 
