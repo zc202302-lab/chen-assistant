@@ -3,7 +3,7 @@
   const script = document.querySelector('script[data-home-shortcut-script]');
   const csrf = script?.dataset.csrf || '';
   const endpoint = '/home/shortcuts';
-  const permitted = href => /^\/(?:(?:work|info|life)(?:\/[a-z][a-z0-9_-]*){0,2}|customers|products|search)$/.test(href);
+  const permitted = href => /^\/(?:(?:work|info|life)(?:\/[a-z][a-z0-9_-]*){0,2}|customers|products|search|accounts)$/.test(href);
   let items = [];
   async function load() {
     const response = await fetch(endpoint, {credentials: 'same-origin'});
@@ -108,15 +108,14 @@
   const shell = document.querySelector('.v10-shell, .info-shell, main');
   if (!shell) return;
   const candidates = [...shell.querySelectorAll('a[href]')].filter(link =>
-    permitted(link.getAttribute('href')) && link.getAttribute('href') !== path &&
-    link.closest('.v10-stat-grid, .v10-card-grid, .v10-life-feature, .info-module-grid, .info-home-grid'));
+    permitted(link.getAttribute('href')) && link.closest('.v10-stat-grid, .v10-card-grid, .v10-life-feature, .info-module-grid, .info-home-grid, .info-overview-v160'));
   if (!candidates.length) return;
   const toolbar = document.createElement('div'); toolbar.className = 'home-shortcut-toolbar';
   const toggle = button('编辑模块', () => {
     const editing = !toolbar.classList.contains('is-editing');
     toolbar.classList.toggle('is-editing', editing);
     toggle.textContent = editing ? '完成编辑' : '编辑模块';
-    toolbar.querySelectorAll('[data-pin-other]').forEach(el => { el.hidden = !editing; });
+    shell.querySelectorAll('[data-pin-other]').forEach(el => { el.hidden = !editing; });
   });
   toolbar.append(toggle);
   shell.prepend(toolbar);
@@ -126,10 +125,11 @@
       const href = link.getAttribute('href');
       if (seen.has(href)) return;
       seen.add(href);
-      const action = button('发送至首页', el => pin(href, link.querySelector('span,strong,h2,h3')?.textContent || link.textContent, el));
+      const title = link.querySelector('span,strong,h2,h3')?.textContent?.trim() || link.textContent.trim();
+      const action = button('发送至首页', el => pin(href, title, el));
       action.dataset.pinOther = ''; action.hidden = true;
       link.insertAdjacentElement('afterend', action);
-      toolbar.append(action);
+      // Keep the control next to the relevant module rather than in a detached toolbar.
     });
   }).catch(error => status(error.message));
 })();
