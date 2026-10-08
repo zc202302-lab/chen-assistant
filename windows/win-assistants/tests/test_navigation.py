@@ -51,9 +51,18 @@ class NavigationTests(unittest.TestCase):
             self.assertEqual(self.app.nav_indicators[str(page)].cget("bg"), "#2563EB")
             self.assertTrue(page.winfo_ismapped())
             self.assertFalse(self.app.settings_page.winfo_ismapped())
-            self.assertFalse(any(isinstance(w, ttk.Checkbutton) for w in self.descendants(page)))
+            panel = self.app.module_settings_panels[key]
+            self.assertFalse(panel.winfo_ismapped())
+            self.assertEqual(sum(isinstance(w, ttk.Checkbutton) for w in self.descendants(page)), 1)
+            self.app.module_settings_buttons[key].invoke()
+            self.root.update()
+            self.assertTrue(panel.winfo_ismapped())
+            self.assertFalse(any(other.winfo_ismapped() for other_key, other in self.app.module_settings_panels.items() if other_key != key))
+            self.app.module_settings_buttons[key].invoke()
+            self.root.update()
+            self.assertFalse(panel.winfo_ismapped())
             self.assertFalse(any(isinstance(w, ttk.Button) and w.cget("text") in
-                                 ("检查更新", "设置", "重新启动", "接管旧工具启动项")
+                                 ("检查更新", "设置", "接管旧工具启动项")
                                  for w in self.descendants(page)))
             self.app.status_vars[key].set("已停用")
             self.root.update()
@@ -61,6 +70,10 @@ class NavigationTests(unittest.TestCase):
         self.app._show_settings_page()
         self.root.update()
         self.assertTrue(self.app.settings_page.winfo_ismapped())
+        self.assertEqual(sum(isinstance(w, ttk.Checkbutton) for w in self.descendants(self.app.settings_page)), 1)
+        self.assertFalse(any(isinstance(w, ttk.Button) and w.cget("text") in
+                             ("短信连接", "久坐设置", "号码提醒设置", "重新连接", "重新启动")
+                             for w in self.descendants(self.app.settings_page)))
         self.assertFalse(any(p.winfo_ismapped() for p in self.app.module_pages.values()))
         self.assertEqual(sum(isinstance(w, ttk.Button) and w.cget("text") == "检查更新"
                              for w in self.descendants(self.app.settings_page)), 1)
@@ -119,4 +132,5 @@ class NavigationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
 

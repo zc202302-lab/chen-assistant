@@ -84,5 +84,23 @@
       "live-refresh-v15.js",
       "live-refresh-modules-v15.js"
     ]
-  ]
+  ],
+  "page_assets": {
+    "/work": {
+      "styles": [
+        "work-entry-layout.css"
+      ],
+      "scripts": [
+        "work-entry-layout.js"
+      ]
+    },
+    "/work/number-inbox": {
+      "styles": [
+        "number-inbox-batch.css"
+      ],
+      "scripts": [
+        "number-inbox-v162.js"
+      ]
+    }
+  }
 }

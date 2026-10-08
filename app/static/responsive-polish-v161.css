@@ -372,3 +372,14 @@ body:has(.customer-directory-v161) .page{
     width:100%;
   }
 }
+
+
+/* History controls live with the brand and reminders on every viewport. */
+.topbar{grid-template-columns:minmax(0,1fr) auto!important;grid-template-rows:44px 46px;gap:6px 14px}
+.topbar-left{grid-column:1;grid-row:1;gap:10px;flex-wrap:nowrap}
+.topbar-left .global-history-nav{position:static;grid-column:auto;grid-row:auto;transform:none;flex-shrink:0;height:38px;border-radius:11px;box-shadow:none}
+.topbar-left .global-history-button{width:34px;height:32px;font-size:19px}
+.topbar-actions{display:flex;grid-column:2;grid-row:1;justify-self:end}
+.global-primary-nav{grid-column:1/-1;grid-row:2}
+.topbar-actions .search-link{grid-column:auto;grid-row:auto}
+@media(max-width:480px){.topbar{gap:5px 6px}.topbar-left{gap:6px}.topbar-left .brand{font-size:16px}.topbar-left .brand span{display:none}.topbar-left .global-history-button{width:29px}.topbar-left .global-history-nav{height:34px}.reminder-entry{padding:6px 8px!important;font-size:12px!important}.topbar-actions .search-link{width:34px;height:34px}}

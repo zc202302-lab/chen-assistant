@@ -8,3 +8,8 @@
 [data-number-batch-status]:empty { display: none; }
 [data-number-batch]:disabled { opacity: .55; cursor: default; }
 @media (max-width: 640px) { .number-batch-settings button { width: 100%; } }
+
+.number-inbox-done{margin-top:28px;border-top:1px solid #e2e8f0;padding-top:20px}
+.number-inbox-done>summary{cursor:pointer;color:#63738a;font-size:16px;font-weight:700;padding:8px 0}
+.number-inbox-done>summary b{font-size:13px;background:#e9eef5;color:#64748b;border-radius:12px;padding:3px 8px;margin-left:5px}
+.number-inbox-done[open]>summary{margin-bottom:12px}.number-done-badge{color:#3f806a;background:#edf7f2;border-radius:10px;font-size:13px;padding:7px 11px;white-space:nowrap}

@@ -62,3 +62,45 @@ ARCHITECTURE_RULES = (
     '模板升级默认向前兼容；新增字段不得覆盖已有客户实例值。',
     '客户业务可以关联工作资料，但关联不等于复制文件。',
 )
+
+
+# Stable entry keys also own saved ordering; display labels may change independently.
+WORK_ENTRIES = (
+    {'key': 'customers', 'title': '客户管理', 'href': '/work/customers', 'icon': 'customers', 'color': 'blue', 'description': '缴费、业务与客户资料'},
+    {'key': 'library', 'title': '工作资料', 'href': '/work/library', 'icon': 'folder', 'color': 'green', 'description': '产品、资费与流程'},
+    {'key': 'lists', 'title': '清单', 'href': '/work/lists', 'icon': 'list', 'color': 'purple', 'description': '欠费、商机与自由记录'},
+    {'key': 'all_customers', 'title': '全部客户', 'href': '/customers', 'icon': 'customers', 'color': 'blue', 'description': '查找、新建与导入客户'},
+    {'key': 'products', 'title': '产品汇总', 'href': '/products', 'icon': 'product', 'color': 'orange', 'description': '业务类型与客户分布'},
+    {'key': 'search', 'title': '工作搜索', 'href': '/search', 'icon': 'search', 'color': 'slate', 'description': '查询客户、号码与账号'},
+    {'key': 'numbers', 'title': '号码收集', 'href': '/work/number-inbox', 'icon': 'phone', 'color': 'teal', 'description': '收集与批量录入号码'},
+)
+DEFAULT_ENTRY_LAYOUT = {'common': ['customers', 'library', 'lists'],
+                        'auxiliary': ['all_customers', 'products', 'search', 'numbers']}
+LAYOUT_KEY = 'work_entry_layout_v1'
+
+
+def validate_entry_layout(layout):
+    if not isinstance(layout, dict) or set(layout) != {'common', 'auxiliary'}:
+        raise ValueError('入口布局格式无效')
+    values = list(layout.values())
+    if any(not isinstance(v, list) for v in values):
+        raise ValueError('入口布局格式无效')
+    keys = layout['common'] + layout['auxiliary']
+    if any(not isinstance(k, str) for k in keys) or sorted(keys) != sorted(e['key'] for e in WORK_ENTRIES):
+        raise ValueError('每个入口必须且只能出现一次')
+    return layout
+
+
+def entry_layout(conn):
+    import json
+    row = conn.execute('SELECT value FROM app_meta WHERE key=?', (LAYOUT_KEY,)).fetchone()
+    try:
+        return validate_entry_layout(json.loads(row['value'])) if row else DEFAULT_ENTRY_LAYOUT
+    except (ValueError, TypeError):
+        return DEFAULT_ENTRY_LAYOUT
+
+
+def entry_sections(conn):
+    entries = {e['key']: e for e in WORK_ENTRIES}
+    return [{'key': key, 'title': title, 'entries': [entries[k] for k in entry_layout(conn)[key]]}
+            for key, title in [('common', '常用入口'), ('auxiliary', '辅助入口')]]

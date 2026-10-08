@@ -1,51 +1,42 @@
 {% extends "base.html" %}
 {% block title %}工作 · 晨的助手{% endblock %}
 {% block content %}
-<section class="v10-shell work-arch-shell work-launcher">
+<link rel="stylesheet" href="/static/work-entry-layout.css?v=1">
+<section class="v10-shell work-arch-shell work-launcher work-entry-launcher" data-work-entries data-csrf="{{ csrf }}">
   <div class="v10-page-head work-arch-head">
-    <div>
-      <span class="v10-kicker">工作空间</span>
-      <h1>工作</h1>
-      
+    <div><span class="v10-kicker">工作空间</span><h1>工作</h1></div>
+    <div class="work-entry-toolbar">
+      <button class="v10-secondary" type="button" data-entry-edit aria-pressed="false">编辑模块</button>
+      <button class="v10-secondary" type="button" data-entry-cancel hidden>取消</button>
     </div>
   </div>
-
-  <div class="work-domain-grid" aria-label="工作模块">
-    <a class="work-domain-card work-domain-customer" href="/work/customers">
-      <div class="work-domain-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M21 20v-2a6 6 0 0 0-3-5"/></svg></div>
-      <div class="work-domain-body">
-        <div class="work-domain-title"><h2>客户管理</h2><span>{{ customer_count }} 个客户</span></div>
-        <p>缴费、业务与客户资料</p>
-        
-      </div>
-      <strong class="work-domain-arrow">进入 →</strong>
-    </a>
-
-    <a class="work-domain-card work-domain-library" href="/work/library">
-      <div class="work-domain-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h7l2 2h9v12H3zM3 10h18"/></svg></div>
-      <div class="work-domain-body">
-        <div class="work-domain-title"><h2>工作资料</h2></div>
-        <p>产品、资费与流程</p>
-        
-      </div>
-      <strong class="work-domain-arrow">进入 →</strong>
-    </a>
-    <a class="work-domain-card work-domain-list" href="/work/lists">
-      <div class="work-domain-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="m8 9 1 1 2-2M14 9h3m-9 6 1 1 2-2m3 1h3"/></svg></div>
-      <div class="work-domain-body"><div class="work-domain-title"><h2>清单</h2></div><p>欠费、商机与自由记录</p></div>
-      <strong class="work-domain-arrow">进入 →</strong>
-    </a>
-  </div>
-
-  <section class="v10-section work-launcher-shortcuts">
-    <div class="v10-section-head"><div><h2>辅助入口</h2></div></div>
-    <div class="work-legacy-grid">
-      <a href="/customers"><b>全部客户</b><span>查找、新建与导入客户</span></a>
-      <a href="/products"><b>产品汇总</b><span>{{ product_count }} 个业务类型</span></a>
-      <a href="/search"><b>工作搜索</b><span>查询客户、号码、账号等数据</span></a>
-      <a href="/work/number-inbox"><b>号码收集</b><span>{% if pending_numbers %}{{ pending_numbers }} 个未加{% else %}暂无未加号码{% endif %}</span></a>
+  <p class="work-entry-feedback" data-entry-feedback role="status" aria-live="polite"></p>
+  {% for section in entry_sections %}
+  <section class="work-entry-section" aria-labelledby="entry-heading-{{ section.key }}">
+    <h2 id="entry-heading-{{ section.key }}">{{ section.title }}</h2>
+    <div class="work-entry-grid" data-entry-zone="{{ section.key }}">
+      {% for entry in section.entries %}
+      <article class="work-entry-tile" data-entry-key="{{ entry.key }}">
+        <a class="work-entry-link" href="{{ entry.href }}" title="{{ entry.description }}">
+          <span class="work-entry-icon tone-{{ entry.color }}" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            {% if entry.icon == 'customers' %}<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M21 20v-2a6 6 0 0 0-3-5"/>
+            {% elif entry.icon == 'folder' %}<path d="M3 5h7l2 2h9v12H3zM3 10h18"/>
+            {% elif entry.icon == 'list' %}<rect x="4" y="3" width="16" height="18" rx="3"/><path d="m8 9 1 1 2-2M14 9h3m-9 6 1 1 2-2m3 1h3"/>
+            {% elif entry.icon == 'search' %}<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>
+            {% elif entry.icon == 'phone' %}<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 18h4"/>
+            {% else %}<path d="m12 3 9 5-9 5-9-5zM3 8v9l9 5 9-5V8M12 13v9"/>{% endif %}
+            </svg>
+          </span>
+          <h3>{{ entry.title }}</h3>
+          <small>{% if entry.key == 'customers' %}{{ customer_count }} 个客户{% elif entry.key == 'products' %}{{ product_count }} 个业务类型{% elif entry.key == 'numbers' %}{{ pending_numbers }} 个未加{% else %}{{ entry.description }}{% endif %}</small>
+        </a>
+        <button class="work-entry-handle" type="button" data-entry-handle aria-label="移动{{ entry.title }}" title="拖动调整；方向键排序，空格切换区域" hidden>⠿</button>
+      </article>
+      {% endfor %}
     </div>
   </section>
+  {% endfor %}
 </section>
+<script src="/static/work-entry-layout.js?v=1"></script>
 {% endblock %}
-

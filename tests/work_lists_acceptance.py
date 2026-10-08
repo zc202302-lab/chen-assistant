@@ -47,7 +47,7 @@ def main():
             errors = []
             page.on('pageerror', lambda error: errors.append(str(error)))
             page.goto(base + '/work', wait_until='networkidle')
-            page.locator('.work-domain-grid a[href="/work/lists"]').click()
+            page.locator('.work-entry-grid a[href="/work/lists"]').click()
             expect(page.get_by_role('heading', name='清单', exact=True)).to_be_visible()
             for width, height in [(1440, 900), (390, 844)]:
                 page.set_viewport_size({'width': width, 'height': height})
@@ -152,3 +152,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

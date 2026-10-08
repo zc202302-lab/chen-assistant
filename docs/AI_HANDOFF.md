@@ -5,10 +5,12 @@
 - 更新时间：2026-10-08（Asia/Shanghai）。工作模式：用户明确授权四项产品改造，开发中；活动分支 feat/workspace-entry-archive-settings，PR待创建。云电脑Draft #128继续暂停。
 - 用户最新需求：工作空间分常用/辅助入口，统一小方块并支持编辑拖动排序/跨区移动；顶部前进后退移至左侧提醒后；号码收集增加默认折叠的已录号码，成功批量写入后将本批号码标记已录，保留5天后自动删除；Windows全局设置仅保留客户端设置，模块配置归各模块按需打开。
 - 基于main a6fc4f1011ab5f45bc7741f8741d99e1634c58e4。生产Web1.7.3、Windows0.5.12；用户最新截图确认Windows0.5.12已安装，实际批量写入结果仍待确认。
-- 当前阶段：已读取仓库规则、交接、当前main和Open PR，并核查三张用户截图。其他历史Open PR不作为活动任务；尚未提交功能、跑CI或发布此轮新版本。
+- 当前阶段：四项实现完成，候选Web1.7.4/Windows0.5.13。工作布局服务端保存、鼠标/触屏拖动及键盘移动、左侧箭头、已录折叠区、签名回执快照归档与独立5天清理、Windows模块内折叠设置已实现；准备提交PR。
 - 开发目录 /workspace/scratch/e967b2806c44/chen-assistant，为GitHub当前源码快照，本地git用于审查差异；远程提交通过GitHub connector。
 - 关键边界：失败/未知写入不能标已录；只归档成功批次快照中的ID，不吞并操作期间新提交的号码；5天从completed_at计算；保留批注兼容、文件锁、备份、原子写入及更新回滚验收。
-- 唯一下一步：完成上述四项实现和相应接口/浏览器/原生Windows回归，提交活动PR并核对CI；新功能尚未部署。
+- 本地验证：号码批量旧契约、已录归档鉴权/真实写入/迟到新号码/重复回执/精确5天边界、入口布局保存契约、号码收集旧契约及架构/路由/稳定性已通过；Windows83项（79通过，4GUI需原生Windows）。本机Chromium下载返回损坏包，未能运行浏览器；完整CI将执行新增布局浏览器验收及原有浏览器/真实Windows/冻结EXE验收。
+- 核心文件：work_architecture.py、v101_workspace_routes.py、work_shell_v14.html、work-entry-layout.js/css、base.html、responsive-polish-v161.css、number_inbox_batch.py、v162_number_inbox.py、number-inbox-v162.js、main.py；Windows app.py、number_batch_bridge.py、number_batch_sync.py。
+- 唯一下一步：提交活动PR并修复实际CI失败，核对完整浏览器/原生Windows/冻结EXE验收；本轮未合并、部署或发布，不从源码测试推断用户业务成功。
 
 ---
 
@@ -87,5 +89,3 @@
 - 唯一下一步：用户按一次性迁移步骤安装v0.5.9并反馈实际更新重启/原业务情况，或按下一项明确需求继续；云电脑助手保持暂停。
 
 ---
-
-

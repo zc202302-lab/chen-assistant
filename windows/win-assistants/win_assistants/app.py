@@ -49,6 +49,7 @@ class WinAssistantsApp:
         self.number_batch_bridge = NumberBatchBridge(
             lambda: unprotect_secret(self.config.number_inbox.protected_token),
             lambda: self.config.number_inbox.batch_target,
+            server_provider=lambda: self.config.number_inbox.api_url,
         )
         self.number_reminder_window: tk.Toplevel | None = None
         self.number_reminder_items: dict[int, NumberInboxEvent] = {}
@@ -152,12 +153,19 @@ class WinAssistantsApp:
         self._page_transition_target = None
         self.navigation.bind("<<NotebookTabChanged>>", self._on_page_changed)
         self.module_pages = {}
+        self.module_settings_panels = {}
+        self.module_settings_buttons = {}
         labels = {"sms": "短信", "sedentary": "久坐", "chen_helper": "缴费连接", "number_inbox": "号码提醒"}
         for item in MODULES:
             page = ttk.Frame(self.navigation, padding=(20, 20), style="Card.TFrame")
             self.module_pages[item.key] = page
             self.navigation.add(page, text=labels[item.key])
-            ttk.Label(page, text=labels[item.key], style="PageTitle.TLabel").pack(anchor="w", pady=(0, 20))
+            heading = ttk.Frame(page, style="Card.TFrame")
+            heading.pack(fill="x", pady=(0, 20))
+            ttk.Label(heading, text=labels[item.key], style="PageTitle.TLabel").pack(side="left")
+            self.module_settings_buttons[item.key] = ttk.Button(
+                heading, text="模块设置", command=lambda key=item.key: self._toggle_module_settings(key))
+            self.module_settings_buttons[item.key].pack(side="right")
             status_card = ttk.Frame(page, padding=(16, 14), style="Status.TFrame")
             status_card.pack(fill="x", pady=(0, 24))
             ttk.Label(status_card, text="当前状态", style="Status.TLabel").pack(anchor="w", pady=(0, 5))
@@ -180,6 +188,28 @@ class WinAssistantsApp:
             else:
                 ttk.Label(page, text="从网页版发起缴费后，在 Foxmail 中粘贴附件并人工发送。",
                           style="Detail.TLabel", wraplength=620).pack(anchor="w")
+
+        settings_actions = {
+            "sms": ("短信连接", self._show_sms_settings),
+            "sedentary": ("久坐设置", lambda: self._sedentary_command("show_settings")),
+            "number_inbox": ("号码提醒设置", self._show_number_inbox_settings),
+            "chen_helper": ("重新连接", lambda: self._start_one("chen_helper")),
+        }
+        for item in MODULES:
+            panel = ttk.Frame(self.module_pages[item.key], padding=(14, 12), style="Card.TFrame")
+            self.module_settings_panels[item.key] = panel
+            ttk.Separator(panel).pack(fill="x", pady=(0, 12))
+            row = ttk.Frame(panel, style="Card.TFrame")
+            row.pack(fill="x")
+            ttk.Checkbutton(row, text="启用" + labels[item.key], variable=self.enabled_vars[item.key],
+                            command=lambda key=item.key: self._toggle_module(key),
+                            style="Module.TCheckbutton").pack(side="left")
+            label, command = settings_actions[item.key]
+            ttk.Button(row, text=label, command=command).pack(side="right")
+            if item.key == "sedentary":
+                ttk.Button(row, text="重新启动", command=self._restart_sedentary).pack(side="right", padx=8)
+            # The module panel stays collapsed until requested. Detailed settings
+            # use the existing dedicated dialogs/runtime settings window.
 
         self.settings_page = ttk.Frame(self.navigation, style="Card.TFrame")
         self.navigation.add(self.settings_page, text="设置")
@@ -215,25 +245,6 @@ class WinAssistantsApp:
             self.settings_canvas.yview_scroll(-3 if event.delta > 0 else 3, "units")
         self.root.bind("<MouseWheel>", lambda event: settings_wheel(event)
                        if self.navigation.select() == str(self.settings_page) else None, add="+")
-        ttk.Label(self.settings_content, text="模块设置", style="Module.TLabel").pack(anchor="w", pady=(0, 12))
-        settings_actions = {
-            "sms": ("短信连接", self._show_sms_settings),
-            "sedentary": ("久坐设置", lambda: self._sedentary_command("show_settings")),
-            "number_inbox": ("号码提醒设置", self._show_number_inbox_settings),
-            "chen_helper": ("重新连接", lambda: self._start_one("chen_helper")),
-        }
-        for item in MODULES:
-            row = ttk.Frame(self.settings_content, style="Card.TFrame")
-            row.pack(fill="x", pady=(0, 10))
-            ttk.Checkbutton(row, text=item.name, variable=self.enabled_vars[item.key],
-                            command=lambda key=item.key: self._toggle_module(key),
-                            style="Module.TCheckbutton").pack(side="left")
-            label, command = settings_actions[item.key]
-            ttk.Button(row, text=label, command=command).pack(side="right")
-            if item.key == "sedentary":
-                ttk.Button(row, text="重新启动", command=self._restart_sedentary).pack(side="right", padx=8)
-
-        ttk.Separator(self.settings_content).pack(fill="x", pady=(6, 16))
         ttk.Label(self.settings_content, text="启动与更新", style="Module.TLabel").pack(anchor="w", pady=(0, 10))
         ttk.Checkbutton(self.settings_content, text="登录 Windows 后在托盘启动", variable=self.startup_var,
                         command=self._toggle_startup, style="Footer.TCheckbutton").pack(anchor="w")
@@ -252,6 +263,16 @@ class WinAssistantsApp:
         footer.pack(fill="x")
         ttk.Label(footer, text="晨的小助手 · Windows", style="Sub.TLabel").pack(side="left")
         ttk.Label(footer, text="Ctrl + Tab 切换模块", style="Sub.TLabel").pack(side="right")
+
+    def _toggle_module_settings(self, key: str) -> None:
+        panel = self.module_settings_panels[key]
+        button = self.module_settings_buttons[key]
+        if panel.winfo_manager():
+            panel.pack_forget()
+            button.configure(text="模块设置")
+        else:
+            panel.pack(fill="x", pady=(0, 14), before=self.module_pages[key].pack_slaves()[1])
+            button.configure(text="收起设置")
 
     def _navigate_module(self, direction: int) -> str:
         tabs = self.navigation.tabs()

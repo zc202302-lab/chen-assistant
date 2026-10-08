@@ -376,6 +376,22 @@
     "name": "number_inbox_batch_add"
   },
   {
+    "path": "/work/number-inbox/batch-complete",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.v162_number_inbox",
+    "name": "number_inbox_batch_complete"
+  },
+  {
+    "path": "/api/number-inbox/batch-complete",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.v162_number_inbox",
+    "name": "number_inbox_desktop_batch_complete"
+  },
+  {
     "path": "/life/recipes/new",
     "methods": [
       "POST"
@@ -574,6 +590,14 @@
     ],
     "module": "app.v101_workspace_routes",
     "name": "global_search_v101"
+  },
+  {
+    "path": "/work/entry-layout",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.v101_workspace_routes",
+    "name": "save_work_entry_layout"
   },
   {
     "path": "/",

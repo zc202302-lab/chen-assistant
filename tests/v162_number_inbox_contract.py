@@ -163,7 +163,10 @@ def main():
     pending_page = client.get(f'/number-submit/{token}/pending')
     assert '13800138000' not in pending_page.text
     assert '目前没有未加号码' in pending_page.text
-    assert '13800138000' not in client.get('/work/number-inbox?status=done').text
+    archived_page = client.get('/work/number-inbox?status=done').text
+    assert '13800138000' not in archived_page.split('<details class="number-inbox-done">')[0]
+    assert '13800138000' in archived_page.split('<details class="number-inbox-done">')[1]
+    assert '<details class="number-inbox-done" open' not in archived_page
 
     reopened = client.post(
         f'/work/number-inbox/{item_id}/reopen',

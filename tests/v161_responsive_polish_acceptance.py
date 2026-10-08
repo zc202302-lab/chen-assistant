@@ -89,7 +89,9 @@ def main():
             history_box = page.locator('[data-history-nav]').bounding_box()
             search_box = page.locator('[data-quick-search-trigger]').bounding_box()
             nav_box = page.locator('.global-primary-nav').bounding_box()
-            assert history_box and centered(history_box, 1440)
+            reminder = page.locator('.reminder-entry').bounding_box()
+            assert history_box and reminder and history_box['x'] >= reminder['x'] + reminder['width']
+            assert abs(history_box['y'] - reminder['y']) < 8
             assert search_box and search_box['x'] > 1360
             assert nav_box and nav_box['y'] > history_box['y']
 
@@ -109,7 +111,9 @@ def main():
             mh = mpage.locator('[data-history-nav]').bounding_box()
             ms = mpage.locator('[data-quick-search-trigger]').bounding_box()
             mn = mpage.locator('.global-primary-nav').bounding_box()
-            assert mh and centered(mh, 390)
+            mr = mpage.locator('.reminder-entry').bounding_box()
+            assert mh and mr and mh['x'] >= mr['x'] + mr['width']
+            assert abs(mh['y'] - mr['y']) < 8
             assert ms and ms['x'] > 335 and ms['width'] <= 42
             assert mn and mn['y'] > mh['y']
 
@@ -135,3 +139,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

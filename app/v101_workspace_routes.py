@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Request, Form, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from .templating import Jinja2Templates
 
 from . import config
@@ -16,7 +16,9 @@ from .v13_customer_documents import ensure_v13_customer_documents, router as v13
 from .v143_customer_resources import ensure_customer_resources_v143, router as v143_customer_resources_router
 from .v143_payment_controls_patch import router as v143_payment_controls_router
 from .v144_audit_hardening import router as v144_audit_hardening_router
-from .work_architecture import WORK_DOMAINS, WORK_LIBRARY_CATEGORIES
+from .work_architecture import WORK_DOMAINS, WORK_LIBRARY_CATEGORIES, entry_sections, validate_entry_layout, LAYOUT_KEY
+from .security import require_csrf
+import json
 from .v162_number_inbox import ensure_number_inbox_schema, pending_number_count, router as v162_number_inbox_router
 
 router = APIRouter()
@@ -52,12 +54,15 @@ def work_home_v101(request: Request, home: str = ''):
         open_tasks = int(conn.execute('SELECT COUNT(*) n FROM tasks WHERE done=0').fetchone()['n'])
         product_count = int(conn.execute("SELECT COUNT(DISTINCT service_type) n FROM services WHERE service_type<>''").fetchone()['n'])
         pending_numbers = pending_number_count(conn)
+        sections = entry_sections(conn)
 
     return templates.TemplateResponse(
         'work_shell_v14.html',
         {
             'request': request,
             'domains': WORK_DOMAINS,
+            'entry_sections': sections,
+            'csrf': request.state.session['csrf_token'],
             'customer_count': customer_count,
             'open_tasks': open_tasks,
             'product_count': product_count,
@@ -101,3 +106,21 @@ def global_search_v101(request: Request, q: str = ''):
 work_home_v101.__module__ = 'app.v10_routes'
 work_search_v101.__module__ = 'app.v10_routes'
 
+
+
+@router.post('/work/entry-layout')
+def save_work_entry_layout(request: Request, csrf: str = Form(...), layout: str = Form(...)):
+    try:
+        require_csrf(request.state.session, csrf)
+    except ValueError:
+        raise HTTPException(403, 'CSRF校验失败')
+    try:
+        if len(layout) > 4096:
+            raise ValueError('入口布局过大')
+        value = validate_entry_layout(json.loads(layout))
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(400, str(exc))
+    with db() as conn:
+        conn.execute('INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)',
+                     (LAYOUT_KEY, json.dumps(value)))
+    return JSONResponse({'ok': True}, headers={'Cache-Control': 'no-store'})

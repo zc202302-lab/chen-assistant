@@ -73,6 +73,15 @@ def main(executable):
             assert target.read_bytes() == original
             status, body = request('/number-batch', signed(nonce='b' * 32))
             assert status == 200 and body['count'] == 2, body
+            assert request('/health')[1]['receipt_version'] == 1
+            receipt = body['receipt']
+            import hmac, hashlib
+            canonical = json.dumps(receipt['receipt'], ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode()
+            assert hmac.compare_digest(receipt['signature'], hmac.new(b'secret', b'number-batch-complete-v1\n' + canonical, hashlib.sha256).hexdigest())
+            assert receipt['receipt']['count'] == 2 and receipt['receipt']['nonce'] == 'b' * 32
+            receipts = json.loads((config_dir / 'number-batch-requests-receipts.json').read_text(encoding='utf-8'))
+            assert receipts['b' * 32] == receipt
+            assert 'a' * 32 not in receipts, 'failed locked writes must not create successful receipts'
             assert Path(body['backup']).read_bytes() == original
             with zipfile.ZipFile(target) as package:
                 sheet = package.read('xl/worksheets/sheet1.xml')

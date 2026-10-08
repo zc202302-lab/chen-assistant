@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .config import app_data_dir
+from .number_batch_sync import ReceiptOutbox, signed_receipt
 from .number_batch import file_lock, write_batch, _stage
 
 ORIGINS = frozenset({'https://assistant.ziboxiaozhushou.cn', 'https://assistant.zbassistant.site', 'https://zbassistant.site'})
@@ -37,7 +38,7 @@ def verify_request(body, token, now=None):
 
 
 class NumberBatchBridge:
-    def __init__(self, token_provider, target_provider, *, ledger=None, port=PORT):
+    def __init__(self, token_provider, target_provider, *, ledger=None, port=PORT, server_provider=None):
         self.token_provider = token_provider
         self.target_provider = target_provider
         self.ledger = Path(ledger) if ledger else app_data_dir() / 'number-batch-requests.json'
@@ -46,12 +47,15 @@ class NumberBatchBridge:
         self.thread = None
         self.busy = threading.Lock()
         self.events = queue.SimpleQueue()
+        self.receipts = ReceiptOutbox(self.ledger.with_name(self.ledger.stem + "-receipts.json"), token_provider, server_provider)
 
     def execute(self, body):
         if not self.busy.acquire(blocking=False):
             raise ValueError('正在执行另一批写入，请稍后重试')
         try:
-            payload = verify_request(body, self.token_provider())
+            token = self.token_provider()
+            payload = verify_request(body, token)
+            self.receipts.prepare()
             now = int(time.time())
             # Reserve durably before touching the workbook. Crashes cannot replay a batch.
             with file_lock(self.ledger):
@@ -72,7 +76,15 @@ class NumberBatchBridge:
                     staged.replace(self.ledger)
                 finally:
                     staged.unlink(missing_ok=True)
-            return write_batch(self.target_provider(), payload['numbers'], payload['groups'], payload['role'], payload['manual'])
+            result = write_batch(self.target_provider(), payload['numbers'], payload['groups'], payload['role'], payload['manual'])
+            result['receipt'] = signed_receipt(body, result['count'], token)
+            try:
+                self.receipts.add(result['receipt'])
+            except (OSError, ValueError):
+                # The file has already committed; return its signed evidence to
+                # the browser instead of turning success into a false failure.
+                result['sync_warning'] = '回执暂存失败，请保持网页打开完成状态同步'
+            return result
         finally:
             self.busy.release()
 
@@ -116,7 +128,7 @@ class NumberBatchBridge:
             def do_GET(self):
                 if not self.allowed():
                     return self.reply(403)
-                self.reply(200, {'ok': True, 'batch_version': 1}) if self.path == '/health' else self.reply(404)
+                self.reply(200, {'ok': True, 'batch_version': 1, 'receipt_version': 1}) if self.path == '/health' else self.reply(404)
 
             def do_POST(self):
                 if not self.allowed():
@@ -147,6 +159,7 @@ class NumberBatchBridge:
             self.server.daemon_threads = False
             self.thread = threading.Thread(target=self.server.serve_forever, daemon=True, name='number-batch-bridge')
             self.thread.start()
+            self.receipts.start()
             return True, '批量添加已就绪'
         except OSError as exc:
             self.server = None
@@ -160,3 +173,4 @@ class NumberBatchBridge:
         if self.thread:
             self.thread.join(timeout=2)
             self.thread = None
+        self.receipts.stop()

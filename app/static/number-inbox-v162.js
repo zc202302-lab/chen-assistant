@@ -42,7 +42,7 @@ document.addEventListener('click', async (event) => {
     } catch (_) {
       throw new Error('无法连接Windows助手。请升级并启动助手，开启号码提醒，填写连接码和目标Excel路径，并允许浏览器访问本地网络。');
     }
-    if (health.batch_version !== 1) throw new Error('请先升级Windows助手后重试。');
+    if (health.batch_version !== 1 || health.receipt_version !== 1) throw new Error('请先升级Windows助手后重试。');
     let result;
     try {
       result = await request(local + '/number-batch', {
@@ -54,11 +54,24 @@ document.addEventListener('click', async (event) => {
       }
       throw error;
     }
-    status.textContent = `已写入 ${result.count} 个号码：${result.path}。已保存上一次备份；号码仍保留在未加列表中。`;
+    if (!result.receipt) throw new Error('Excel写入成功，但客户端未返回回执。请检查更新；未更改号码状态。');
+    try {
+      await request('/work/number-inbox/batch-complete', {
+        method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': button.dataset.csrf},
+        body: JSON.stringify(result.receipt)
+      });
+    } catch (_) {
+      status.textContent = `已写入 ${result.count} 个号码，网页状态尚未同步。Windows助手会自动重试，请勿重复批量添加。`;
+      button.dataset.batchCommitted = 'true';
+      return;
+    }
+    button.dataset.batchCommitted = 'true';
+    status.textContent = `已写入 ${result.count} 个号码，已移至“已录号码”，保留5天。`;
+    window.location.reload();
   } catch (error) {
     status.textContent = error.message;
   } finally {
-    button.disabled = false;
+    button.disabled = button.dataset.batchCommitted === 'true';
     button.textContent = original;
   }
 });
