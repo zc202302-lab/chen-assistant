@@ -156,8 +156,8 @@ class WinAssistantsApp:
             settings_window, width=event.width))
         def settings_wheel(event) -> None:
             self.settings_canvas.yview_scroll(-3 if event.delta > 0 else 3, "units")
-        self.settings_canvas.bind("<MouseWheel>", settings_wheel)
-        self.settings_content.bind("<MouseWheel>", settings_wheel)
+        self.root.bind("<MouseWheel>", lambda event: settings_wheel(event)
+                       if self.navigation.select() == str(self.settings_page) else None, add="+")
         ttk.Label(self.settings_content, text="模块设置", style="Module.TLabel").pack(anchor="w", pady=(0, 12))
         settings_actions = {
             "sms": ("短信连接", self._show_sms_settings),
@@ -195,6 +195,7 @@ class WinAssistantsApp:
     def _show_settings_page(self) -> None:
         self.navigation.select(self.settings_page)
         self._show_window()
+        self.root.after_idle(self.settings_canvas.yview_moveto, 1.0)
 
     def _save_ui(self) -> None:
         for item in MODULES:
