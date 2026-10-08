@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import os
 import unittest
-import tkinter as tk
-from tkinter import ttk
-from win_assistants.app import WinAssistantsApp
 from win_assistants.modules import MODULES
 
 
 @unittest.skipUnless(os.name == "nt" or os.environ.get("DISPLAY"), "GUI acceptance runs with Windows Tk / X display")
 class NavigationTests(unittest.TestCase):
     def setUp(self):
+        global tk, ttk
+        import tkinter as tk
+        from tkinter import ttk
+        from win_assistants.app import WinAssistantsApp
         self.root = tk.Tk()
         self.app = WinAssistantsApp.__new__(WinAssistantsApp)
         self.app.root = self.root
