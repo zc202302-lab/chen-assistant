@@ -44,6 +44,7 @@ def main():
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch()
             context = browser.new_context(viewport={'width': 1440, 'height': 900})
+            context.grant_permissions(['local-network-access'], origin=base)
             context.add_cookies([{'name': 'session_token', 'value': session, 'url': base}])
             # Local test origin is not trusted by the production bridge. Forward only
             # these explicit routes with the production Origin; bridge auth remains real.

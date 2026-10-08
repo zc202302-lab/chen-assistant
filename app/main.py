@@ -38,7 +38,7 @@ async def current_asset_cache_policy(request, call_next):
             "default-src 'self'; "
             "style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; "
             "script-src 'self'; img-src 'self' data: blob:; "
-            "connect-src 'self' http://127.0.0.1:18763 http://localhost:18763; "
+            "connect-src 'self' http://127.0.0.1:18763 http://localhost:18763 http://127.0.0.1:18764; "
             "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
         )
     return response

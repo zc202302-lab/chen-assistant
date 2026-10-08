@@ -39,6 +39,8 @@ def main():
     assert client.post('/work/number-inbox/batch-add', data={'csrf': 'wrong'}, follow_redirects=False).status_code == 303
     session, csrf, _ = create_session()
     client.cookies.set('session_token', session)
+    policy = client.get('/work/number-inbox').headers['content-security-policy']
+    assert 'http://127.0.0.1:18764' in policy and 'http://127.0.0.1:18763' in policy
     assert client.post('/work/number-inbox/batch-add', data={'csrf': 'wrong'}).status_code == 403
     assert client.post('/work/number-inbox/batch-settings', data={'csrf': 'wrong', 'role': 'x', 'manual': '1'}).status_code == 403
     result = client.post('/work/number-inbox/batch-settings', data={'csrf': csrf, 'role': 'MemberSort0102', 'manual': '1'},
