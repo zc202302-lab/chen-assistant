@@ -58,6 +58,7 @@ class WinAssistantsApp:
         self._update_checking = False
         self.sms_code_var = tk.StringVar(value="尚未收到验证码")
         self.update_status_var = tk.StringVar(value="更新状态：就绪")
+        self.batch_status_var = tk.StringVar(value="批量添加：尚未执行")
         self.update_progress_var = tk.DoubleVar(value=0)
         self.status_vars = {item.key: tk.StringVar(value="等待启动") for item in MODULES}
         self.enabled_vars = {item.key: tk.BooleanVar(value=self.config.modules[item.key].enabled) for item in MODULES}
@@ -174,6 +175,8 @@ class WinAssistantsApp:
             elif item.key == "number_inbox":
                 ttk.Button(page, text="查看未加号码", command=self._open_number_inbox,
                            style="Accent.TButton").pack(anchor="w")
+                ttk.Label(page, textvariable=self.batch_status_var, style="Detail.TLabel",
+                          wraplength=620).pack(anchor="w", pady=(16, 0))
             else:
                 ttk.Label(page, text="从网页版发起缴费后，在 Foxmail 中粘贴附件并人工发送。",
                           style="Detail.TLabel", wraplength=620).pack(anchor="w")
@@ -383,6 +386,19 @@ class WinAssistantsApp:
             variable.set(status)
 
     def _poll_ui_actions(self) -> None:
+        while True:
+            try:
+                result = self.number_batch_bridge.events.get_nowait()
+            except queue.Empty:
+                break
+            if result.get('ok'):
+                detail = f"已写入 {result['count']} 个号码\n文件：{result['path']}\n备份：{result['backup']}"
+                self.batch_status_var.set(f"批量添加：已写入 {result['count']} 个号码")
+                messagebox.showinfo("批量添加完成", detail, parent=self.root)
+            else:
+                detail = result.get('error', '写入失败')
+                self.batch_status_var.set(f"批量添加失败：{detail}")
+                messagebox.showerror("批量添加失败", detail, parent=self.root)
         while True:
             try:
                 action = self.ui_actions.get_nowait()
@@ -1047,5 +1063,3 @@ def run() -> None:
         root.mainloop()
     finally:
         instance.close()
-
-

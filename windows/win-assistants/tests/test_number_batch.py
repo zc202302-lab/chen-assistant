@@ -1,16 +1,18 @@
+import ast
 import hashlib
 import hmac
 import http.client
 import io
 import json
 import os
+import queue
 import tempfile
 import time
 import unittest
 import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from win_assistants.number_batch import HEADERS, NS, TAG, build_workbook, write_batch
 from win_assistants.number_batch_bridge import NumberBatchBridge, verify_request
@@ -31,6 +33,20 @@ def workbook(headers=HEADERS):
     return buffer.getvalue()
 
 
+def annotated_workbook(ref='A1', row='0', object_type='Note'):
+    with zipfile.ZipFile(io.BytesIO(workbook())) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    parts['xl/worksheets/sheet1.xml'] = parts['xl/worksheets/sheet1.xml'].replace(
+        b'</worksheet>', b'<legacyDrawing xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="note"/></worksheet>')
+    parts['xl/worksheets/_rels/sheet1.xml.rels'] = b'<Relationships><Relationship Id="note" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/notes.vml"/><Relationship Id="comments" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="../comments1.xml"/></Relationships>'
+    parts['xl/comments1.xml'] = f'<comments xmlns="{NS}"><authors><author>template</author></authors><commentList><comment ref="{ref}" authorId="0"><text><t>Required instruction</t></text></comment></commentList></comments>'.encode()
+    parts['xl/drawings/notes.vml'] = f'<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:x="urn:schemas-microsoft-com:office:excel"><v:shape><x:ClientData ObjectType="{object_type}"><x:Row>{row}</x:Row><x:Column>0</x:Column></x:ClientData></v:shape></xml>'.encode()
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as archive:
+        for name, data in parts.items():
+            archive.writestr(name, data)
+    return buffer.getvalue(), parts
+
 def signed(**overrides):
     payload = dict(version=1, nonce='a' * 32, issued_at=int(time.time()), groups=['G1', 'G2'],
                    numbers=['00123456789', '12345678901234567890'], role='MemberSort0102', manual='1')
@@ -40,6 +56,46 @@ def signed(**overrides):
 
 
 class NumberBatchTests(unittest.TestCase):
+    def test_gui_consumes_batch_results_on_ui_poll_and_keeps_separate_status(self):
+        source = Path(__file__).parents[1] / 'win_assistants' / 'app.py'
+        tree = ast.parse(source.read_text(encoding='utf-8'))
+        app = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'WinAssistantsApp')
+        method = next(n for n in app.body if isinstance(n, ast.FunctionDef) and n.name == '_poll_ui_actions')
+        dialogs = Mock()
+        scope = {'queue': queue, 'messagebox': dialogs}
+        exec(compile(ast.Module(body=[method], type_ignores=[]), str(source), 'exec'), scope)
+        fake = Mock()
+        fake.number_batch_bridge.events = queue.SimpleQueue()
+        fake.ui_actions = queue.Queue()
+        fake.number_batch_bridge.events.put({'ok': True, 'count': 3, 'path': 'test.xlsx', 'backup': 'backup.xlsx'})
+        fake.number_batch_bridge.events.put({'ok': False, 'error': '请关闭Excel'})
+        scope['_poll_ui_actions'](fake)
+        dialogs.showinfo.assert_called_once()
+        dialogs.showerror.assert_called_once_with('批量添加失败', '请关闭Excel', parent=fake.root)
+        self.assertIn('已写入 3 个号码', fake.batch_status_var.set.call_args_list[0].args[0])
+        self.assertEqual(fake.batch_status_var.set.call_args_list[1].args[0], '批量添加失败：请关闭Excel')
+        fake.root.after.assert_called_once_with(100, fake._poll_ui_actions)
+
+    def test_header_instruction_comments_are_preserved_and_data_comments_rejected(self):
+        original, parts = annotated_workbook()
+        output = build_workbook(original, ['00123456789'], ['G1'], 'role', '1')
+        with zipfile.ZipFile(io.BytesIO(output)) as archive:
+            for name, data in parts.items():
+                if name != 'xl/worksheets/sheet1.xml':
+                    self.assertEqual(archive.read(name), data)
+        for args in (('A2', '1', 'Note'), ('A1', '0', 'Button'), ('A1', '1', 'Note')):
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                build_workbook(annotated_workbook(*args)[0], ['12345'], ['G1'], 'role', '1')
+
+    def test_wrong_file_format_returns_actionable_message(self):
+        with self.assertRaisesRegex(ValueError, '另存为'):
+            build_workbook(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1', ['12345'], ['G1'], 'role', '1')
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w') as archive:
+            archive.writestr('[Content_Types].xml', '<Types/>')
+        with self.assertRaisesRegex(ValueError, '完整的XLSX'):
+            build_workbook(buffer.getvalue(), ['12345'], ['G1'], 'role', '1')
+
     def test_clears_every_old_cell_preserves_header_style_notes_and_text(self):
         chooser = iter(['G1', 'G2']).__next__
         output = build_workbook(workbook(), ['00123456789', '12345678901234567890'], ['G1', 'G2'], '=role', '1', choose=lambda _: chooser())
@@ -145,6 +201,9 @@ class NumberBatchTests(unittest.TestCase):
                 self.assertEqual(request('OPTIONS', '/number-batch')[1]['Access-Control-Allow-Private-Network'], 'true')
                 self.assertEqual(request('POST', '/number-batch', json.dumps(signed()), origin='https://evil.example')[0], 403)
                 self.assertEqual(request('POST', '/number-batch', json.dumps(signed()))[2]['count'], 2)
+                self.assertEqual(bridge.events.get_nowait()['count'], 2)
+                self.assertEqual(request('POST', '/number-batch', json.dumps(signed()))[0], 400)
+                self.assertIn('已执行过', bridge.events.get_nowait()['error'])
             finally:
                 bridge.stop()
 

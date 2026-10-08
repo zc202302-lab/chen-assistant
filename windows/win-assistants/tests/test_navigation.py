@@ -21,6 +21,7 @@ class NavigationTests(unittest.TestCase):
         self.app.sms_code_var = tk.StringVar(value="123456")
         self.app.startup_var = tk.BooleanVar(value=False)
         self.app.update_status_var = tk.StringVar(value="就绪")
+        self.app.batch_status_var = tk.StringVar(value="批量添加：尚未执行")
         self.app.update_progress_var = tk.DoubleVar(value=0)
         self.app._configure_window()
         self.app._build_ui()
@@ -63,6 +64,18 @@ class NavigationTests(unittest.TestCase):
         self.assertFalse(any(p.winfo_ismapped() for p in self.app.module_pages.values()))
         self.assertEqual(sum(isinstance(w, ttk.Button) and w.cget("text") == "检查更新"
                              for w in self.descendants(self.app.settings_page)), 1)
+
+    def test_batch_result_remains_visible_when_connection_status_changes(self):
+        page = self.app.module_pages["number_inbox"]
+        self.app.navigation.select(page)
+        self.app.batch_status_var.set("批量添加：已写入 3 个号码")
+        self.app.status_vars["number_inbox"].set("已连接 · 3 个待录入")
+        self.root.update()
+        labels = [w for w in self.descendants(page)
+                  if isinstance(w, ttk.Label) and str(w.cget("textvariable")) == str(self.app.batch_status_var)]
+        self.assertEqual(len(labels), 1)
+        self.assertTrue(labels[0].winfo_ismapped())
+        self.assertEqual(self.app.batch_status_var.get(), "批量添加：已写入 3 个号码")
 
     def test_minimum_window_fits_settings_and_navigation(self):
         self.root.geometry("740x560")

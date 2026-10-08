@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import queue
 import re
 import threading
 import time
@@ -44,6 +45,7 @@ class NumberBatchBridge:
         self.server = None
         self.thread = None
         self.busy = threading.Lock()
+        self.events = queue.SimpleQueue()
 
     def execute(self, body):
         if not self.busy.acquire(blocking=False):
@@ -129,9 +131,12 @@ class NumberBatchBridge:
                     if len(raw) != length:
                         raise ValueError('请求不完整')
                     result = bridge.execute(json.loads(raw))
-                    self.reply(200, result)
                 except (ValueError, OSError, KeyError, zipfile.BadZipFile, ET.ParseError) as exc:
-                    self.reply(400, {'ok': False, 'error': str(exc) or '写入失败，原文件未修改'})
+                    result = {'ok': False, 'error': str(exc) or '写入失败，原文件未修改'}
+                # A browser disconnect after the atomic write cannot turn a
+                # successful local result into a false failure notification.
+                bridge.events.put(result)
+                self.reply(200 if result.get('ok') else 400, result)
 
         # Imports here keep the error surface bounded without logging phone data.
         import zipfile
