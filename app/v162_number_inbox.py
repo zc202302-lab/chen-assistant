@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import re
+import json
 import secrets
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi import APIRouter, Form, File, UploadFile, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from .templating import Jinja2Templates
 
 from . import config
 from .db import execute_schema, connection_scope, db, now_iso
 from .security import require_csrf
+from . import number_inbox_batch
 
 router = APIRouter()
 templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
@@ -208,6 +210,7 @@ def number_inbox_admin(request: Request, view: str = 'pending'):
     with db() as conn:
         token = ensure_number_inbox_schema(conn)
         desktop_token = ensure_desktop_token(conn) if view == 'settings' else ''
+        batch_settings = number_inbox_batch.settings(conn)
         pending_count = int(
             conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n']
         )
@@ -229,6 +232,7 @@ def number_inbox_admin(request: Request, view: str = 'pending'):
             pending_count=pending_count,
             share_url=share_url,
             desktop_token=desktop_token,
+            batch_settings=batch_settings,
             desktop_api_url=str(request.base_url).rstrip('/') + '/api/number-inbox/pending',
         ),
     )
@@ -347,6 +351,47 @@ def number_inbox_rotate_link(request: Request, csrf: str = Form(...)):
 def pending_number_count(conn) -> int:
     ensure_number_inbox_schema(conn)
     return int(conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'])
+
+
+@router.post('/work/number-inbox/batch-settings')
+async def number_inbox_batch_settings(request: Request, csrf: str = Form(...),
+                                     role: str = Form(...), manual: str = Form(...),
+                                     group_template: UploadFile | None = File(None)):
+    _csrf(request, csrf)
+    try:
+        role, manual = number_inbox_batch.field(role), number_inbox_batch.field(manual)
+        groups = None
+        if group_template and group_template.filename:
+            content = await group_template.read(5 * 1024 * 1024 + 1)
+            groups = number_inbox_batch.read_groups(content, group_template.filename)
+        with db() as conn:
+            ensure_number_inbox_schema(conn)
+            saved = number_inbox_batch.settings(conn)
+            saved.update(role=role, manual=manual)
+            if groups is not None:
+                saved.update(groups=groups, filename=group_template.filename.rsplit('/', 1)[-1].rsplit('\\', 1)[-1][:200])
+            conn.execute('INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)',
+                         (number_inbox_batch.META_KEY, json.dumps(saved, ensure_ascii=False)))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    finally:
+        if group_template:
+            await group_template.close()
+    return RedirectResponse('/work/number-inbox?view=settings', status_code=303)
+
+
+@router.post('/work/number-inbox/batch-add')
+def number_inbox_batch_add(request: Request, csrf: str = Form(...)):
+    _csrf(request, csrf)
+    try:
+        with db() as conn:
+            ensure_number_inbox_schema(conn)
+            numbers = [row['normalized_number'] for row in conn.execute(
+                "SELECT normalized_number FROM number_inbox WHERE status='pending' ORDER BY id LIMIT 5001")]
+            result = number_inbox_batch.signed_batch(numbers, number_inbox_batch.settings(conn), ensure_desktop_token(conn))
+    except ValueError as exc:
+        return JSONResponse({'ok': False, 'error': str(exc)}, status_code=400)
+    return JSONResponse(result, headers={'Cache-Control': 'no-store'})
 
 
 

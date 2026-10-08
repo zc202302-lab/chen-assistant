@@ -136,6 +136,19 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: python -m compileall -q app storage_node tests
 
+      - name: Number inbox batch contract and browser acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: |
+          python tests/number_inbox_batch_contract.py
+          python tests/number_inbox_batch_acceptance.py
+
+      - uses: actions/upload-artifact@v4
+        if: steps.scope.outputs.mode == 'full'
+        with:
+          name: number-inbox-batch-ui-preview
+          path: artifacts/number-inbox-batch
+          if-no-files-found: error
+
       - name: Security audit
         if: steps.scope.outputs.mode == 'full'
         run: |

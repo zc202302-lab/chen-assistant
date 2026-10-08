@@ -1,0 +1,10 @@
+.number-batch-settings { display: grid; gap: 14px; max-width: 640px; margin: 18px 0; }
+.number-batch-settings label { display: grid; gap: 7px; font-size: 13px; font-weight: 700; color: #526176; }
+.number-batch-settings input { width: 100%; min-width: 0; box-sizing: border-box; padding: 11px 12px; border: 1px solid #dbe2ec; border-radius: 10px; background: #fff; color: #172235; font: inherit; }
+.number-batch-settings input[type=file] { background: #f7f9fc; font-weight: 400; }
+.number-batch-settings p { margin: 0; color: #718096; font-size: 13px; overflow-wrap: anywhere; }
+.number-batch-settings button { justify-self: start; }
+[data-number-batch-status] { overflow-wrap: anywhere; color: #375d8a; line-height: 1.7; }
+[data-number-batch-status]:empty { display: none; }
+[data-number-batch]:disabled { opacity: .55; cursor: default; }
+@media (max-width: 640px) { .number-batch-settings button { width: 100%; } }

@@ -68,6 +68,7 @@ class NumberInboxConfig:
     interval_seconds: int = 15
     last_seen_id: int = 0
     reminder_times: list[str] = field(default_factory=lambda: ["09:00", "16:00"])
+    batch_target: str = r"E:\ChenBridge\批量添加集团成员.xlsx"
 
     @classmethod
     def from_dict(cls, raw: object) -> "NumberInboxConfig":
@@ -105,6 +106,7 @@ class NumberInboxConfig:
             interval_seconds=interval,
             last_seen_id=last_seen,
             reminder_times=reminder_times,
+            batch_target=str(raw.get("batch_target") or cls.batch_target).strip(),
         )
 
 

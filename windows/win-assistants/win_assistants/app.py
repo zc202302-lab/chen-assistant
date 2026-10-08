@@ -16,6 +16,7 @@ from .config import AppConfig
 from .foxmail import FoxmailBridge
 from .modules import MODULES, ModuleManager, default_module_configs, internal_sedentary_command
 from .number_inbox import NumberInboxEvent, NumberInboxReceiver
+from .number_batch_bridge import NumberBatchBridge
 from .single_instance import SingleInstance
 from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
 from .sedentary import read_status as read_sedentary_status, send_command as send_sedentary_command, status_text as sedentary_status_text
@@ -45,6 +46,10 @@ class WinAssistantsApp:
         self.sms_receiver = SmsReceiver()
         self.foxmail_bridge = FoxmailBridge()
         self.number_inbox_receiver = NumberInboxReceiver()
+        self.number_batch_bridge = NumberBatchBridge(
+            lambda: unprotect_secret(self.config.number_inbox.protected_token),
+            lambda: self.config.number_inbox.batch_target,
+        )
         self.number_reminder_window: tk.Toplevel | None = None
         self.number_reminder_items: dict[int, NumberInboxEvent] = {}
         self._number_reminder_last_slot = ""
@@ -330,6 +335,7 @@ class WinAssistantsApp:
                 self.manager.stop(key)
             elif key == "number_inbox":
                 self.number_inbox_receiver.stop()
+                self.number_batch_bridge.stop()
             self.status_vars[key].set("已停用")
 
     def _start_one(self, key: str) -> None:
@@ -361,7 +367,8 @@ class WinAssistantsApp:
                 self.status_vars[key].set("请先完成设置")
                 return
             self.number_inbox_receiver.start(self.config.number_inbox, token)
-            self.status_vars[key].set("正在连接")
+            ok, detail = self.number_batch_bridge.start()
+            self.status_vars[key].set("正在连接 · 批量添加已就绪" if ok else detail)
             return
         ok, detail = self.manager.start(key, self.config.modules[key])
         self.status_vars[key].set(detail)
@@ -655,7 +662,7 @@ class WinAssistantsApp:
     def _show_number_inbox_settings(self) -> None:
         window = tk.Toplevel(self.root)
         window.title("号码提醒设置")
-        window.geometry("650x400")
+        window.geometry("650x500")
         window.resizable(False, False)
         frame = ttk.Frame(window, padding=20)
         frame.pack(fill="both", expand=True)
@@ -668,6 +675,7 @@ class WinAssistantsApp:
         token_var = tk.StringVar(value=current_token)
         interval_var = tk.IntVar(value=self.config.number_inbox.interval_seconds)
         reminder_times_var = tk.StringVar(value=", ".join(self.config.number_inbox.reminder_times))
+        target_var = tk.StringVar(value=self.config.number_inbox.batch_target)
 
         ttk.Label(frame, text="服务器地址").grid(row=0, column=0, sticky="w", pady=7)
         ttk.Entry(frame, textvariable=api_var, width=57).grid(row=0, column=1, sticky="ew", padx=(12, 0), pady=7)
@@ -683,6 +691,19 @@ class WinAssistantsApp:
             style="Sub.TLabel",
             wraplength=570,
         ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 18))
+        ttk.Label(frame, text="批量添加Excel").grid(row=5, column=0, sticky="w", pady=7)
+        target_frame = ttk.Frame(frame)
+        target_frame.grid(row=5, column=1, sticky="ew", padx=(12, 0), pady=7)
+        ttk.Entry(target_frame, textvariable=target_var).pack(side="left", fill="x", expand=True)
+
+        def browse_target() -> None:
+            path = filedialog.askopenfilename(parent=window, title="选择批量添加集团成员Excel", filetypes=[("Excel工作簿", "*.xlsx")])
+            if path:
+                target_var.set(path)
+
+        ttk.Button(target_frame, text="选择…", command=browse_target).pack(side="right", padx=(8, 0))
+        ttk.Label(frame, text="网页“批量添加”会清空此文件第二行以后并写入所有未加号码；自动保留上一次文件备份。请先关闭Excel。",
+                  style="Sub.TLabel", wraplength=570).grid(row=6, column=0, columnspan=2, sticky="w", pady=(8, 18))
         frame.columnconfigure(1, weight=1)
 
         def save_and_connect() -> None:
@@ -717,12 +738,13 @@ class WinAssistantsApp:
             self.config.number_inbox.interval_seconds = interval
             self.config.number_inbox.last_seen_id = 0
             self.config.number_inbox.reminder_times = reminder_times
+            self.config.number_inbox.batch_target = target_var.get().strip()
             self.config.save()
             window.destroy()
             if self.enabled_vars["number_inbox"].get():
                 self._start_one("number_inbox")
 
-        ttk.Button(frame, text="保存并连接", command=save_and_connect).grid(row=5, column=0, columnspan=2, sticky="e")
+        ttk.Button(frame, text="保存并连接", command=save_and_connect).grid(row=7, column=0, columnspan=2, sticky="e")
 
     def _sedentary_command(self, action: str) -> None:
         status = read_sedentary_status()
@@ -986,6 +1008,7 @@ class WinAssistantsApp:
         self.sms_receiver.stop()
         self.foxmail_bridge.stop()
         self.number_inbox_receiver.stop()
+        self.number_batch_bridge.stop()
         self.manager.stop_all()
         if self.tray_icon is not None:
             try:
