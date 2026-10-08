@@ -70,7 +70,8 @@ def run_case(binary: bytes, directory: Path, rollback: bool) -> None:
             expected = "rolled back to previous executable" if rollback else "startup confirmed"
             old_file = directory / "old-meipass.txt"
             old_gone = old_file.exists() and not Path(old_file.read_text(encoding="utf-8")).exists()
-            if expected in text and new_pid and old_gone:
+            helper_finished = not (directory / "updates" / "apply-update.ps1").exists()
+            if expected in text and new_pid and old_gone and helper_finished:
                 break
             time.sleep(0.5)
         else:
