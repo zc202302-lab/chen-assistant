@@ -106,7 +106,12 @@ def main():
             assert abs((primary_box['x'] + primary_box['width'] / 2) - 720) <= 4, primary_box
             reminder_box = page.locator('.reminder-entry').bounding_box()
             assert reminder_box and history_box['x'] >= reminder_box['x'] + reminder_box['width'], (reminder_box, history_box)
-            assert primary_box['y'] > history_box['y'], (primary_box, history_box)
+            # Header groups now share one vertical centerline on desktop.
+            primary_center = primary_box['y'] + primary_box['height'] / 2
+            history_center = history_box['y'] + history_box['height'] / 2
+            assert abs(primary_center - history_center) <= 6, (primary_box, history_box)
+            search_box = page.locator('.search-link').bounding_box()
+            assert search_box and abs(primary_center - (search_box['y'] + search_box['height'] / 2)) <= 6
             assert page.locator('.topbar-left [data-history-nav]').count() == 1
             b = back.bounding_box(); f = forward.bounding_box()
             assert b and f and b['width'] >= 34 and b['height'] >= 32 and f['width'] >= 34 and f['height'] >= 32
