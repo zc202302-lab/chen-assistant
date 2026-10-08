@@ -1,0 +1,74 @@
+name: win-assistants public release verification
+
+on:
+  workflow_run:
+    workflows: ["win-assistants cross build"]
+    types: [completed]
+  push:
+    branches: [main]
+    paths: [".github/workflows/win-assistants-production-check.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: win-assistants-public-release-verification
+  cancel-in-progress: true
+
+jobs:
+  verify-online:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main')
+    runs-on: [self-hosted, linux, x64, chen-assistant]
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify actual public manifest and complete executable
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          import re
+          import time
+          import urllib.request
+          from pathlib import Path
+
+          version = re.search(r'__version__\s*=\s*"([^"]+)"',
+              Path("windows/win-assistants/win_assistants/__init__.py").read_text()).group(1)
+          api = "https://api.github.com/repos/zc202302-lab/chen-assistant/contents/update.json?ref=win-assistants-release"
+          request = urllib.request.Request(api, headers={
+              "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+              "Accept": "application/vnd.github+json"})
+          with urllib.request.urlopen(request, timeout=30) as response:
+              blob = json.load(response)
+          expected = json.loads(base64.b64decode(blob["content"]))
+          if expected["version"] != version:
+              raise SystemExit(f"Release branch is not yet v{version}; wait for successful publishing")
+
+          url = "https://assistant.ziboxiaozhushou.cn/static/win-assistants/update.json"
+          for attempt in range(18):
+              try:
+                  with urllib.request.urlopen(url + "?verify=" + str(time.time_ns()), timeout=30) as response:
+                      actual = json.load(response)
+                  if actual != expected:
+                      raise ValueError(f"Public manifest still differs: version={actual.get('version')}")
+                  digest = hashlib.sha256()
+                  size = 0
+                  with urllib.request.urlopen(actual["exe_url"], timeout=60) as response:
+                      while chunk := response.read(1024 * 1024):
+                          digest.update(chunk)
+                          size += len(chunk)
+                  if size != expected["size"] or digest.hexdigest() != expected["sha256"]:
+                      raise ValueError(f"Public EXE integrity mismatch: size={size}, sha256={digest.hexdigest()}")
+                  print(f"ONLINE VERIFIED v{version}: {size} bytes, SHA-256 {digest.hexdigest()}", flush=True)
+                  break
+              except (OSError, ValueError) as error:
+                  print(f"Public release check {attempt + 1}/18: {error}", flush=True)
+                  if attempt == 17:
+                      raise
+                  time.sleep(10)
+          PY
