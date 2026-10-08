@@ -1,0 +1,18 @@
+.work-entry-launcher{max-width:980px;margin:auto;padding-top:24px}
+.work-entry-toolbar{display:flex;gap:8px;align-items:center}
+.work-entry-feedback:empty{display:none}.work-entry-feedback{color:#64748b;font-size:13px;margin:0 0 18px}
+.work-entry-section{margin:24px 0 30px}.work-entry-section>h2{font-size:16px;color:#63738a;margin:0 0 14px;font-weight:700}
+.work-entry-grid{display:grid;grid-template-columns:repeat(auto-fill,144px);gap:16px;min-height:64px;align-content:start;border-radius:16px}
+.work-entry-tile{position:relative;width:144px;height:144px;border:1px solid #e1e8f2;border-radius:20px;background:#fff;box-shadow:0 4px 16px #17203304;transition:border-color .15s,box-shadow .15s,transform .15s}
+.work-entry-tile:hover{border-color:#b8c9e1;box-shadow:0 8px 24px #1720330a;transform:translateY(-2px)}
+.work-entry-link{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px;padding:12px;text-decoration:none;color:#18243b;box-sizing:border-box}
+.work-entry-link h3{font-size:16px;line-height:1.3;margin:0}.work-entry-link small{font-size:11px;line-height:1.4;color:#7b899e;max-width:120px}
+.work-entry-icon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#edf4ff;color:#3265ae}.work-entry-icon svg{width:24px;height:24px}
+.tone-green{background:#edf8f3;color:#24755c}.tone-purple{background:#f2edff;color:#8261b4}.tone-orange{background:#fff4e7;color:#b17938}.tone-teal{background:#eaf8f8;color:#328182}.tone-slate{background:#eff2f7;color:#5d6d84}
+.work-entry-handle{position:absolute;top:5px;right:5px;border:0;border-radius:7px;width:29px;height:29px;padding:0;background:#edf3fe;color:#3a65a7;cursor:grab;touch-action:none;font-size:20px;z-index:1}
+.work-entry-launcher.is-editing .work-entry-grid{padding:12px;border:1px dashed #c8d6ea;background:#edf3fa66;min-height:90px}
+.work-entry-launcher.is-editing .work-entry-tile{border-color:#b8cbe6}.work-entry-launcher.is-editing .work-entry-link{pointer-events:none}
+.work-entry-tile.is-dragging{opacity:.45;transform:none}.work-entry-grid.is-drop-target{background:#e4eefc}
+.work-entry-launcher [hidden]{display:none!important}
+@media(max-width:600px){.work-entry-launcher{padding-top:10px}.work-entry-grid{grid-template-columns:repeat(auto-fill,128px);gap:12px}.work-entry-tile{width:128px;height:128px;border-radius:17px}.work-entry-link{gap:7px;padding:9px}.work-entry-link h3{font-size:15px}.work-entry-icon{width:36px;height:36px}.work-entry-toolbar button{padding:8px 11px;font-size:13px}.work-entry-section{margin:20px 0}}
+@media(prefers-reduced-motion:reduce){.work-entry-tile{transition:none}}

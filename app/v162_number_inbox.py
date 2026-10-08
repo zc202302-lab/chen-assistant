@@ -45,6 +45,7 @@ def ensure_number_inbox_schema(conn=None) -> str:
     with connection_scope(conn) as conn:
         conn.execute('CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
         execute_schema(conn, NUMBER_INBOX_SCHEMA)
+        execute_schema(conn, number_inbox_batch.BATCH_SCHEMA)
         columns = {row['name'] for row in conn.execute('PRAGMA table_info(number_inbox)')}
         if 'submit_batch' not in columns:
             conn.execute("ALTER TABLE number_inbox ADD COLUMN submit_batch TEXT NOT NULL DEFAULT ''")
@@ -211,6 +212,8 @@ def number_inbox_admin(request: Request, view: str = 'pending'):
         token = ensure_number_inbox_schema(conn)
         desktop_token = ensure_desktop_token(conn) if view == 'settings' else ''
         batch_settings = number_inbox_batch.settings(conn)
+        number_inbox_batch.purge_expired(conn)
+        done_rows = conn.execute("SELECT id,number,completed_at FROM number_inbox WHERE status='done' ORDER BY completed_at DESC,id DESC").fetchall()
         pending_count = int(
             conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n']
         )
@@ -230,6 +233,8 @@ def number_inbox_admin(request: Request, view: str = 'pending'):
             view=view,
             items=items,
             pending_count=pending_count,
+            done_items=[dict(row, completed_display=_display_time(row['completed_at'])) for row in done_rows],
+            done_count=len(done_rows),
             share_url=share_url,
             desktop_token=desktop_token,
             batch_settings=batch_settings,
@@ -386,12 +391,44 @@ def number_inbox_batch_add(request: Request, csrf: str = Form(...)):
     try:
         with db() as conn:
             ensure_number_inbox_schema(conn)
-            numbers = [row['normalized_number'] for row in conn.execute(
-                "SELECT normalized_number FROM number_inbox WHERE status='pending' ORDER BY id LIMIT 5001")]
+            rows = conn.execute("SELECT id,normalized_number FROM number_inbox WHERE status='pending' ORDER BY id LIMIT 5001").fetchall()
+            numbers = [row['normalized_number'] for row in rows]
             result = number_inbox_batch.signed_batch(numbers, number_inbox_batch.settings(conn), ensure_desktop_token(conn))
+            number_inbox_batch.register_batch(conn, result, [row['id'] for row in rows])
     except ValueError as exc:
         return JSONResponse({'ok': False, 'error': str(exc)}, status_code=400)
     return JSONResponse(result, headers={'Cache-Control': 'no-store'})
 
 
 
+
+
+@router.post('/work/number-inbox/batch-complete')
+async def number_inbox_batch_complete(request: Request):
+    _csrf(request, request.headers.get('x-csrf-token', ''))
+    return await _complete_batch_receipt(request)
+
+
+@router.post('/api/number-inbox/batch-complete')
+async def number_inbox_desktop_batch_complete(request: Request):
+    with db() as conn:
+        if not _desktop_token_matches(conn, request):
+            return JSONResponse({'ok': False, 'error': 'unauthorized'}, status_code=401)
+    return await _complete_batch_receipt(request)
+
+
+async def _complete_batch_receipt(request):
+    raw = await request.body()
+    if len(raw) > 4096:
+        return JSONResponse({'ok': False, 'error': '回执过大'}, status_code=400)
+    try:
+        body = json.loads(raw)
+        with db(immediate=True) as conn:
+            ensure_number_inbox_schema(conn)
+            result = number_inbox_batch.complete_batch(conn, body, ensure_desktop_token(conn))
+    except (ValueError, TypeError, KeyError) as exc:
+        return JSONResponse({'ok': False, 'error': str(exc)}, status_code=400)
+    return JSONResponse(result, headers={'Cache-Control': 'no-store'})
+
+
+number_inbox_desktop_batch_complete.__desktop_token_authenticated__ = True

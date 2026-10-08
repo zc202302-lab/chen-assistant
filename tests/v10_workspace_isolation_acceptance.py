@@ -100,8 +100,8 @@ def main():
             # Module chooser remains compact and square despite later legacy styles.
             for width in (1450, 768, 390, 320):
                 page.set_viewport_size({'width': width, 'height': 950})
-                cards = page.locator('.work-launcher .work-domain-card')
-                expect(cards).to_have_count(3)
+                cards = page.locator('.work-launcher .work-entry-tile')
+                expect(cards).to_have_count(7)
                 boxes = [card.bounding_box() for card in cards.all()]
                 for card, box in zip(cards.all(), boxes):
                     assert box and abs(box['width'] - box['height']) <= 2, (width, box)
@@ -116,7 +116,7 @@ def main():
                 expect(page.get_by_role('heading', name='清单', exact=True)).to_be_visible()
             page.set_viewport_size({'width': 1450, 'height': 950})
             for href, heading in (('/work/customers', '客户管理'), ('/work/library', '工作资料'), ('/work/lists', '清单')):
-                page.locator(f'.work-domain-card[href="{href}"]').click()
+                page.locator(f'.work-entry-link[href="{href}"]').click()
                 expect(page).to_have_url('http://127.0.0.1:8141' + href)
                 assert_primary_nav(page, '工作')
                 page.goto('http://127.0.0.1:8141/work', wait_until='networkidle')
@@ -193,3 +193,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

@@ -79,12 +79,17 @@ def main():
             page.goto(base + '/work/number-inbox', wait_until='networkidle')
             button = page.get_by_role('button', name='批量添加', exact=True)
             button.evaluate('(el) => { el.click(); el.click(); }')
-            expect(page.locator('[data-number-batch-status]')).to_contain_text('已写入 1 个号码')
+            expect(page.locator('.number-inbox-done summary')).to_contain_text('1')
+            expect(page.locator('.number-inbox-done')).not_to_have_attribute('open', '')
+            expect(page.get_by_text('目前没有未加号码')).to_be_visible()
             assert len(calls) == 1, 'double click must not submit twice'
             page.locator('.number-inbox-shell').screenshot(path=str(previews / 'pending-written.png'))
             expect(page.locator('[data-copy-value]')).to_have_count(1)
             with db() as conn:
-                assert conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'] == 1
+                assert conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'] == 0
+                assert conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='done'").fetchone()['n'] == 1
+                conn.execute("INSERT INTO number_inbox(number,normalized_number,status,submitted_at) VALUES('13600000001','13600000001','pending','2026-10-01')")
+            page.reload(wait_until='networkidle')
             context.unroute('http://127.0.0.1:18764/**', local_proxy)
             context.route('http://127.0.0.1:18764/**', lambda route: route.abort())
             button.click()

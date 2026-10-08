@@ -71,3 +71,18 @@ async def stop_reminder_worker():
         app.state.reminder_stop.set()
         await app.state.reminder_worker
 
+
+
+@app.on_event('startup')
+async def start_number_retention_worker():
+    # Retention must continue even when optional Web Push initialization fails.
+    from .number_inbox_batch import retention_worker
+    app.state.number_retention_stop = asyncio.Event()
+    app.state.number_retention_worker = asyncio.create_task(retention_worker(app.state.number_retention_stop))
+
+
+@app.on_event('shutdown')
+async def stop_number_retention_worker():
+    if hasattr(app.state, 'number_retention_worker'):
+        app.state.number_retention_stop.set()
+        await app.state.number_retention_worker

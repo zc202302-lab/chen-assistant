@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ '号码收集设置' if view == 'settings' else '未加号码' }} · 晨的助手{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="/static/number-inbox-batch.css?v=1">
+<link rel="stylesheet" href="/static/number-inbox-batch.css?v=2">
 <section class="v10-shell number-inbox-shell">
   <div class="v10-page-head number-inbox-head">
     <div>
@@ -74,7 +74,7 @@
   <div class="v10-section-head"><h2>未加号码（{{ pending_count }}）</h2>
     <button class="v10-primary" type="button" data-number-batch data-csrf="{{ csrf }}"{% if not pending_count %} disabled{% endif %}>批量添加</button>
   </div>
-  <p>批量添加会保留Excel第一行，清空其余行后写入全部未加号码；不会自动标记“已录入”。请先关闭目标Excel。</p>
+  <p>批量添加会保留Excel第一行，清空其余行后写入全部未加号码；成功写入后自动移至“已录号码”，保留5天。请先关闭目标Excel。</p>
   <p data-number-batch-status role="status" aria-live="polite"></p>
 
   {% if items %}
@@ -99,9 +99,22 @@
   {% else %}
   <div class="v10-empty">目前没有未加号码</div>
   {% endif %}
+  <details class="number-inbox-done">
+    <summary>已录号码 <b>{{ done_count }}</b></summary>
+    {% if done_items %}
+    <div class="number-inbox-list">
+      {% for item in done_items %}
+      <article class="number-inbox-item">
+        <div class="number-inbox-main"><button class="number-copy-value" type="button" data-copy-value="{{ item.number }}" title="点击复制号码">{{ item.number }}</button><div class="number-inbox-meta"><time>录入于 {{ item.completed_display }}</time></div></div>
+        <span class="number-done-badge">已录入</span>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}<div class="v10-empty">暂无已录号码</div>{% endif %}
+  </details>
   {% endif %}
 </section>
-<script src="/static/number-inbox-v162.js?v=1623"></script>
+<script src="/static/number-inbox-v162.js?v=1740"></script>
 {% endblock %}
 
 
