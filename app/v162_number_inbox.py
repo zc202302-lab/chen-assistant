@@ -406,23 +406,24 @@ def number_inbox_batch_add(request: Request, csrf: str = Form(...)):
 @router.post('/work/number-inbox/batch-complete')
 async def number_inbox_batch_complete(request: Request):
     _csrf(request, request.headers.get('x-csrf-token', ''))
-    return await _complete_batch_receipt(request, desktop=False)
+    return await _complete_batch_receipt(request)
 
 
 @router.post('/api/number-inbox/batch-complete')
 async def number_inbox_desktop_batch_complete(request: Request):
-    return await _complete_batch_receipt(request, desktop=True)
+    with db() as conn:
+        if not _desktop_token_matches(conn, request):
+            return JSONResponse({'ok': False, 'error': 'unauthorized'}, status_code=401)
+    return await _complete_batch_receipt(request)
 
 
-async def _complete_batch_receipt(request, desktop):
+async def _complete_batch_receipt(request):
     raw = await request.body()
     if len(raw) > 4096:
         return JSONResponse({'ok': False, 'error': '回执过大'}, status_code=400)
     try:
         body = json.loads(raw)
         with db(immediate=True) as conn:
-            if desktop and not _desktop_token_matches(conn, request):
-                return JSONResponse({'ok': False, 'error': 'unauthorized'}, status_code=401)
             ensure_number_inbox_schema(conn)
             result = number_inbox_batch.complete_batch(conn, body, ensure_desktop_token(conn))
     except (ValueError, TypeError, KeyError) as exc:
