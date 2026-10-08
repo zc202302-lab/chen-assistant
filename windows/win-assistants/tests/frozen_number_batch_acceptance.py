@@ -14,7 +14,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from win_assistants.sms import protect_secret  # noqa: E402
-from test_number_batch import signed, workbook  # noqa: E402
+from test_number_batch import signed, annotated_workbook  # noqa: E402
 from frozen_update_restart_acceptance import kill_tree  # noqa: E402
 
 
@@ -24,7 +24,8 @@ def main(executable):
         root = Path(directory)
         target = root / 'ChenBridge' / '批量添加集团成员.xlsx'
         target.parent.mkdir()
-        target.write_bytes(workbook())
+        template, original_parts = annotated_workbook()
+        target.write_bytes(template)
         original = target.read_bytes()
         config_dir = root / 'roaming' / 'win-assistants'
         config_dir.mkdir(parents=True)
@@ -77,6 +78,9 @@ def main(executable):
                 sheet = package.read('xl/worksheets/sheet1.xml')
                 assert b'00123456789' in sheet and b'12345678901234567890' in sheet
                 assert b'<f>' not in sheet
+                for name, data in original_parts.items():
+                    if name != 'xl/worksheets/sheet1.xml':
+                        assert package.read(name) == data, f'template part changed: {name}'
             after = target.read_bytes()
             assert request('/number-batch', signed(nonce='b' * 32))[0] == 400
             assert target.read_bytes() == after
