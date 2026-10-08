@@ -52,11 +52,13 @@ def main():
                 request = route.request
                 connection = http.client.HTTPConnection('127.0.0.1', bridge.server.server_port, timeout=5)
                 path = '/health' if request.url.endswith('/health') else '/number-batch'
-                if path == '/number-batch':
+                if path == '/number-batch' and request.method == 'POST':
                     calls.append(request.post_data)
                 connection.request(request.method, path, request.post_data, {'Origin': 'https://assistant.ziboxiaozhushou.cn', 'Content-Type': 'application/json'})
                 response = connection.getresponse()
-                route.fulfill(status=response.status, content_type='application/json', body=response.read())
+                route.fulfill(status=response.status, content_type='application/json', body=response.read(),
+                              headers={'Access-Control-Allow-Origin': base, 'Access-Control-Allow-Headers': 'Content-Type',
+                                       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Private-Network': 'true'})
                 connection.close()
             context.route('http://127.0.0.1:18764/**', local_proxy)
             page = context.new_page()
