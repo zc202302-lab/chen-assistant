@@ -204,6 +204,8 @@ jobs:
           python tests/v160_information_center_contract.py
           python tests/v161_responsive_polish_contract.py
           python tests/v162_number_inbox_contract.py
+          python tests/number_inbox_batch_contract.py
+          python tests/number_inbox_batch_acceptance.py
           python tests/v164_task_review_contract.py
           python tests/production_auto_deploy_contract.py
           python tests/v153_home_navigation_contract.py

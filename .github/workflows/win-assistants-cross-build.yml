@@ -312,6 +312,11 @@ jobs:
         run: |
           python windows/win-assistants/tests/frozen_update_restart_acceptance.py windows/win-assistants/dist/win-assistants.exe
           if ($LASTEXITCODE -ne 0) { throw "Frozen update/restart acceptance failed" }
+      - name: Real Windows frozen number batch and Excel file lock acceptance
+        shell: powershell
+        run: |
+          python windows/win-assistants/tests/frozen_number_batch_acceptance.py windows/win-assistants/dist/win-assistants.exe
+          if ($LASTEXITCODE -ne 0) { throw "Frozen number batch acceptance failed" }
 
 
   native-navigation:
@@ -385,7 +390,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": f"v{version}：优化客户端视觉、顶部导航及模块切换；保留可靠更新重启。",
+              "notes": f"v{version}：新增号码收集批量填写集团成员Excel、集团模板上传与可自定义默认值；保留可靠更新重启。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),

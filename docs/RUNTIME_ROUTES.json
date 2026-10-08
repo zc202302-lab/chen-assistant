@@ -360,6 +360,22 @@
     "name": "number_inbox_rotate_link"
   },
   {
+    "path": "/work/number-inbox/batch-settings",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.v162_number_inbox",
+    "name": "number_inbox_batch_settings"
+  },
+  {
+    "path": "/work/number-inbox/batch-add",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.v162_number_inbox",
+    "name": "number_inbox_batch_add"
+  },
+  {
     "path": "/life/recipes/new",
     "methods": [
       "POST"

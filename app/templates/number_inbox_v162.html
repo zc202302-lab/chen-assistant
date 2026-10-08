@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ '号码收集设置' if view == 'settings' else '未加号码' }} · 晨的助手{% endblock %}
 {% block content %}
+<link rel="stylesheet" href="/static/number-inbox-batch.css?v=1">
 <section class="v10-shell number-inbox-shell">
   <div class="v10-page-head number-inbox-head">
     <div>
@@ -17,6 +18,18 @@
   </nav>
 
   {% if view == 'settings' %}
+  <section class="v10-section number-inbox-share">
+    <div class="v10-section-head"><div><h2>批量添加集团成员</h2><p>集团模板第一张表的A列为集团编码，第一行是表头。每个号码独立随机选择一个集团，可重复。</p></div></div>
+    <form method="post" action="/work/number-inbox/batch-settings" enctype="multipart/form-data" class="number-batch-settings">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>集团模板 <input type="file" name="group_template" accept=".xls,.xlsx,.xlsm"></label>
+      <p>{{ batch_settings.filename or '尚未上传' }} · {{ batch_settings.groups|length }} 个集团编码。留空则保留已上传模板。</p>
+      <label>B列 · 角色类型 <input type="text" name="role" value="{{ batch_settings.role }}" maxlength="128" required></label>
+      <label>E列 · 人工识别 <input type="text" name="manual" value="{{ batch_settings.manual }}" maxlength="128" required></label>
+      <button class="v10-primary" type="submit">保存批量设置</button>
+    </form>
+    <p>在Windows助手的“号码提醒设置”中选择ChenBridge中的“批量添加集团成员.xlsx”，开启号码提醒并填写下方连接码。无需安装Excel或其他辅助工具。</p>
+  </section>
   <section class="v10-section number-inbox-share">
     <div class="v10-section-head">
       <div>
@@ -58,7 +71,11 @@
   </section>
 
   {% else %}
-  <h2>未加号码（{{ pending_count }}）</h2>
+  <div class="v10-section-head"><h2>未加号码（{{ pending_count }}）</h2>
+    <button class="v10-primary" type="button" data-number-batch data-csrf="{{ csrf }}"{% if not pending_count %} disabled{% endif %}>批量添加</button>
+  </div>
+  <p>批量添加会保留Excel第一行，清空其余行后写入全部未加号码；不会自动标记“已录入”。请先关闭目标Excel。</p>
+  <p data-number-batch-status role="status" aria-live="polite"></p>
 
   {% if items %}
   <div class="number-inbox-list">
@@ -84,7 +101,7 @@
   {% endif %}
   {% endif %}
 </section>
-<script src="/static/number-inbox-v162.js?v=1622"></script>
+<script src="/static/number-inbox-v162.js?v=1623"></script>
 {% endblock %}
 
 
