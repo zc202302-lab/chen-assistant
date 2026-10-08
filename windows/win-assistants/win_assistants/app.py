@@ -184,6 +184,10 @@ class WinAssistantsApp:
                                borderwidth=0, padx=20, pady=10, cursor="hand2", takefocus=True,
                                highlightthickness=1, highlightbackground=BG, highlightcolor=GREEN)
             button.pack(fill="x")
+            button.bind("<Control-Tab>", lambda _event: self._navigate_module(1))
+            button.bind("<Control-Shift-Tab>", lambda _event: self._navigate_module(-1))
+            button.bind("<Right>", lambda _event: self._navigate_module(1))
+            button.bind("<Left>", lambda _event: self._navigate_module(-1))
             indicator = tk.Frame(slot, bg=BG, height=3)
             indicator.pack(fill="x", pady=(3, 0))
             self.nav_buttons[str(page)] = button
@@ -240,6 +244,13 @@ class WinAssistantsApp:
         footer.pack(fill="x")
         ttk.Label(footer, text="晨的小助手 · Windows", style="Sub.TLabel").pack(side="left")
         ttk.Label(footer, text="Ctrl + Tab 切换模块", style="Sub.TLabel").pack(side="right")
+
+    def _navigate_module(self, direction: int) -> str:
+        tabs = self.navigation.tabs()
+        target = tabs[(self.navigation.index("current") + direction) % len(tabs)]
+        self.navigation.select(target)
+        self.nav_buttons[target].focus_set()
+        return "break"
 
     def _on_page_changed(self, _event=None) -> None:
         """Small entrance motion; pages stay alive and background modules keep running."""

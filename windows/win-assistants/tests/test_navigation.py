@@ -39,8 +39,10 @@ class NavigationTests(unittest.TestCase):
                          ["短信", "久坐", "缴费连接", "号码提醒", "设置"])
         self.assertEqual(nav.select(), str(self.app.module_pages["sms"]))
         for key, page in self.app.module_pages.items():
-            nav.select(page)
+            self.app.nav_buttons[str(page)].invoke()
             self.root.update()
+            self.assertEqual(nav.select(), str(page))
+            self.assertEqual(self.app.nav_indicators[str(page)].cget("bg"), "#2563EB")
             self.assertTrue(page.winfo_ismapped())
             self.assertFalse(self.app.settings_page.winfo_ismapped())
             self.assertFalse(any(isinstance(w, ttk.Checkbutton) for w in self.descendants(page)))
@@ -90,6 +92,11 @@ class NavigationTests(unittest.TestCase):
         self.root.update()
         self.assertEqual(nav.select(), str(self.app.module_pages["sedentary"]))
         self.assertEqual(self.app.sms_code_var.get(), "123456")
+        self.app.nav_buttons[str(self.app.module_pages["sedentary"])].focus_force()
+        self.root.update()
+        self.app.nav_buttons[str(self.app.module_pages["sedentary"])].event_generate("<Right>")
+        self.root.update()
+        self.assertEqual(nav.select(), str(self.app.module_pages["chen_helper"]))
 
 
 if __name__ == "__main__":
