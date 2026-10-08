@@ -14,10 +14,34 @@ from win_assistants.updater import (
     _version_tuple,
     newer_version_available,
     verify_staged_startup,
+    independent_process_environment,
+    launch_replacement,
 )
 
 
 class UpdaterTests(unittest.TestCase):
+    def test_restart_environment_resets_bootloader_without_changing_parent(self) -> None:
+        with patch.dict("os.environ", {"_PYI_APPLICATION_HOME_DIR": "old-runtime",
+                                      "PYINSTALLER_RESET_ENVIRONMENT": "0"}):
+            environment = independent_process_environment()
+            self.assertEqual(environment["PYINSTALLER_RESET_ENVIRONMENT"], "1")
+            self.assertEqual(__import__("os").environ["PYINSTALLER_RESET_ENVIRONMENT"], "0")
+
+    def test_replacement_helper_receives_independent_environment(self) -> None:
+        import hashlib
+        import sys
+        with tempfile.TemporaryDirectory() as directory:
+            staged = Path(directory) / "candidate.exe"
+            staged.write_bytes(b"MZ-candidate")
+            manifest = {"sha256": hashlib.sha256(staged.read_bytes()).hexdigest(),
+                        "size": staged.stat().st_size}
+            with patch.object(sys, "frozen", True, create=True), patch(
+                    "win_assistants.updater.subprocess.Popen") as launch:
+                launch_replacement(staged, manifest)
+            self.assertEqual(launch.call_args.kwargs["env"]["PYINSTALLER_RESET_ENVIRONMENT"], "1")
+            self.assertIn("$env:PYINSTALLER_RESET_ENVIRONMENT = '1'",
+                          (staged.parent / "apply-update.ps1").read_text(encoding="utf-8-sig"))
+
     def test_version_tuple(self) -> None:
         self.assertEqual(_version_tuple("v0.4.0"), (0, 4, 0))
         self.assertEqual(_version_tuple("1.2.3"), (1, 2, 3))
@@ -56,6 +80,16 @@ class UpdaterTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "当前版本仍可使用"):
                     verify_staged_startup(candidate)
             self.assertTrue(candidate.exists())
+
+    def test_startup_preflight_also_uses_fresh_bootloader(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            staged = Path(directory) / "candidate.exe"
+            staged.write_bytes(b"MZ")
+            process = unittest.mock.Mock(returncode=1)
+            with patch("win_assistants.updater.subprocess.Popen", return_value=process) as launch:
+                with self.assertRaises(RuntimeError):
+                    verify_staged_startup(staged)
+            self.assertEqual(launch.call_args.kwargs["env"]["PYINSTALLER_RESET_ENVIRONMENT"], "1")
 
     def test_replacement_restarts_in_background_and_verifies_candidate(self) -> None:
         script = _replacement_script(
@@ -97,3 +131,4 @@ class UpdaterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

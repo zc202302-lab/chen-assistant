@@ -294,6 +294,39 @@ jobs:
             windows/win-assistants/dist/win-assistants.exe.sha256
           if-no-files-found: error
 
+  windows-update-validation:
+    needs: build-windows-exe
+    runs-on: windows-2022
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: win-assistants-windows
+          path: windows/win-assistants/dist
+      - name: Real Windows frozen replacement and rollback acceptance
+        shell: powershell
+        run: |
+          python windows/win-assistants/tests/frozen_update_restart_acceptance.py windows/win-assistants/dist/win-assistants.exe
+          if ($LASTEXITCODE -ne 0) { throw "Frozen update/restart acceptance failed" }
+
+  publish-release:
+    needs: [source-validation, build-windows-exe, windows-update-validation]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, x64, chen-assistant]
+    defaults:
+      run:
+        working-directory: windows/win-assistants
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: win-assistants-windows
+          path: windows/win-assistants/dist
+
       - name: Publish updater release branch
         id: publish_release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -327,7 +360,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": f"v{version}：顶部导航分类展示；模块配置、启动和统一更新收进设置页。",
+              "notes": f"v{version}：修复更新后重启引用旧临时运行目录；保留顶部导航。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
@@ -381,3 +414,4 @@ jobs:
           PY
           )"
           curl --fail --silent --show-error             -X POST             -H "Authorization: Bearer $GH_TOKEN"             -H "Accept: application/vnd.github+json"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA"             -d "$payload"
+

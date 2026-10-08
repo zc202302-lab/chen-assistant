@@ -5,6 +5,12 @@ from pathlib import Path
 
 
 def main() -> None:
+    if "--update-restart-self-test" in sys.argv:
+        index = sys.argv.index("--update-restart-self-test") + 1
+        from win_assistants.updater import run_restart_self_test
+        run_restart_self_test(Path(sys.argv[index]), rollback="--test-rollback" in sys.argv)
+        return
+
     if "--smoke-test" in sys.argv:
         index = sys.argv.index("--smoke-test") + 1
         if index >= len(sys.argv):
@@ -27,3 +33,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

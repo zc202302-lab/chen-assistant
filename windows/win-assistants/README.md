@@ -2,7 +2,7 @@
 
 `win-assistants` 是“晨的小助手”的统一 Windows 客户端。
 
-## 当前阶段：v0.5.8 四模块统一内置
+## 当前阶段：v0.5.9 四模块统一内置
 
 v0.5.0 将原先独立运行的久坐守护成熟代码迁入 `win-assistants`。现在一个发布 EXE 统一包含：
 
@@ -12,6 +12,14 @@ v0.5.0 将原先独立运行的久坐守护成熟代码迁入 `win-assistants`�
 - 号码提醒：通过独立 Bearer 连接码读取待处理队列；新号码即时弹出独立提醒窗，可直接“已完成”同步 Web 状态；窗口可关闭，并按最多 5 个自定义时间点再次提醒未完成号码。
 
 迁移原则是保留成熟业务规则，不重新设计久坐识别和 Foxmail 缴费交接。久坐核心直接来自 `chen-sit-guard` 当前 main，并保留原有 `%APPDATA%\久坐提醒` 设置、RTSP 密码、统计和状态文件，因此升级后不需要重新配置摄像头。
+
+## 更新后重启修复
+
+v0.5.9对安装前预检、PowerShell更新助手、新程序重启及失败回退使用独立PyInstaller运行环境，避免旧程序退出清理临时目录后，新程序继续引用旧Python DLL。
+
+首次从v0.5.8及更旧版本升级仍由旧更新器执行，自动重启可能继续失败。需要退出旧程序，下载最新EXE覆盖原文件，再从资源管理器双击启动一次；原APPDATA设置与数据保留。之后再使用“检查更新”。
+
+正式发布须通过最终PE在真实Windows上的替换、旧临时目录清理、新GUI存活及失败回退验收。本地build.ps1采用相同验收，不再只凭首次启动判断更新重启可用。
 
 ## 顶部导航
 
@@ -68,7 +76,7 @@ py -m unittest discover -s tests -v
 
 产物为 `dist\win-assistants.exe`。PR 会先运行平台无关测试，再在 self-hosted Linux Runner 上通过 Wine + 官方 Windows Python 构建并 smoke test Windows PE。最终发布仍需要 Windows 实机验收摄像头、Foxmail 和开机托盘行为。
 
-v0.5.8 的正式发布仍以 `main` / merged-PR cross-build 实际写入 `win-assistants-release/update.json` 为准；只有 manifest 与 EXE 发布成功后，客户端唯一“检查更新”才会看到本版本。号码提醒连接码在 Web 的“工作 → 号码收集 → Windows 提醒连接”中获取，连接码使用 Windows 用户级保护保存。
+v0.5.9 的正式发布仍以 `main` / merged-PR cross-build 实际写入 `win-assistants-release/update.json` 为准；只有 manifest 与 EXE 发布成功后，客户端唯一“检查更新”才会看到本版本。号码提醒连接码在 Web 的“工作 → 号码收集 → Windows 提醒连接”中获取，连接码使用 Windows 用户级保护保存。
 
 
 <!-- v0.5.0 release trigger after merged-PR publishing fix -->

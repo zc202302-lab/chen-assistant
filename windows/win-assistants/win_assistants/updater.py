@@ -168,12 +168,21 @@ def stage_update(
         temp.unlink(missing_ok=True)
 
 
+def independent_process_environment() -> dict[str, str]:
+    # PyInstaller onefile restarts must unpack a new runtime. The old runtime
+    # disappears when the original bootloader exits (PyInstaller >= 6.9).
+    environment = os.environ.copy()
+    environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+    return environment
+
+
 def verify_staged_startup(staged: Path, timeout: float = 90.0) -> None:
     """Exercise the downloaded one-file bootloader before stopping the running app."""
     marker = staged.with_name(f"startup-check-{os.getpid()}-{time.time_ns()}.txt")
     try:
         process = subprocess.Popen(
             [str(staged), "--smoke-test", str(marker)],
+            env=independent_process_environment(),
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         try:
@@ -202,6 +211,8 @@ def _replacement_script(
     arguments = "--background" if background else ""
     expected_sha = expected_sha256.replace("'", "''")
     return f"""$ErrorActionPreference = 'Stop'
+# Also enforce the public bootloader reset in the helper, including rollback.
+$env:PYINSTALLER_RESET_ENVIRONMENT = '1'
 $oldPid = {old_pid}
 $source = '{source_text}'
 $target = '{target_text}'
@@ -297,10 +308,11 @@ try {{
     if (Test-Path -LiteralPath $target) {{
         try {{
             if ($arguments) {{
-                Start-Process -FilePath $target -ArgumentList $arguments
+                $recoveryProcess = Start-Process -FilePath $target -ArgumentList $arguments -PassThru
             }} else {{
-                Start-Process -FilePath $target
+                $recoveryProcess = Start-Process -FilePath $target -PassThru
             }}
+            Write-UpdateLog "previous restart requested pid=$($recoveryProcess.Id)"
         }} catch {{
             Write-UpdateLog ("restart previous executable failed: " + $_.Exception.Message)
         }}
@@ -352,6 +364,37 @@ def launch_replacement(
             "-File",
             str(script),
         ],
+        env=independent_process_environment(),
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         close_fds=True,
     )
+
+
+
+def run_restart_self_test(directory: Path, rollback: bool = False) -> None:
+    """Internal packaged acceptance entry; only replace an isolated test copy."""
+    import shutil
+    from .config import AppConfig
+    from .modules import default_module_configs
+
+    directory = directory.resolve()
+    target = Path(sys.executable).resolve()
+    if not getattr(sys, "frozen", False) or target.parent != directory or not (directory / "acceptance-case").is_file():
+        raise RuntimeError("Restart acceptance requires an isolated EXE test copy")
+    config = AppConfig.load(default_module_configs())
+    for module in config.modules.values():
+        module.enabled = False
+    config.save()
+    (directory / "old-meipass.txt").write_text(str(sys._MEIPASS), encoding="utf-8")
+    staging = directory / "updates"
+    staging.mkdir()
+    source = staging / "candidate.exe"
+    if rollback:
+        # Fault injection after staging: a valid native PE exits without the
+        # application startup probe, forcing the real PowerShell rollback.
+        shutil.copy2(Path(os.environ["WINDIR"]) / "System32" / "whoami.exe", source)
+    else:
+        shutil.copy2(target, source)
+        verify_staged_startup(source)
+    manifest = {"sha256": _sha256_file(source), "size": source.stat().st_size}
+    launch_replacement(source, manifest, background=False)
