@@ -3,7 +3,7 @@
   const script = document.querySelector('script[data-home-shortcut-script]');
   const csrf = script?.dataset.csrf || '';
   const endpoint = '/home/shortcuts';
-  const permitted = href => /^\/(?:work|info|life)(?:\/[a-z][a-z0-9_-]*){0,2}$/.test(href);
+  const permitted = href => /^\/(?:(?:work|info|life)(?:\/[a-z][a-z0-9_-]*){0,2}|customers|products|search)$/.test(href);
   let items = [];
   async function load() {
     const response = await fetch(endpoint, {credentials: 'same-origin'});
