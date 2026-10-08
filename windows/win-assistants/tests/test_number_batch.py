@@ -33,6 +33,20 @@ def workbook(headers=HEADERS):
     return buffer.getvalue()
 
 
+def annotated_workbook(ref='A1', row='0', object_type='Note'):
+    with zipfile.ZipFile(io.BytesIO(workbook())) as archive:
+        parts = {name: archive.read(name) for name in archive.namelist()}
+    parts['xl/worksheets/sheet1.xml'] = parts['xl/worksheets/sheet1.xml'].replace(
+        b'</worksheet>', b'<legacyDrawing xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="note"/></worksheet>')
+    parts['xl/worksheets/_rels/sheet1.xml.rels'] = b'<Relationships><Relationship Id="note" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/notes.vml"/><Relationship Id="comments" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="../comments1.xml"/></Relationships>'
+    parts['xl/comments1.xml'] = f'<comments xmlns="{NS}"><authors><author>template</author></authors><commentList><comment ref="{ref}" authorId="0"><text><t>Required instruction</t></text></comment></commentList></comments>'.encode()
+    parts['xl/drawings/notes.vml'] = f'<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:x="urn:schemas-microsoft-com:office:excel"><v:shape><x:ClientData ObjectType="{object_type}"><x:Row>{row}</x:Row><x:Column>0</x:Column></x:ClientData></v:shape></xml>'.encode()
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as archive:
+        for name, data in parts.items():
+            archive.writestr(name, data)
+    return buffer.getvalue(), parts
+
 def signed(**overrides):
     payload = dict(version=1, nonce='a' * 32, issued_at=int(time.time()), groups=['G1', 'G2'],
                    numbers=['00123456789', '12345678901234567890'], role='MemberSort0102', manual='1')
@@ -63,20 +77,7 @@ class NumberBatchTests(unittest.TestCase):
         fake.root.after.assert_called_once_with(100, fake._poll_ui_actions)
 
     def test_header_instruction_comments_are_preserved_and_data_comments_rejected(self):
-        def annotated(ref='A1', row='0', object_type='Note'):
-            with zipfile.ZipFile(io.BytesIO(workbook())) as archive:
-                parts = {name: archive.read(name) for name in archive.namelist()}
-            parts['xl/worksheets/sheet1.xml'] = parts['xl/worksheets/sheet1.xml'].replace(
-                b'</worksheet>', b'<legacyDrawing xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="note"/></worksheet>')
-            parts['xl/worksheets/_rels/sheet1.xml.rels'] = b'<Relationships><Relationship Id="note" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/notes.vml"/><Relationship Id="comments" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="../comments1.xml"/></Relationships>'
-            parts['xl/comments1.xml'] = f'<comments xmlns="{NS}"><authors><author>template</author></authors><commentList><comment ref="{ref}" authorId="0"><text><t>Required instruction</t></text></comment></commentList></comments>'.encode()
-            parts['xl/drawings/notes.vml'] = f'<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:x="urn:schemas-microsoft-com:office:excel"><v:shape><x:ClientData ObjectType="{object_type}"><x:Row>{row}</x:Row><x:Column>0</x:Column></x:ClientData></v:shape></xml>'.encode()
-            buffer = io.BytesIO()
-            with zipfile.ZipFile(buffer, 'w') as archive:
-                for name, data in parts.items():
-                    archive.writestr(name, data)
-            return buffer.getvalue(), parts
-        original, parts = annotated()
+        original, parts = annotated_workbook()
         output = build_workbook(original, ['00123456789'], ['G1'], 'role', '1')
         with zipfile.ZipFile(io.BytesIO(output)) as archive:
             for name, data in parts.items():
@@ -84,7 +85,7 @@ class NumberBatchTests(unittest.TestCase):
                     self.assertEqual(archive.read(name), data)
         for args in (('A2', '1', 'Note'), ('A1', '0', 'Button'), ('A1', '1', 'Note')):
             with self.subTest(args=args), self.assertRaises(ValueError):
-                build_workbook(annotated(*args)[0], ['12345'], ['G1'], 'role', '1')
+                build_workbook(annotated_workbook(*args)[0], ['12345'], ['G1'], 'role', '1')
 
     def test_wrong_file_format_returns_actionable_message(self):
         with self.assertRaisesRegex(ValueError, '另存为'):
