@@ -2,6 +2,19 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 工作模式：用户2026-10-08要求Windows客户端美化、导航和切换优化；活动分支feat/win-client-polish，PR #138，功能提交9a9f7be87800b00f1e277331f0ec918b94382039，开发验证中。云电脑#128继续暂停。
+- 基于main 7d4dbc96ff3cafd8d52a7b7d21664959d9392627；蓝白配色、紧凑品牌栏、顶部导航选中/悬停反馈、模块状态卡片、验证码层级、短促可取消进入过渡、Ctrl+Tab键盘切换。原后台模块、设置与统一更新保持。
+- 候选版本0.5.10。本地语法和10项更新器测试通过；本地无显示，3项GUI测试待Windows CI实际执行。未发布、安装或完成实机验收。
+- 唯一下一步：完成PR完整CI与Windows导航/更新重启验收，修复失败后交付；不得从源码通过推断安装或实机业务成功。
+- 上轮v0.5.9发布及一次性旧版迁移限制见下方历史。
+
+---
+
+## 历史记录（仅供追溯，不覆盖上方快照）
+
+### 2026-10-08 v0.5.9发布完成（历史）
+
+
 - 更新时间：2026-10-08 10:46（Asia/Shanghai）。工作模式：本轮win-assistants更新后重启修复已完成、v0.5.9已发布且公网完整文件验证通过；等待用户首次手动替换和实机确认。云电脑助手继续暂停，Draft #128未修改、合并或发布。
 - PR [#137](https://github.com/zc202302-lab/chen-assistant/pull/137)已合并，功能合并提交a8dd1341dde3ca5fd284635f95f6ec8a86357722，完整验收head39bf34ba0d93fdd9f5ca9097fdb0637efdb00e72。fix/win-update-independent-restart为已完成历史分支，不是WIP。额外只读公网验收workflow提交e9c3fa1c54c1b9c9c5edef1c683c4bc7101f1458；main实时查询，不预填文档自身SHA。
 - 用户截图错误“Failed to load Python DLL ... Temp\\_MEI...\\python312.dll，LoadLibrary找不到指定模块”。旧冻结更新器继承PyInstaller运行环境，旧父进程退出清理临时目录后，新EXE可能仍引用该目录。独立子进程复制环境并设置PYINSTALLER_RESET_ENVIRONMENT=1，预检、PowerShell前向启动和回退均覆盖；不更改父环境和内置久坐worker复用规则。保留SHA/大小检查、备份、启动探针和回滚。顶部导航0.5.8与原业务逻辑保留。
