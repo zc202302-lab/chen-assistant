@@ -1,16 +1,18 @@
+import ast
 import hashlib
 import hmac
 import http.client
 import io
 import json
 import os
+import queue
 import tempfile
 import time
 import unittest
 import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from win_assistants.number_batch import HEADERS, NS, TAG, build_workbook, write_batch
 from win_assistants.number_batch_bridge import NumberBatchBridge, verify_request
@@ -40,6 +42,26 @@ def signed(**overrides):
 
 
 class NumberBatchTests(unittest.TestCase):
+    def test_gui_consumes_batch_results_on_ui_poll_and_keeps_separate_status(self):
+        source = Path(__file__).parents[1] / 'win_assistants' / 'app.py'
+        tree = ast.parse(source.read_text(encoding='utf-8'))
+        app = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'WinAssistantsApp')
+        method = next(n for n in app.body if isinstance(n, ast.FunctionDef) and n.name == '_poll_ui_actions')
+        dialogs = Mock()
+        scope = {'queue': queue, 'messagebox': dialogs}
+        exec(compile(ast.Module(body=[method], type_ignores=[]), str(source), 'exec'), scope)
+        fake = Mock()
+        fake.number_batch_bridge.events = queue.SimpleQueue()
+        fake.ui_actions = queue.Queue()
+        fake.number_batch_bridge.events.put({'ok': True, 'count': 3, 'path': 'test.xlsx', 'backup': 'backup.xlsx'})
+        fake.number_batch_bridge.events.put({'ok': False, 'error': '请关闭Excel'})
+        scope['_poll_ui_actions'](fake)
+        dialogs.showinfo.assert_called_once()
+        dialogs.showerror.assert_called_once_with('批量添加失败', '请关闭Excel', parent=fake.root)
+        self.assertIn('已写入 3 个号码', fake.batch_status_var.set.call_args_list[0].args[0])
+        self.assertEqual(fake.batch_status_var.set.call_args_list[1].args[0], '批量添加失败：请关闭Excel')
+        fake.root.after.assert_called_once_with(100, fake._poll_ui_actions)
+
     def test_header_instruction_comments_are_preserved_and_data_comments_rejected(self):
         def annotated(ref='A1', row='0', object_type='Note'):
             with zipfile.ZipFile(io.BytesIO(workbook())) as archive:
