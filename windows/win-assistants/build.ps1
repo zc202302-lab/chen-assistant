@@ -20,6 +20,11 @@ $Python = Join-Path $Root '.venv\Scripts\python.exe'
     --hidden-import PIL.ImageDraw `
     main.py
 
+if ($LASTEXITCODE -ne 0) { throw "EXE build failed" }
+& $Python tests/frozen_update_restart_acceptance.py dist/win-assistants.exe
+if ($LASTEXITCODE -ne 0) { throw "Frozen update/restart acceptance failed" }
+
 Write-Host ''
 Write-Host 'Build completed:' -ForegroundColor Green
 Write-Host (Join-Path $Root 'dist\win-assistants.exe')
+
