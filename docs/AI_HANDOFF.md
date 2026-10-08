@@ -2,6 +2,20 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-08（Asia/Shanghai）。用户授权继续开发并完成部署；活动分支 feat/scheduled-number-silent-sms-home-modules，PR #142 https://github.com/zc202302-lab/chen-assistant/pull/142，open、未合并、无冲突。云电脑Draft #128继续暂停。
+- 最新需求：Windows号码提醒仅设定时间弹出，最多5个空格分隔时间，无未加号码不提醒；短信最新验证码后台复制、不弹窗；桌面顶部元素水平对齐；各空间编辑时发送模块至首页，首页快捷模块可编辑排序/移除。
+- main功能提交 c9eea80912946755b4b37ae2116156ec4661f6bf（#141已合并）；#142最终功能head 6c01c58fc8f4cb0c5855c7b2d862bb0a883b2c1c，候选Web1.7.5/Windows0.5.14。main生产版本及用户实际安装本轮未验证。
+- 已确认CI：Foxmail37803238744、stability37803238589成功；网页37803238550与Windows37803238723失败的直接原因均为upload-artifact报Artifact storage quota has been hit，额度每6–12小时重新计算。
+- 网页job113400659020：JS语法/Python编译/号码批量contract及浏览器通过；截图上传失败导致后续安全审计、架构、完整浏览器回归未执行，不可声称全量验证通过。
+- Windows源码job113400659104通过；构建job113400659328 Windows Python测试、EXE打包、启动smoke、PE校验通过，安装包上传失败；原生导航job113400659412测试通过但截图上传失败。冻结EXE更新/回滚验收与正式发布未执行。
+- 当前阻塞：GitHub Actions产物存储额度。现有connector无产物删除或账户计费管理工具；不删除历史证据、不绕过上传依赖或测试来发布。需恢复额度后重跑上述失败workflow，完成完整回归/原生EXE验收再合并发布。
+- 本轮仅读取仓库及CI日志、更新交接；未修改功能代码、未合并、未部署。附件未使用；无需依赖之前scratch源码路径。
+- 唯一下一步：恢复GitHub Actions产物额度，重跑PR #142完整CI；成功后完成Web生产和Windows0.5.14整包公网验证。
+
+---
+
+## 上一阶段快照（历史）
+
 - 更新时间：2026-10-08（Asia/Shanghai）。工作模式：用户明确授权四项产品改造，开发中；活动分支 feat/workspace-entry-archive-settings，PR #141（https://github.com/zc202302-lab/chen-assistant/pull/141）。云电脑Draft #128继续暂停。
 - 用户最新需求：工作空间分常用/辅助入口，统一小方块并支持编辑拖动排序/跨区移动；顶部前进后退移至左侧提醒后；号码收集增加默认折叠的已录号码，成功批量写入后将本批号码标记已录，保留5天后自动删除；Windows全局设置仅保留客户端设置，模块配置归各模块按需打开。
 - 基于main a6fc4f1011ab5f45bc7741f8741d99e1634c58e4。生产Web1.7.3、Windows0.5.12；用户最新截图确认Windows0.5.12已安装，实际批量写入结果仍待确认。
