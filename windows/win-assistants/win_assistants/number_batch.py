@@ -44,6 +44,8 @@ def _serialize(root, original):
 
 
 def _package(data):
+    if data.startswith(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'):
+        raise ValueError('目标文件实际为旧版XLS或加密文件，请在Excel/WPS中另存为未加密的Excel工作簿（*.xlsx）；仅修改后缀无效')
     if len(data) > 20 * 1024 * 1024:
         raise ValueError('目标Excel超过20MB，请清理模板后重试')
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
@@ -51,6 +53,8 @@ def _package(data):
         if len(infos) > 4000 or len({i.filename for i in infos}) != len(infos) or sum(i.file_size for i in infos) > 64 * 1024 * 1024:
             raise ValueError('目标Excel过大或损坏')
         parts = {i.filename: archive.read(i) for i in infos}
+    if not {'xl/workbook.xml', 'xl/_rels/workbook.xml.rels'} <= parts.keys():
+        raise ValueError('目标文件不是完整的XLSX工作簿，请在Excel/WPS中重新另存为Excel工作簿（*.xlsx）')
     book = _xml(parts['xl/workbook.xml'])
     rels = _xml(parts['xl/_rels/workbook.xml.rels'])
     sheets = book.find(TAG('sheets'))
@@ -97,6 +101,60 @@ def _validate_values(numbers, groups, role, manual):
         raise ValueError('集团编码或默认值无效')
 
 
+def _validate_header_notes(parts, path, root):
+    """Preserve template instructions byte-for-byte; never retain data-row notes."""
+    legacy = root.find(TAG('legacyDrawing'))
+    rel_path = posixpath.join(posixpath.dirname(path), '_rels', posixpath.basename(path) + '.rels')
+    rels = _xml(parts[rel_path]) if rel_path in parts else []
+
+    def target(link):
+        name = link.get('Target', '')
+        resolved = name.lstrip('/') if name.startswith('/') else posixpath.normpath(posixpath.dirname(path) + '/' + name)
+        if link.get('TargetMode') == 'External' or not resolved.startswith('xl/') or resolved not in parts:
+            raise ValueError('模板批注关系无效，请检查目标Excel')
+        return resolved
+
+    comments = [r for r in rels if r.get('Type') == RNS + '/comments']
+    if legacy is None and not comments:
+        return
+    if legacy is None or len(comments) != 1:
+        raise ValueError('模板批注结构不支持，请使用标准表头批注')
+    refs = set()
+    document = _xml(parts[target(comments[0])])
+    listing = document.find(TAG('commentList'))
+    if listing is None:
+        raise ValueError('模板批注结构无效')
+    for comment in listing:
+        ref = comment.get('ref', '')
+        if comment.tag != TAG('comment') or not re.fullmatch('[A-F]1', ref) or ref in refs:
+            raise ValueError('目标模板含数据行批注，请先删除第二行及以下批注；表头说明批注可保留')
+        refs.add(ref)
+    links = [r for r in rels if r.get('Id') == legacy.get(f'{{{RNS}}}id') and r.get('Type') == RNS + '/vmlDrawing']
+    if len(links) != 1:
+        raise ValueError('模板批注图形关系无效')
+    vml_path = target(links[0])
+    if posixpath.join(posixpath.dirname(vml_path), '_rels', posixpath.basename(vml_path) + '.rels') in parts:
+        raise ValueError('模板批注图形含额外对象，请使用标准表头批注')
+    vml = _xml(parts[vml_path])
+    excel = '{urn:schemas-microsoft-com:office:excel}'
+    shapes = set()
+    for node in vml:
+        if node.tag in ('{urn:schemas-microsoft-com:office:office}shapelayout', '{urn:schemas-microsoft-com:vml}shapetype'):
+            continue
+        client = node.find(excel + 'ClientData')
+        if node.tag != '{urn:schemas-microsoft-com:vml}shape' or client is None or client.get('ObjectType') != 'Note':
+            raise ValueError('目标模板含非批注图形，请使用纯表格模板')
+        row, col = client.findtext(excel + 'Row'), client.findtext(excel + 'Column')
+        if row != '0' or col not in tuple(str(n) for n in range(6)):
+            raise ValueError('目标模板含数据行批注图形，请仅保留表头说明批注')
+        ref = chr(65 + int(col)) + '1'
+        if ref in shapes:
+            raise ValueError('模板批注图形重复')
+        shapes.add(ref)
+    if shapes != refs:
+        raise ValueError('模板批注与图形不一致，请重新另存为XLSX')
+
+
 def build_workbook(original, numbers, groups, role, manual, choose=None):
     _validate_values(numbers, groups, role, manual)
     parts, path = _package(original)
@@ -104,9 +162,10 @@ def build_workbook(original, numbers, groups, role, manual, choose=None):
     _headers(parts, root)
     if root.find(TAG('sheetProtection')) is not None or any('/tables/' in name for name in parts):
         raise ValueError('目标模板有工作表保护或Excel表格对象，请解除后重试')
-    # Comments, drawings and embedded objects can carry stale data outside cells.
-    if any(root.find(TAG(tag)) is not None for tag in ('drawing', 'legacyDrawing', 'oleObjects', 'extLst')):
+    # Header instruction notes are part of the official template, not stale data.
+    if any(root.find(TAG(tag)) is not None for tag in ('drawing', 'oleObjects', 'extLst')):
         raise ValueError('目标模板含批注、图形或扩展对象，请使用纯表格模板')
+    _validate_header_notes(parts, path, root)
     data = root.find(TAG('sheetData'))
     rows = {int(row.get('r', '0')): row for row in data}
     if any(n < 1 or n > 100000 for n in rows):
