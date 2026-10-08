@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import gc
 import unittest
 from win_assistants.modules import MODULES
 
@@ -27,6 +28,10 @@ class NavigationTests(unittest.TestCase):
 
     def tearDown(self):
         self.root.destroy()
+        # Dispose Tk variables on their creating thread, before later HTTP tests
+        # allocate enough objects to trigger collection on a worker thread.
+        self.app = None
+        gc.collect()
 
     def descendants(self, widget):
         for child in widget.winfo_children():

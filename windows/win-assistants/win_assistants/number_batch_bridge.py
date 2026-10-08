@@ -138,7 +138,8 @@ class NumberBatchBridge:
         import xml.etree.ElementTree as ET
         try:
             self.server = ThreadingHTTPServer(('127.0.0.1', self.port), Handler)
-            self.server.daemon_threads = True
+            # server_close waits for accepted requests, including an atomic write.
+            self.server.daemon_threads = False
             self.thread = threading.Thread(target=self.server.serve_forever, daemon=True, name='number-batch-bridge')
             self.thread.start()
             return True, '批量添加已就绪'
