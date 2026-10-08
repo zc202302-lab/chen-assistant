@@ -40,6 +40,39 @@ def signed(**overrides):
 
 
 class NumberBatchTests(unittest.TestCase):
+    def test_header_instruction_comments_are_preserved_and_data_comments_rejected(self):
+        def annotated(ref='A1', row='0', object_type='Note'):
+            with zipfile.ZipFile(io.BytesIO(workbook())) as archive:
+                parts = {name: archive.read(name) for name in archive.namelist()}
+            parts['xl/worksheets/sheet1.xml'] = parts['xl/worksheets/sheet1.xml'].replace(
+                b'</worksheet>', b'<legacyDrawing xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="note"/></worksheet>')
+            parts['xl/worksheets/_rels/sheet1.xml.rels'] = b'<Relationships><Relationship Id="note" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" Target="../drawings/notes.vml"/><Relationship Id="comments" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="../comments1.xml"/></Relationships>'
+            parts['xl/comments1.xml'] = f'<comments xmlns="{NS}"><authors><author>template</author></authors><commentList><comment ref="{ref}" authorId="0"><text><t>Required instruction</t></text></comment></commentList></comments>'.encode()
+            parts['xl/drawings/notes.vml'] = f'<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:x="urn:schemas-microsoft-com:office:excel"><v:shape><x:ClientData ObjectType="{object_type}"><x:Row>{row}</x:Row><x:Column>0</x:Column></x:ClientData></v:shape></xml>'.encode()
+            buffer = io.BytesIO()
+            with zipfile.ZipFile(buffer, 'w') as archive:
+                for name, data in parts.items():
+                    archive.writestr(name, data)
+            return buffer.getvalue(), parts
+        original, parts = annotated()
+        output = build_workbook(original, ['00123456789'], ['G1'], 'role', '1')
+        with zipfile.ZipFile(io.BytesIO(output)) as archive:
+            for name, data in parts.items():
+                if name != 'xl/worksheets/sheet1.xml':
+                    self.assertEqual(archive.read(name), data)
+        for args in (('A2', '1', 'Note'), ('A1', '0', 'Button'), ('A1', '1', 'Note')):
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                build_workbook(annotated(*args)[0], ['12345'], ['G1'], 'role', '1')
+
+    def test_wrong_file_format_returns_actionable_message(self):
+        with self.assertRaisesRegex(ValueError, '另存为'):
+            build_workbook(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1', ['12345'], ['G1'], 'role', '1')
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w') as archive:
+            archive.writestr('[Content_Types].xml', '<Types/>')
+        with self.assertRaisesRegex(ValueError, '完整的XLSX'):
+            build_workbook(buffer.getvalue(), ['12345'], ['G1'], 'role', '1')
+
     def test_clears_every_old_cell_preserves_header_style_notes_and_text(self):
         chooser = iter(['G1', 'G2']).__next__
         output = build_workbook(workbook(), ['00123456789', '12345678901234567890'], ['G1', 'G2'], '=role', '1', choose=lambda _: chooser())
@@ -145,6 +178,9 @@ class NumberBatchTests(unittest.TestCase):
                 self.assertEqual(request('OPTIONS', '/number-batch')[1]['Access-Control-Allow-Private-Network'], 'true')
                 self.assertEqual(request('POST', '/number-batch', json.dumps(signed()), origin='https://evil.example')[0], 403)
                 self.assertEqual(request('POST', '/number-batch', json.dumps(signed()))[2]['count'], 2)
+                self.assertEqual(bridge.events.get_nowait()['count'], 2)
+                self.assertEqual(request('POST', '/number-batch', json.dumps(signed()))[0], 400)
+                self.assertIn('已执行过', bridge.events.get_nowait()['error'])
             finally:
                 bridge.stop()
 
