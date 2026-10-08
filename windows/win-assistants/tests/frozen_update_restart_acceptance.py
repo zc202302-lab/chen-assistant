@@ -95,7 +95,7 @@ def run_case(binary: bytes, directory: Path, rollback: bool) -> None:
             import re
             for value in re.findall(r"(?:restart requested|startup confirmed) pid=(\d+)",
                                     log.read_text(encoding="utf-8-sig")):
-            kill_tree(int(value))
+                kill_tree(int(value))
 
 
 if __name__ == "__main__":
