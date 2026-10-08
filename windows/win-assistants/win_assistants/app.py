@@ -132,6 +132,14 @@ class WinAssistantsApp:
         style.map("Navigation.TNotebook.Tab", background=[("selected", CARD), ("active", SOFT)],
                   foreground=[("selected", GREEN), ("active", TEXT)])
         self.navigation = ttk.Notebook(shell, style="Navigation.TNotebook", takefocus=True)
+        # Keep Notebook page ownership and keyboard traversal, replace its
+        # platform-dependent raised tabs with a stable flat navigation strip.
+        style.layout("Navigation.TNotebook.Tab", [])
+        style.configure("Navigation.TNotebook", bordercolor=CARD, lightcolor=CARD, darkcolor=CARD)
+        self.nav_strip = tk.Frame(shell, bg=BG)
+        self.nav_strip.pack(fill="x", pady=(0, 12))
+        self.nav_buttons = {}
+        self.nav_indicators = {}
         self.navigation.pack(fill="both", expand=True)
         self.navigation.enable_traversal()
         self._page_transition_job = None
@@ -167,6 +175,19 @@ class WinAssistantsApp:
 
         self.settings_page = ttk.Frame(self.navigation, style="Card.TFrame")
         self.navigation.add(self.settings_page, text="设置")
+        for page, label in [(self.module_pages[key], text) for key, text in labels.items()] + [(self.settings_page, "设置")]:
+            slot = tk.Frame(self.nav_strip, bg=BG)
+            slot.pack(side="left", padx=(0, 8))
+            button = tk.Button(slot, text=label, command=lambda page=page: self.navigation.select(page),
+                               font=("Microsoft YaHei UI", 10), bg=BG, fg=MUTED,
+                               activebackground=SOFT, activeforeground=GREEN, relief="flat",
+                               borderwidth=0, padx=20, pady=10, cursor="hand2", takefocus=True,
+                               highlightthickness=1, highlightbackground=BG, highlightcolor=GREEN)
+            button.pack(fill="x")
+            indicator = tk.Frame(slot, bg=BG, height=3)
+            indicator.pack(fill="x", pady=(3, 0))
+            self.nav_buttons[str(page)] = button
+            self.nav_indicators[str(page)] = indicator
         self.settings_canvas = tk.Canvas(self.settings_page, bg=CARD, highlightthickness=0)
         settings_scroll = ttk.Scrollbar(self.settings_page, orient="vertical", command=self.settings_canvas.yview)
         settings_scroll.pack(side="right", fill="y")
@@ -228,6 +249,11 @@ class WinAssistantsApp:
         if self._page_transition_target is not None:
             self._page_transition_target.configure(padding=(20, 20))
         selected = self.navigation.select()
+        for page_id, button in self.nav_buttons.items():
+            active = page_id == selected
+            button.configure(bg=SOFT if active else BG, fg=GREEN if active else MUTED,
+                             highlightbackground=SOFT if active else BG)
+            self.nav_indicators[page_id].configure(bg=GREEN if active else BG)
         page = next((p for p in self.module_pages.values() if str(p) == selected), None)
         self._page_transition_target = page
         if page is None:
