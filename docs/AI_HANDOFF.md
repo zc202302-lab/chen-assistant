@@ -2,13 +2,15 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-08（Asia/Shanghai）。工作模式：修复win-assistants更新后重启失败。用户截图“Failed to load Python DLL ... Temp\\_MEI...\\python312.dll，LoadLibrary找不到指定模块”。云电脑助手继续暂停，Draft #128不修改/合并/发布。
-- 活动分支fix/win-update-independent-restart，基于main 680b2679079e9db5527947f76831a77a16ce7415，候选版本0.5.9。原顶部导航0.5.8保留。
-- 已确认旧更新器启动PowerShell后仍继承旧PyInstaller私有运行环境，同路径新EXE重启可能复用已被旧bootloader清理的_MEI目录。按PyInstaller官方重启要求使用PYINSTALLER_RESET_ENVIRONMENT=1，仅修改子进程环境；预检、新程序和回退均覆盖。
-- 本地66项测试：64项通过、2项GUI在无显示环境不运行。新增真实Windows最终PE更新/旧_MEI清理/新GUI启动及失败回退验收，包含中文、空格和单引号路径。构建后增加windows-2022验收；正式发布必须等待源码、PE构建与该验收全部成功，不再只检查首次启动。
-- 旧版本的更新脚本没有修复，第一次升级到0.5.9仍可能自动重启失败；需要退出旧程序，直接下载修复EXE覆盖原文件、从资源管理器启动一次。不能承诺旧更新器能自我修复这一次重启。此后用修复版检查更新。
-- CI/打包/发布/公网和用户实机均待验证；不把代码修复当实机成功。核心文件updater.py、main.py内部验收入口、tests/test_updater.py、tests/frozen_update_restart_acceptance.py、build.ps1和cross-build workflow。
-- 唯一下一步：执行完整CI和真实Windows替换/回退验收，通过后发布0.5.9并提供首次升级方式；云电脑助手保持暂停。
+- 更新时间：2026-10-08 10:46（Asia/Shanghai）。工作模式：本轮win-assistants更新后重启修复已完成、v0.5.9已发布且公网完整文件验证通过；等待用户首次手动替换和实机确认。云电脑助手继续暂停，Draft #128未修改、合并或发布。
+- PR [#137](https://github.com/zc202302-lab/chen-assistant/pull/137)已合并，功能合并提交a8dd1341dde3ca5fd284635f95f6ec8a86357722，完整验收head39bf34ba0d93fdd9f5ca9097fdb0637efdb00e72。fix/win-update-independent-restart为已完成历史分支，不是WIP。额外只读公网验收workflow提交e9c3fa1c54c1b9c9c5edef1c683c4bc7101f1458；main实时查询，不预填文档自身SHA。
+- 用户截图错误“Failed to load Python DLL ... Temp\\_MEI...\\python312.dll，LoadLibrary找不到指定模块”。旧冻结更新器继承PyInstaller运行环境，旧父进程退出清理临时目录后，新EXE可能仍引用该目录。独立子进程复制环境并设置PYINSTALLER_RESET_ENVIRONMENT=1，预检、PowerShell前向启动和回退均覆盖；不更改父环境和内置久坐worker复用规则。保留SHA/大小检查、备份、启动探针和回滚。顶部导航0.5.8与原业务逻辑保留。
+- PR完整CI：validation [37717631985](https://github.com/zc202302-lab/chen-assistant/actions/runs/37717631985)、stability37717632039、Foxmail helper37717632036全部success。Windows构建 [37717631999](https://github.com/zc202302-lab/chen-assistant/actions/runs/37717631999)源码、Windows Python全部66项测试、PE打包/首次启动与真实windows-2022更新验收success。本地64通过，2GUI在无显示环境不运行，但Windows构建强制执行并通过。初轮验收脚本清理缩进问题已修复并重新通过；未删除/弱化测试。
+- 真实最终PE验收包含中文、空格、单引号路径：旧冻结父进程退出、旧_MEI目录实际移除、更新后真实GUI存活、失败候选替换后回退旧EXE并重新启动。正式main构建/发布 [37718481390](https://github.com/zc202302-lab/chen-assistant/actions/runs/37718481390)全部success；Windows job113121322526输出RESTART VERIFIED与ROLLBACK VERIFIED。发布必须依赖源码、构建和真实Windows验收，不只检查首次启动。main重复validation37718481338受新增只读验收workflow提交取消，不代替已通过的PR完整CI；main稳定性与Foxmail测试另查，不推断用户实机业务成功。
+- 公网证据：[37718896906](https://github.com/zc202302-lab/chen-assistant/actions/runs/37718896906) / job113121725528 success。2026-10-08 10:44:56（Asia/Shanghai）ONLINE VERIFIED v0.5.9，完整EXE71,638,656字节，SHA-256 ccb171a9bea94a69f2c12274e7c9fd918e7243f01e6b42110f22ddfcd5be5fb0，与release分支及公网清单一致。前两次公网仍0.5.8，第三次完整下载通过。新增win-assistants-production-check.yml在成功main构建后自动检查release清单、公网清单与完整文件；首次创建过早验证旧release的37718770064失败，正式发布完成触发的上述run成功。本地直连网络访问未获批，最终证据来自发布环境实际HTTPS完整下载，无需用户手工操作服务器。
+- 首次迁移限制：v0.5.8及以前的旧更新脚本仍有缺陷，新EXE里的修复无法改变此次Python启动前的旧引导环境。此次请退出旧程序（含托盘），从公网下载v0.5.9 EXE覆盖原文件，再从资源管理器双击启动一次；原APPDATA配置保留。此后使用修复版“设置→检查更新”。不承诺旧更新器这一次能自我修复重启。用户安装/真实摄像头和Foxmail等业务待实机确认；不从CI推断。
+- 核心文件windows/win-assistants/win_assistants/updater.py、main.py内部隔离验收入口、__init__.py、tests/test_updater.py、tests/frozen_update_restart_acceptance.py、build.ps1、README、cross-build与production-check workflow。开发路径/workspace/scratch/3b66fa5b4c20/chen-assistant。无Web业务改动、生产业务写入或云电脑操作。
+- 唯一下一步：用户按一次性迁移步骤安装v0.5.9并反馈实际更新重启/原业务情况，或按下一项明确需求继续；云电脑助手保持暂停。
 
 ---
 
