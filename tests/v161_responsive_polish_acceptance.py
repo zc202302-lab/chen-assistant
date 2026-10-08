@@ -93,7 +93,8 @@ def main():
             assert history_box and reminder and history_box['x'] >= reminder['x'] + reminder['width']
             assert abs(history_box['y'] - reminder['y']) < 8
             assert search_box and search_box['x'] > 1360
-            assert nav_box and nav_box['y'] > history_box['y']
+            assert nav_box and abs((nav_box['y'] + nav_box['height'] / 2) - (history_box['y'] + history_box['height'] / 2)) <= 6
+            assert abs((search_box['y'] + search_box['height'] / 2) - (history_box['y'] + history_box['height'] / 2)) <= 6
 
             cards = page.locator('.customer-card-v161')
             expect(cards).to_have_count(4)
