@@ -149,6 +149,7 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         with:
           name: number-inbox-batch-ui-preview
+          retention-days: 1
           path: artifacts/number-inbox-batch
           if-no-files-found: error
 
