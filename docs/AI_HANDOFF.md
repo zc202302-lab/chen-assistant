@@ -2,19 +2,15 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-09 08:09（Asia/Shanghai）：用户授权浏览器清理并对具体产物确认后，已删除9月29日Windows构建#248/run36528448628的win-assistants-windows，67.8MB，页面明确成功，日志及run保留；其他产物未删除。08:07已重跑网页37803958362及Windows37803958431；Windows原生界面job113603479517通过测试，但08:08上传仍报Artifact storage quota has been hit。额度阻塞尚未解除，统计是否刷新/仍超额未知；本轮未合并部署。等待额度可用后完成全部验收及正式发布。
-
-- 2026-10-09 06:41（Asia/Shanghai）续接实测：已重跑当前文档head7e9ed210的网页37803958362及Windows37803958431失败任务；Windows原生界面job113576771694再次通过测试，但截图上传仍明确报Artifact storage quota has been hit。额度阻塞未恢复，未合并发布；其他重跑任务仍执行中，不推断结果。需先处理账户Actions存储额度。
-
-- 更新时间：2026-10-08（Asia/Shanghai）。用户授权继续开发并完成部署；活动分支 feat/scheduled-number-silent-sms-home-modules，PR #142 https://github.com/zc202302-lab/chen-assistant/pull/142，open、未合并、无冲突。云电脑Draft #128继续暂停。
-- 最新需求：Windows号码提醒仅设定时间弹出，最多5个空格分隔时间，无未加号码不提醒；短信最新验证码后台复制、不弹窗；桌面顶部元素水平对齐；各空间编辑时发送模块至首页，首页快捷模块可编辑排序/移除。
-- main功能提交 c9eea80912946755b4b37ae2116156ec4661f6bf（#141已合并）；#142最终功能head 6c01c58fc8f4cb0c5855c7b2d862bb0a883b2c1c，候选Web1.7.5/Windows0.5.14。main生产版本及用户实际安装本轮未验证。
-- 已确认CI：Foxmail37803238744、stability37803238589成功；网页37803238550与Windows37803238723失败的直接原因均为upload-artifact报Artifact storage quota has been hit，额度每6–12小时重新计算。
-- 网页job113400659020：JS语法/Python编译/号码批量contract及浏览器通过；截图上传失败导致后续安全审计、架构、完整浏览器回归未执行，不可声称全量验证通过。
-- Windows源码job113400659104通过；构建job113400659328 Windows Python测试、EXE打包、启动smoke、PE校验通过，安装包上传失败；原生导航job113400659412测试通过但截图上传失败。冻结EXE更新/回滚验收与正式发布未执行。
-- 当前阻塞：GitHub Actions产物存储额度。现有connector无产物删除或账户计费管理工具；不删除历史证据、不绕过上传依赖或测试来发布。需恢复额度后重跑上述失败workflow，完成完整回归/原生EXE验收再合并发布。
-- 本轮仅读取仓库及CI日志、更新交接；未修改功能代码、未合并、未部署。附件未使用；无需依赖之前scratch源码路径。
-- 唯一下一步：恢复GitHub Actions产物额度，重跑PR #142完整CI；成功后完成Web生产和Windows0.5.14整包公网验证。
+- 更新时间：2026-10-09 10:17（Asia/Shanghai）；用户授权建立自动清理并继续解决Windows构建包问题。
+- 活动产品分支 feat/scheduled-number-silent-sms-home-modules，PR #142 open未合并；产品功能head 6c01c58fc8f4cb0c5855c7b2d862bb0a883b2c1c，候选Web1.7.5/Windows0.5.14。云电脑Draft #128暂停。
+- 用户本机CLI两轮各删除64个旧/重复Actions产物，共128个，截图确认剩余68.07 MB；另有先前浏览器删除67.8MB一项。此数仅本仓库产物，不代表账户其他仓库/Packages占用。
+- 10:09重试Windows37803958431：源码113635774762成功，打包113635773090的Windows测试/EXE打包/smoke/PE成功，上传失败；native113635773302测试成功但上传quota失败；冻结EXE更新回滚验收及发布未执行。网页37803958362/113635770924浏览器批量验收成功，截图上传失败，后续完整回归未执行。未合并部署。
+- main已新增 .github/workflows/artifact-cleanup.yml：每3小时、Windows/Web验证结束后清理；只管理win-assistants-windows（最多2份/3天）及两种预览（最多1份/1天），仅删除已completed运行的产物，跳过运行中任务，保留run/日志/release/源码。手动触发默认dry-run；无需PAT或本机PowerShell。
+- 自动清理首次真实run37873560116/job113636825900 success，创建提交763a4b81020277f7d4fa093a917343871e667cfa；Web结束触发补充0e58990b59abde17baa1053d460145cef77860e0。mock策略验证通过：保留2份、过期/超额删除、运行中/非管理名称保护、dry-run零删除。
+- main及PR #142均设置上传retention-days：安装包3天、Windows/Web截图1天；相关workflow变化会触发CI，最新结果待查。自动清理不保证账户quota立即刷新，亦不绕过原测试或上传验收。
+- 当前main/PR head从GitHub实时读取；生产版本、用户安装和业务验收本轮未知。附件未使用。
+- 唯一下一步：核对新head完整CI与上传额度；额度可用后完成完整浏览器、冻结EXE更新/回滚验收，再合并发布并核验公网整包。
 
 ---
 
