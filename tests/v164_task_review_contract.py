@@ -82,6 +82,23 @@ def main():
         assert row['remind_at'] == '2026-10-01T10:15'
         assert row['note'] == '确认后才能发起缴费'
 
+    cleared = client.post(
+        f'/tasks/{task_id}/edit',
+        data={
+            'csrf': csrf,
+            'title': '审核并确认本月缴费名单',
+            'remind_at': '',
+            'note': '确认后才能发起缴费',
+            'is_payment_review': '1',
+        },
+        follow_redirects=False,
+    )
+    assert cleared.status_code == 303, cleared.text
+    with db() as conn:
+        row = conn.execute('SELECT * FROM tasks WHERE id=?', (task_id,)).fetchone()
+        assert row['remind_at'] == ''
+        assert row['remind_date'] == ''
+
         try:
             _set_initiated(
                 conn,
@@ -111,6 +128,13 @@ def main():
     assert '缴费审核' in page.text
     assert '确认已审核' not in page.text  # completed tasks switch to restore
     assert '提醒时间' in page.text
+
+    standalone = client.get(f'/customers/{customer_id}/tasks')
+    assert standalone.status_code == 200
+    assert '待办内容、提醒时间和缴费审核要求都可随时修改。' in standalone.text
+    assert 'type="datetime-local"' in standalone.text
+    assert 'name="is_payment_review"' in standalone.text
+    assert '/tasks/' in standalone.text and '/edit' in standalone.text
 
     print('v1.6.4 task review contract passed')
 
