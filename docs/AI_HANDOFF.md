@@ -9,6 +9,7 @@
 - main的 .github/workflows/artifact-cleanup.yml 已扩展为全仓库Actions产物清理（57d72c51c71dfec41a8d6ff333e17866be65eec4）：每3小时及当前全部8个其他workflow完成后执行；默认按名称最多2份/3天，preview/screenshot/report/diagnostic最多1份/1天；未来新增名称自动纳入定时清理。仅删除completed运行的产物，跳过运行中任务，保留run/日志/release/源码。手动默认dry-run。已检查main全部9个workflow，只有Windows/原生截图/网页截图三处上传，全部已有retention-days。新名称、报告、过期、运行保护、dry-run mock验证通过；新版真实run37874975736已success，页面确认57d72c5对应运行成功。
 - 自动清理首次真实run37873560116/job113636825900 success，创建提交763a4b81020277f7d4fa093a917343871e667cfa；Web结束触发补充0e58990b59abde17baa1053d460145cef77860e0。mock策略验证通过：保留2份、过期/超额删除、运行中/非管理名称保护、dry-run零删除。
 - main及PR #142均设置上传retention-days：安装包3天、Windows/Web截图1天；相关workflow变化会触发CI，最新结果待查。自动清理不保证账户quota立即刷新，亦不绕过原测试或上传验收。
+- 2026-10-09 10:37（Asia/Shanghai）用户要求重新查看额度：单独重跑run37873643307原生截图job113642690621，仍failure，最新日志继续报Artifact storage quota has been hit；额度尚未恢复。10:20安装包和10:21网页上传同样quota失败。未合并部署。
 - 当前main/PR head从GitHub实时读取；生产版本、用户安装和业务验收本轮未知。附件未使用。
 - 唯一下一步：核对新head完整CI与上传额度；额度可用后完成完整浏览器、冻结EXE更新/回滚验收，再合并发布并核验公网整包。
 
