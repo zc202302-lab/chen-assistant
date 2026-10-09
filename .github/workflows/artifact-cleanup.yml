@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '23 */3 * * *'
   workflow_run:
-    workflows: ["win-assistants cross build"]
+    workflows: ["win-assistants cross build", "v1.2 validation"]
     types: [completed]
   push:
     branches: [main]
