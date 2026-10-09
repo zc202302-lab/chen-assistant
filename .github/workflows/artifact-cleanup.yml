@@ -1,0 +1,81 @@
+name: Actions artifact cleanup
+
+on:
+  schedule:
+    - cron: '23 */3 * * *'
+  workflow_run:
+    workflows: ["win-assistants cross build"]
+    types: [completed]
+  push:
+    branches: [main]
+    paths: [".github/workflows/artifact-cleanup.yml"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview deletions without deleting artifacts'
+        type: boolean
+        default: true
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: actions-artifact-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # No checkout: workflow_run must never execute code from the triggering PR.
+      - uses: actions/github-script@v7
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+        with:
+          script: |
+            const policies = new Map([
+              ['win-assistants-windows', {keep: 2, days: 3}],
+              ['win-assistants-ui-preview', {keep: 1, days: 1}],
+              ['number-inbox-batch-ui-preview', {keep: 1, days: 1}],
+            ]);
+            const {owner, repo} = context.repo;
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo, {owner, repo, per_page: 100});
+            const runs = new Map();
+            const dryRun = process.env.DRY_RUN === 'true';
+            const now = Date.now();
+            let deleted = 0, freed = 0;
+            const rows = [];
+            for (const [name, policy] of policies) {
+              const candidates = artifacts.filter(a => !a.expired && a.name === name)
+                .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id);
+              let completedCount = 0;
+              for (const artifact of candidates) {
+                const runId = artifact.workflow_run?.id;
+                if (!runId) continue;
+                if (!runs.has(runId)) {
+                  const {data} = await github.rest.actions.getWorkflowRun({owner, repo, run_id: runId});
+                  runs.set(runId, data.status);
+                }
+                // Never remove an artifact while another job can still download it.
+                if (runs.get(runId) !== 'completed') continue;
+                completedCount++;
+                const ageDays = (now - Date.parse(artifact.created_at)) / 86400000;
+                if (completedCount <= policy.keep && ageDays < policy.days) continue;
+                core.info(`${dryRun ? 'Would delete' : 'Delete'} ${name} #${artifact.id} run=${runId}`);
+                if (!dryRun) {
+                  await github.rest.actions.deleteArtifact({owner, repo, artifact_id: artifact.id});
+                }
+                deleted++;
+                freed += artifact.size_in_bytes;
+                rows.push([name, String(artifact.id), String(runId),
+                  (artifact.size_in_bytes / 1048576).toFixed(2)]);
+              }
+            }
+            await core.summary.addHeading(dryRun ? 'Artifact cleanup preview' : 'Artifact cleanup')
+              .addRaw(`${deleted} artifacts; ${(freed / 1048576).toFixed(2)} MiB ${dryRun ? 'eligible' : 'deleted'}.\n`)
+              .addTable([['Name', 'Artifact ID', 'Run', 'MiB'], ...rows])
+              .addRaw('Only named build/preview artifacts from completed runs are managed. Runs, logs, release branches and repository files are retained. Account quota refresh is separate from deletion.\n')
+              .write();
