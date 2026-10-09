@@ -6,7 +6,7 @@
 - 活动产品分支 feat/scheduled-number-silent-sms-home-modules，PR #142 open未合并；产品功能head 6c01c58fc8f4cb0c5855c7b2d862bb0a883b2c1c，候选Web1.7.5/Windows0.5.14。云电脑Draft #128暂停。
 - 用户本机CLI两轮各删除64个旧/重复Actions产物，共128个，截图确认剩余68.07 MB；另有先前浏览器删除67.8MB一项。此数仅本仓库产物，不代表账户其他仓库/Packages占用。
 - 10:09重试Windows37803958431：源码113635774762成功，打包113635773090的Windows测试/EXE打包/smoke/PE成功，上传失败；native113635773302测试成功但上传quota失败；冻结EXE更新回滚验收及发布未执行。网页37803958362/113635770924浏览器批量验收成功，截图上传失败，后续完整回归未执行。未合并部署。
-- main的 .github/workflows/artifact-cleanup.yml 已扩展为全仓库Actions产物清理（57d72c51c71dfec41a8d6ff333e17866be65eec4）：每3小时及当前全部8个其他workflow完成后执行；默认按名称最多2份/3天，preview/screenshot/report/diagnostic最多1份/1天；未来新增名称自动纳入定时清理。仅删除completed运行的产物，跳过运行中任务，保留run/日志/release/源码。手动默认dry-run。已检查main全部9个workflow，只有Windows/原生截图/网页截图三处上传，全部已有retention-days。新名称、报告、过期、运行保护、dry-run mock验证通过；新版真实run结果待查。
+- main的 .github/workflows/artifact-cleanup.yml 已扩展为全仓库Actions产物清理（57d72c51c71dfec41a8d6ff333e17866be65eec4）：每3小时及当前全部8个其他workflow完成后执行；默认按名称最多2份/3天，preview/screenshot/report/diagnostic最多1份/1天；未来新增名称自动纳入定时清理。仅删除completed运行的产物，跳过运行中任务，保留run/日志/release/源码。手动默认dry-run。已检查main全部9个workflow，只有Windows/原生截图/网页截图三处上传，全部已有retention-days。新名称、报告、过期、运行保护、dry-run mock验证通过；新版真实run37874975736已success，页面确认57d72c5对应运行成功。
 - 自动清理首次真实run37873560116/job113636825900 success，创建提交763a4b81020277f7d4fa093a917343871e667cfa；Web结束触发补充0e58990b59abde17baa1053d460145cef77860e0。mock策略验证通过：保留2份、过期/超额删除、运行中/非管理名称保护、dry-run零删除。
 - main及PR #142均设置上传retention-days：安装包3天、Windows/Web截图1天；相关workflow变化会触发CI，最新结果待查。自动清理不保证账户quota立即刷新，亦不绕过原测试或上传验收。
 - 当前main/PR head从GitHub实时读取；生产版本、用户安装和业务验收本轮未知。附件未使用。
