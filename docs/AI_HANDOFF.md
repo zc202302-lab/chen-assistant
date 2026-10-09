@@ -2,7 +2,7 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-09 12:05（Asia/Shanghai）；用户明确要求继续开发，已接管并实际重试上传额度。
+- 更新时间：2026-10-09 23:33（Asia/Shanghai）；用户要求再次测试额度，实际截图上传仍因quota失败。
 - 活动产品分支 feat/scheduled-number-silent-sms-home-modules，PR #142 open未合并；产品功能head 6c01c58fc8f4cb0c5855c7b2d862bb0a883b2c1c，候选Web1.7.5/Windows0.5.14。云电脑Draft #128暂停。
 - 用户本机CLI两轮各删除64个旧/重复Actions产物，共128个，截图确认剩余68.07 MB；另有先前浏览器删除67.8MB一项。此数仅本仓库产物，不代表账户其他仓库/Packages占用。
 - 10:09重试Windows37803958431：源码113635774762成功，打包113635773090的Windows测试/EXE打包/smoke/PE成功，上传失败；native113635773302测试成功但上传quota失败；冻结EXE更新回滚验收及发布未执行。网页37803958362/113635770924浏览器批量验收成功，截图上传失败，后续完整回归未执行。未合并部署。
@@ -11,6 +11,7 @@
 - main及PR #142均设置上传retention-days：安装包3天、Windows/Web截图1天；相关workflow变化会触发CI，最新结果待查。自动清理不保证账户quota立即刷新，亦不绕过原测试或上传验收。
 - 2026-10-09 10:37（Asia/Shanghai）用户要求重新查看额度：单独重跑run37873643307原生截图job113642690621，仍failure，最新日志继续报Artifact storage quota has been hit；额度尚未恢复。10:20安装包和10:21网页上传同样quota失败。未合并部署。
 - 2026-10-09 12:05（Asia/Shanghai）接管复查：PR #142仍open、非draft、mergeable；检查前main head92f0ec9a20026239b0f50f577f9f1df862522355，PR head5dc83b66925d2e358781acdcbed4fdfe7ec94d3e。当前head为仅文档收尾，无对应新PR workflow/status，不能宣称完整CI通过。仅重跑run37873643307的native-navigation：job113664168386原生Windows界面测试success，上传failure；日志2026-10-09T04:05:17Z仍报Artifact storage quota has been hit，Usage is recalculated every 6-12 hours。未重跑大包或绕过上传/冻结EXE验收，未合并发布。云电脑#128继续暂停，历史PR不作为当前任务。
+- 2026-10-09 23:33（Asia/Shanghai）再次实际重跑native-navigation，run37873643307/job113894656959界面测试success、上传failure；日志2026-10-09T15:33:02Z仍报Artifact storage quota has been hit。额度尚未恢复；没有更改功能、合并或发布。
 - 当前main/PR head从GitHub实时读取；生产版本、用户安装和业务验收本轮未知。附件未使用。
 - 唯一下一步：核对新head完整CI与上传额度；额度可用后完成完整浏览器、冻结EXE更新/回滚验收，再合并发布并核验公网整包。
 
