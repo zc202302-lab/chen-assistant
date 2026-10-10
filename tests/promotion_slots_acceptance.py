@@ -56,7 +56,8 @@ def main():
                 row.locator('[data-editor-promo-save]').click()
             page.wait_for_function("() => document.querySelector('.editor-promo-row-v029 .editor-promo-slot')?.value === '4'")
             assert dialog.locator('.editor-promo-slot').evaluate_all('(els)=>els.map(el=>el.value)')==['4','5']
-            dialog.locator('[data-business-editor-close]').first.click()
+            with page.expect_navigation(wait_until='networkidle'):
+                dialog.locator('[data-business-editor-close]').first.click()
             page.locator('[data-customer-tab="promotions"]').click()
             full=page.locator('[data-full-promotions]')
             assert not full.evaluate('(el)=>el.open')
@@ -67,8 +68,11 @@ def main():
             def cells():
                 return table.locator('tr').evaluate_all('(rows)=>rows.map(row=>[...row.querySelectorAll("th,td")].map(cell=>cell.textContent))')
             current=cells()
-            assert len(current[0])==11 and current[2][1:7]==['']*6
-            assert current[2][7:11]==['第二优惠','2026/1//2','第五优惠','2027/3/4']
+            assert len(current)==2 and len(current[0])==11 and current[1][1:7]==['']*6
+            assert current[1][7:11]==['第二优惠','2026/1//2','第五优惠','2027/3/4']
+            widths=table.locator('thead th').evaluate_all('(els)=>els.map(el=>el.getBoundingClientRect().width)')
+            assert max(widths)-min(widths)<1
+            assert table.locator('tbody td').first.evaluate('(el)=>getComputedStyle(el).textAlign')=='center'
             with page.expect_download() as download:
                 full.locator('a[download]').click()
             assert xlsx_rows(Path(download.value.path()).read_bytes())==current

@@ -69,8 +69,9 @@ def main():
     assert save(other_sid,1,'串客户','',p2['id']).status_code==400
     payload = client.get(f'/customers/{cid}/promotions/table').json()
     assert payload['headers']==['号码','优惠1','到期时间','优惠2','到期时间','优惠3','到期时间','优惠4','到期时间','优惠5','到期时间']
-    assert [r[0] for r in payload['rows']]==['13800000002','001234567890123456789','']
-    row=payload['rows'][1]
+    assert [r[0] for r in payload['rows']]==['001234567890123456789']
+    assert payload['service_ids']==[ids[0]]
+    row=payload['rows'][0]
     assert row[1:3]==['',''] and row[3:5]==['=SUM(1,2)','2026/1//2'] and row[9:11]==['优惠五','2027/8/9']
     assert xlsx_rows(client.get(f'/customers/{cid}/promotions/table.xlsx').content)==[payload['headers'],*payload['rows']]
     assert save(ids[0],4,'优惠二','2028/3/',p2['id']).status_code==200
@@ -87,7 +88,7 @@ def main():
     assert 'data-full-promotions' in html and 'data-full-promotions data-table-url' in html
     assert 'manual-date promo-expiry' not in html
     assert client.post(f"/promotions/{p5['id']}/close-editor-v029",data={'csrf':csrf}).status_code==200
-    assert client.get(f'/customers/{cid}/promotions/table').json()['rows'][1][9:]==['','']
+    assert client.get(f'/customers/{cid}/promotions/table').json()['rows'][0][9:]==['','']
     with db() as conn:
         # Old records are assigned positions without changing IDs or stored text.
         pid=conn.execute('INSERT INTO promotions(service_id,name,expiry_date,status) VALUES(?,?,?,?)',(ids[0],'旧优惠','2030-01-01','active')).lastrowid
@@ -95,7 +96,15 @@ def main():
         legacy=conn.execute('SELECT * FROM promotions WHERE id=?',(pid,)).fetchone()
         assert legacy['slot_number']==1 and legacy['expiry_date']=='2030-01-01'
         conn.execute('UPDATE services SET sort_order=1 WHERE id=?',(ids[2],))
+        conn.execute('INSERT INTO promotions(service_id,name,expiry_date,status,slot_number) VALUES(?,?,?,?,?)',(ids[2],'空号码优惠','','active',2))
         assert table_payload(conn,cid)['rows'][0][0]==''
+        assert table_payload(conn,cid)['service_ids']==[ids[2],ids[0]]
+        conn.execute("UPDATE promotions SET status='closed' WHERE service_id=?", (ids[0],))
+        assert table_payload(conn,cid)['service_ids']==[ids[2]]
+        conn.execute("UPDATE promotions SET status='closed' WHERE service_id=?", (ids[2],))
+        empty=table_payload(conn,cid)
+        assert empty['rows']==[] and empty['service_ids']==[]
+        assert xlsx_rows(export_table(empty))==[empty['headers']]
     assert promotion_bucket('2026/10/1')=='expired'
     assert promotion_bucket('2026/10//1')=='later'
     client.cookies.clear()

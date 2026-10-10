@@ -634,6 +634,7 @@
       statusFd.append('status', businessDialog.querySelector('[data-v03-business-enabled]')?.value || 'active');
       const statusData = await postForm(`/services/${sid}/status-v03`, statusFd);
       updateBusinessRows(statusData.rows || {});
+      root.dispatchEvent(new CustomEvent('chen:service-properties-updated', {detail:{rows:attrData.rows || {}}}));
       businessDialog.close();
       toast('业务已保存');
     } catch (err) {

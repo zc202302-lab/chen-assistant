@@ -122,7 +122,7 @@
           <section class="promo-column-v028 state-{{ bucket }}"><div class="promo-column-head"><h3>{{ title }}</h3></div>
             {% for group in promo_columns[bucket] %}
             <article class="promo-number-group-v028" data-promo-group data-group-key="{{ group.key|e }}">
-              <button type="button" class="promo-number-copy-v028" data-copy-silent="{{ group.number or group.account }}"><strong>{{ group.number or group.account }}</strong><small>{{ group.service_type }}{% if group.holder_name %} · {{ group.holder_name }}{% endif %}</small></button>
+              <button type="button" class="promo-number-copy-v028" data-copy-silent="{{ group.number or group.account }}" data-promo-service-editor data-service-id="{{ group['items'][0].row.service_id }}" title="单击复制，双击编辑属性"><strong>{{ group.number or group.account }}</strong><small>{{ group.service_type }}{% if group.holder_name %} · {{ group.holder_name }}{% endif %}</small></button>
               <div class="promo-item-list-v028" data-promo-sortable data-reorder-url="/customers/{{ customer.id }}/promotions/reorder-v028">
                 {% for item in group['items'] %}{% set p=item.row %}
                 <div class="promo-item-v028" data-promo-item data-promo-id="{{ p.id }}">
@@ -142,7 +142,7 @@
       <details class="card compact-card full-promotions" data-full-promotions data-table-url="/customers/{{ customer.id }}/promotions/table">
         <summary>全量优惠 <span class="muted">{{ full_promotions.rows|length }} 行</span></summary>
         <div class="full-promotions-actions"><a class="secondary small" href="/customers/{{ customer.id }}/promotions/table.xlsx" download>下载 Excel</a><span data-full-promotions-error role="status"></span></div>
-        <div class="full-promotions-scroll"><table data-full-promotions-table><thead><tr>{% for header in full_promotions.headers %}<th scope="col">{{ header }}</th>{% endfor %}</tr></thead><tbody>{% for row in full_promotions.rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+        <div class="full-promotions-scroll"><table data-full-promotions-table><thead><tr>{% for header in full_promotions.headers %}<th scope="col">{{ header }}</th>{% endfor %}</tr></thead><tbody>{% for row in full_promotions.rows %}{% set service_id=full_promotions.service_ids[loop.index0] %}<tr>{% for cell in row %}<td>{% if loop.first %}<button type="button" class="full-promotion-number" data-promo-service-editor data-service-id="{{ service_id }}" title="双击编辑属性">{{ cell }}</button>{% else %}<span class="full-promotion-cell">{{ cell }}</span>{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
       </details>
     </section>
 

@@ -465,6 +465,7 @@
       businessForm.elements.service_id.value = serviceId;
       renderEditor();
       businessDialog.showModal();
+      root.dispatchEvent(new CustomEvent('chen:service-editor-opened', {detail:{service_id:serviceId}}));
     } catch (_) { notifyError('网络异常'); }
   };
 
@@ -473,6 +474,12 @@
     if (!btn) return;
     e.preventDefault();
     openBusinessEditor(btn.dataset.serviceId || btn.closest('[data-service-id]')?.dataset.serviceId);
+  });
+  root.addEventListener('dblclick', e => {
+    const btn = e.target.closest('[data-promo-service-editor]');
+    if (!btn) return;
+    e.preventDefault();
+    openBusinessEditor(btn.dataset.serviceId);
   });
   businessDialog?.querySelectorAll('[data-business-editor-close]').forEach(btn => btn.addEventListener('click', () => {
     businessDialog.close();
@@ -610,6 +617,7 @@
       syncDisplayOptions(data.template || [], data.display_attr_1, data.display_attr_2);
       businessDialog.close();
       requestAnimationFrame(() => window.scrollTo({top:editorScrollY, behavior:'auto'}));
+      root.dispatchEvent(new CustomEvent('chen:service-properties-updated', {detail:{rows:data.rows || {}}}));
     } catch (_) { notifyError('网络异常，未保存'); }
   });
 
