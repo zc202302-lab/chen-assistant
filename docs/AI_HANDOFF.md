@@ -2,14 +2,14 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-10（Asia/Shanghai）。用户授权继续开发四项优惠改造；活动分支feat/promotion-slots-table，PR #148（https://github.com/zc202302-lab/chen-assistant/pull/148），最后功能提交86f512d1b55db182c186fd3d30b94ee0055ea406，基于main37c106c7e8a21110e39aa38e09675f2ebc7702b4（PR #147已合并）。云电脑Draft #128继续暂停，不恢复根README。
+- 更新时间：2026-10-10（Asia/Shanghai）。用户授权继续开发四项优惠改造；活动分支feat/promotion-slots-table，PR待创建，基于main37c106c7e8a21110e39aa38e09675f2ebc7702b4（PR #147已合并）。云电脑Draft #128继续暂停，不恢复根README。
 - 本轮候选Web1.7.9，Windows0.5.16不变；Web1.7.8的正式main部署/公网结果本轮未复核，生产精确commit与用户实际效果未知。
 - 已实现：优惠到期时间自由文本、原样保存（业务属性关联优惠和优惠行动区均不补零/改斜杠）；完整有效数字日期继续到期分类，其余保留全量。关联优惠左侧1～5编号可编辑，允许空号，保存后升序；重复编号明确拒绝，不覆盖其他优惠。
 - 优惠页底部增加默认折叠紧凑全量表格，固定11列（号码、优惠1、到期时间……优惠5、到期时间），完整业务顺序、无优惠业务和缺号空格保留。真实XLSX与表格共用数据投影，所有格写文本，不加统计/备注/客户信息。修改优惠/名称/日期和切换优惠页签刷新全量。
 - 数据迁移幂等、保留旧记录ID/原始日期，旧无编号优惠按ID分配空闲位，已有明确编号不重排。原宽表导入记录列位置。历史超出五项的内容在第五项单元格内分行保留，表格与Excel一致，不静默丢弃；新建/编辑正常编号限定1～5。
 - 本地新接口/XLSX逐格验证、旧优惠渲染/改名、架构治理、路由清单、客户导出文本、安全稳定性、Python/JS语法均通过。历史ui_v0212_contract.py直接运行有早已过时的app.version==0.2.12断言，未改该测试；完整CI使用既有受控执行方式。本地Chromium下载损坏，真实浏览器验收交由完整CI。旧ui_v029日期存储断言依据新明确需求从ISO调整为手输文本，保留全部业务/密度断言；新增真实UI输入斜杠/编号排序/空格/折叠/下载逐格/手机布局及截图验收。
-- 核心app/promotions.py、v0211_promotion_routes.py、v027/v028_routes.py、service-promotions.js、customer_workspace_v0211.html及现有workspace处理。两份路由清单已同步，仅新增两条GET；资源文件/顺序未新增，缓存1790。本地/workspace/scratch/41e298ba2ec5/chen-assistant，附件未修改。
-- 唯一下一步：完成PR #148完整CI/桌面手机截图验收，通过后合并发布Web1.7.9并验证公网版本与资源；未合并、未部署，不推断用户实机结果。
+- 核心app/promotions.py、v0211_promotion_routes.py、v027/v028_routes.py、service-promotions.js、customer_workspace_v0211.html及现有workspace处理。两份路由清单已同步，仅新增两条GET；优惠原资源缓存1790；跨页面动画取消观察从body末尾移到head新navigation-transitions.js（blocking=render），资源清单和依赖同步，导航缓存1791。本地/workspace/scratch/41e298ba2ec5/chen-assistant，附件未修改。
+- 唯一下一步：提交PR并完成完整CI/桌面手机截图验收，通过后合并发布Web1.7.9并验证公网版本与资源；未合并、未部署，不推断用户实机结果。
 
 ---
 
