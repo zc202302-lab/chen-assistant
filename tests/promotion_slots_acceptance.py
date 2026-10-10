@@ -56,7 +56,8 @@ def main():
                 row.locator('[data-editor-promo-save]').click()
             page.wait_for_function("() => document.querySelector('.editor-promo-row-v029 .editor-promo-slot')?.value === '4'")
             assert dialog.locator('.editor-promo-slot').evaluate_all('(els)=>els.map(el=>el.value)')==['4','5']
-            dialog.locator('[data-business-editor-close]').first.click()
+            with page.expect_navigation(wait_until='networkidle'):
+                dialog.locator('[data-business-editor-close]').first.click()
             page.locator('[data-customer-tab="promotions"]').click()
             full=page.locator('[data-full-promotions]')
             assert not full.evaluate('(el)=>el.open')
