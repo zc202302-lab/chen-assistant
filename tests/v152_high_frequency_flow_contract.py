@@ -17,9 +17,10 @@ def main():
     assert "def work_customer_management_v14(request: Request, home: str = 'payment')" in workspace_routes
     assert "def dashboard_v027(request: Request, home: str = 'payment')" in home_routes
     assert dashboard.index('data-home-tab="payment"') < dashboard.index('data-home-tab="tasks"')
-    # Homepage task summary was removed; the customer entry remains in navigation.
+    # Homepage summary and bottom bar were removed; customers remain reachable through Work.
     assert '待处理事项' not in home and '未完成待办' not in home
-    assert 'href="/work/customers" class="nav-item">◎<span>客户</span>' in base
+    assert 'href="/work"' in base
+    assert "'/work/customers'" in (ROOT / 'app' / 'work_architecture.py').read_text(encoding='utf-8')
     assert 'high-frequency-v152.css?v=1525' in base
     assert 'high-frequency-v152.js?v=15101' in base
     assert 'payment-total-row-v152' in js
