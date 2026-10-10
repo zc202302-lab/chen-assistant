@@ -99,6 +99,7 @@ def main():
                 summary = page.locator('[data-sidebar-toggle]')
                 life = menu.locator('a[href="/life"]')
                 expect(life).to_be_hidden()
+                expect(summary).to_be_enabled()
                 summary.focus()
                 page.keyboard.press('Enter')
                 expect(life).to_be_visible()

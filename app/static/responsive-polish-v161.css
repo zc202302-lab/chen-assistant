@@ -383,3 +383,15 @@ body:has(.customer-directory-v161) .page{
 .global-primary-nav{grid-column:1/-1;grid-row:2}
 .topbar-actions .search-link{grid-column:auto;grid-row:auto}
 @media(max-width:480px){.topbar{gap:5px 6px}.topbar-left{gap:6px}.topbar-left .brand{font-size:16px}.topbar-left .brand span{display:none}.topbar-left .global-history-button{width:29px}.topbar-left .global-history-nav{height:34px}.reminder-entry{padding:6px 8px!important;font-size:12px!important}.topbar-actions .search-link{width:34px;height:34px}}
+
+/* History controls flank the primary navigation at every viewport size. */
+.global-navigation-group{display:flex;align-items:center;justify-self:center;gap:10px;min-width:0}
+.global-navigation-group .global-primary-nav{grid-column:auto;grid-row:auto;margin:0;height:44px;box-sizing:border-box}
+.global-navigation-group .global-history-button{flex:0 0 40px;width:40px;height:40px;border:1px solid rgba(17,24,39,.10);border-radius:12px;background:rgba(255,255,255,.86);color:#626c7b;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+.global-navigation-group .global-history-button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.global-navigation-group .global-history-button:hover:not(:disabled){background:#eef2f7;color:#111827;border-color:rgba(17,24,39,.18)}
+.global-navigation-group .global-history-button:disabled{opacity:.38;box-shadow:none}
+@media(max-width:1100px){.global-navigation-group{grid-column:1/-1;grid-row:2}.global-navigation-group .global-primary-nav{grid-column:auto;grid-row:auto}}
+@media(max-width:480px){.global-navigation-group{width:min(380px,calc(100vw - 28px));gap:8px}.global-navigation-group .global-primary-nav{width:auto;flex:1;min-width:0}.global-navigation-group .global-primary-nav a{min-width:0;padding:7px 8px}.global-navigation-group .global-history-button{flex-basis:36px;width:36px;height:36px;border-radius:10px}}
+
+@media(min-width:1101px){.topbar{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;grid-template-rows:44px;min-height:66px}.global-navigation-group{grid-column:2;grid-row:1}.topbar-actions{grid-column:3;grid-row:1}}

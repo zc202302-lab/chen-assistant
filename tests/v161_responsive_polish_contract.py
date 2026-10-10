@@ -11,7 +11,7 @@ def main():
     config = (ROOT / 'app' / 'config.py').read_text(encoding='utf-8')
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
 
-    assert 'responsive-polish-v161.css?v=1740' in base
+    assert 'responsive-polish-v161.css?v=1780' in base
     assert 'customer-directory-v161' in customers
     assert 'class="page-head customer-directory-v161"' in customers
     assert 'customer-directory-actions-v161' in customers
@@ -22,7 +22,8 @@ def main():
 
     assert '.topbar-actions{\n  display:contents;' in css
     assert '.topbar-left .global-history-nav{position:static;' in css
-    assert base.index('data-history-nav') < base.index('class="global-primary-nav"')
+    assert base.index('data-history-back') < base.index('class="global-primary-nav"') < base.index('data-history-forward')
+    assert '.global-navigation-group{display:flex;' in css
     assert '.search-link{\n  grid-column:3;' in css
     assert '.global-primary-nav{\n  grid-column:1/-1;' in css
     assert '@media(max-width:760px)' in css

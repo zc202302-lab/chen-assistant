@@ -113,10 +113,10 @@ def main():
             ms = mpage.locator('[data-quick-search-trigger]').bounding_box()
             mn = mpage.locator('.global-primary-nav').bounding_box()
             mr = mpage.locator('.reminder-entry').bounding_box()
-            assert mh and mr and mh['x'] >= mr['x'] + mr['width']
-            assert abs(mh['y'] - mr['y']) < 8
+            assert mh and mr and mh['y'] >= mr['y'] + mr['height']
+            assert abs((mh['y']+mh['height']/2)-(mn['y']+mn['height']/2)) < 2
             assert ms and ms['x'] > 335 and ms['width'] <= 42
-            assert mn and mn['y'] > mh['y']
+            assert mn and mn['x'] > mh['x'] and mn['x']+mn['width'] < mh['x']+mh['width']
 
             mcards = mpage.locator('.customer-card-v161')
             mb0 = mcards.nth(0).bounding_box()
