@@ -1,4 +1,30 @@
 (() => {
+  const sidebar = document.querySelector('[data-sidebar-navigation]');
+  const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+  if (sidebar && sidebarToggle) {
+    const resetSidebar = () => {
+      sidebarToggle.setAttribute('aria-expanded', 'false');
+      document.body.removeAttribute('data-sidebar-open');
+    };
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.showModal();
+      sidebarToggle.setAttribute('aria-expanded', 'true');
+      document.body.setAttribute('data-sidebar-open', '');
+    });
+    sidebar.querySelector('[data-sidebar-close]').addEventListener('click', () => sidebar.close());
+    sidebar.addEventListener('click', event => {
+      const box = sidebar.getBoundingClientRect();
+      if (event.target === sidebar && (event.clientX < box.left || event.clientX > box.right
+          || event.clientY < box.top || event.clientY > box.bottom)) sidebar.close();
+    });
+    sidebar.addEventListener('close', resetSidebar);
+    sidebar.querySelectorAll('a').forEach(link => link.addEventListener('click', () => sidebar.close()));
+    window.addEventListener('pageshow', () => {
+      if (sidebar.open) sidebar.close();
+      resetSidebar();
+    });
+  }
+
   const brand = document.querySelector('.brand');
   if (brand) {
     brand.href = '/';

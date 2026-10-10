@@ -6,7 +6,6 @@
 <section class="v10-shell v10-home v153-home-dashboard">
   <div class="v10-hero"><div><div class="v10-eyebrow">个人工作与生活数字化系统</div><h1>晚上好，{{ app_username }}</h1></div><div class="v10-hero-version">v{{ request.app.version }}</div></div>
   <section class="v10-section home-shortcut-section" data-home-shortcuts><div class="v10-section-head"><div><span class="v10-kicker">快捷入口</span><h2>我的首页模块</h2></div><div class="home-shortcut-toolbar"><button type="button" data-home-shortcut-edit>编辑模块</button><button type="button" data-home-shortcut-cancel hidden>取消</button></div></div><div class="home-shortcut-grid" data-home-shortcut-grid></div></section>
-  <a class="v10-primary" href="/work/number-inbox">查看未加号码</a>
   {% if last_records %}<section class="v10-section"><div class="v10-section-head"><div><span class="v10-kicker">最近生活</span><h2>最近做过</h2></div><a href="/life/records">全部记录 →</a></div><div class="v10-card-grid">{% for row in last_records %}<a class="v10-simple-card" href="/life/records/{{ row.id }}"><strong>{{ row.recipe_name }}</strong><span>{{ row.cooked_at[:10] }}</span>{% if row.rating %}<em>{{ row.rating }}/10</em>{% endif %}</a>{% endfor %}</div></section>{% endif %}
 </section>
 {% endblock %}
