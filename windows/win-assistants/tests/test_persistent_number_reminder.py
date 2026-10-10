@@ -19,7 +19,8 @@ class PersistentNumberReminderTests(unittest.TestCase):
         marker = 'if inbox_event.kind == "new":'
         self.assertIn(marker, source)
         inbox_branch = source[source.index(marker):]
-        self.assertIn("self._show_number_reminder(inbox_event)", inbox_branch)
+        self.assertIn("self.number_reminder_items[inbox_event.item_id] = inbox_event", inbox_branch)
+        self.assertNotIn("self._show_number_reminder(inbox_event)", inbox_branch)
         self.assertNotIn("self._show_window()", inbox_branch)
         self.assertNotIn('self.tray_icon.notify(detail, "新的待录入号码")', inbox_branch)
 

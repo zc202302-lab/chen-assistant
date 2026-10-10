@@ -455,8 +455,8 @@ class WinAssistantsApp:
             if event.kind == "message":
                 if event.code:
                     self.sms_code_var.set(event.code)
-                    self.root.bell()
-                    self._show_window()
+                    self._copy_text(event.code)
+                    self.status_vars["sms"].set("验证码已自动复制到剪贴板")
                 if event.marker:
                     self.config.sms.marker = event.marker
                     self.config.save()
@@ -475,7 +475,8 @@ class WinAssistantsApp:
             if inbox_event.kind == "snapshot":
                 self.number_reminder_items[inbox_event.item_id] = inbox_event
             elif inbox_event.kind == "new":
-                self._show_number_reminder(inbox_event)
+                # Keep new items pending; the popup is exclusively schedule-driven.
+                self.number_reminder_items[inbox_event.item_id] = inbox_event
         self._maybe_show_scheduled_number_reminder()
         self.root.after(1500, self._poll)
 
@@ -710,21 +711,18 @@ class WinAssistantsApp:
         except Exception:
             current_token = ""
         token_var = tk.StringVar(value=current_token)
-        interval_var = tk.IntVar(value=self.config.number_inbox.interval_seconds)
-        reminder_times_var = tk.StringVar(value=", ".join(self.config.number_inbox.reminder_times))
+        reminder_times_var = tk.StringVar(value=" ".join(self.config.number_inbox.reminder_times))
         target_var = tk.StringVar(value=self.config.number_inbox.batch_target)
 
         ttk.Label(frame, text="服务器地址").grid(row=0, column=0, sticky="w", pady=7)
         ttk.Entry(frame, textvariable=api_var, width=57).grid(row=0, column=1, sticky="ew", padx=(12, 0), pady=7)
         ttk.Label(frame, text="提醒连接码").grid(row=1, column=0, sticky="w", pady=7)
         ttk.Entry(frame, textvariable=token_var, show="●", width=57).grid(row=1, column=1, sticky="ew", padx=(12, 0), pady=7)
-        ttk.Label(frame, text="检查间隔（秒）").grid(row=2, column=0, sticky="w", pady=7)
-        ttk.Spinbox(frame, from_=10, to=120, textvariable=interval_var, width=8).grid(row=2, column=1, sticky="w", padx=(12, 0), pady=7)
         ttk.Label(frame, text="定时提醒（最多5个）").grid(row=3, column=0, sticky="w", pady=7)
         ttk.Entry(frame, textvariable=reminder_times_var, width=57).grid(row=3, column=1, sticky="ew", padx=(12, 0), pady=7)
         ttk.Label(
             frame,
-            text="格式示例：09:00, 16:00。新号码仍会即时提醒；关闭提醒窗口后，未完成号码会在下一个设定时间再次弹出。",
+            text="格式示例：09:00 16:00（空格分隔，最多5个）。只在设定时间提醒；没有未加号码时不弹窗。",
             style="Sub.TLabel",
             wraplength=570,
         ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 18))
@@ -753,7 +751,7 @@ class WinAssistantsApp:
             if not token:
                 messagebox.showerror("号码提醒", "请填写提醒连接码。", parent=window)
                 return
-            raw_times = [part.strip() for part in re.split(r"[,，;；\s]+", reminder_times_var.get()) if part.strip()]
+            raw_times = reminder_times_var.get().split()
             if len(raw_times) > 5:
                 messagebox.showerror("号码提醒", "定时提醒最多设置 5 个时间点。", parent=window)
                 return
@@ -765,14 +763,12 @@ class WinAssistantsApp:
                 if value not in reminder_times:
                     reminder_times.append(value)
             try:
-                interval = max(10, min(120, int(interval_var.get())))
                 protected = protect_secret(token)
             except Exception as exc:
                 messagebox.showerror("号码提醒", f"保存连接码失败：{exc}", parent=window)
                 return
             self.config.number_inbox.api_url = api_url
             self.config.number_inbox.protected_token = protected
-            self.config.number_inbox.interval_seconds = interval
             self.config.number_inbox.last_seen_id = 0
             self.config.number_inbox.reminder_times = reminder_times
             self.config.number_inbox.batch_target = target_var.get().strip()

@@ -28,7 +28,8 @@
     "high-frequency-v152.css",
     "reminders.css",
     "workspace-row-numbers.css",
-    "pwa-experience.css"
+    "pwa-experience.css",
+    "home-shortcuts.css"
   ],
   "scripts": [
     "app.js",
@@ -69,7 +70,8 @@
     "live-refresh-modules-v15.js",
     "high-frequency-v152.js",
     "workspace-row-numbers.js",
-    "reminders.js"
+    "reminders.js",
+    "home-shortcuts.js"
   ],
   "dependencies": [
     [

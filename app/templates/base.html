@@ -24,7 +24,7 @@
   <link rel="stylesheet" href="/static/v032_customer_import.css?v=0320">
   <link rel="stylesheet" href="/static/v10.css?v=1000">
   <link rel="stylesheet" href="/static/work-home-polish-v121.css?v=15110">
-  <link rel="stylesheet" href="/static/global-back.css?v=1740">
+  <link rel="stylesheet" href="/static/global-back.css?v=1750">
   <link rel="stylesheet" href="/static/v143_customer_status.css?v=1431">
   <link rel="stylesheet" href="/static/v143_customer_resources.css?v=1431">
   <link rel="stylesheet" href="/static/v124_work_tables.css?v=1241">
@@ -42,6 +42,7 @@
   <title>{% block title %}晨的助手{% endblock %}</title>
   <link rel="stylesheet" href="/static/workspace-row-numbers.css?v=1661">
 <link rel="stylesheet" href="/static/pwa-experience.css?v=1720">
+<link rel="stylesheet" href="/static/home-shortcuts.css?v=1">
 </head>
 <body data-pwa-scope="{{ csrf|default('') }}">
 {% set _path = request.url.path %}
@@ -148,6 +149,7 @@
 {% if _customer_assets %}<script src="/static/high-frequency-v152.js?v=15101"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/workspace-row-numbers.js?v=1661"></script>{% endif %}
 <script src="/static/reminders.js?v=1710"></script>
+<script src="/static/home-shortcuts.js?v=1" data-home-shortcut-script data-csrf="{{ csrf }}"></script>
 </body>
 </html>
 
