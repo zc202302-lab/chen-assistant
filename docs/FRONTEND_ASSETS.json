@@ -103,6 +103,13 @@
       "scripts": [
         "number-inbox-v162.js"
       ]
+    },
+    "/": {
+      "styles": [
+        "work-entry-layout.css",
+        "v12.css"
+      ],
+      "scripts": []
     }
   }
 }

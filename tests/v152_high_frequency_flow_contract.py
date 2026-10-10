@@ -17,7 +17,8 @@ def main():
     assert "def work_customer_management_v14(request: Request, home: str = 'payment')" in workspace_routes
     assert "def dashboard_v027(request: Request, home: str = 'payment')" in home_routes
     assert dashboard.index('data-home-tab="payment"') < dashboard.index('data-home-tab="tasks"')
-    assert 'href="/work/customers">进入客户管理' in home
+    # Homepage task summary was removed; the customer entry remains in navigation.
+    assert '待处理事项' not in home and '未完成待办' not in home
     assert 'href="/work/customers" class="nav-item">◎<span>客户</span>' in base
     assert 'high-frequency-v152.css?v=1525' in base
     assert 'high-frequency-v152.js?v=15101' in base

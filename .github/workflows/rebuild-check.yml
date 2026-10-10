@@ -142,6 +142,8 @@ jobs:
           python tests/number_inbox_archive_contract.py
           python tests/work_entry_layout_contract.py
           python tests/work_entry_layout_acceptance.py
+          python -m unittest discover -s tests -p test_home_shortcuts_contract.py -v
+          python tests/home_module_style_acceptance.py
           python tests/number_inbox_batch_contract.py
           python tests/number_inbox_batch_acceptance.py
 

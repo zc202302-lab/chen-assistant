@@ -94,14 +94,19 @@ def main():
 
             # v1.5.4 keeps the homepage as an overview and exposes the top-level
             # areas through the global primary navigation on every page. Customer
-            # management remains directly reachable from the overview.
+            # management remains directly reachable from the persistent navigation.
             page.goto('http://127.0.0.1:8158/', wait_until='networkidle')
             top_nav = page.locator('nav.global-primary-nav')
             expect(top_nav).to_be_visible()
             expect(top_nav.locator('a[href="/"]')).to_have_attribute('aria-current', 'page')
             expect(top_nav.locator('a[href="/work"]')).to_contain_text('工作')
             expect(top_nav.locator('a[href="/life"]')).to_contain_text('生活')
-            expect(page.locator('.v153-home-dashboard a[href="/work/customers"]').first).to_be_visible()
+            expect(page.get_by_role('heading', name='待处理事项')).to_have_count(0)
+            customer_entry = page.locator('.bottom-nav a[href="/work/customers"]')
+            expect(customer_entry).to_be_visible()
+            customer_entry.click()
+            expect(page.locator('[data-home-tab="payment"]')).to_have_class('active')
+            expect(page.locator('[data-home-panel="payment"]')).to_be_visible()
 
             page.goto(f'http://127.0.0.1:8158/customers/{cid}', wait_until='networkidle')
             page.wait_for_timeout(900)
