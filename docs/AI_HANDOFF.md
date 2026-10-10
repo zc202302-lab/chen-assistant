@@ -2,7 +2,7 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-10（Asia/Shanghai）；用户授权新Web改造，开发中。活动分支feat/compact-navigation，PR #144（https://github.com/zc202302-lab/chen-assistant/pull/144），最后功能提交8c0fdb663371b32c1faf836f63adb72c882929d2；云电脑Draft #128继续暂停。
+- 更新时间：2026-10-10（Asia/Shanghai）；PR #144已合并，Web1.7.7正式发布中；feat/compact-navigation为历史分支。PR #144（https://github.com/zc202302-lab/chen-assistant/pull/144），最后功能提交8c0fdb663371b32c1faf836f63adb72c882929d2；云电脑Draft #128继续暂停。
 - 用户最新需求：取消底部栏和首页“查看未加号码”；生活改为品牌左侧菜单按钮打开的隐藏侧边栏，替代本地“更多”方案。采用原生modal dialog，默认隐藏，支持键盘、Esc、遮罩点击和关闭按钮，原生焦点约束/恢复，展开锁滚动；生活入口仅在抽屉内部显示。
 - 基于实时main e17919fea1d94b578ef43661ee442cb123cb4b12；PR #143已合并，Web1.7.6 main完整验收据上轮已通过，生产资源验证尚待实际核对。当前候选Web1.7.7，Windows0.5.14不变。
 - 已删除全站bottom-nav及首页独立号码按钮；保留工作空间号码收集入口。去掉底栏body/PWA/page/shell预留空白。global-back CSS/JS缓存版本1771，资源沿用清单既有项。
@@ -10,7 +10,7 @@
 - 用户截图本地路径不存在，未查看，按现有模板核对；附件未改动。当前目录/workspace/scratch/e3802da12e9f/chen-assistant-nav。前一目录含旧阶段未提交改动，已隔离worktree保留。
 - 核心文件base.html、home_v10.html、global-back.css/js、相关既有导航/缴费/号码验收。
 - 用户已于2026-10-10 09:49明确允许推送GitHub、验收和发布，先前审批阻塞已解除。命令行Git无认证，使用已连接GitHub API提交；远程提交已完成，完整PR验收38015333713/job114104223650及稳定性38015333720全部success；侧边栏键盘、关闭/焦点恢复、真实跳转、移动防溢出及全部旧功能回归通过。实际1440/390/320截图已查看。
-- 唯一下一步：合并PR #144，正式main验收及发布Web1.7.7并核对公网。尚未部署，不推断用户实际效果。
+- 功能合并提交3851c47b1d83fcc92048c890f96fe50ee4ac1c8a；正式main验收/部署及公网尚待核对，Windows0.5.14不变。\n- 唯一下一步：完成正式main验收和部署，再核对公网Web1.7.7及导航JS/CSS一致性。用户真实操作待确认。
 
 - 首轮截图验收捕获浏览器切换动画InvalidStateError；已观察pageswap/pagereveal的ViewTransition.ready预期取消，保留其他页面错误检查，最新完整回归通过。部署脚本版本及旧缴费底栏断言已同步。
 
