@@ -28,6 +28,7 @@
           || event.clientY < box.top || event.clientY > box.bottom)) sidebar.close();
     });
     sidebar.addEventListener('close', resetSidebar);
+    sidebarToggle.disabled = false;
     sidebar.querySelectorAll('a').forEach(link => link.addEventListener('click', () => sidebar.close()));
     window.addEventListener('pageshow', () => {
       if (sidebar.open) sidebar.close();

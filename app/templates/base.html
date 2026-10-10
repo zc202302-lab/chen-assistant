@@ -53,7 +53,7 @@
 {% set _search_scope = 'info' if _is_info else ('work' if _is_work else 'global') %}
 <header class="topbar">
   <div class="topbar-left">
-    <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-label="打开侧边导航" aria-controls="sidebar-navigation" aria-expanded="false" title="导航">☰</button>
+    <button class="sidebar-toggle" type="button" data-sidebar-toggle disabled aria-label="打开侧边导航" aria-controls="sidebar-navigation" aria-expanded="false" title="导航">☰</button>
     <a class="brand" href="/">晨的助手 <span>v{{ request.app.version }}</span></a>
     <a class="reminder-entry" href="/reminders" aria-label="提醒中心" data-reminder-available="{{ 'false' if request.app.state.reminder_error|default(none) else 'true' }}">提醒<span data-reminder-badge class="reminder-nav-count" hidden></span></a>
   </div>
@@ -108,7 +108,7 @@
 {% if _customer_assets %}<script src="/static/v033_payment_flow_patch.js?v=1591"></script>{% endif %}
 {% if _life_assets %}<script src="/static/v10.js?v=1000"></script>{% endif %}
 <script src="/static/pwa-experience.js?v=1720"></script>
-<script src="/static/global-back.js?v=1771"></script>
+<script src="/static/global-back.js?v=1781"></script>
 <script src="/static/quick-search-v15.js?v=1601"></script>
 {% if _customer_assets %}<script src="/static/v143_customer_status.js?v=1431"></script>{% endif %}
 {% if _life_assets %}<script src="/static/v12.js?v=1200"></script>{% endif %}
