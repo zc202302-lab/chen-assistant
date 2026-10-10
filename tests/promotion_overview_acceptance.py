@@ -14,6 +14,9 @@ def main():
     cid, ids, _, token, _ = seed()
     long_name = '完整优惠内容-含中文与符号<测试>/' + '长内容' * 40
     with db() as conn:
+        conn.execute('UPDATE customers SET payment_enabled=1 WHERE id=?', (cid,))
+        conn.execute('UPDATE services SET monthly_fee=99,payment_interval_months=1,active_from_period=? WHERE id=?',
+                     (date.today().strftime('%Y-%m'), ids[0]))
         pid = conn.execute('INSERT INTO promotions(service_id,name,expiry_date,status,slot_number) VALUES(?,?,?,?,?)',
                            (ids[0], long_name, date.today().isoformat(), 'active', 2)).lastrowid
         conn.execute('INSERT INTO promotions(service_id,name,expiry_date,status,slot_number) VALUES(?,?,?,?,?)',
@@ -34,6 +37,7 @@ def main():
             context.add_cookies([{'name':'session_token', 'value':token, 'url':'http://127.0.0.1:8792'}])
             page = context.new_page()
             page.goto(f'http://127.0.0.1:8792/customers/{cid}?tab=promotions', wait_until='networkidle')
+            assert page.locator(f'[data-payment-row][data-service-id="{ids[0]}"]').count()==1, 'fixture must include an actually due payment row'
             full = page.locator('[data-full-promotions]')
             assert not full.evaluate('(el)=>el.open')
             full.locator('summary').click()
