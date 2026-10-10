@@ -41,7 +41,10 @@ def main():
                 assert len(set(round(b['width']) for b in boxes))==1
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth+1')
                 h=page.locator('[data-history-nav]').bounding_box();r=page.locator('.reminder-entry').bounding_box();s=page.locator('.search-link').bounding_box()
-                assert h['x']>=r['x']+r['width'] and h['x']+h['width']<=s['x']
+                n=page.locator('.global-primary-nav').bounding_box();b=page.locator('[data-history-back]').bounding_box();f=page.locator('[data-history-forward]').bounding_box()
+                assert b['x']+b['width']<=n['x'] and f['x']>=n['x']+n['width']
+                assert abs(b['y']+b['height']/2-(n['y']+n['height']/2))<2
+                assert abs(f['y']+f['height']/2-(n['y']+n['height']/2))<2
                 page.screenshot(path=str(previews/f'work-entries-{width}.png'),full_page=True)
             page.set_viewport_size({'width':1440,'height':1000})
             page.get_by_role('button',name='编辑模块').click()

@@ -24,7 +24,7 @@
   <link rel="stylesheet" href="/static/v032_customer_import.css?v=0320">
   <link rel="stylesheet" href="/static/v10.css?v=1000">
   <link rel="stylesheet" href="/static/work-home-polish-v121.css?v=15110">
-  <link rel="stylesheet" href="/static/global-back.css?v=1771">
+  <link rel="stylesheet" href="/static/global-back.css?v=1780">
   <link rel="stylesheet" href="/static/v143_customer_status.css?v=1431">
   <link rel="stylesheet" href="/static/v143_customer_resources.css?v=1431">
   <link rel="stylesheet" href="/static/v124_work_tables.css?v=1241">
@@ -33,7 +33,7 @@
   <link rel="stylesheet" href="/static/v13_customer_documents.css?v=1300">
   <link rel="stylesheet" href="/static/work-architecture-v14.css?v=1403">
   <link rel="stylesheet" href="/static/information-center-v160.css?v=1600">
-  <link rel="stylesheet" href="/static/responsive-polish-v161.css?v=1740">
+  <link rel="stylesheet" href="/static/responsive-polish-v161.css?v=1780">
   <link rel="stylesheet" href="/static/number-inbox-v162.css?v=1730">
   <link rel="stylesheet" href="/static/task-v164.css?v=1640">
   <link rel="stylesheet" href="/static/quick-search-v15.css?v=1511">
@@ -56,16 +56,16 @@
     <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-label="打开侧边导航" aria-controls="sidebar-navigation" aria-expanded="false" title="导航">☰</button>
     <a class="brand" href="/">晨的助手 <span>v{{ request.app.version }}</span></a>
     <a class="reminder-entry" href="/reminders" aria-label="提醒中心" data-reminder-available="{{ 'false' if request.app.state.reminder_error|default(none) else 'true' }}">提醒<span data-reminder-badge class="reminder-nav-count" hidden></span></a>
-    <div class="global-history-nav" data-history-nav aria-label="页面前进后退">
-      <button class="global-history-button" type="button" data-history-back aria-label="后退" title="后退" disabled aria-disabled="true">←</button>
-      <button class="global-history-button" type="button" data-history-forward aria-label="前进" title="前进" disabled aria-disabled="true">→</button>
-    </div>
   </div>
-  <nav class="global-primary-nav" aria-label="主区域导航">
-    <a href="/"{% if not _is_work and not _is_info and not _is_life %} class="active" aria-current="page"{% endif %}>首页</a>
-    <a href="/work"{% if _is_work %} class="active" aria-current="page"{% endif %}>工作</a>
-    <a href="/info"{% if _is_info %} class="active" aria-current="page"{% endif %}>资料</a>
-  </nav>
+  <div class="global-navigation-group" data-history-nav aria-label="页面导航">
+    <button class="global-history-button" type="button" data-history-back aria-label="后退" title="后退" disabled aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>
+    <nav class="global-primary-nav" aria-label="主区域导航">
+      <a href="/"{% if not _is_work and not _is_info and not _is_life %} class="active" aria-current="page"{% endif %}>首页</a>
+      <a href="/work"{% if _is_work %} class="active" aria-current="page"{% endif %}>工作</a>
+      <a href="/info"{% if _is_info %} class="active" aria-current="page"{% endif %}>资料</a>
+    </nav>
+    <button class="global-history-button" type="button" data-history-forward aria-label="前进" title="前进" disabled aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button>
+  </div>
   <div class="topbar-actions">
     <a class="search-link" href="{{ _search_target }}" aria-label="搜索" data-quick-search-trigger>⌕</a>
   </div>

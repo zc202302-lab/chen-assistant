@@ -112,8 +112,9 @@ def main():
             assert abs(primary_center - history_center) <= 6, (primary_box, history_box)
             search_box = page.locator('.search-link').bounding_box()
             assert search_box and abs(primary_center - (search_box['y'] + search_box['height'] / 2)) <= 6
-            assert page.locator('.topbar-left [data-history-nav]').count() == 1
+            assert page.locator('.topbar-left [data-history-nav]').count() == 0
             b = back.bounding_box(); f = forward.bounding_box()
+            assert b and f and b['x'] + b['width'] <= primary_box['x'] and f['x'] >= primary_box['x'] + primary_box['width']
             assert b and f and b['width'] >= 34 and b['height'] >= 32 and f['width'] >= 34 and f['height'] >= 32
 
             page.goto('http://127.0.0.1:8146/work/customers?home=payment', wait_until='networkidle')
