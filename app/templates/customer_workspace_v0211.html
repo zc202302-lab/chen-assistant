@@ -128,7 +128,7 @@
                 <div class="promo-item-v028" data-promo-item data-promo-id="{{ p.id }}">
                   <button type="button" class="promo-drag-handle" draggable="false" title="按住拖动调整顺序">⠿</button>
                   <button type="button" class="promo-name-copy-v028" data-copy-silent="{{ p.name }}"><strong>{{ p.name or '未命名优惠' }}</strong></button>
-                  <form action="/promotions/{{ p.id }}/expiry-v028" class="promo-expiry-form-v028 selectable-editors" data-promo-expiry-form><input type="hidden" name="csrf" value="{{ csrf }}"><input class="manual-date promo-expiry-input-v028" type="text" inputmode="numeric" name="expiry_date" value="{{ item.expiry_display }}" required placeholder="1900/07/07" pattern="\d{4}/\d{2}/\d{2}"><button class="secondary small">保存</button></form>
+                  <form action="/promotions/{{ p.id }}/expiry-v028" class="promo-expiry-form-v028 selectable-editors" data-promo-expiry-form><input type="hidden" name="csrf" value="{{ csrf }}"><input class="promo-expiry-input-v028" type="text" name="expiry_date" value="{{ item.expiry_display }}" placeholder="到期时间"><button class="secondary small">保存</button></form>
                   <form method="post" action="/promotions/{{ p.id }}/close"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost small">结束</button></form>
                 </div>{% endfor %}
               </div>
@@ -137,8 +137,13 @@
           </section>
           {% endfor %}
         </div>
-        <details class="top-gap"><summary>＋ 添加优惠</summary><form method="post" action="/customers/{{ customer.id }}/promotions-v027" class="stack top-gap selectable-editors" data-preserve-scroll><input type="hidden" name="csrf" value="{{ csrf }}"><div class="form-grid"><label>号码 *<input name="number" required autocomplete="off"></label><label>优惠名称 *<input name="name" required></label><label>到期日期 *<input class="manual-date" type="text" inputmode="numeric" name="expiry_date" required placeholder="1900/07/07" pattern="\d{4}/\d{2}/\d{2}"></label></div><label>备注<textarea name="notes" rows="2"></textarea></label><button class="primary">保存优惠</button></form></details>
+        <details class="top-gap"><summary>＋ 添加优惠</summary><form method="post" action="/customers/{{ customer.id }}/promotions-v027" class="stack top-gap selectable-editors" data-preserve-scroll><input type="hidden" name="csrf" value="{{ csrf }}"><div class="form-grid"><label>号码 *<input name="number" required autocomplete="off"></label><label>优惠名称 *<input name="name" required></label><label>优惠编号<input type="number" name="slot_number" min="1" max="5" step="1" placeholder="自动选择空闲编号"></label><label>到期时间<input type="text" name="expiry_date" placeholder="到期时间"></label></div><label>备注<textarea name="notes" rows="2"></textarea></label><button class="primary">保存优惠</button></form></details>
       </section>
+      <details class="card compact-card full-promotions" data-full-promotions data-table-url="/customers/{{ customer.id }}/promotions/table">
+        <summary>全量优惠 <span class="muted">{{ full_promotions.rows|length }} 行</span></summary>
+        <div class="full-promotions-actions"><a class="secondary small" href="/customers/{{ customer.id }}/promotions/table.xlsx" download>下载 Excel</a><span data-full-promotions-error role="status"></span></div>
+        <div class="full-promotions-scroll"><table data-full-promotions-table><thead><tr>{% for header in full_promotions.headers %}<th scope="col">{{ header }}</th>{% endfor %}</tr></thead><tbody>{% for row in full_promotions.rows %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+      </details>
     </section>
 
     <section class="customer-panel" data-customer-panel="contacts" {% if active_tab!='contacts' %}hidden{% endif %}><section class="card compact-card"><div class="section-head"><h2>联系人</h2><span>{{ contacts|length }} 人</span></div>{% for k in contacts %}<div class="info-row"><div><b>{{ k.name or '未命名联系人' }}</b><small>{{ k.kind }}{% if k.relationship %} · {{ k.relationship }}{% endif %}{% if k.phone %} · {{ k.phone }}{% endif %}</small></div>{% if k.phone %}<button class="copy-btn ghost small" data-copy="{{ k.phone }}">复制电话</button>{% endif %}</div>{% else %}<p class="empty">还没有联系人。</p>{% endfor %}</section></section>
@@ -227,7 +232,7 @@
       <div class="attribute-dialog-head"><div><small>完整业务信息</small><h3>编辑业务</h3></div><button type="button" class="dialog-close" data-business-editor-close>×</button></div>
       <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="service_id">
       <section class="business-editor-section-v029"><div class="business-editor-section-head-v029"><b>业务属性</b></div><div class="global-attribute-list-v028" data-global-attribute-list></div><div class="attribute-editor-toolbar-v028"><button type="button" class="ghost" data-add-global-attribute>＋ 新增属性</button></div></section>
-      <section class="business-editor-section-v029 promotions-editor-v029" data-service-promotions-editor><div class="business-editor-section-head-v029"><b>关联优惠</b><button type="button" class="ghost small" data-add-editor-promotion>＋ 新增优惠</button></div><div class="editor-promo-head-v029"><span>优惠名称</span><span>到期时间</span><span>备注</span><span></span></div><div class="editor-promotion-list-v029" data-editor-promotion-list></div></section>
+      <section class="business-editor-section-v029 promotions-editor-v029" data-service-promotions-editor><div class="business-editor-section-head-v029"><b>关联优惠</b><button type="button" class="ghost small" data-add-editor-promotion>＋ 新增优惠</button></div><div class="editor-promo-head-v029"><span>编号</span><span>优惠名称</span><span>到期时间</span><span>备注</span><span></span></div><div class="editor-promotion-list-v029" data-editor-promotion-list></div></section>
       <div class="attribute-dialog-actions"><button type="button" class="ghost" data-business-editor-close>取消</button><button type="submit" class="primary">保存并关闭</button></div>
     </form>
   </dialog>

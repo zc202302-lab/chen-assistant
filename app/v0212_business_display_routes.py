@@ -14,6 +14,8 @@ from .v027_routes import _meta_get, _meta_set
 from .v028_routes import _template, _custom_map, _service_attrs
 from . import v0212_routes as core
 
+from .promotions import expiry_text
+
 router = APIRouter()
 
 SYSTEM_PAYMENT_STATE_KEY = '__payment_state__'
@@ -143,7 +145,7 @@ def _business_payload_ordered_base(conn, customer_id: int, template, services, p
             'due': core._service_due(service, runtime[service['id']], period),
             'promo_filter': promo_filter,
             'promo_label': promo_label,
-            'promo_nearest': date_text(nearest['expiry_date']) if nearest else '',
+            'promo_nearest': expiry_text(nearest['expiry_date']) if nearest else '',
         })
     return rows
 

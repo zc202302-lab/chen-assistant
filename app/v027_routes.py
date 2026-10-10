@@ -15,6 +15,8 @@ from .payment_v02 import current_period, service_active_in_period, service_is_du
 from .v025_routes import customer_or_404, promotion_or_404, _payment_run
 from .v026_routes import check_csrf, parse_date_text, date_text, month_text, promotion_bucket, display_pair, display_value, ATTR_OPTIONS_026
 
+from .promotions import expiry_text, available_slot
+
 router = APIRouter()
 templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
 APP_VERSION = '0.2.7'
@@ -114,7 +116,7 @@ def customer_workspace_v027(request: Request, customer_id: int, tab: str = 'paym
         attention_rows = []
         for p in promo_rows:
             bucket = promotion_bucket(p['expiry_date'], p['status'])
-            info = {'row': p, 'bucket': bucket, 'expiry_display': date_text(p['expiry_date']), 'start_display': date_text(p['start_date'])}
+            info = {'row': p, 'bucket': bucket, 'expiry_display': expiry_text(p['expiry_date']), 'start_display': date_text(p['start_date'])}
             active_promos_by_service[p['service_id']].append(info)
             if bucket in {'expired', 'soon'}:
                 attention_rows.append(info)
@@ -205,12 +207,12 @@ def payment_column_widths_v027(request: Request, customer_id: int, csrf: str = F
 
 
 @router.post('/customers/{customer_id}/promotions-v027')
-def add_promotion_by_number_v027(request: Request, customer_id: int, csrf: str = Form(...), number: str = Form(...), name: str = Form(...), expiry_date: str = Form(...), notes: str = Form('')):
+def add_promotion_by_number_v027(request: Request, customer_id: int, csrf: str = Form(...), number: str = Form(...), name: str = Form(...), expiry_date: str = Form(''), slot_number: str = Form(''), notes: str = Form('')):
     check_csrf(request, csrf)
     number = number.strip()
     if not number:
         raise HTTPException(400, '必须填写号码')
-    expiry_iso = parse_date_text(expiry_date, required=True, field='优惠到期日期')
+    expiry_iso = expiry_date
     with db() as conn:
         customer_or_404(conn, customer_id)
         candidates = conn.execute(
@@ -221,18 +223,19 @@ def add_promotion_by_number_v027(request: Request, customer_id: int, csrf: str =
         service = next((s for s in candidates if service_active_in_period(s, current_period())), None)
         if not service:
             raise HTTPException(400, '没有找到这个客户下对应的在用号码，请先在“业务”中添加或核对号码')
+        slot = available_slot(conn, service['id'], slot_number)
         conn.execute(
-            '''INSERT INTO promotions(service_id,name,start_date,expiry_date,remind_days,status,renewed_at,notes,created_at)
-               VALUES(?,?,?,?,60,'active','',?,?)''',
-            (service['id'], name.strip(), '', expiry_iso, notes.strip(), now_iso()),
+            '''INSERT INTO promotions(slot_number,service_id,name,start_date,expiry_date,remind_days,status,renewed_at,notes,created_at)
+               VALUES(?,?,?,?,?,60,'active','',?,?)''',
+            (slot, service['id'], name.strip(), '', expiry_iso, notes.strip(), now_iso()),
         )
     return RedirectResponse(f'/customers/{customer_id}?tab=promotions', 303)
 
 
 @router.post('/promotions/{promotion_id}/expiry-v027')
-def update_promotion_expiry_v027(request: Request, promotion_id: int, csrf: str = Form(...), expiry_date: str = Form(...)):
+def update_promotion_expiry_v027(request: Request, promotion_id: int, csrf: str = Form(...), expiry_date: str = Form('')):
     check_csrf(request, csrf)
-    expiry_iso = parse_date_text(expiry_date, required=True, field='优惠到期日期')
+    expiry_iso = expiry_date
     with db() as conn:
         old = promotion_or_404(conn, promotion_id)
         conn.execute("UPDATE promotions SET expiry_date=?,status='active',renewed_at=? WHERE id=?", (expiry_iso, now_iso(), promotion_id))

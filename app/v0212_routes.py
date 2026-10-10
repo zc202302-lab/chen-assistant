@@ -26,6 +26,8 @@ from .v027_routes import _meta_get, _meta_set
 from .v028_routes import _template, _custom_map, _service_attrs, _promo_columns
 from .v0211_routes import _payment_columns, _payment_widths, _payment_cells
 
+from .promotions import table_payload
+
 router = APIRouter()
 templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
 APP_VERSION = '0.2.12'
@@ -266,6 +268,7 @@ def customer_workspace_v0212(request: Request, customer_id: int, tab: str = 'pay
                ORDER BY p.expiry_date,p.id''',
             (customer_id,),
         ).fetchall()
+        full_promotions = table_payload(conn, customer_id)
         promo_columns = _promo_columns(conn, customer_id, promo_rows)
         promo_attention = sum(len(g['items']) for groups in promo_columns.values() for g in groups)
 
@@ -311,6 +314,7 @@ def customer_workspace_v0212(request: Request, customer_id: int, tab: str = 'pay
             business_rows=business_rows,
             service_types=service_types,
             promo_columns=promo_columns,
+            full_promotions=full_promotions,
             promo_attention=promo_attention,
             contacts=contacts,
             tasks=tasks,

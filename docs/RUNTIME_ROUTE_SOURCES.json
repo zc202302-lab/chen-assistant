@@ -1048,6 +1048,22 @@
     "qualname": "close_service_promotion_v0211"
   },
   {
+    "path": "/customers/{customer_id}/promotions/table",
+    "methods": [
+      "GET"
+    ],
+    "source": "v0211_promotion_routes.py",
+    "qualname": "full_promotions_table"
+  },
+  {
+    "path": "/customers/{customer_id}/promotions/table.xlsx",
+    "methods": [
+      "GET"
+    ],
+    "source": "v0211_promotion_routes.py",
+    "qualname": "download_full_promotions_table"
+  },
+  {
     "path": "/customers/{customer_id}/payment-columns-v0211",
     "methods": [
       "POST"

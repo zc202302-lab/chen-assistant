@@ -29,26 +29,6 @@
     try { await navigator.clipboard.writeText(value); return true; } catch (_) { return false; }
   };
 
-  const formatDateDigits = value => {
-    const d = String(value || '').replace(/\D/g, '').slice(0, 8);
-    if (d.length <= 4) return d;
-    if (d.length <= 6) return d.slice(0, 4) + '/' + d.slice(4);
-    return d.slice(0, 4) + '/' + d.slice(4, 6) + '/' + d.slice(6);
-  };
-
-  const bindDate = input => {
-    input.inputMode = 'numeric';
-    input.placeholder = '1900/07/07';
-    input.addEventListener('input', () => {
-      input.value = formatDateDigits(input.value);
-      input.setCustomValidity('');
-    });
-    input.addEventListener('blur', () => {
-      if (!input.value) return input.setCustomValidity('');
-      input.setCustomValidity(/^\d{4}\/\d{2}\/\d{2}$/.test(input.value) ? '' : '日期格式必须为 1900/07/07');
-    });
-  };
-
   const makeInput = (cls, value, placeholder='') => {
     const input = document.createElement('input');
     input.type = 'text';
@@ -64,9 +44,12 @@
     row.className = 'editor-promo-row-v029 selectable-editors';
     row.dataset.promoId = promo.id || '';
 
+    const slot = makeInput('editor-promo-slot', String(promo.slot_number || ''), '1～5');
+    slot.type = 'number'; slot.min = '1'; slot.max = '5'; slot.step = '1';
+    slot.setAttribute('aria-label', '优惠编号');
     const name = makeInput('editor-promo-name-v029', promo.name, '优惠名称');
-    const expiry = makeInput('editor-promo-expiry-v029 manual-date', promo.expiry_date, '1900/07/07');
-    bindDate(expiry);
+    const expiry = makeInput('editor-promo-expiry-v029', promo.expiry_date, '1900/07/07');
+    expiry.setAttribute('aria-label', '到期时间');
     const notes = makeInput('editor-promo-notes-v029', promo.notes, '备注');
 
     const actions = document.createElement('div');
@@ -82,7 +65,7 @@
     close.textContent = promo.id ? '结束' : '取消';
     close.dataset.editorPromoClose = '1';
     actions.append(save, close);
-    row.append(name, expiry, notes, actions);
+    row.append(slot, name, expiry, notes, actions);
     return row;
   };
 
@@ -125,7 +108,10 @@
 
   addButton?.addEventListener('click', () => {
     list.querySelector('.editor-promo-empty-v029')?.remove();
-    const row = renderRow({id:'', name:'', expiry_date:'', notes:''});
+    const used = new Set([...list.querySelectorAll('.editor-promo-slot')].map(el => Number(el.value)));
+    const next = [1,2,3,4,5].find(n => !used.has(n));
+    if (!next) return toast('优惠1～5已全部占用');
+    const row = renderRow({id:'', slot_number:next, name:'', expiry_date:'', notes:''});
     list.appendChild(row);
     row.querySelector('.editor-promo-name-v029')?.focus();
   });
@@ -146,13 +132,15 @@
       const expiry = row.querySelector('.editor-promo-expiry-v029');
       const notes = row.querySelector('.editor-promo-notes-v029');
       if (!name.value.trim()) return toast('优惠名称不能为空');
-      if (!/^\d{4}\/\d{2}\/\d{2}$/.test(expiry.value)) return toast('日期格式应为 1900/07/07');
+      const slot = row.querySelector('.editor-promo-slot');
+      if (!slot.checkValidity() || !slot.value) return toast('优惠编号须为1～5');
       row.classList.add('is-saving');
       const fd = new FormData();
       fd.append('csrf', csrf);
       fd.append('promotion_id', row.dataset.promoId || '');
       fd.append('name', name.value.trim());
       fd.append('expiry_date', expiry.value);
+      fd.append('slot_number', slot.value);
       fd.append('notes', notes.value || '');
       try {
         const r = await fetch(`/services/${currentServiceId}/promotions-editor-v029`, {method:'POST', body:fd, credentials:'same-origin'});
@@ -162,6 +150,11 @@
         name.value = data.name || '';
         expiry.value = data.expiry_date || '';
         notes.value = data.notes || '';
+        slot.value = String(data.slot_number);
+        [...list.querySelectorAll('.editor-promo-row-v029')]
+          .sort((a,b) => Number(a.querySelector('.editor-promo-slot').value) - Number(b.querySelector('.editor-promo-slot').value))
+          .forEach(item => list.appendChild(item));
+        root.dispatchEvent(new CustomEvent('chen:promotions-updated'));
         const close = row.querySelector('[data-editor-promo-close]');
         if (close) close.textContent = '结束';
         root.dispatchEvent(new CustomEvent('chen:promotion-name-updated', {detail:{
@@ -196,6 +189,7 @@
           if (group && !group.querySelector('[data-promo-item]')) group.remove();
         });
         if (!list.querySelector('.editor-promo-row-v029')) render([]);
+        root.dispatchEvent(new CustomEvent('chen:promotions-updated'));
         toast('已结束');
       } catch (_) {
         toast('优惠结束失败');
@@ -309,4 +303,33 @@
     e.stopImmediatePropagation();
     beginInlineRename(btn);
   }, true);
+  const full = root.querySelector('[data-full-promotions]');
+  let tableRequest = 0;
+  const refreshTable = async () => {
+    if (!full) return;
+    const seq = ++tableRequest;
+    const error = full.querySelector('[data-full-promotions-error]');
+    try {
+      const response = await fetch(full.dataset.tableUrl, {credentials:'same-origin', cache:'no-store'});
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error('load failed');
+      if (seq !== tableRequest) return;
+      const body = full.querySelector('tbody');
+      const fragment = document.createDocumentFragment();
+      data.rows.forEach(cells => {
+        const tr = document.createElement('tr');
+        cells.forEach(value => { const td=document.createElement('td'); td.textContent=value; tr.appendChild(td); });
+        fragment.appendChild(tr);
+      });
+      body.replaceChildren(fragment);
+      full.querySelector('summary span').textContent = `${data.rows.length} 行`;
+      error.textContent = '';
+    } catch (_) {
+      if (seq === tableRequest) error.textContent = '全量优惠刷新失败，请重试';
+    }
+  };
+  full?.addEventListener('toggle', () => { if (full.open) refreshTable(); });
+  root.addEventListener('chen:promotions-updated', refreshTable);
+  root.addEventListener('chen:promotion-name-updated', refreshTable);
+  root.querySelector('[data-customer-tab="promotions"]')?.addEventListener('click', refreshTable);
 })();

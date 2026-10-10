@@ -108,10 +108,11 @@ def promotion_bucket(expiry_date: str, status: str = 'active') -> str:
     raw = (expiry_date or '').strip()
     if not raw:
         return 'later'
-    try:
-        exp_period = date.fromisoformat(raw[:10]).strftime('%Y-%m')
-    except Exception:
+    from .promotions import expiry_day
+    expiry = expiry_day(raw)
+    if expiry is None:
         return 'later'
+    exp_period = expiry.strftime('%Y-%m')
     now_period = current_period()
     next_month = period_shift(now_period, 1)
     next_next = period_shift(now_period, 2)

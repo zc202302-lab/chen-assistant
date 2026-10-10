@@ -10,6 +10,7 @@ SCHEMA_STAGES = {
         ('v162_number_inbox', 'ensure_number_inbox_schema'),
     ),
     'runtime': (
+        ('promotions', 'ensure_promotion_schema'),
         ('v10_routes', 'ensure_v10_schema'),
         ('v160_information_center', 'ensure_v160_schema'),
         ('work_lists', 'ensure_work_lists_schema'),

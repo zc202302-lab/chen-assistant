@@ -251,6 +251,8 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: |
           python tests/production_experience_regression.py
+          python tests/promotion_slots_contract.py
+          python tests/promotion_slots_acceptance.py
           python tests/promotion_render_regression.py
           python tests/promotion_rename_route_regression.py
 
