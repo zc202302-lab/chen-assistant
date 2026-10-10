@@ -2,17 +2,21 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-10 08:33（Asia/Shanghai）。工作模式：继续开发，PR #142完整验收通过并已合并，正式发布中；云电脑Draft #128仍暂停。
-- 最新用户要求：继续开发chen-assistant。接管后按当前活动任务恢复Web1.7.5/Windows0.5.14交付，没有启用历史PR或修改附件。
-- 功能合并提交：c4c36efb4c9646626201bcb19a023002da9d9ed6；原活动分支feat/scheduled-number-silent-sms-home-modules与PR #142已成为历史。PR最终head8e45a46c99f2e71aca712f8e636eb1d468ddbead；重跑CI功能head0df4934ed87069977dab2bc972573533d6f1d884，二者仅AI_HANDOFF文档不同，已实际git diff确认。
-- 上传额度已实际恢复：2026-10-10 08:23原生Windows job114083703275成功，5张截图ZIP90207字节成功上传，artifact11652171837。随后安装包构建/上传成功，未绕过上传或测试。
-- PR完整Web验收run37873643289/job114083864824 success，包含完整浏览器回归、安全审计、旧功能兼容；生产预检114083865868 success。PR Windows run37873643307：源码114083889563、构建114083860103、原生界面114083861258、真实冻结更新回滚/Excel文件锁114084926909全部success。PR上的发布/生产部署按预期skipped。
-- 本地Windows87项：83通过、4GUI由原生Windows全部通过；首页快捷入口4项、架构治理、186条既有路由契约、Python/JS语法均通过。已查看短信、号码提醒及设置的实际Windows截图。初次首页测试因缺fastapi未执行，安装仓库requirements后重跑4项全部通过。
-- main自动清理工作流保持：合并预演无冲突，合并树artifact-cleanup.yml blob与main完全一致（835dfac57449c5f85ffb520df05e28f033d2124f），未删除清理机制。
-- 当前产品功能：Windows定时号码提醒不即时弹出、最多5个空格分隔时间；短信验证码后台自动复制；顶部栏对齐；首页快捷模块编辑及跨空间模块发送首页，保留原空间模块。
-- 正式main构建、Web部署、Windows release和公网整包校验尚待本轮新run证据；不能把PR成功视为已经发布。用户安装与真实业务验收未知。
-- 开发目录：/workspace/scratch/e3802da12e9f/chen-assistant，完整git checkout；权威源码GitHub main。附件未修改。
-- 唯一下一步：核验合并提交c4c36ef的main正式CI/部署/release，再确认公网Web1.7.5与Windows0.5.14清单及完整EXE大小/SHA256；完成后更新交接。
+- 更新时间：2026-10-10 08:46（Asia/Shanghai）。工作模式：本轮开发交付完成，Web1.7.5/Windows0.5.14正式发布及公网验证通过，等待用户升级/实机反馈；云电脑Draft #128继续暂停。
+- 最新用户要求：继续开发chen-assistant。按最新快照接续PR #142，恢复上传验收、完整回归、合并发布；没有修改上传附件或操作真实集团业务。
+- PR #142已合并；feat/scheduled-number-silent-sms-home-modules为历史分支。功能合并提交c4c36efb4c9646626201bcb19a023002da9d9ed6；最终发布验收提交0a9a830cb56c83642fe6d2686cf0f3f4c9344e09。当前main head从GitHub实时读取，不预填本次文档自身SHA。
+- 功能：Windows号码按最多5个空格分隔设定时间提醒、不即时弹出；短信验证码后台自动复制；顶部栏水平对齐；首页快捷模块编辑及跨空间模块发送首页，原空间模块保留。
+- 上传额度已实际恢复，原生Windows截图ZIP90207字节上传成功，后续正式安装包/网页截图上传成功。未绕过上传、冻结EXE验收或删除/弱化测试。main自动产物清理机制保留，后续cleanup run38010079627成功。
+- PR完整Web run37873643289/job114083864824 success；Windows run37873643307源码、构建、原生界面、真实冻结更新回滚/Excel文件锁全部success。PR最终head8e45a46与重跑功能head0df4934仅交接文档不同，实际diff已核对。
+- 正式main发布提交0a9a830：完整validation38009629559/job114086373782 success；生产稳定性复检114088918756 success；部署任务114089006609 success。稳定性38009629538与workspace syntax38009629539均success。该发布检查提交本身只改workflow release说明和公网检查脚本；其部署scope按实际改动判断，公网版本/资源另以实际检查确认，不推断生产精确commit。
+- Windows正式构建发布38009629580全部success：构建114086373953、源码114086374086、原生界面114086374135、真实冻结更新回滚及Excel文件锁114087438241、发布114087649205。PR及正式包都通过真实Windows验收。
+- 公网Web38009629548/job114086373654 success，2026-10-10 08:35:17（Asia/Shanghai）ONLINE VERIFIED v1.7.5，首页新JS/CSS、顶部栏global-back.css及既有受检资源与源码一致。
+- Windowsrelease清单与公网均为0.5.14；完整EXE71671450字节，SHA256 bfe382233e2a8e687d7677c1f5d4f4aad757ee2e9d4838baebae82bf239236ca。公网整包38010079637/job114087803157 success，2026-10-10 08:45:13（Asia/Shanghai）ONLINE VERIFIED。初期公网仍0.5.13，自动同步后完整下载大小/SHA256全部匹配；本地HTTPS另确认清单0.5.14。
+- 合并说明默认带入历史skip-ci标记，最初未启动正式main流程；已追加正常发布检查提交0a9a830，更新准确安装包说明并把首页新增资源纳入公网一致性校验，正式完整CI/发布最终通过。
+- 本地Windows87项（83通过，4GUI由原生Windows通过）、首页快捷入口4项、架构治理、186条既有路由契约及Python/JS语法通过。Windows短信、号码提醒、设置实际截图已目视检查。
+- 用户升级入口：Windows助手“设置→检查更新”升级0.5.14；Web已为1.7.5。用户安装/真实业务结果未知，不由CI和公网发布推断。
+- 开发目录：/workspace/scratch/e3802da12e9f/chen-assistant为完整git checkout；源码权威GitHub main。核心文件：app/v101_workspace_routes.py、home-shortcuts.js/css、global-back.css、base.html；Windows app.py及silent/persistent reminder测试；公网检查脚本与cross-build workflow。
+- 唯一下一步：用户通过统一检查更新升级0.5.14，核验定时号码提醒、后台验证码复制及首页快捷模块；或按下一项明确需求继续。#128仍暂停，历史Open PR不自动成为当前任务。
 
 ---
 
