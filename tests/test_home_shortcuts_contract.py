@@ -12,6 +12,8 @@ class HomeShortcutContractTests(unittest.TestCase):
             {"href": "/customers", "title": "全部客户"},
             {"href": "/search", "title": "工作搜索"},
             {"href": "/info", "title": "资料"},
+            {"href": "/work/customers?home=payment", "title": "缴费"},
+            {"href": "/work/customers?home=promos", "title": "优惠"},
             {"href": "/life/recipes", "title": "菜谱"},
         ]
         self.assertEqual(_validated_home_shortcuts(values), values)
@@ -19,7 +21,8 @@ class HomeShortcutContractTests(unittest.TestCase):
     def test_cannot_send_external_or_dynamic_content(self):
         for href in ("https://example.com", "//example.com", "/customers/123",
                      "/life/recipes/123", "/work/number-inbox?pending=1",
-                     "/life/%2e%2e/admin", "/logout"):
+                     "/life/%2e%2e/admin", "/logout", "/work/customers?home=tasks",
+                     "/work/customers?home=payment&extra=1", "/work/customers?home=promos#x"):
             with self.subTest(href=href), self.assertRaises(ValueError):
                 _validated_home_shortcuts([{"href": href, "title": "bad"}])
 

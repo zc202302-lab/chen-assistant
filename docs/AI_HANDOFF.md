@@ -2,21 +2,15 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-10 08:46（Asia/Shanghai）。工作模式：本轮开发交付完成，Web1.7.5/Windows0.5.14正式发布及公网验证通过，等待用户升级/实机反馈；云电脑Draft #128继续暂停。
-- 最新用户要求：继续开发chen-assistant。按最新快照接续PR #142，恢复上传验收、完整回归、合并发布；没有修改上传附件或操作真实集团业务。
-- PR #142已合并；feat/scheduled-number-silent-sms-home-modules为历史分支。功能合并提交c4c36efb4c9646626201bcb19a023002da9d9ed6；最终发布验收提交0a9a830cb56c83642fe6d2686cf0f3f4c9344e09。当前main head从GitHub实时读取，不预填本次文档自身SHA。
-- 功能：Windows号码按最多5个空格分隔设定时间提醒、不即时弹出；短信验证码后台自动复制；顶部栏水平对齐；首页快捷模块编辑及跨空间模块发送首页，原空间模块保留。
-- 上传额度已实际恢复，原生Windows截图ZIP90207字节上传成功，后续正式安装包/网页截图上传成功。未绕过上传、冻结EXE验收或删除/弱化测试。main自动产物清理机制保留，后续cleanup run38010079627成功。
-- PR完整Web run37873643289/job114083864824 success；Windows run37873643307源码、构建、原生界面、真实冻结更新回滚/Excel文件锁全部success。PR最终head8e45a46与重跑功能head0df4934仅交接文档不同，实际diff已核对。
-- 正式main发布提交0a9a830：完整validation38009629559/job114086373782 success；生产稳定性复检114088918756 success；部署任务114089006609 success。稳定性38009629538与workspace syntax38009629539均success。该发布检查提交本身只改workflow release说明和公网检查脚本；其部署scope按实际改动判断，公网版本/资源另以实际检查确认，不推断生产精确commit。
-- Windows正式构建发布38009629580全部success：构建114086373953、源码114086374086、原生界面114086374135、真实冻结更新回滚及Excel文件锁114087438241、发布114087649205。PR及正式包都通过真实Windows验收。
-- 公网Web38009629548/job114086373654 success，2026-10-10 08:35:17（Asia/Shanghai）ONLINE VERIFIED v1.7.5，首页新JS/CSS、顶部栏global-back.css及既有受检资源与源码一致。
-- Windowsrelease清单与公网均为0.5.14；完整EXE71671450字节，SHA256 bfe382233e2a8e687d7677c1f5d4f4aad757ee2e9d4838baebae82bf239236ca。公网整包38010079637/job114087803157 success，2026-10-10 08:45:13（Asia/Shanghai）ONLINE VERIFIED。初期公网仍0.5.13，自动同步后完整下载大小/SHA256全部匹配；本地HTTPS另确认清单0.5.14。
-- 合并说明默认带入历史skip-ci标记，最初未启动正式main流程；已追加正常发布检查提交0a9a830，更新准确安装包说明并把首页新增资源纳入公网一致性校验，正式完整CI/发布最终通过。
-- 本地Windows87项（83通过，4GUI由原生Windows通过）、首页快捷入口4项、架构治理、186条既有路由契约及Python/JS语法通过。Windows短信、号码提醒、设置实际截图已目视检查。
-- 用户升级入口：Windows助手“设置→检查更新”升级0.5.14；Web已为1.7.5。用户安装/真实业务结果未知，不由CI和公网发布推断。
-- 开发目录：/workspace/scratch/e3802da12e9f/chen-assistant为完整git checkout；源码权威GitHub main。核心文件：app/v101_workspace_routes.py、home-shortcuts.js/css、global-back.css、base.html；Windows app.py及silent/persistent reminder测试；公网检查脚本与cross-build workflow。
-- 唯一下一步：用户通过统一检查更新升级0.5.14，核验定时号码提醒、后台验证码复制及首页快捷模块；或按下一项明确需求继续。#128仍暂停，历史Open PR不自动成为当前任务。
+- 更新时间：2026-10-10 09:06（Asia/Shanghai）。工作模式：用户明确要求三项Web改造，开发中；活动分支feat/home-module-style-work-payments，PR待创建；云电脑Draft #128继续暂停。
+- 用户最新需求：发送到首页的模块保持原卡片样式；删除首页待处理业务栏；工作空间新增缴费、优惠模块。
+- 基于main9899b2ae117178580a02649443eb4f1c1d2fedac。生产Web1.7.5/Windows0.5.14发布并公网验证通过；本轮候选Web1.7.6，Windows无改动。
+- 已实现：首页从原空间读取当前模块卡片，保留图标、配色、说明和实时数量；原样式CSS按首页作用域加载；已有首页记录不用重新发送。来源读取失败保留可用入口，不删除已保存数据。首页待处理事项整栏删除。工作空间新增缴费/优惠，直达现有客户工作台对应页签，支持排序和发送首页。
+- 已有7项排序布局读取时保持原顺序，仅将新入口补入辅助区；保存仍严格校验全部9项、不允许重复。首页仅额外允许两条确切payment/promos查询地址，其余查询/外链仍拒绝。
+- 本地：旧布局迁移/保存、首页地址校验4项、架构治理、186条既有路由契约及语法通过；本机Chromium下载返回损坏包，浏览器验收交由完整CI执行。新增真实浏览器跨工作/资料/生活发送首页、CSS/图标/实时摘要比较、桌面/手机、防溢出、编辑取消/保存、页签直达、临时来源失败恢复验收。
+- 已查看用户两张截图确认原工作卡片带图标/数量而首页简化为纯文字。附件未修改。开发目录/workspace/scratch/e3802da12e9f/chen-assistant，GitHub为权威源码。
+- 核心文件：home-shortcuts.js/css、home_v10.html、work_shell_v14.html、work_architecture.py、v101_workspace_routes.py、FRONTEND_ASSETS.json及home_module_style_acceptance.py。
+- 唯一下一步：提交PR并检查完整CI/新浏览器验收，修复实际失败后发布Web1.7.6并核对公网资源。当前候选未合并/部署，用户安装及真实业务未知。
 
 ---
 

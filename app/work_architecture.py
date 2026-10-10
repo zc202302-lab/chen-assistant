@@ -73,9 +73,11 @@ WORK_ENTRIES = (
     {'key': 'products', 'title': '产品汇总', 'href': '/products', 'icon': 'product', 'color': 'orange', 'description': '业务类型与客户分布'},
     {'key': 'search', 'title': '工作搜索', 'href': '/search', 'icon': 'search', 'color': 'slate', 'description': '查询客户、号码与账号'},
     {'key': 'numbers', 'title': '号码收集', 'href': '/work/number-inbox', 'icon': 'phone', 'color': 'teal', 'description': '收集与批量录入号码'},
+    {'key': 'payment', 'title': '缴费', 'href': '/work/customers?home=payment', 'icon': 'wallet', 'color': 'blue', 'description': '缴费查询与流程处理'},
+    {'key': 'promos', 'title': '优惠', 'href': '/work/customers?home=promos', 'icon': 'tag', 'color': 'orange', 'description': '优惠到期与客户跟进'},
 )
 DEFAULT_ENTRY_LAYOUT = {'common': ['customers', 'library', 'lists'],
-                        'auxiliary': ['all_customers', 'products', 'search', 'numbers']}
+                        'auxiliary': ['all_customers', 'products', 'search', 'numbers', 'payment', 'promos']}
 LAYOUT_KEY = 'work_entry_layout_v1'
 
 
@@ -95,7 +97,16 @@ def entry_layout(conn):
     import json
     row = conn.execute('SELECT value FROM app_meta WHERE key=?', (LAYOUT_KEY,)).fetchone()
     try:
-        return validate_entry_layout(json.loads(row['value'])) if row else DEFAULT_ENTRY_LAYOUT
+        if not row:
+            return DEFAULT_ENTRY_LAYOUT
+        layout = json.loads(row['value'])
+        # Keep the user's existing ordering when introducing new modules.
+        if isinstance(layout, dict) and set(layout) == {'common', 'auxiliary'} and all(isinstance(v, list) for v in layout.values()):
+            keys = layout['common'] + layout['auxiliary']
+            legacy_keys = {e['key'] for e in WORK_ENTRIES} - {'payment', 'promos'}
+            if all(isinstance(k, str) for k in keys) and len(keys) == len(set(keys)) and set(keys) == legacy_keys:
+                layout['auxiliary'] += ['payment', 'promos']
+        return validate_entry_layout(layout)
     except (ValueError, TypeError):
         return DEFAULT_ENTRY_LAYOUT
 

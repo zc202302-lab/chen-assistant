@@ -3,7 +3,9 @@
   const script = document.querySelector('script[data-home-shortcut-script]');
   const csrf = script?.dataset.csrf || '';
   const endpoint = '/home/shortcuts';
-  const permitted = href => /^\/(?:(?:work|info|life)(?:\/[a-z][a-z0-9_-]*){0,2}|customers|products|search|accounts)$/.test(href);
+  const permitted = href => ['/work/customers?home=payment', '/work/customers?home=promos'].includes(href) || /^\/(?:(?:work|info|life)(?:\/[a-z][a-z0-9_-]*){0,2}|customers|products|search|accounts)$/.test(href);
+  const moduleSelector = '.work-entry-link, .info-overview-card-v160, .v12-life-card, .v10-stat-card, .v10-simple-card';
+  const moduleCards = new Map();
   let items = [];
   async function load() {
     const response = await fetch(endpoint, {credentials: 'same-origin'});
@@ -52,6 +54,32 @@
     const edit = home.querySelector('[data-home-shortcut-edit]');
     const cancel = home.querySelector('[data-home-shortcut-cancel]');
     let editing = false, snapshot = [];
+    async function loadModuleCards() {
+      const sources = new Set(items.map(item => {
+        if (item.href.startsWith('/life')) return '/life';
+        if (item.href.startsWith('/info') || item.href === '/accounts') return '/info';
+        return '/work';
+      }));
+      const results = await Promise.allSettled([...sources].map(async source => {
+        const response = await fetch(source, {credentials: 'same-origin'});
+        if (!response.ok || new URL(response.url).pathname !== source) throw new Error('读取原模块失败');
+        const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+        page.querySelectorAll(moduleSelector).forEach(link => {
+          const href = link.getAttribute('href');
+          if (!permitted(href) || moduleCards.has(href)) return;
+          // Reuse the current source card, including its icon and live summary.
+          // Saved shortcuts never contain client-supplied HTML or styles.
+          const node = (link.closest('.work-entry-tile') || link).cloneNode(true);
+          node.querySelectorAll('script, style, [data-entry-handle], .work-home-pin').forEach(el => el.remove());
+          [node, ...node.querySelectorAll('*')].forEach(el => {
+            el.removeAttribute('id');
+            [...el.attributes].filter(attr => attr.name.startsWith('on')).forEach(attr => el.removeAttribute(attr.name));
+          });
+          moduleCards.set(href, {node, scope: source === '/work' ? 'work-entry-launcher' : source === '/info' ? 'info-center-v160' : 'home-life-module'});
+        });
+      }));
+      if (results.some(result => result.status === 'rejected')) status('部分原模块暂时无法读取，仍可点击入口进入；刷新可重试。');
+    }
     function render() {
       grid.replaceChildren();
       if (!items.length) {
@@ -60,8 +88,16 @@
       }
       items.forEach((item, index) => {
         const card = document.createElement('div'); card.className = 'home-shortcut-tile';
-        const link = document.createElement('a'); link.href = item.href; link.textContent = item.title;
-        card.append(link);
+        card.dataset.homeModuleHref = item.href;
+        const original = moduleCards.get(item.href);
+        if (original) {
+          card.classList.add('home-shortcut-source', original.scope);
+          card.append(original.node.cloneNode(true));
+        } else {
+          card.classList.add('home-shortcut-fallback');
+          const link = document.createElement('a'); link.href = item.href; link.textContent = item.title;
+          card.append(link);
+        }
         if (editing) {
           const actions = document.createElement('span'); actions.className = 'home-shortcut-controls';
           const change = (i, j) => { [items[i], items[j]] = [items[j], items[i]]; render(); };
@@ -81,7 +117,7 @@
       finally { edit.disabled = false; }
     });
     cancel.addEventListener('click', () => { items = snapshot; editing = false; cancel.hidden = true; edit.textContent = '编辑模块'; render(); });
-    load().then(render).catch(error => status(error.message));
+    load().then(loadModuleCards).then(render).catch(error => status(error.message));
     return;
   }
   // Work has an existing edit mode: only show the pin control while editing.
@@ -108,7 +144,7 @@
   const shell = document.querySelector('.v10-shell, .info-shell, main');
   if (!shell) return;
   const candidates = [...shell.querySelectorAll('a[href]')].filter(link =>
-    permitted(link.getAttribute('href')) && link.closest('.v10-stat-grid, .v10-card-grid, .v10-life-feature, .info-module-grid, .info-home-grid, .info-overview-v160'));
+    permitted(link.getAttribute('href')) && link.closest('.v10-stat-grid, .v10-card-grid, .v10-life-feature, .v12-life-grid, .info-module-grid, .info-home-grid, .info-overview-v160'));
   if (!candidates.length) return;
   const toolbar = document.createElement('div'); toolbar.className = 'home-shortcut-toolbar';
   const toggle = button('编辑模块', () => {
