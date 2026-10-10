@@ -24,9 +24,9 @@ def main():
             context = browser.new_context(viewport={'width':1440,'height':1000},accept_downloads=True)
             context.add_cookies([{'name':'session_token','value':token,'url':'http://127.0.0.1:8791'}])
             page = context.new_page()
-            page.goto(f'http://127.0.0.1:8791/customers/{cid}?tab=services')
+            page.goto(f'http://127.0.0.1:8791/customers/{cid}?tab=services', wait_until='networkidle')
             with page.expect_response(lambda r:'/promotions-editor-v029' in r.url and r.request.method=='GET'):
-                page.locator(f'[data-business-row][data-service-id="{ids[0]}"] [data-open-service-editor]').click()
+                page.locator(f'[data-business-row][data-service-id="{ids[0]}"] .business-attribute').first.dblclick()
             dialog = page.locator('#businessAttributeDialog')
             dialog.wait_for(state='visible')
             expect(dialog.locator('.editor-promo-empty-v029')).to_have_text('暂无优惠')
