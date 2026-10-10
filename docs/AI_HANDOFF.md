@@ -2,6 +2,19 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-10（Asia/Shanghai）。用户要求久坐助手参考“无人确认”，新增可设置秒数的“有人确认”；开发中，活动分支feat/sedentary-presence-confirmation，PR #146（https://github.com/zc202302-lab/chen-assistant/pull/146），功能提交34afd7dd0916182e85c41cc1dd1c2f37dd87e4a6。云电脑Draft #128继续暂停。
+- 基于main功能合并e3fea46631316c69e42ad8c5df955b12f89a9fae（PR #145移除强制休息测试关闭入口）。Web1.7.7，本轮Windows0.5.16候选。
+- 已实现“有人确认（秒）”1～60秒、默认1秒，紧邻“无人确认”；保存持久化并重启检测生效。从休息切回工作要求连续有人达到配置时长，中间无人重置确认；状态说明显示等待有人确认。启动/重连仍保持原有保守在座初态，防止未知状态被误计休息。无人确认及有效休息规则保留。
+- 本地Windows源码89项测试通过（4项GUI需原生Windows），新增两项配置/检测传参测试另通过；连续检测、人体出现被打断重计、无人确认保持、旧配置迁移及新设置重启保留均通过。架构治理本地缺starlette未执行，由完整CI验证。原生Windows、冻结EXE更新回滚及完整CI待验证；未合并发布，不推断用户安装与实机效果。
+- 核心文件windows/win-assistants/sedentary/camera.py、storage.py、ui.py、tests/test_sedentary_core_camera.py及win_assistants/__init__.py。开发目录/workspace/scratch/041be3ba1121/chen-assistant。附件未修改。
+- 唯一下一步：核对本分支PR完整CI与原生Windows验收，通过后完成Windows发布与公网完整文件校验。
+
+---
+
+# 晨的小助手 · AI 开发接力文档
+
+## 上一阶段快照（历史：Web1.7.7导航发布）
+
 - 更新时间：2026-10-10（Asia/Shanghai）。工作模式：用户授权改造、推送、验收和发布已完成；PR #144已合并，feat/compact-navigation为历史分支。云电脑Draft #128继续暂停。
 - 用户最新需求：取消全站底部栏及首页“查看未加号码”；在“晨的助手”左边增加默认隐藏的侧边导航，点击展开，生活模块放在其中。已实现品牌左侧☰按钮及左侧原生dialog抽屉；顶部仅首页/工作/资料，生活只在抽屉内部。支持键盘打开、Esc/遮罩/关闭按钮收起、焦点恢复和背景滚动锁定。已有生活首页模块按用户原配置保留，不自动删除。
 - 生产Web1.7.7，Windows0.5.14不变；无需升级Windows。本轮最后功能提交8c0fdb663371b32c1faf836f63adb72c882929d2，合并提交3851c47b1d83fcc92048c890f96fe50ee4ac1c8a；生产精确commit不从health/静态资源检查推断，用户实际操作待确认。
