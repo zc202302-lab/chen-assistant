@@ -6,7 +6,7 @@ import urllib.request
 from pathlib import Path
 
 from promotion_slots_contract import ROOT, seed, db, xlsx_rows
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
 
 
 def main():
@@ -29,7 +29,7 @@ def main():
                 page.locator(f'[data-business-row][data-service-id="{ids[0]}"] [data-open-service-editor]').click()
             dialog = page.locator('#businessAttributeDialog')
             dialog.wait_for(state='visible')
-            dialog.locator('.editor-promo-empty-v029').wait_for(state='visible')
+            expect(dialog.locator('.editor-promo-empty-v029')).to_have_text('暂无优惠')
             page.locator('[data-add-editor-promotion]').click()
             row = dialog.locator('.editor-promo-row-v029').last
             row.locator('.editor-promo-slot').fill('2')

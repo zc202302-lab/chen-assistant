@@ -213,7 +213,7 @@ def add_promotion_by_number_v027(request: Request, customer_id: int, csrf: str =
     if not number:
         raise HTTPException(400, '必须填写号码')
     expiry_iso = expiry_date
-    with db() as conn:
+    with db(immediate=True) as conn:
         customer_or_404(conn, customer_id)
         candidates = conn.execute(
             '''SELECT * FROM services WHERE customer_id=? AND TRIM(number)=?

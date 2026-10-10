@@ -59,7 +59,7 @@ def save_service_promotion_v0211(
     expiry_iso = expiry_date
     clean_notes = notes.strip()[:2000]
 
-    with db() as conn:
+    with db(immediate=True) as conn:
         service = service_or_404(conn, service_id)
         ensure_promotion_schema(conn)
         if promotion_id.strip():
