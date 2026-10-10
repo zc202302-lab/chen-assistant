@@ -31,6 +31,7 @@ class Settings:
     rtsp_password: str = ""
     sample_interval_seconds: float = 1.0
     absence_grace_seconds: float = 8.0
+    presence_grace_seconds: float = 1.0
     start_with_windows: bool = False
 
     # Detection regions. roi is retained only to migrate older settings.

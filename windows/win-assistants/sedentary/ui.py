@@ -112,6 +112,7 @@ class SedentaryApp:
         self.password_var = tk.StringVar(value=self.settings.rtsp_password)
         self.work_var = tk.IntVar(value=self.settings.work_minutes)
         self.break_var = tk.IntVar(value=self.settings.break_minutes)
+        self.presence_grace_var = tk.IntVar(value=int(self.settings.presence_grace_seconds))
         self.grace_var = tk.IntVar(value=int(self.settings.absence_grace_seconds))
         self.startup_var = tk.BooleanVar(value=False if self.embedded_mode else self.settings.start_with_windows)
         self.roi_values = [list(roi) for roi in (self.settings.seat_rois or ([] if not self.settings.roi else [self.settings.roi]))]
@@ -209,7 +210,7 @@ class SedentaryApp:
         self._refresh_roi_status()
         ttk.Label(
             detection_card,
-            text="可框 1～5 个区域；区域内检测到正脸、侧脸、上半身或整个人体任一特征即视为工作中。",
+            text="可框 1～5 个区域；区域内检测到正脸、侧脸、上半身或整个人体任一特征持续达到“有人确认”时间后视为工作中。",
             foreground=MUTED,
             wraplength=500,
         ).pack(anchor="w", pady=(4, 0))
@@ -220,6 +221,7 @@ class SedentaryApp:
         rules = [
             ("久坐阈值（分钟）", self.work_var, 1, 120),
             ("有效休息（分钟）", self.break_var, 1, 60),
+            ("有人确认（秒）", self.presence_grace_var, 1, 60),
             ("无人确认（秒）", self.grace_var, 1, 60),
         ]
         for row, (label, variable, minimum, maximum) in enumerate(rules):
@@ -247,7 +249,7 @@ class SedentaryApp:
 
         ttk.Label(
             outer,
-            text=f"版本 {__version__} · 检测区域内有人即工作中；持续无人达到“无人确认”时间后开始休息。",
+            text=f"版本 {__version__} · 持续有人达到“有人确认”时间后恢复工作中；持续无人达到“无人确认”时间后开始休息。",
             style="Sub.TLabel",
         ).pack(anchor="w", pady=(12, 0))
 
@@ -394,6 +396,7 @@ class SedentaryApp:
             self.settings.sample_interval_seconds,
             self.settings.absence_grace_seconds,
             self._camera_callback,
+            presence_grace=self.settings.presence_grace_seconds,
             roi=self.settings.roi,
             rois=self.settings.seat_rois or self.roi_values,
         )
@@ -518,6 +521,7 @@ class SedentaryApp:
         try:
             work = max(1, min(120, int(self.work_var.get())))
             rest = max(1, min(60, int(self.break_var.get())))
+            presence_grace = max(1, min(60, int(self.presence_grace_var.get())))
             grace = max(1, min(60, int(self.grace_var.get())))
         except (tk.TclError, ValueError):
             messagebox.showerror("设置有误", "提醒规则必须是有效整数。")
@@ -528,6 +532,7 @@ class SedentaryApp:
             return
         restart_camera = (
             signature != self._saved_signature
+            or presence_grace != int(self.settings.presence_grace_seconds)
             or grace != int(self.settings.absence_grace_seconds)
             or self.roi_values != (self.settings.seat_rois or ([] if not self.settings.roi else [self.settings.roi]))
         )
@@ -538,6 +543,7 @@ class SedentaryApp:
         self.settings.rtsp_password = password
         self.settings.work_minutes = work
         self.settings.break_minutes = rest
+        self.settings.presence_grace_seconds = float(presence_grace)
         self.settings.absence_grace_seconds = float(grace)
         self.settings.start_with_windows = False if self.embedded_mode else bool(self.startup_var.get())
         self.settings.seat_rois = [list(roi) for roi in self.roi_values]

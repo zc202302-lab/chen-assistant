@@ -1,4 +1,10 @@
 import unittest
+import tempfile
+import json
+from pathlib import Path
+from unittest.mock import patch
+from sedentary.storage import Settings
+from sedentary.camera import PresenceDetector
 
 from sedentary.camera import PresenceDebouncer, build_rtsp_url, normalize_roi
 
@@ -45,6 +51,45 @@ class PresenceDebouncerTests(unittest.TestCase):
         self.assertFalse(debouncer.update(True, 2.0))
         self.assertTrue(debouncer.update(True, 2.5))
         self.assertTrue(debouncer.state)
+
+    def test_configured_presence_requires_continuous_detection(self):
+        debouncer = PresenceDebouncer(absence_seconds=1, presence_seconds=5)
+        debouncer.update(False, 0)
+        self.assertFalse(debouncer.update(False, 1))
+        self.assertFalse(debouncer.update(True, 2))
+        self.assertFalse(debouncer.update(True, 6.9))
+        self.assertFalse(debouncer.update(False, 7))
+        self.assertFalse(debouncer.update(True, 8))
+        self.assertFalse(debouncer.update(True, 12.9))
+        self.assertTrue(debouncer.update(True, 13))
+
+    def test_presence_confirmation_keeps_absence_confirmation(self):
+        debouncer = PresenceDebouncer(absence_seconds=8, presence_seconds=5)
+        self.assertTrue(debouncer.update(False, 0))
+        self.assertFalse(debouncer.update(False, 8))
+        self.assertFalse(debouncer.update(True, 9))
+        self.assertTrue(debouncer.update(True, 14))
+        self.assertTrue(debouncer.update(False, 15))
+        self.assertTrue(debouncer.update(False, 22.9))
+        self.assertFalse(debouncer.update(False, 23))
+
+
+class PresenceSettingsTests(unittest.TestCase):
+    def test_old_settings_migrate_and_new_value_survives_restart(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "settings.json").write_text(json.dumps({"absence_grace_seconds": 8}))
+            with patch("sedentary.storage.app_data_dir", return_value=root), patch("sedentary.storage.load_windows_secret", return_value=""), patch("sedentary.storage.save_windows_secret"):
+                settings = Settings.load()
+                self.assertEqual(settings.presence_grace_seconds, 1)
+                settings.presence_grace_seconds = 5
+                settings.save()
+                self.assertEqual(Settings.load().presence_grace_seconds, 5)
+                self.assertEqual(Settings.load().absence_grace_seconds, 8)
+
+    def test_detector_accepts_configured_confirmation(self):
+        detector = PresenceDetector("rtsp://camera", 1, 8, lambda status: None, presence_grace=5)
+        self.assertEqual(detector.presence_grace, 5)
 
 
 if __name__ == "__main__":
