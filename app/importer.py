@@ -183,7 +183,7 @@ def import_xlsm(path: str | Path, replace: bool = True):
                     if pname == '上次缴费':
                         service['last_payment_date'] = excel_date(pdate)
                     else:
-                        promo_pairs.append((pname or '未命名优惠', excel_date(pdate)))
+                        promo_pairs.append(((col - 15)//2 + 1, pname or '未命名优惠', excel_date(pdate)))
                 scur = conn.execute('''INSERT INTO services
                     (customer_id,service_type,holder_name,number,account,monthly_fee,fixed_fee,payment_cycle,payment_method,invoice_type,package_type,last_payment_date,source_row)
                     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)''',(
@@ -198,8 +198,8 @@ def import_xlsm(path: str | Path, replace: bool = True):
                 conn.execute('''INSERT INTO payment_entries(service_id,period,amount,reference_amount,source,confirmed,created_at,updated_at)
                                 VALUES(?,?,?,?,?,?,?,?)''',
                              (sid,current_period,service['monthly_fee'],service['monthly_fee'],'imported',1 if mode=='fixed' else 0,now,now))
-                for pname,pdate in promo_pairs:
-                    conn.execute('INSERT INTO promotions(service_id,name,expiry_date) VALUES(?,?,?)',(sid,pname,pdate))
+                for slot,pname,pdate in promo_pairs:
+                    conn.execute('INSERT INTO promotions(service_id,slot_number,name,expiry_date) VALUES(?,?,?,?)',(sid,slot,pname,pdate))
                     stats['promotions'] += 1
         conn.execute("INSERT OR REPLACE INTO app_meta(key,value) VALUES('payment_history_bootstrap_v1',?)", (current_period,))
     return stats

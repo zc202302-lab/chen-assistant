@@ -1048,6 +1048,22 @@
     "name": "close_service_promotion_v0211"
   },
   {
+    "path": "/customers/{customer_id}/promotions/table",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.v0211_promotion_routes",
+    "name": "full_promotions_table"
+  },
+  {
+    "path": "/customers/{customer_id}/promotions/table.xlsx",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.v0211_promotion_routes",
+    "name": "download_full_promotions_table"
+  },
+  {
     "path": "/customers/{customer_id}/payment-columns-v0211",
     "methods": [
       "POST"

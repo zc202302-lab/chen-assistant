@@ -410,6 +410,8 @@ def init_db():
     with db() as conn:
         execute_schema(conn, SCHEMA)
         _migrate(conn)
+        from .promotions import ensure_promotion_schema
+        ensure_promotion_schema(conn)
 
 
 def now_iso():

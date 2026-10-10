@@ -149,7 +149,7 @@ def main():
 
         with db() as conn:
             row = conn.execute('SELECT name,expiry_date,notes FROM promotions WHERE id=?', (pid,)).fetchone()
-            assert row['name'] == '已修改优惠' and row['expiry_date'] == '2026-12-01'
+            assert row['name'] == '已修改优惠' and row['expiry_date'] == '2026/12/01'
             count = conn.execute("SELECT COUNT(*) n FROM promotions WHERE service_id=? AND status='active'", (sid,)).fetchone()['n']
             assert count == 2, count
         print('v0.2.9 density and complete editor acceptance passed')

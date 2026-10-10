@@ -32,6 +32,7 @@
     "home-shortcuts.css"
   ],
   "scripts": [
+    "navigation-transitions.js",
     "app.js",
     "v028.js",
     "ui-drag.js",
@@ -85,6 +86,10 @@
     [
       "live-refresh-v15.js",
       "live-refresh-modules-v15.js"
+    ],
+    [
+      "navigation-transitions.js",
+      "global-back.js"
     ]
   ],
   "page_assets": {

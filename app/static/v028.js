@@ -629,6 +629,7 @@
       const r = await fetch(form.action, {method:'POST', body:fd, credentials:'same-origin'});
       const data = await r.json().catch(() => ({}));
       if (!r.ok || !data.ok) return notifyError(data.error || '到期时间保存失败');
+      root.dispatchEvent(new CustomEvent('chen:promotions-updated'));
       const item = form.closest('[data-promo-item]');
       const group = form.closest('[data-promo-group]');
       if (!data.visible) {

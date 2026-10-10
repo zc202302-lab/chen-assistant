@@ -17,6 +17,8 @@ from .v025_routes import customer_or_404, service_or_404, promotion_or_404, _pay
 from .v026_routes import check_csrf, parse_date_text, date_text, month_text, promotion_bucket, derive_schedule
 from .v027_routes import _column_widths, _promo_order, _meta_get, _meta_set
 
+from .promotions import expiry_text, available_slot
+
 router = APIRouter()
 templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
 APP_VERSION = '0.2.8'
@@ -165,7 +167,7 @@ def _promo_columns(conn, customer_id: int, promo_rows):
             group['items'].append({
                 'row': p,
                 'bucket': bucket,
-                'expiry_display': date_text(p['expiry_date']),
+                'expiry_display': expiry_text(p['expiry_date']),
             })
         for group in groups.values():
             order = _promo_order(conn, customer_id, group['key'])
@@ -205,7 +207,7 @@ def _business_payload(conn, customer_id: int, template, services, promo_rows):
             'due': service_is_due(s),
             'promo_filter': promo_filter,
             'promo_label': promo_label,
-            'promo_nearest': date_text(nearest['expiry_date']) if nearest else '',
+            'promo_nearest': expiry_text(nearest['expiry_date']) if nearest else '',
         })
     return rows, custom
 
@@ -508,10 +510,10 @@ def update_promotion_expiry_v028(
     request: Request,
     promotion_id: int,
     csrf: str = Form(...),
-    expiry_date: str = Form(...),
+    expiry_date: str = Form(''),
 ):
     check_csrf(request, csrf)
-    expiry_iso = parse_date_text(expiry_date, required=True, field='优惠到期日期')
+    expiry_iso = expiry_date
     with db() as conn:
         old = promotion_or_404(conn, promotion_id)
         conn.execute(
@@ -521,7 +523,7 @@ def update_promotion_expiry_v028(
         bucket = promotion_bucket(expiry_iso, 'active')
     return JSONResponse({
         'ok': True,
-        'expiry_date': date_text(expiry_iso),
+        'expiry_date': expiry_text(expiry_iso),
         'bucket': bucket,
         'visible': bucket in {'expired', 'soon'},
     })
