@@ -2,6 +2,18 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-10 17:12（Asia/Shanghai）。用户五项优惠改造已完成，PR #149（https://github.com/zc202302-lab/chen-assistant/pull/149）已合并；Web1.7.10已通过公网核验。Windows0.5.16不变，无需升级Windows；云电脑Draft #128继续暂停，不恢复根README，附件未修改。
+- 功能：全量只纳入有有效关联优惠的业务；固定11列等宽、居中、紧凑，长内容单行截断但不删原文；全量及续约号码双击同一属性编辑器，保存同步业务、缴费、续约和全量；续约优惠单击复制完整内容并展开详情，重复点击/外部/Esc收起，保留双击改名。自由文本日期、编号1～5排序/缺号、默认折叠、Excel与表格原文逐格一致保留。Excel不导出交互用service_ids。
+- 最后功能提交2d1ec859f7e0b7322d8e61c958c0d11674868532，完整受检head9e163ba3d82a33dfcc2a61a309d326ff9e2f75b4；PR完整validation38039239897/validate114176010230及stability38039239896均success。新增真实浏览器两处编辑/全局同步/实际剪贴板/详情收起/等宽居中截断/手机无页面溢出/Excel逐格比对通过；1440/390截图已实际查看。合并提交538ff493ff61d454858533f75f9bf0ed12a181f2。
+- 公网核验38040334131首次部署未完成仍1.7.9；重跑job114179558044 success，2026-10-10 17:11:32（Asia/Shanghai）ONLINE VERIFIED v1.7.10，service-promotions.js、v028.css/js、v03.js、v0211.js及全部受检公共资源一致，PWA/鉴权检查通过。未登录或修改生产客户数据；不从health/静态资源推断生产精确backend commit或用户实机效果。
+- 正式main语法38040334128、稳定性38040334278 success；重复完整validation38040334142首轮在既有home_module_style_acceptance遇到ViewTransition opt-in disabled偶发取消异常，全部断言保留，已重跑，尚未宣称整轮成功。文档提交可能触发新的main验证，接管时核对最新run。此次不扩大范围修改导航；完整PR验收和公网证据独立成立。
+- 工作目录/workspace/scratch/41e298ba2ec5/chen-assistant，核心app/promotions.py、service-promotions.js、v028.js/css、v03.js、v0211.js、customer_workspace_v0211.html。属性保存无刷新保持页签和展开；关联优惠保存/结束后关闭弹窗重载完整状态，单次保留用户已展开的全量表格。
+- 唯一下一步：等待用户在Web1.7.10操作反馈或下一项明确需求；接管时核对最新main完整重复验收最终状态，云电脑#128继续暂停。
+
+---
+
+## 上一阶段快照（历史：Web1.7.10开发检查点）
+
 - 更新时间：2026-10-10（Asia/Shanghai）。用户授权继续五项优惠改造，开发中；活动分支feat/promotion-overview-refinement，PR #149（https://github.com/zc202302-lab/chen-assistant/pull/149），基于main091ecddf88c528406008d16a680098b53054e0be。云电脑Draft #128继续暂停，附件不修改。
 - 生产基线Web1.7.9/Windows0.5.16；本轮候选Web1.7.10，未合并、未部署。本轮需求：全量仅有关联有效优惠业务；11列等宽、紧凑居中、单行截断；全量与续约号码双击同一属性编辑器；属性修改全局同步；优惠单击复制并显示完整弹框、再次点或外部收起。
 - 第一轮实现完成，新增数据投影service_ids仅供交互不导出；Excel仍共用11列原文投影。属性复用当前v03.js无刷新保存链，通过service-properties-updated刷新全量/续约号码信息，v0211.js监听编辑打开事件同步缴费；保持页签和展开。关联优惠保存/结束后关闭弹窗重载完整状态，防止到期行动区成员和业务摘要陈旧；弹框保留原双击改名。
