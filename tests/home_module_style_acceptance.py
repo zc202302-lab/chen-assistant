@@ -82,6 +82,15 @@ def main():
                 previews = ROOT / 'artifacts' / 'number-inbox-batch'
                 previews.mkdir(parents=True, exist_ok=True)
                 page.screenshot(path=str(previews / f'home-source-modules-{width}.png'), full_page=True)
+                expect(page.locator('[data-sidebar-navigation]')).to_be_hidden()
+                expect(page.locator('.bottom-nav')).to_have_count(0)
+                expect(page.get_by_text('查看未加号码', exact=True)).to_have_count(0)
+                page.locator('[data-sidebar-toggle]').click()
+                expect(page.locator('[data-sidebar-navigation] a[href="/life"]')).to_be_visible()
+                page.screenshot(path=str(previews / f'home-sidebar-{width}.png'), full_page=True)
+                page.locator('[data-sidebar-close]').click()
+                expect(page.locator('[data-sidebar-navigation]')).to_be_hidden()
+
             # Existing pins render automatically; cancel and saved order survive reload.
             page.get_by_role('button', name='编辑模块', exact=True).click()
             page.locator('.home-shortcut-controls').first.get_by_role('button', name='移除').click()
