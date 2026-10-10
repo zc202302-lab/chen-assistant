@@ -212,10 +212,12 @@ class PresenceDetector:
         callback: Callable[[CameraStatus], None],
         roi: list[float] | None = None,
         rois: list[list[float]] | None = None,
+        presence_grace: float = 1.0,
     ) -> None:
         self.stream_url = stream_url
         self.interval = max(0.5, float(interval))
         self.absence_grace = max(1.0, float(absence_grace))
+        self.presence_grace = max(1.0, min(60.0, float(presence_grace)))
         self.callback = callback
         self.rois = [list(r) for r in (rois or ([] if roi is None else [roi]))]
         self._stop = threading.Event()
@@ -344,7 +346,7 @@ class PresenceDetector:
 
             # Reconnect conservatively: do not count any rest until absence has
             # been confirmed again after the stream is healthy.
-            debouncer = PresenceDebouncer(self.absence_grace)
+            debouncer = PresenceDebouncer(self.absence_grace, self.presence_grace)
             self.callback(CameraStatus(False, True, f"视频已连接（{transport}），正在进行人体检测…"))
             failures = 0
             last_analysis = 0.0
@@ -392,7 +394,9 @@ class PresenceDetector:
                         )
                         self._last_reported_present = present
 
-                    if labels:
+                    if labels and not present:
+                        detail = f"检测到人体，等待 {self.presence_grace:.0f} 秒有人确认"
+                    elif labels:
                         detail = ", ".join(labels[:3])
                     elif present:
                         detail = f"暂未检测到人体，等待 {self.absence_grace:.0f} 秒无人确认"
