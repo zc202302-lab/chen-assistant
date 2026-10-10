@@ -2,6 +2,23 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-10 08:33（Asia/Shanghai）。工作模式：继续开发，PR #142完整验收通过并已合并，正式发布中；云电脑Draft #128仍暂停。
+- 最新用户要求：继续开发chen-assistant。接管后按当前活动任务恢复Web1.7.5/Windows0.5.14交付，没有启用历史PR或修改附件。
+- 功能合并提交：c4c36efb4c9646626201bcb19a023002da9d9ed6；原活动分支feat/scheduled-number-silent-sms-home-modules与PR #142已成为历史。PR最终head8e45a46c99f2e71aca712f8e636eb1d468ddbead；重跑CI功能head0df4934ed87069977dab2bc972573533d6f1d884，二者仅AI_HANDOFF文档不同，已实际git diff确认。
+- 上传额度已实际恢复：2026-10-10 08:23原生Windows job114083703275成功，5张截图ZIP90207字节成功上传，artifact11652171837。随后安装包构建/上传成功，未绕过上传或测试。
+- PR完整Web验收run37873643289/job114083864824 success，包含完整浏览器回归、安全审计、旧功能兼容；生产预检114083865868 success。PR Windows run37873643307：源码114083889563、构建114083860103、原生界面114083861258、真实冻结更新回滚/Excel文件锁114084926909全部success。PR上的发布/生产部署按预期skipped。
+- 本地Windows87项：83通过、4GUI由原生Windows全部通过；首页快捷入口4项、架构治理、186条既有路由契约、Python/JS语法均通过。已查看短信、号码提醒及设置的实际Windows截图。初次首页测试因缺fastapi未执行，安装仓库requirements后重跑4项全部通过。
+- main自动清理工作流保持：合并预演无冲突，合并树artifact-cleanup.yml blob与main完全一致（835dfac57449c5f85ffb520df05e28f033d2124f），未删除清理机制。
+- 当前产品功能：Windows定时号码提醒不即时弹出、最多5个空格分隔时间；短信验证码后台自动复制；顶部栏对齐；首页快捷模块编辑及跨空间模块发送首页，保留原空间模块。
+- 正式main构建、Web部署、Windows release和公网整包校验尚待本轮新run证据；不能把PR成功视为已经发布。用户安装与真实业务验收未知。
+- 开发目录：/workspace/scratch/e3802da12e9f/chen-assistant，完整git checkout；权威源码GitHub main。附件未修改。
+- 唯一下一步：核验合并提交c4c36ef的main正式CI/部署/release，再确认公网Web1.7.5与Windows0.5.14清单及完整EXE大小/SHA256；完成后更新交接。
+
+---
+
+## 上一阶段快照（历史：上传额度阻塞）
+
+
 - 更新时间：2026-10-10 06:35（Asia/Shanghai）；用户再次要求测试额度，实际截图上传仍因quota失败。
 - 活动产品分支 feat/scheduled-number-silent-sms-home-modules，PR #142 open未合并；产品功能head 6c01c58fc8f4cb0c5855c7b2d862bb0a883b2c1c，候选Web1.7.5/Windows0.5.14。云电脑Draft #128暂停。
 - 用户本机CLI两轮各删除64个旧/重复Actions产物，共128个，截图确认剩余68.07 MB；另有先前浏览器删除67.8MB一项。此数仅本仓库产物，不代表账户其他仓库/Packages占用。
