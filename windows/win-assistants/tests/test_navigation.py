@@ -134,3 +134,50 @@ if __name__ == "__main__":
     unittest.main()
 
 
+
+
+@unittest.skipUnless(os.name == "nt" or os.environ.get("DISPLAY"), "GUI acceptance runs with Windows Tk / X display")
+class SedentaryConfirmationSettingsTests(unittest.TestCase):
+    def test_confirmation_field_saves_and_restarts_detector(self):
+        import tkinter as tk
+        from unittest.mock import Mock, patch
+        from sedentary.ui import SedentaryApp
+        from sedentary.storage import Settings
+        from sedentary.state import SedentaryTracker
+        root = tk.Tk()
+        app = SedentaryApp.__new__(SedentaryApp)
+        try:
+            app.root = root
+            app.embedded_mode = True
+            app.settings = Settings(rtsp_host="camera.local", seat_rois=[[0, 0, 1, 1]])
+            app.tracker = SedentaryTracker(45 * 60, 3 * 60)
+            app.reminder_window = None
+            app._configure_window()
+            app._build_ui()
+            app._saved_signature = app._settings_signature()
+            app._last_tested_signature = None
+            app.show_settings()
+            root.update()
+            def descendants(widget):
+                for child in widget.winfo_children():
+                    yield child
+                    yield from descendants(child)
+            widgets = list(descendants(app.settings_window))
+            labels = [w.cget("text") for w in widgets if w.winfo_class() == "TLabel"]
+            self.assertIn("有人确认（秒）", labels)
+            self.assertIn("无人确认（秒）", labels)
+            fields = [w for w in widgets if w.winfo_class() == "TSpinbox" and str(w.cget("textvariable")) == str(app.presence_grace_var)]
+            self.assertEqual(len(fields), 1)
+            fields[0].set("5")
+            app._start_detector = Mock()
+            with patch.object(app.settings, "save") as save, patch("sedentary.ui.messagebox.showinfo"), patch("sedentary.ui.messagebox.showerror") as error:
+                app.save_settings()
+                error.assert_not_called()
+                save.assert_called_once()
+            self.assertEqual(app.settings.presence_grace_seconds, 5)
+            self.assertEqual(app.settings.absence_grace_seconds, 8)
+            app._start_detector.assert_called_once()
+        finally:
+            root.destroy()
+            app = None
+            gc.collect()
