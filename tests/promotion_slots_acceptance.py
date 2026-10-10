@@ -73,7 +73,7 @@ def main():
                 full.locator('a[download]').click()
             assert xlsx_rows(Path(download.value.path()).read_bytes())==current
             assert table.locator('tbody td').first.evaluate('(el)=>parseFloat(getComputedStyle(el).paddingTop)')<=4
-            out=ROOT/'data/ui-screenshots';out.mkdir(parents=True,exist_ok=True)
+            out=ROOT/'artifacts/number-inbox-batch';out.mkdir(parents=True,exist_ok=True)
             page.screenshot(path=str(out/'promotion-slots-desktop.png'),full_page=True)
             page.set_viewport_size({'width':390,'height':844})
             page.screenshot(path=str(out/'promotion-slots-mobile.png'),full_page=True)

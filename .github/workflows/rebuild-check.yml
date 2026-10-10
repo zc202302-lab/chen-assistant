@@ -146,6 +146,7 @@ jobs:
           python tests/home_module_style_acceptance.py
           python tests/number_inbox_batch_contract.py
           python tests/number_inbox_batch_acceptance.py
+          python tests/promotion_slots_acceptance.py
 
       - uses: actions/upload-artifact@v4
         if: steps.scope.outputs.mode == 'full'
@@ -252,7 +253,6 @@ jobs:
         run: |
           python tests/production_experience_regression.py
           python tests/promotion_slots_contract.py
-          python tests/promotion_slots_acceptance.py
           python tests/promotion_render_regression.py
           python tests/promotion_rename_route_regression.py
 
