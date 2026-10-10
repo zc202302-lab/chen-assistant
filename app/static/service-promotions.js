@@ -9,6 +9,13 @@
   const csrf = dialog.querySelector('[data-business-attribute-form] input[name="csrf"]')?.value || '';
   let currentServiceId = null;
   let requestSeq = 0;
+  let promotionsChanged = false;
+  dialog.addEventListener('close', () => {
+    if (!promotionsChanged) return;
+    promotionsChanged = false;
+    if (root.querySelector('[data-full-promotions]')?.open) sessionStorage.setItem(`chen:full-promotions:${root.dataset.customerId}`, '1');
+    location.reload();
+  });
 
   const toast = (msg) => {
     if (window.ChenToast) return window.ChenToast(msg);
@@ -99,12 +106,7 @@
     }
   };
 
-  root.addEventListener('click', e => {
-    const btn = e.target.closest('[data-open-service-editor]');
-    if (!btn) return;
-    const serviceId = btn.dataset.serviceId || btn.closest('[data-service-id]')?.dataset.serviceId;
-    if (serviceId) load(serviceId);
-  }, true);
+  root.addEventListener('chen:service-editor-opened', e => load(e.detail.service_id));
 
   addButton?.addEventListener('click', () => {
     list.querySelector('.editor-promo-empty-v029')?.remove();
@@ -118,6 +120,40 @@
 
   // 捕获阶段统一处理业务编辑器中的优惠操作。这样即使其他工作区脚本在冒泡阶段
   // 处理点击，也不会吞掉“保存/结束”动作，保证业务模块 -> 优惠模块的反向同步可靠。
+  const popover = document.createElement('div');
+  popover.className = 'promotion-content-popover';
+  popover.id = 'promotionContentPopover';
+  popover.setAttribute('role', 'region');
+  popover.setAttribute('aria-label', '完整优惠内容');
+  popover.hidden = true;
+  document.body.appendChild(popover);
+  let popoverButton = null;
+  const closePopover = () => {
+    popover.hidden = true;
+    popoverButton?.setAttribute('aria-expanded', 'false');
+    popoverButton = null;
+  };
+  const togglePopover = btn => {
+    if (popoverButton === btn) return closePopover();
+    closePopover();
+    popoverButton = btn;
+    btn.setAttribute('aria-controls', popover.id);
+    btn.setAttribute('aria-expanded', 'true');
+    popover.textContent = btn.dataset.copySilent || btn.textContent.trim();
+    popover.hidden = false;
+    const anchor = btn.getBoundingClientRect();
+    const box = popover.getBoundingClientRect();
+    popover.style.left = `${Math.max(12, Math.min(anchor.left, innerWidth-box.width-12))}px`;
+    const below = anchor.bottom + 6;
+    popover.style.top = `${Math.max(12, below+box.height <= innerHeight-12 ? below : anchor.top-box.height-6)}px`;
+  };
+  document.addEventListener('click', e => {
+    if (!e.target.closest?.('.promo-name-copy-v028') && !popover.contains(e.target)) closePopover();
+  }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopover(); });
+  window.addEventListener('resize', closePopover);
+  document.addEventListener('scroll', e => { if (!popover.contains(e.target)) closePopover(); }, true);
+
   document.addEventListener('click', async e => {
     const saveButton = e.target.closest?.('[data-editor-promo-save]');
     const closeButton = e.target.closest?.('[data-editor-promo-close]');
@@ -147,6 +183,7 @@
         const data = await r.json().catch(() => ({}));
         if (!r.ok || !data.ok) return toast(data.detail || data.error || '优惠保存失败');
         row.dataset.promoId = String(data.id);
+        promotionsChanged = true;
         name.value = data.name || '';
         expiry.value = data.expiry_date || '';
         notes.value = data.notes || '';
@@ -182,6 +219,7 @@
         const r = await fetch(`/promotions/${id}/close-editor-v029`, {method:'POST', body:fd, credentials:'same-origin'});
         const data = await r.json().catch(() => ({}));
         if (!r.ok || !data.ok) return toast(data.detail || data.error || '优惠结束失败');
+        promotionsChanged = true;
         row.remove();
         root.querySelectorAll(`[data-promo-item][data-promo-id="${CSS.escape(String(id))}"]`).forEach(item => {
           const group = item.closest('[data-promo-group]');
@@ -292,6 +330,7 @@
     if (!btn) return;
     e.preventDefault();
     e.stopImmediatePropagation();
+    togglePopover(btn);
     const ok = await copyText(btn.dataset.copySilent || btn.textContent.trim());
     toast(ok ? '已复制' : '复制失败');
   }, true);
@@ -301,6 +340,7 @@
     if (!btn) return;
     e.preventDefault();
     e.stopImmediatePropagation();
+    closePopover();
     beginInlineRename(btn);
   }, true);
   const full = root.querySelector('[data-full-promotions]');
@@ -316,9 +356,19 @@
       if (seq !== tableRequest) return;
       const body = full.querySelector('tbody');
       const fragment = document.createDocumentFragment();
-      data.rows.forEach(cells => {
+      data.rows.forEach((cells, index) => {
         const tr = document.createElement('tr');
-        cells.forEach(value => { const td=document.createElement('td'); td.textContent=value; tr.appendChild(td); });
+        cells.forEach((value, col) => {
+          const td=document.createElement('td');
+          const content=document.createElement(col === 0 ? 'button' : 'span');
+          content.className = col === 0 ? 'full-promotion-number' : 'full-promotion-cell';
+          content.textContent = value;
+          if (col === 0) {
+            content.type='button'; content.dataset.promoServiceEditor='1';
+            content.dataset.serviceId=String(data.service_ids[index]); content.title='双击编辑属性';
+          }
+          td.appendChild(content); tr.appendChild(td);
+        });
         fragment.appendChild(tr);
       });
       body.replaceChildren(fragment);
@@ -329,6 +379,11 @@
     }
   };
   full?.addEventListener('toggle', () => { if (full.open) refreshTable(); });
+  const fullKey = `chen:full-promotions:${root.dataset.customerId}`;
+  if (full && sessionStorage.getItem(fullKey) === '1') {
+    sessionStorage.removeItem(fullKey);
+    full.open = true;
+  }
   root.addEventListener('chen:promotions-updated', refreshTable);
   root.addEventListener('chen:promotion-name-updated', refreshTable);
   root.querySelector('[data-customer-tab="promotions"]')?.addEventListener('click', refreshTable);

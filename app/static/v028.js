@@ -465,6 +465,7 @@
       businessForm.elements.service_id.value = serviceId;
       renderEditor();
       businessDialog.showModal();
+      root.dispatchEvent(new CustomEvent('chen:service-editor-opened', {detail:{service_id:serviceId}}));
     } catch (_) { notifyError('网络异常'); }
   };
 
@@ -473,6 +474,12 @@
     if (!btn) return;
     e.preventDefault();
     openBusinessEditor(btn.dataset.serviceId || btn.closest('[data-service-id]')?.dataset.serviceId);
+  });
+  root.addEventListener('dblclick', e => {
+    const btn = e.target.closest('[data-promo-service-editor]');
+    if (!btn) return;
+    e.preventDefault();
+    openBusinessEditor(btn.dataset.serviceId);
   });
   businessDialog?.querySelectorAll('[data-business-editor-close]').forEach(btn => btn.addEventListener('click', () => {
     businessDialog.close();
@@ -610,6 +617,11 @@
       syncDisplayOptions(data.template || [], data.display_attr_1, data.display_attr_2);
       businessDialog.close();
       requestAnimationFrame(() => window.scrollTo({top:editorScrollY, behavior:'auto'}));
+      // Server-render every module again so changed identifiers, attributes,
+      // reminder group membership and export all share the persisted truth.
+      rememberScroll();
+      if (root.querySelector('[data-full-promotions]')?.open) sessionStorage.setItem(`chen:full-promotions:${root.dataset.customerId}`, '1');
+      location.reload();
     } catch (_) { notifyError('网络异常，未保存'); }
   });
 

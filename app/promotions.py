@@ -84,7 +84,10 @@ def table_payload(conn, customer_id):
     for promo in promotions:
         grouped[promo['service_id']].append(promo)
     rows = []
+    service_ids = []
     for service in services:
+        if not grouped[service['id']]:
+            continue
         cells = [service['number'] or ''] + [''] * 10
         for promo in grouped[service['id']]:
             # Legacy records beyond five must remain visible, rather than be
@@ -95,7 +98,8 @@ def table_payload(conn, customer_id):
                 target = index + offset
                 cells[target] = cells[target] + '\n' + value if cells[target] else value
         rows.append(cells)
-    return {'headers': HEADERS, 'rows': rows}
+        service_ids.append(service['id'])
+    return {'headers': HEADERS, 'rows': rows, 'service_ids': service_ids}
 
 
 def export_table(payload):

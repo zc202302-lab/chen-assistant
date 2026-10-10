@@ -67,8 +67,11 @@ def main():
             def cells():
                 return table.locator('tr').evaluate_all('(rows)=>rows.map(row=>[...row.querySelectorAll("th,td")].map(cell=>cell.textContent))')
             current=cells()
-            assert len(current[0])==11 and current[2][1:7]==['']*6
-            assert current[2][7:11]==['第二优惠','2026/1//2','第五优惠','2027/3/4']
+            assert len(current)==2 and len(current[0])==11 and current[1][1:7]==['']*6
+            assert current[1][7:11]==['第二优惠','2026/1//2','第五优惠','2027/3/4']
+            widths=table.locator('thead th').evaluate_all('(els)=>els.map(el=>el.getBoundingClientRect().width)')
+            assert max(widths)-min(widths)<1
+            assert table.locator('tbody td').first.evaluate('(el)=>getComputedStyle(el).textAlign')=='center'
             with page.expect_download() as download:
                 full.locator('a[download]').click()
             assert xlsx_rows(Path(download.value.path()).read_bytes())==current
