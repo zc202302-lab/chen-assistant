@@ -214,6 +214,8 @@
   }, true);
 
   let activeEditorServiceId = '';
+  root.addEventListener('chen:service-editor-opened', e => { activeEditorServiceId = String(e.detail.service_id); });
+  root.addEventListener('chen:service-properties-updated', () => refreshServiceIntoPayment(activeEditorServiceId));
   root.addEventListener('click', e => {
     const btn = e.target.closest('[data-open-service-editor]');
     if (!btn) return;

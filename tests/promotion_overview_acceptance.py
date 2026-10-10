@@ -60,7 +60,7 @@ def main():
             expect(dialog.locator(f'[data-promo-id="{pid}"]')).to_be_visible()
             dialog.locator('[data-key="number"] .attr-value').fill('0088888888888')
             dialog.locator('[data-key="holder_name"] .attr-value').fill('全局同步属性')
-            with page.expect_navigation(wait_until='networkidle'):
+            with page.expect_response(lambda r:'/status-v03' in r.url and r.request.method=='POST'):
                 dialog.locator('[data-business-attribute-form] button[type="submit"]').click()
             full = page.locator('[data-full-promotions]')
             table = full.locator('table')
@@ -89,7 +89,7 @@ def main():
             expect(dialog).to_be_visible()
             expect(dialog.locator('[data-key="number"] .attr-value')).to_have_value('0088888888888')
             dialog.locator('[data-key="account"] .attr-value').fill('同步账号')
-            with page.expect_navigation(wait_until='networkidle'):
+            with page.expect_response(lambda r:'/status-v03' in r.url and r.request.method=='POST'):
                 dialog.locator('[data-business-attribute-form] button[type="submit"]').click()
             page.locator('[data-customer-tab="payment"]').click()
             expect(page.locator(f'[data-payment-row][data-service-id="{ids[0]}"]')).to_contain_text('0088888888888')

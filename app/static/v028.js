@@ -617,11 +617,7 @@
       syncDisplayOptions(data.template || [], data.display_attr_1, data.display_attr_2);
       businessDialog.close();
       requestAnimationFrame(() => window.scrollTo({top:editorScrollY, behavior:'auto'}));
-      // Server-render every module again so changed identifiers, attributes,
-      // reminder group membership and export all share the persisted truth.
-      rememberScroll();
-      if (root.querySelector('[data-full-promotions]')?.open) sessionStorage.setItem(`chen:full-promotions:${root.dataset.customerId}`, '1');
-      location.reload();
+      root.dispatchEvent(new CustomEvent('chen:service-properties-updated', {detail:{rows:data.rows || {}}}));
     } catch (_) { notifyError('网络异常，未保存'); }
   });
 

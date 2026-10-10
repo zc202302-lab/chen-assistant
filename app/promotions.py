@@ -106,16 +106,13 @@ def export_table(payload):
     stream = BytesIO()
     workbook = xlsxwriter.Workbook(stream, {'in_memory': True, 'strings_to_formulas': False, 'strings_to_urls': False})
     sheet = workbook.add_worksheet('全量优惠')
-    header = workbook.add_format({'bold': True, 'bg_color': '#F1F5F9', 'border': 1})
-    text = workbook.add_format({'num_format': '@', 'text_wrap': True, 'valign': 'top'})
+    header = workbook.add_format({'bold': True, 'bg_color': '#EDF2F8', 'border': 1, 'align': 'center', 'valign': 'vcenter', 'font_size': 11})
+    text = workbook.add_format({'num_format': '@', 'align': 'center', 'valign': 'vcenter', 'font_size': 11})
     for row_index, row in enumerate([payload['headers'], *payload['rows']]):
         for col_index, value in enumerate(row):
             sheet.write_string(row_index, col_index, value, header if row_index == 0 else text)
         sheet.set_row(row_index, 22)
-    sheet.set_column(0, 0, 18)
-    for slot in range(5):
-        sheet.set_column(slot * 2 + 1, slot * 2 + 1, 24)
-        sheet.set_column(slot * 2 + 2, slot * 2 + 2, 16)
+    sheet.set_column(0, 10, 18)
     sheet.freeze_panes(1, 1)
     workbook.close()
     return stream.getvalue()

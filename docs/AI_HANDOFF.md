@@ -2,9 +2,10 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-10（Asia/Shanghai）。用户授权继续五项优惠改造，开发中；活动分支feat/promotion-overview-refinement，PR待建立，基于main091ecddf88c528406008d16a680098b53054e0be。云电脑Draft #128继续暂停，附件不修改。
+- 更新时间：2026-10-10（Asia/Shanghai）。用户授权继续五项优惠改造，开发中；活动分支feat/promotion-overview-refinement，PR #149（https://github.com/zc202302-lab/chen-assistant/pull/149），基于main091ecddf88c528406008d16a680098b53054e0be。云电脑Draft #128继续暂停，附件不修改。
 - 生产基线Web1.7.9/Windows0.5.16；本轮候选Web1.7.10，未合并、未部署。本轮需求：全量仅有关联有效优惠业务；11列等宽、紧凑居中、单行截断；全量与续约号码双击同一属性编辑器；属性修改全局同步；优惠单击复制并显示完整弹框、再次点或外部收起。
-- 第一轮实现完成，新增数据投影service_ids仅供交互不导出；Excel仍共用11列原文投影。属性保存后服务器重绘全部模块，保持页签/展开；弹框保留原双击改名。测试与完整CI尚待验证；最后功能提交待首次checkpoint。
+- 第一轮实现完成，新增数据投影service_ids仅供交互不导出；Excel仍共用11列原文投影。属性复用当前v03.js无刷新保存链，通过service-properties-updated刷新全量/续约号码信息，v0211.js监听编辑打开事件同步缴费；保持页签和展开。关联优惠保存/结束后关闭弹窗重载完整状态，防止到期行动区成员和业务摘要陈旧；弹框保留原双击改名。
+- 首次功能提交84f28da3f7dcf0d117037d76ca8c59332f36dc0c；本地优惠接口/XLSX、旧优惠渲染/改名、客户导出、稳定性、架构治理、v03/工作区/缴费Enter契约和JS语法通过。本地Chromium下载损坏，真实浏览器与完整历史回归交给CI。首轮38038154575旧编号浏览器通过，新验收误等待导航失败；已按真实无刷新属性链修正等待，并接入实际runtime owner（不启用历史hotfix/v0212脚本，不减少断言）。新增过滤/两处双击/全局同步/剪贴板/弹框/等宽截断/手机/Excel真实验收，完整CI待新head。
 - 核心app/promotions.py、service-promotions.js、v028.js/css、customer_workspace_v0211.html；工作目录/workspace/scratch/41e298ba2ec5/chen-assistant。
 - 唯一下一步：完成接口/XLSX及真实浏览器双击、同步、复制、截断、手机布局验收，提交PR，完整CI通过后合并发布并核验公网。
 

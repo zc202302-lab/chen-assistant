@@ -386,5 +386,20 @@
   }
   root.addEventListener('chen:promotions-updated', refreshTable);
   root.addEventListener('chen:promotion-name-updated', refreshTable);
+  root.addEventListener('chen:service-properties-updated', e => {
+    closePopover();
+    Object.entries(e.detail.rows || {}).forEach(([sid, payload]) => {
+      root.querySelectorAll(`.promo-number-copy-v028[data-service-id="${CSS.escape(sid)}"]`).forEach(btn => {
+        const number = payload.number || payload.account || '';
+        btn.dataset.copySilent = number;
+        btn.querySelector('strong').textContent = number;
+        const values = Object.fromEntries((payload.attributes || []).map(a => [a.key, a.value === '—' ? '' : a.value]));
+        btn.querySelector('small').textContent = [values.service_type, values.holder_name].filter(Boolean).join(' · ');
+        const group = btn.closest('[data-promo-group]');
+        if (group) group.dataset.groupKey = `${group.dataset.groupKey.split(':')[0]}:${number || `service-${sid}`}`;
+      });
+    });
+    refreshTable();
+  });
   root.querySelector('[data-customer-tab="promotions"]')?.addEventListener('click', refreshTable);
 })();
