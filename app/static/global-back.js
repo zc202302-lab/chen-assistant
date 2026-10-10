@@ -1,4 +1,14 @@
 (() => {
+  // Cross-document transitions may be interrupted by another navigation or a
+  // browser opt-in change. Observe the optional animation's ready promise so
+  // its expected cancellation cannot become an unhandled page error.
+  for (const type of ['pageswap', 'pagereveal']) {
+    window.addEventListener(type, event => {
+      event.viewTransition?.ready.catch(error => {
+        if (!['AbortError', 'InvalidStateError'].includes(error.name)) throw error;
+      });
+    });
+  }
   const sidebar = document.querySelector('[data-sidebar-navigation]');
   const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
   if (sidebar && sidebarToggle) {

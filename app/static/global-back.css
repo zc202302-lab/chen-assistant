@@ -25,6 +25,6 @@
 .sidebar-navigation nav a:hover,.sidebar-navigation nav a.active{background:#eef2f7}
 body[data-sidebar-open]{overflow:hidden}
 body[data-compact-navigation]{padding-bottom:env(safe-area-inset-bottom,0px)}
-body[data-compact-navigation].chen-pwa .page{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+html.chen-pwa body[data-compact-navigation] .page{padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
 body[data-compact-navigation] .v10-shell,body[data-compact-navigation] .v12-shell{padding-bottom:24px}
 @media(max-width:480px){.topbar-left{gap:6px}.global-history-button{width:30px}}
