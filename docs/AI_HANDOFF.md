@@ -2,6 +2,20 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-10（Asia/Shanghai）。用户要求参考“无人确认”增加可配置秒数的“有人确认”；已实现、PR #146合并、Windows0.5.16正式发布及公网完整文件验证通过。feat/sedentary-presence-confirmation为历史分支，云电脑Draft #128继续暂停。
+- 最后功能提交34afd7dd0916182e85c41cc1dd1c2f37dd87e4a6；新增原生GUI验收提交caad8d6258232508d6cc5bf8e09882c97a393c96；PR受检head75667c38ae4da8bf9c49ce90b64efd36cd00be2c；合并提交7f5c364402b70357990e44b1a6a45d31d5e80587。Web1.7.7不变，Windows0.5.16。
+- 久坐详细设置→提醒规则新增“有人确认（秒）”，与“无人确认”相邻；1～60秒、默认1秒，保存持久化并重启检测生效。已休息后连续检测到人体达到配置时长才切回工作；中途无人重新确认；状态显示等待有人确认。启动/重连仍保持原有保守在座初态，防止未知状态误计休息。原无人确认、有效休息与强制休息规则保留。
+- 本地Windows源码92项（87通过、5GUI由Windows验收）。PR完整validation38025980013第二次执行success；第一轮/首次复验遇到已有跨页面动画取消错误，保留所有测试重跑后完整通过，无Web源码或测试放宽。stability38025980030、Foxmail38025980045、Windows38025980031全部success；真实Windows新字段输入/保存/检测重启及冻结EXE更新重启、失败回滚、Excel文件锁通过。
+- 正式main Windows构建发布38026758367全部success（原生GUI114139124815、更新回滚114139895455、发布114140102137）；stability38026758345、Foxmail38026758414、语法38026758358 success。main重复完整validation38026758410检查时仍运行，不替代已通过的PR完整验收，后续状态从GitHub核对。
+- 公网验证38027124412/job114140222644 success；2026-10-10 13:23:10（Asia/Shanghai）ONLINE VERIFIED v0.5.16，完整EXE71,671,201字节，SHA256 7fd899a5acddbafb4889e6de89379e140f37eb70ee3a339488ada35e96c7cdc2。统一入口设置→检查更新。用户安装和实机检测效果待反馈，不从CI推断。
+- 核心文件windows/win-assistants/sedentary/camera.py、storage.py、ui.py、tests/test_sedentary_core_camera.py、tests/test_navigation.py及win_assistants/__init__.py。开发目录/workspace/scratch/041be3ba1121/chen-assistant，源码以GitHub为准；附件未修改。
+- 唯一下一步：用户升级0.5.16，在久坐详细设置保存有人确认秒数并反馈实际效果，或按下一项明确需求继续。
+
+---
+
+## 上一阶段快照（历史：有人确认开发检查点）
+
+
 - 更新时间：2026-10-10（Asia/Shanghai）。用户要求久坐助手参考“无人确认”，新增可设置秒数的“有人确认”；开发中，活动分支feat/sedentary-presence-confirmation，PR #146（https://github.com/zc202302-lab/chen-assistant/pull/146），功能提交34afd7dd0916182e85c41cc1dd1c2f37dd87e4a6。云电脑Draft #128继续暂停。
 - 基于main功能合并e3fea46631316c69e42ad8c5df955b12f89a9fae（PR #145移除强制休息测试关闭入口）。Web1.7.7，本轮Windows0.5.16候选。
 - 已实现“有人确认（秒）”1～60秒、默认1秒，紧邻“无人确认”；保存持久化并重启检测生效。从休息切回工作要求连续有人达到配置时长，中间无人重置确认；状态说明显示等待有人确认。启动/重连仍保持原有保守在座初态，防止未知状态被误计休息。无人确认及有效休息规则保留。
@@ -11,7 +25,6 @@
 
 ---
 
-# 晨的小助手 · AI 开发接力文档
 
 ## 上一阶段快照（历史：Web1.7.7导航发布）
 
