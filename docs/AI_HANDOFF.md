@@ -2,7 +2,7 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-10 09:06（Asia/Shanghai）。工作模式：用户明确要求三项Web改造，开发中；活动分支feat/home-module-style-work-payments，PR待创建；云电脑Draft #128继续暂停。
+- 更新时间：2026-10-10 09:06（Asia/Shanghai）。工作模式：用户明确要求三项Web改造，开发中；活动分支feat/home-module-style-work-payments，PR #143（https://github.com/zc202302-lab/chen-assistant/pull/143）；云电脑Draft #128继续暂停。
 - 用户最新需求：发送到首页的模块保持原卡片样式；删除首页待处理业务栏；工作空间新增缴费、优惠模块。
 - 基于main9899b2ae117178580a02649443eb4f1c1d2fedac。生产Web1.7.5/Windows0.5.14发布并公网验证通过；本轮候选Web1.7.6，Windows无改动。
 - 已实现：首页从原空间读取当前模块卡片，保留图标、配色、说明和实时数量；原样式CSS按首页作用域加载；已有首页记录不用重新发送。来源读取失败保留可用入口，不删除已保存数据。首页待处理事项整栏删除。工作空间新增缴费/优惠，直达现有客户工作台对应页签，支持排序和发送首页。
@@ -10,7 +10,7 @@
 - 本地：旧布局迁移/保存、首页地址校验4项、架构治理、186条既有路由契约及语法通过；本机Chromium下载返回损坏包，浏览器验收交由完整CI执行。新增真实浏览器跨工作/资料/生活发送首页、CSS/图标/实时摘要比较、桌面/手机、防溢出、编辑取消/保存、页签直达、临时来源失败恢复验收。
 - 已查看用户两张截图确认原工作卡片带图标/数量而首页简化为纯文字。附件未修改。开发目录/workspace/scratch/e3802da12e9f/chen-assistant，GitHub为权威源码。
 - 核心文件：home-shortcuts.js/css、home_v10.html、work_shell_v14.html、work_architecture.py、v101_workspace_routes.py、FRONTEND_ASSETS.json及home_module_style_acceptance.py。
-- 唯一下一步：提交PR并检查完整CI/新浏览器验收，修复实际失败后发布Web1.7.6并核对公网资源。当前候选未合并/部署，用户安装及真实业务未知。
+- 唯一下一步：核对PR #143完整CI/新浏览器验收，修复实际失败后发布Web1.7.6并核对公网资源。当前候选未合并/部署，用户安装及真实业务未知。
 
 ---
 
