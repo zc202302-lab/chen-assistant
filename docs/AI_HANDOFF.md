@@ -2,6 +2,16 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-10（Asia/Shanghai）。用户授权继续五项优惠改造，开发中；活动分支feat/promotion-overview-refinement，PR待建立，基于main091ecddf88c528406008d16a680098b53054e0be。云电脑Draft #128继续暂停，附件不修改。
+- 生产基线Web1.7.9/Windows0.5.16；本轮候选Web1.7.10，未合并、未部署。本轮需求：全量仅有关联有效优惠业务；11列等宽、紧凑居中、单行截断；全量与续约号码双击同一属性编辑器；属性修改全局同步；优惠单击复制并显示完整弹框、再次点或外部收起。
+- 第一轮实现完成，新增数据投影service_ids仅供交互不导出；Excel仍共用11列原文投影。属性保存后服务器重绘全部模块，保持页签/展开；弹框保留原双击改名。测试与完整CI尚待验证；最后功能提交待首次checkpoint。
+- 核心app/promotions.py、service-promotions.js、v028.js/css、customer_workspace_v0211.html；工作目录/workspace/scratch/41e298ba2ec5/chen-assistant。
+- 唯一下一步：完成接口/XLSX及真实浏览器双击、同步、复制、截断、手机布局验收，提交PR，完整CI通过后合并发布并核验公网。
+
+---
+
+## 上一阶段快照（历史：Web1.7.9优惠发布）
+
 - 更新时间：2026-10-10 15:32（Asia/Shanghai）。用户授权的四项优惠改造已完成、PR #148（https://github.com/zc202302-lab/chen-assistant/pull/148）已合并并上线。feat/promotion-slots-table为历史分支；云电脑Draft #128继续暂停，不恢复根README。
 - 当前生产Web1.7.9，Windows0.5.16不变，无需升级Windows。最后功能提交a46ee8538852b8aff4c06f0b05504477b5da58a9；完整受检PR head690a2507b3008bc34822bfb0d43898f561441a05，合并提交61d0bd5453e690c8515190d32d660316e9544798。本轮未登录/写入生产客户数据，用户真实业务操作待反馈；生产精确backend commit不从health/静态资源推断。
 - 优惠行动区与业务属性弹窗的关联优惠到期时间采用自由文本，数字/斜杠可手动修改，保存保留原文，不补零/自动加斜杠。完整有效数字日期继续原到期分类；其余保留全量，不据此生成错误到期分类。
