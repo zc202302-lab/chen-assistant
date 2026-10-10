@@ -600,23 +600,6 @@ class SedentaryApp:
         )
         self.lock_state_label.pack(pady=(18, 0))
 
-        test_close = tk.Button(
-            window,
-            text="测试关闭",
-            command=self.test_close_reminder,
-            bg="#16352E",
-            fg="#9CB7B0",
-            activebackground="#20483F",
-            activeforeground="white",
-            relief="flat",
-            bd=0,
-            font=("Microsoft YaHei UI", 10),
-            padx=14,
-            pady=7,
-            cursor="hand2",
-        )
-        test_close.place(relx=0.985, rely=0.975, anchor="se")
-
         try:
             window.grab_set_global()
         except tk.TclError:
@@ -662,14 +645,6 @@ class SedentaryApp:
         self.reminder_window.lift()
         self.reminder_window.focus_force()
         self.reminder_window.after(1000, self._enforce_lock_focus)
-
-    def test_close_reminder(self) -> None:
-        """Temporary escape hatch while detection is under active testing."""
-        if not self.reminder_window or not self.reminder_window.winfo_exists():
-            return
-        log_event("测试关闭强制休息", self.tracker.snapshot().away_seconds)
-        self.tracker.reset_cycle(present=self.camera_status.present if self.camera_status.available else True)
-        self.close_reminder()
 
     def close_reminder(self) -> None:
         if self.reminder_window and self.reminder_window.winfo_exists():
