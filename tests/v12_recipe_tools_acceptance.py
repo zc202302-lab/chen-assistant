@@ -49,7 +49,7 @@ def main():
             page = context.new_page()
             page.goto('http://127.0.0.1:8142/life/recipes', wait_until='networkidle')
             expect(page.locator('.brand')).to_contain_text(f'v{config.APP_VERSION}')
-            assert [x.strip() for x in page.locator('.bottom-nav .nav-item span').all_inner_texts()] == ['生活','菜谱','工具']
+            expect(page.locator('.bottom-nav')).to_have_count(0)
             for name in TEMPLATE_SHEET_NAMES:
                 expect(page.get_by_text(name, exact=True).first).to_be_visible()
 

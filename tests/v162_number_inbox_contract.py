@@ -144,7 +144,7 @@ def main():
     assert '同事提交入口' not in client.get('/work/number-inbox?view=invalid').text
     assert 'zcassistant.site' not in admin.text
     assert '1 个未加' in client.get('/work').text
-    assert '查看未加号码' in client.get('/').text
+    assert '查看未加号码' not in client.get('/').text
     assert '已处理' not in admin.text
     assert 'status=done' not in admin.text
     assert 'status=all' not in admin.text

@@ -15,6 +15,11 @@ def main():
     assert 'href="/work"' in base and '>工作</a>' in base
     assert 'href="/info"' in base and '>资料</a>' in base
     assert 'href="/life"' in base and '>生活</a>' in base
+    assert base.index('data-sidebar-toggle') < base.index('class="brand"')
+    assert '<dialog id="sidebar-navigation"' in base
+    assert 'global-more-nav' not in base
+    assert 'bottom-nav' not in base
+    assert '查看未加号码' not in home
     assert 'home-top-nav-v153' not in home
     assert 'v10-space-grid v152-space-grid' not in home
     assert 'v152-customer-space' not in home

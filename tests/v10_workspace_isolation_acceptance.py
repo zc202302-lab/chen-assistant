@@ -39,15 +39,21 @@ def wait_http(url: str):
     raise RuntimeError('server start failed')
 
 
-def nav_labels(page):
-    return [text.strip() for text in page.locator('.bottom-nav .nav-item span').all_inner_texts()]
-
-
 def assert_primary_nav(page, active_label: str):
     nav = page.locator('.global-primary-nav')
     expect(nav).to_be_visible()
-    assert [x.strip() for x in nav.locator('a').all_inner_texts()] == ['首页', '工作', '资料', '生活']
-    expect(nav.locator('a.active')).to_have_text(active_label)
+    assert [x.strip() for x in nav.locator('a').all_inner_texts()] == ['首页', '工作', '资料']
+    sidebar = page.locator('[data-sidebar-navigation]')
+    expect(sidebar).to_be_hidden()
+    expect(page.locator('[data-sidebar-toggle]')).to_have_attribute('aria-expanded', 'false')
+    if active_label == '生活':
+        expect(nav.locator('a.active')).to_have_count(0)
+        page.locator('[data-sidebar-toggle]').click()
+        expect(sidebar.locator('a.active')).to_have_text('生活')
+        page.keyboard.press('Escape')
+        expect(sidebar).to_be_hidden()
+    else:
+        expect(nav.locator('a.active')).to_have_text(active_label)
 
 
 def assert_history_nav(page):
@@ -81,14 +87,43 @@ def main():
             page = context.new_page()
 
             page.goto('http://127.0.0.1:8141/', wait_until='networkidle')
-            assert nav_labels(page) == ['首页', '客户', '生活', '搜索']
+            expect(page.locator('.bottom-nav')).to_have_count(0)
             assert_primary_nav(page, '首页')
             expect(page.get_by_role('heading', name='客户管理')).to_have_count(0)
             expect(page.get_by_text('生活空间', exact=True)).to_have_count(0)
             assert_history_nav(page)
+            expect(page.get_by_text('查看未加号码', exact=True)).to_have_count(0)
+            for width in (1450, 900, 768, 390, 320):
+                page.set_viewport_size({'width': width, 'height': 950})
+                menu = page.locator('[data-sidebar-navigation]')
+                summary = page.locator('[data-sidebar-toggle]')
+                life = menu.locator('a[href="/life"]')
+                expect(life).to_be_hidden()
+                summary.focus()
+                page.keyboard.press('Enter')
+                expect(life).to_be_visible()
+                box = life.bounding_box()
+                assert box and box['x'] >= 0 and box['x'] + box['width'] <= width
+                expect(summary).to_have_attribute('aria-expanded', 'true')
+                assert page.evaluate("document.body.hasAttribute('data-sidebar-open')")
+                page.keyboard.press('Escape')
+                expect(life).to_be_hidden()
+                expect(summary).to_be_focused()
+                expect(summary).to_have_attribute('aria-expanded', 'false')
+                summary.click()
+                page.mouse.click(width - 5, 300)
+                expect(life).to_be_hidden()
+                summary.click()
+                life.click()
+                expect(page).to_have_url('http://127.0.0.1:8141/life')
+                expect(page.locator('[data-sidebar-navigation] a')).to_be_hidden()
+                page.locator('.global-primary-nav > a[href="/"]').click()
+                expect(page).to_have_url('http://127.0.0.1:8141/')
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+            page.set_viewport_size({'width': 1450, 'height': 950})
 
             page.goto('http://127.0.0.1:8141/work', wait_until='networkidle')
-            assert nav_labels(page) == ['工作', '客户', '资料', '搜索']
+            expect(page.locator('.bottom-nav')).to_have_count(0)
             assert_primary_nav(page, '工作')
             expect(page.get_by_role('heading', name='客户管理')).to_be_visible()
             expect(page.get_by_role('heading', name='工作资料')).to_be_visible()
@@ -122,7 +157,7 @@ def main():
                 page.goto('http://127.0.0.1:8141/work', wait_until='networkidle')
 
             page.goto('http://127.0.0.1:8141/work/customers', wait_until='networkidle')
-            assert nav_labels(page) == ['工作', '客户', '资料', '搜索']
+            expect(page.locator('.bottom-nav')).to_have_count(0)
             assert_primary_nav(page, '工作')
             work_tabs = page.locator('[data-home-tabs] [data-home-tab]')
             assert [x.strip() for x in work_tabs.all_inner_texts()] == ['缴费 0', '待办 0', '优惠 0', '最近客户']
@@ -130,7 +165,7 @@ def main():
             assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/work/library', wait_until='networkidle')
-            assert nav_labels(page) == ['工作', '客户', '资料', '搜索']
+            expect(page.locator('.bottom-nav')).to_have_count(0)
             assert_primary_nav(page, '工作')
             expect(page.get_by_role('heading', name='工作资料')).to_be_visible()
             expect(page.get_by_role('heading', name='产品资料')).to_be_visible()
@@ -144,25 +179,25 @@ def main():
             expect(page.locator('[data-home-tab="payment"]')).to_have_class('active')
 
             page.goto('http://127.0.0.1:8141/search', wait_until='networkidle')
-            assert nav_labels(page) == ['工作', '客户', '资料', '搜索']
+            expect(page.locator('.bottom-nav')).to_have_count(0)
             assert_primary_nav(page, '工作')
             expect(page.locator('input[name="q"]')).to_have_attribute('placeholder', '客户名 / 集团编码 / 税号 / 号码 / 账号')
             expect(page.get_by_text('菜谱', exact=True)).to_have_count(0)
             assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/customers', wait_until='networkidle')
-            assert nav_labels(page) == ['工作', '客户', '资料', '搜索']
+            expect(page.locator('.bottom-nav')).to_have_count(0)
             assert_primary_nav(page, '工作')
             assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/global-search', wait_until='networkidle')
-            assert nav_labels(page) == ['首页', '客户', '生活', '搜索']
+            expect(page.locator('.bottom-nav')).to_have_count(0)
             assert_primary_nav(page, '首页')
             expect(page.get_by_role('heading', name='搜索整个晨的助手')).to_be_visible()
             assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/life', wait_until='networkidle')
-            assert nav_labels(page) == ['生活', '菜谱', '工具']
+            expect(page.locator('.bottom-nav')).to_have_count(0)
             assert_primary_nav(page, '生活')
             expect(page.locator('.brand')).to_have_attribute('href', '/')
             expect(page.locator('.brand')).to_contain_text(f'v{config.APP_VERSION}')
@@ -170,12 +205,12 @@ def main():
             assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/life/recipes', wait_until='networkidle')
-            assert nav_labels(page) == ['生活', '菜谱', '工具']
+            expect(page.locator('.bottom-nav')).to_have_count(0)
             assert_primary_nav(page, '生活')
             assert_history_nav(page)
 
             page.goto('http://127.0.0.1:8141/life/tools', wait_until='networkidle')
-            assert nav_labels(page) == ['生活', '菜谱', '工具']
+            expect(page.locator('.bottom-nav')).to_have_count(0)
             assert_primary_nav(page, '生活')
             expect(page.get_by_role('heading', name='基础知识 · 计算工具')).to_be_visible()
             assert_history_nav(page)
