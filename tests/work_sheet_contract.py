@@ -69,7 +69,7 @@ def main():
         assert client.post(path+'/settings',json=broken).status_code==400
         assert state(client,path)['rows'][0]['values'][0]=='000123'
         broken=copy.deepcopy(saved)|{'csrf':csrf}
-        broken['rows'].pop()
+        broken['rows'][0],broken['rows'][1]=broken['rows'][1],broken['rows'][0]
         assert client.post(path+'/settings',json=broken).status_code==409
         broken=copy.deepcopy(saved)|{'csrf':csrf}
         broken['fields'][0]['id']='999999'
@@ -98,6 +98,40 @@ def main():
         with db() as conn:
             record=conn.execute('SELECT note,status FROM work_list_records WHERE id=?',(record_id,)).fetchone()
             assert record['note']=='保留备注' and record['status']=='done'
+        current=state(client,path)
+        removed_field=current['fields'][1]['id']
+        removed_row=current['rows'][-1]['id']
+        current['layout']['widths'][removed_field]=180
+        current['layout']['heights'][removed_row]=44
+        current['layout']['cells']['h|'+removed_field]={'bold':True}
+        current['layout']['cells'][current['rows'][0]['id']+'|'+removed_field]={'italic':True}
+        current['layout']['merges']=[{'rows':[current['rows'][0]['id']],
+                                      'cols':[current['fields'][0]['id'],removed_field]}]
+        result=client.post(path+'/settings',json=current|{'csrf':csrf})
+        assert result.status_code==200,result.text
+        current=state(client,path)
+        removed_field=current['fields'].pop(1)['id']
+        removed_row=current['rows'].pop()['id']
+        for row in current['rows']:
+            row['values'].pop(1)
+        del current['layout']['widths'][removed_field]
+        del current['layout']['heights'][removed_row]
+        del current['layout']['cells']['h|'+removed_field]
+        del current['layout']['cells'][current['rows'][0]['id']+'|'+removed_field]
+        current['layout']['merges']=[]
+        result=client.post(path+'/settings',json=current|{'csrf':csrf})
+        assert result.status_code==200,result.text
+        reduced=state(client,path)
+        assert len(reduced['fields'])==2 and len(reduced['rows'])==3
+        assert reduced['rows'][0]['values'][0]=='000123'
+        assert reduced['layout']['merges']==[]
+        assert removed_field not in reduced['layout']['widths']
+        assert removed_row not in reduced['layout']['heights']
+        with db() as conn:
+            assert conn.execute('SELECT 1 FROM work_list_fields WHERE id=?',(int(removed_field),)).fetchone() is None
+            assert conn.execute('SELECT 1 FROM work_list_records WHERE id=?',(int(removed_row),)).fetchone() is None
+            assert all(removed_field not in json.loads(row['values_json']) for row in conn.execute(
+                'SELECT values_json FROM work_list_records WHERE list_id=?',(int(path.rsplit('/',1)[1]),)))
         current=state(client,path)
         assert client.post(path+'/archive',data={'csrf':csrf,'revision':current['revision']},follow_redirects=False).status_code==303
         assert client.post(path+'/settings',json=current|{'csrf':csrf}).status_code==409
