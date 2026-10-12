@@ -172,9 +172,16 @@ def save_grid(conn, list_id, data):
     _revision(data.get('revision'), item['revision'])
     old_fields = [f for f in _fields(conn, list_id) if not f['hidden']]
     old_rows = _rows(conn, list_id)
-    if [f['id'] for f in fields if not f['id'].startswith('new_')] != [str(f['id']) for f in old_fields]:
+    def ordered_subset(submitted, existing):
+        positions = {key: index for index, key in enumerate(existing)}
+        kept = [key for key in submitted if not key.startswith('new_')]
+        indexes = [positions.get(key, -1) for key in kept]
+        return all(index >= 0 for index in indexes) and indexes == sorted(set(indexes))
+    old_field_ids = [str(f['id']) for f in old_fields]
+    old_row_ids = [str(r['id']) for r in old_rows]
+    if not ordered_subset([f['id'] for f in fields], old_field_ids):
         raise HTTPException(409, '列已被更新，请刷新后重试')
-    if [r['id'] for r in rows if not r['id'].startswith('new_')] != [str(r['id']) for r in old_rows]:
+    if not ordered_subset([r['id'] for r in rows], old_row_ids):
         raise HTTPException(409, '记录已被更新，请刷新后重试')
     prior_fields = {str(f['id']): f for f in old_fields}
     prior_rows = {str(r['id']): r for r in old_rows}
@@ -201,6 +208,9 @@ def save_grid(conn, list_id, data):
             current = {'id': field_id, 'label': label, 'kind': 'text', 'hidden': 0, 'options': []}
         field_map[field['id']] = str(current['id'])
         validated_fields.append(current)
+    retained_field_ids = set(field_map.values()) | {
+        str(f['id']) for f in _fields(conn, list_id) if f['hidden']
+    }
     for row in rows:
         previous = prior_rows.get(row['id'])
         form = []
@@ -212,6 +222,7 @@ def save_grid(conn, list_id, data):
             else:
                 raise HTTPException(400, '单元格内容类型无效')
         values = _values(FormData(form), validated_fields, previous['values'] if previous else {})
+        values = {key: value for key, value in values.items() if key in retained_field_ids}
         for field, raw in zip(validated_fields, row['values']):
             if field['kind'] == 'text':
                 text = str(raw)
@@ -228,6 +239,14 @@ def save_grid(conn, list_id, data):
             record_id = conn.execute('INSERT INTO work_list_records(list_id,values_json,created_at,updated_at) VALUES(?,?,?,?)',
                                      (list_id, json.dumps(values, ensure_ascii=False), now, now)).lastrowid
         row_map[row['id']] = str(record_id)
+    removed_rows = set(old_row_ids) - {row_id for row_id in row_map if row_id != 'h'}
+    if removed_rows:
+        conn.executemany('DELETE FROM work_list_records WHERE list_id=? AND id=?',
+                         ((list_id, int(row_id)) for row_id in removed_rows))
+    removed_fields = set(old_field_ids) - {field_id for field_id in field_map if not field_id.startswith('new_')}
+    if removed_fields:
+        conn.executemany('DELETE FROM work_list_fields WHERE list_id=? AND id=?',
+                         ((list_id, int(field_id)) for field_id in removed_fields))
     row_map['h'] = 'h'
     layout['widths'] = {field_map[k]: v for k, v in layout['widths'].items()}
     layout['heights'] = {row_map[k]: v for k, v in layout['heights'].items()}
