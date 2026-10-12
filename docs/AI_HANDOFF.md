@@ -2,6 +2,18 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-12 16:11（Asia/Shanghai）。工作模式：开发中；用户新增需求“清单增加删除行和列功能”。活动分支 feat/work-list-delete-rows-columns，PR #151（https://github.com/zc202302-lab/chen-assistant/pull/151），head e90a22534a9c474649b65217ded0f3b8d44647a2。候选Web1.7.12；线上Web1.7.11。Windows0.5.16不变，云电脑Draft #128继续暂停。
+- 已完成：可逐行/逐列删除，二次确认，至少保留一列；保存时事务删除记录/字段并清理单元格值、筛选索引、尺寸、格式和受影响的合并区域。删行列仍受清单revision与CSRF保护，原表格约束与既有功能保留。功能提交da94f7c5e84e42136e62fec22d5d2db0a6a7ab70，兼容性修复e90a22534a9c474649b65217ded0f3b8d44647a2。
+- 受检head e90a22534a9c474649b65217ded0f3b8d44647a2：完整validation run38220531424 attempt2 / job114716751731 success（51步骤），stability run38220531414 / job114715414571 success。清单桌面浏览器验收覆盖删除有合并区域的行、删除有内容的列、保存并检查剩余值；历史工作区、缴费、手机布局、Excel、架构与安全回归保留通过。首轮完整validation因既有首页样式回归遇到SQLite database locked失败；按日志重跑整项后通过。
+- 本地表格/清单契约、架构治理、JS/Python/shell语法与diff检查通过。浏览器实际交互由CI Chromium验证；验收截图产物已上传。核心文件app/work_list_sheet.py、app/static/work-sheet.js/css、app/templates/work_list_detail.html、tests/work_sheet_contract.py与tests/work_sheet_acceptance.py；无新增路由。
+- PR #151仍未合并、未部署；未登录或修改生产数据。生产仍为Web1.7.11，尚无公网1.7.12验证；不从CI推断用户实际业务效果。
+- 开发目录/workspace/scratch/75165f63b510/chen-assistant；本地分支feat/work-list-delete-rows-columns。云电脑Draft #128与附件保持不变。
+- 唯一下一步：保留PR #151供用户审阅；收到明确部署要求后重新核对PR/head与CI，再合并部署Web1.7.12并核验公网版本与资源。云电脑#128继续暂停。
+
+---
+
+## 上一阶段快照（历史：Web 1.7.11 已部署）
+
 - 更新时间：2026-10-12 13:15（Asia/Shanghai）。用户明确要求完成部署。PR #150（https://github.com/zc202302-lab/chen-assistant/pull/150）已合并，Web1.7.11已通过实际公网核验；Windows0.5.16不变，无需升级Windows，云电脑Draft #128继续暂停，附件未修改。feat/list-compact-tiles已是历史分支，没有未完成WIP。
 - 上线功能：清单详情紧凑标题栏/主表格，移除多余说明、新增记录、清单设置和重复记录详情；保留Excel导入/导出，提供确认和revision/CSRF保护的删除。清单入口小方块，支持名称/说明编辑、发送至首页；改名同步首页，删除事务清理关联字段/记录/布局及首页入口。旧记录/设置接口保留兼容。
 - 一并修复金额核对后Excel按钮仍禁用：Excel和TXT现在按同一服务端核对结果更新，接口/审核规则保留。v028.js缓存17110，清单/首页资源1711；部署期待版本1.7.11已同步。
@@ -10,6 +22,7 @@
 - 合并main稳定性38206818154、语法38206818179 success；main完整重复validation38206818127核查时仍运行，尚未宣称整轮成功。本次只更新交接，可能触发新的main重复检查或取消旧检查；接管时另查最新run，不替代已通过的完整PR验收与实际公网证据。
 - 清单截图核查与CI字体差异详见历史：中文正常的同一清单样式及当前测试机的结构/尺寸均已核查，未修改产品编码或字体。开发目录/workspace/scratch/75165f63b510/chen-assistant，当前本地main；核心work_lists.py、清单模板/样式、home-shortcuts.js/css、v101首页URL校验和v028.js，两份路由清单同步。
 - 唯一下一步：等待用户在Web1.7.11清单操作反馈或下一项明确需求；接管时核对main完整重复检查最终状态，云电脑#128继续暂停。
+
 
 ---
 
