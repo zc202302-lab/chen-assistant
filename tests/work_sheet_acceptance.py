@@ -123,6 +123,20 @@ def main():
             assert table['layout']['cells']['1|1']['background']=='#225588'
             assert table['layout']['cells']['2|2']['number_format']=='0.00%'
             assert table['layout']['merges']==[{'rows':[3],'cols':[1,2]}]
+            page.once('dialog',lambda dialog:dialog.accept())
+            page.get_by_role('button',name='删除第3行',exact=True).click()
+            expect(page.locator('.ws-grid tbody tr')).to_have_count(3)
+            page.once('dialog',lambda dialog:dialog.accept())
+            page.get_by_role('button',name='删除第1列',exact=True).click()
+            expect(page.locator('.ws-header-input')).to_have_count(2)
+            with page.expect_navigation(wait_until='networkidle'):
+                page.get_by_role('button',name='保存表格',exact=True).click()
+            expect(page.locator('.ws-grid tbody tr')).to_have_count(3)
+            expect(page.locator('.ws-header-input')).to_have_count(2)
+            expect(page.locator('.ws-header-input').first).to_have_value('比例')
+            expect(page.locator('.ws-cell[data-row="0"][data-col="0"]')).to_have_value('25.00%')
+            data=json.loads(page.locator('#work-sheet-data').text_content())
+            assert data['layout']['merges']==[]
             ignored={'Transition was aborted because of invalid state. ViewTransition opt-in disabled','Transition was aborted because of invalid state. Viewport size changed'}
             assert not [e for e in errors if e not in ignored],errors
             browser.close()
