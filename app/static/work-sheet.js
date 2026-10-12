@@ -138,7 +138,7 @@
     model.fields.forEach((field, c) => {
       const th = node('th', '', (() => { let n = c + 1, s = ''; while (n) { n--; s = String.fromCharCode(65 + n % 26) + s; n = Math.floor(n / 26); } return s; })());
       if (!readonly) {
-        const remove = node('button', 'ws-axis-delete ws-col-delete', '×');
+        const remove = node('button', 'ws-axis-delete ws-col-delete');
         remove.type = 'button'; remove.setAttribute('aria-label', '删除第' + (c + 1) + '列');
         remove.title = '删除“' + field.label + '”列及其中的数据';
         remove.addEventListener('click', () => deleteColumn(c));
@@ -215,7 +215,7 @@
         const label = node('span', 'ws-row-label', String(i + 1));
         index.textContent = '';
         index.append(label);
-        const remove = node('button', 'ws-axis-delete ws-row-delete', '×');
+        const remove = node('button', 'ws-axis-delete ws-row-delete');
         remove.type = 'button'; remove.setAttribute('aria-label', '删除第' + (i + 1) + '行');
         remove.title = '删除此行及其中的数据';
         remove.addEventListener('click', () => deleteRow(i));
