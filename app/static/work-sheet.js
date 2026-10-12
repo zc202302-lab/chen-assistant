@@ -137,6 +137,13 @@
     letters.append(node('th', 'ws-corner', ''));
     model.fields.forEach((field, c) => {
       const th = node('th', '', (() => { let n = c + 1, s = ''; while (n) { n--; s = String.fromCharCode(65 + n % 26) + s; n = Math.floor(n / 26); } return s; })());
+      if (!readonly) {
+        const remove = node('button', 'ws-axis-delete ws-col-delete', '×');
+        remove.type = 'button'; remove.setAttribute('aria-label', '删除第' + (c + 1) + '列');
+        remove.title = '删除“' + field.label + '”列及其中的数据';
+        remove.addEventListener('click', () => deleteColumn(c));
+        th.append(remove);
+      }
       resize(th, 'x', field.id, formats.widths[field.id] || 150, size => { colElements[c].style.width = size + 'px'; updateTableWidth(); });
       letters.append(th);
     });
@@ -204,6 +211,16 @@
       tr.style.height = height + 'px';
       const index = node('th', 'ws-index', String(i + 1));
       index.scope = 'row';
+      if (!readonly) {
+        const label = node('span', 'ws-row-label', String(i + 1));
+        index.textContent = '';
+        index.append(label);
+        const remove = node('button', 'ws-axis-delete ws-row-delete', '×');
+        remove.type = 'button'; remove.setAttribute('aria-label', '删除第' + (i + 1) + '行');
+        remove.title = '删除此行及其中的数据';
+        remove.addEventListener('click', () => deleteRow(i));
+        index.append(remove);
+      }
       resize(index, 'y', r.id, height, size => { tr.style.height = size + 'px'; table.querySelectorAll('.ws-cell').forEach(el => { const ids = JSON.parse(el.dataset.heightRows); el.style.height = (ids.reduce((sum, id) => sum + (layout().heights[id] || 32), 0) - 1) + 'px'; }); });
       tr.append(index);
       model.fields.forEach((field, c) => {
@@ -286,6 +303,42 @@
     model.fields.push({id: 'new_c' + serial++, label: '列' + (model.fields.length + 1), kind: 'text', options: []});
     model.rows.forEach(r => r.values.push(''));
     mark(); if (paint) render();
+  };
+  const pruneLayout = (axis, id) => {
+    const formats = layout();
+    const dimension = axis === 'row' ? 'heights' : 'widths';
+    delete formats[dimension][id];
+    const keyIndex = axis === 'row' ? 0 : 1;
+    formats.cells = Object.fromEntries(Object.entries(formats.cells).filter(([key]) => key.split('|')[keyIndex] !== id));
+    formats.merges = formats.merges.map(merge => ({
+      rows: axis === 'row' ? merge.rows.filter(key => key !== id) : merge.rows,
+      cols: axis === 'column' ? merge.cols.filter(key => key !== id) : merge.cols,
+    })).filter(merge => merge.rows.length && merge.cols.length && merge.rows.length * merge.cols.length > 1);
+  };
+  const deleteRow = index => {
+    if (readonly || index < 0 || index >= model.rows.length) return;
+    if (!window.confirm('删除第' + (index + 1) + '行及其中的数据？此操作保存后无法撤销。')) return;
+    const [removed] = model.rows.splice(index, 1);
+    pruneLayout('row', removed.id);
+    mark(); render();
+  };
+  const deleteColumn = index => {
+    if (readonly || model.fields.length <= 1) {
+      if (model.fields.length <= 1) notice.textContent = '至少保留一列';
+      return;
+    }
+    const field = model.fields[index];
+    if (!field || !window.confirm('删除“' + field.label + '”列及其中的数据？此操作保存后无法撤销。')) return;
+    model.fields.splice(index, 1);
+    model.rows.forEach(row => row.values.splice(index, 1));
+    pruneLayout('column', field.id);
+    const shifted = new Map();
+    filters.forEach((value, col) => {
+      if (col < index) shifted.set(col, value);
+      else if (col > index) shifted.set(col - 1, value);
+    });
+    filters.clear(); shifted.forEach((value, col) => filters.set(col, value));
+    mark(); render();
   };
   root.querySelector('[data-sheet-add-row]')?.addEventListener('click', () => addRow());
   root.querySelector('[data-sheet-add-col]')?.addEventListener('click', () => addColumn());
