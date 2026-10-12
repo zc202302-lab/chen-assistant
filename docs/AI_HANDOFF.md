@@ -4,7 +4,8 @@
 
 - 更新时间：2026-10-12 16:11（Asia/Shanghai）。工作模式：开发中；用户新增需求“清单增加删除行和列功能”。活动分支 feat/work-list-delete-rows-columns，PR #151（https://github.com/zc202302-lab/chen-assistant/pull/151），当前PR head以GitHub实时值为准，最后代码提交 e90a22534a9c474649b65217ded0f3b8d44647a2。候选Web1.7.12；线上Web1.7.11。Windows0.5.16不变，云电脑Draft #128继续暂停。
 - 已完成：可逐行/逐列删除，二次确认，至少保留一列；保存时事务删除记录/字段并清理单元格值、筛选索引、尺寸、格式和受影响的合并区域。删行列仍受清单revision与CSRF保护，原表格约束与既有功能保留。功能提交da94f7c5e84e42136e62fec22d5d2db0a6a7ab70，兼容性修复e90a22534a9c474649b65217ded0f3b8d44647a2。
-- 浏览器首次发现删行按钮的可见“×”改变了旧行号文本断言，已改为CSS伪元素，保留按钮可访问名称与旧行号语义；第二轮清单真实浏览器验收通过，布局截图产物上传。该兼容修复在功能提交后独立提交。\n- 受检head e90a22534a9c474649b65217ded0f3b8d44647a2：完整validation run38220531424 attempt2 / job114716751731 success（51步骤），stability run38220531414 / job114715414571 success。清单桌面浏览器验收覆盖删除有合并区域的行、删除有内容的列、保存并检查剩余值；历史工作区、缴费、手机布局、Excel、架构与安全回归保留通过。首轮完整validation因既有首页样式回归遇到SQLite database locked失败；按日志重跑整项后通过。
+- 浏览器首次发现删行按钮的可见“×”改变了旧行号文本断言，已改为CSS伪元素，保留按钮可访问名称与旧行号语义；第二轮清单真实浏览器验收通过，布局截图产物上传。该兼容修复在功能提交后独立提交。
+- 受检head e90a22534a9c474649b65217ded0f3b8d44647a2：完整validation run38220531424 attempt2 / job114716751731 success（51步骤），stability run38220531414 / job114715414571 success。清单桌面浏览器验收覆盖删除有合并区域的行、删除有内容的列、保存并检查剩余值；历史工作区、缴费、手机布局、Excel、架构与安全回归保留通过。首轮完整validation因既有首页样式回归遇到SQLite database locked失败；按日志重跑整项后通过。
 - 本地表格/清单契约、架构治理、JS/Python/shell语法与diff检查通过。浏览器实际交互由CI Chromium验证；验收截图产物已上传。核心文件app/work_list_sheet.py、app/static/work-sheet.js/css、app/templates/work_list_detail.html、tests/work_sheet_contract.py与tests/work_sheet_acceptance.py；无新增路由。
 - PR #151仍未合并、未部署；未登录或修改生产数据。生产仍为Web1.7.11，尚无公网1.7.12验证；不从CI推断用户实际业务效果。
 - 开发目录/workspace/scratch/75165f63b510/chen-assistant；本地分支feat/work-list-delete-rows-columns。云电脑Draft #128与附件保持不变。
