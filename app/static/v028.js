@@ -163,16 +163,18 @@
     const pending = document.getElementById('pendingCount');
     const total = document.getElementById('paymentGrandTotal');
     const readiness = document.getElementById('paymentReadiness');
-    const txt = document.getElementById('paymentTxtButton');
+    const exports = ['paymentExcelButton', 'paymentTxtButton'].map(id => document.getElementById(id)).filter(Boolean);
     if (required && data.required !== undefined) required.textContent = data.required;
     if (pending && data.pending !== undefined) pending.textContent = data.pending;
     if (total && data.total !== undefined) total.textContent = money(data.total);
     if (readiness && data.pending !== undefined) readiness.textContent = data.pending ? `还有 ${data.pending} 项金额未核对` : '本月应缴业务金额已全部核对';
-    if (txt && data.txt_ready !== undefined) {
-      txt.setAttribute('aria-disabled', data.txt_ready ? 'false' : 'true');
-      txt.classList.toggle('disabled', !data.txt_ready);
-      txt.classList.toggle('primary', data.txt_ready);
-      txt.classList.toggle('secondary', !data.txt_ready);
+    if (data.txt_ready !== undefined) {
+      exports.forEach(button => {
+        button.setAttribute('aria-disabled', data.txt_ready ? 'false' : 'true');
+        button.classList.toggle('disabled', !data.txt_ready);
+        button.classList.toggle('primary', data.txt_ready);
+        button.classList.toggle('secondary', !data.txt_ready);
+      });
     }
     const notify = root.querySelector('[data-payment-action="notify"]');
     if (notify && !notify.classList.contains('done')) notify.disabled = Number(data.pending || 0) !== 0;

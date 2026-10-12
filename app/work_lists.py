@@ -162,6 +162,44 @@ def work_list_page(request: Request, list_id: int, q: str = '', status: str = ''
     return templates.TemplateResponse(request, 'work_list_detail.html', _ctx(request, item=item, fields=fields, rows=rows, q=q, status=status, sheet=sheet, sheet_readonly=bool(item['archived'] or q or status)))
 
 
+def _sync_list_shortcut(conn, list_id, title=None):
+    from .v101_workspace_routes import HOME_SHORTCUTS_KEY, home_shortcuts
+    href = f'/work/lists/{list_id}'
+    items = home_shortcuts(conn)
+    updated = [dict(item, title=title[:40]) if item['href'] == href else item
+               for item in items if item['href'] != href or title is not None]
+    if updated != items:
+        conn.execute('INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)',
+                     (HOME_SHORTCUTS_KEY, json.dumps(updated, ensure_ascii=False)))
+
+
+@router.post('/work/lists/{list_id}/metadata')
+async def edit_work_list_metadata(request: Request, list_id: int):
+    form = await request.form()
+    _csrf(request, form.get('csrf'))
+    title = _text(form.get('title'), '名称', required=True)
+    description = _text(form.get('description'), '说明', 2000)
+    with db(immediate=True) as conn:
+        item = _list(conn, list_id)
+        _revision(form.get('revision'), item['revision'])
+        conn.execute('UPDATE work_lists SET title=?,description=?,revision=revision+1,updated_at=? WHERE id=?',
+                     (title, description, now_iso(), list_id))
+        _sync_list_shortcut(conn, list_id, title)
+    return RedirectResponse('/work/lists' + ('?archived=1' if item['archived'] else ''), 303)
+
+
+@router.post('/work/lists/{list_id}/delete')
+async def delete_work_list(request: Request, list_id: int):
+    form = await request.form()
+    _csrf(request, form.get('csrf'))
+    with db(immediate=True) as conn:
+        item = _list(conn, list_id)
+        _revision(form.get('revision'), item['revision'])
+        conn.execute('DELETE FROM work_lists WHERE id=?', (list_id,))
+        _sync_list_shortcut(conn, list_id)
+    return RedirectResponse('/work/lists', 303)
+
+
 @router.get('/work/lists/{list_id}/settings', response_class=HTMLResponse)
 def work_list_settings(request: Request, list_id: int):
     with db() as conn:

@@ -99,7 +99,7 @@ def main():
             multi_id = conn.execute('SELECT MAX(id) FROM work_list_fields WHERE list_id=?', (list_id,)).fetchone()[0]
         multi_payload = payload | {'revision': '3', 'list_revision': '4', f'f_{multi_id}': ['重要', '回访']}
         assert client.post(edit, data=multi_payload, follow_redirects=False).status_code == 303
-        assert '重要、回访' in client.get(path).text
+        assert json.loads(__import__('re').search(r'<script id="work-sheet-data" type="application/json">(.*?)</script>', client.get(path).text).group(1))['rows'][0]['values'][-1] == ['重要', '回访']
         assert client.post(edit, data=multi_payload | {'revision': '4', f'f_{multi_id}': ['不存在']}).status_code == 400
         other = client.post('/work/lists', data={'csrf': csrf, 'title': '商机测试', 'preset': 'opportunity'}, follow_redirects=False).headers['location']
         assert client.get(other + f'/records/{record_id}/edit').status_code == 404
@@ -109,7 +109,32 @@ def main():
         assert client.get(path + '/export.xlsx').status_code == 200
         assert '改名后' in client.get('/work/lists?archived=1').text
         assert client.post(path + '/archive', data={'csrf': csrf, 'revision': '5'}, follow_redirects=False).status_code == 303
-        assert '重要、回访' in client.get(path).text
+        assert json.loads(__import__('re').search(r'<script id="work-sheet-data" type="application/json">(.*?)</script>', client.get(path).text).group(1))['rows'][0]['values'][-1] == ['重要', '回访']
+        # Metadata and delete operate independently of the sheet, under revision/CSRF guards.
+        detail = client.get(path).text
+        assert '新增记录' not in detail and '记录详情' not in detail and '>清单设置<' not in detail
+        assert 'data-list-delete' in detail
+        shortcuts = [{'href': path, 'title': '改名后'}, {'href': '/work', 'title': '工作'}]
+        assert client.post('/home/shortcuts', data={'csrf': csrf, 'items': json.dumps(shortcuts)}).status_code == 200
+        before_rows = None
+        with db() as conn:
+            before_rows = [dict(r) for r in conn.execute('SELECT * FROM work_list_records WHERE list_id=?', (list_id,))]
+        assert client.post(path + '/metadata', data={'title': '无授权', 'revision': '6'}).status_code == 403
+        assert client.post(path + '/metadata', data={'csrf': csrf, 'title': '过期修改', 'revision': '1'}).status_code == 409
+        assert client.post(path + '/metadata', data={'csrf': csrf, 'title': '新名称', 'description': '新说明', 'revision': '6'}, follow_redirects=False).status_code == 303
+        assert client.get('/home/shortcuts').json()['items'][0]['title'] == '新名称'
+        with db() as conn:
+            assert [dict(r) for r in conn.execute('SELECT * FROM work_list_records WHERE list_id=?', (list_id,))] == before_rows
+        assert client.post(path + '/delete', data={'revision': '7'}).status_code == 403
+        assert client.post(path + '/delete', data={'csrf': csrf, 'revision': '6'}).status_code == 409
+        assert client.get(path).status_code == 200
+        assert client.post(path + '/delete', data={'csrf': csrf, 'revision': '7'}, follow_redirects=False).status_code == 303
+        assert client.get(path).status_code == 404
+        assert client.get(other).status_code == 200
+        assert client.get('/home/shortcuts').json()['items'] == [{'href': '/work', 'title': '工作'}]
+        with db() as conn:
+            for table in ['work_list_records', 'work_list_fields', 'work_list_layouts']:
+                assert not conn.execute(f'SELECT 1 FROM {table} WHERE list_id=?', (list_id,)).fetchall()
     with db() as conn:
         assert dict(conn.execute('SELECT * FROM customers WHERE id=?', (customer_id,)).fetchone()) == original_customer
         assert [dict(r) for r in conn.execute('SELECT * FROM payment_entries')] == original_payments

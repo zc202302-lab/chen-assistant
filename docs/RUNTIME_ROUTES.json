@@ -152,6 +152,22 @@
     "name": "work_list_page"
   },
   {
+    "path": "/work/lists/{list_id}/metadata",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.work_lists",
+    "name": "edit_work_list_metadata"
+  },
+  {
+    "path": "/work/lists/{list_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.work_lists",
+    "name": "delete_work_list"
+  },
+  {
     "path": "/work/lists/{list_id}/settings",
     "methods": [
       "GET"

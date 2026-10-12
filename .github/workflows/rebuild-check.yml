@@ -136,6 +136,28 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: python -m compileall -q app storage_node tests
 
+      - name: Legacy payment workflow browser acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/v031_payment_workflow_acceptance.py
+
+      - name: Work lists contract and browser acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: |
+          python tests/work_lists_contract.py
+          python tests/work_sheet_contract.py
+          python tests/work_sheet_acceptance.py
+          python tests/work_lists_acceptance.py
+          python tests/work_list_import_contract.py
+          python tests/work_list_import_acceptance.py
+
+      - name: Upload list layout previews
+        if: always() && steps.scope.outputs.mode == 'full'
+        uses: actions/upload-artifact@v4
+        with:
+          name: list-compact-preview
+          path: artifacts/list-compact
+          if-no-files-found: ignore
+
       - name: Number inbox batch contract and browser acceptance
         if: steps.scope.outputs.mode == 'full'
         run: |
@@ -177,16 +199,6 @@ jobs:
       - name: Input selection browser acceptance
         if: steps.scope.outputs.mode == 'full'
         run: python tests/input_selection_acceptance.py
-
-      - name: Work lists contract and browser acceptance
-        if: steps.scope.outputs.mode == 'full'
-        run: |
-          python tests/work_lists_contract.py
-          python tests/work_sheet_contract.py
-          python tests/work_sheet_acceptance.py
-          python tests/work_lists_acceptance.py
-          python tests/work_list_import_contract.py
-          python tests/work_list_import_acceptance.py
 
       - name: Code governance inventory
         if: steps.scope.outputs.mode == 'full'
@@ -254,6 +266,7 @@ jobs:
         run: |
           python tests/production_experience_regression.py
           node tests/navigation_transitions_contract.cjs
+          node tests/payment_export_readiness_contract.cjs
           python tests/promotion_slots_contract.py
           python tests/promotion_render_regression.py
           python tests/promotion_rename_route_regression.py
@@ -317,10 +330,6 @@ jobs:
       - name: Legacy customer import browser acceptance
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v032_customer_import_acceptance.py
-
-      - name: Legacy payment workflow browser acceptance
-        if: steps.scope.outputs.mode == 'full'
-        run: python tests/v031_payment_workflow_acceptance.py
 
       - name: Legacy customer browser acceptance
         if: steps.scope.outputs.mode == 'full'

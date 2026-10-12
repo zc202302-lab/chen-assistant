@@ -43,3 +43,6 @@ body:has(.wl-sheet-shell) .page{max-width:1520px}
 @media(max-width:700px){.ws-toolbar{gap:6px}.ws-editor .ws-toolbar button{padding:7px 9px;font-size:12px}.ws-status{margin-left:0;width:100%}.ws-stage{max-height:60vh}.wl-sheet-shell{padding:12px 8px 100px}.wl-section-nav.wl-sheet-nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.wl-sheet-nav a{font-size:12px;padding:10px 6px}}
 
 .ws-editor[data-readonly="1"] .ws-col-resize,.ws-editor[data-readonly="1"] .ws-row-resize{display:none}
+
+.wl-sheet-shell{padding-top:10px;padding-bottom:12px}.wl-sheet-shell .ws-editor{margin:8px 0}.wl-sheet-shell .ws-stage{max-height:max(240px,calc(100dvh - 250px))}.wl-sheet-shell .ws-notice:empty{display:none}
+@media(max-width:700px){.wl-sheet-shell .ws-stage{max-height:max(220px,calc(100dvh - 300px))}.wl-sheet-shell{padding-bottom:85px}}
