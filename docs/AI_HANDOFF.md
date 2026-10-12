@@ -2,6 +2,18 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-12 16:48（Asia/Shanghai）。用户新增的清单删行/删列功能已完成部署。PR #151 已合并，main合并提交 b4f284ca569d58685f55cf4125270d8f1a16e3aa；Web1.7.12公网核验成功。Windows0.5.16不变，云电脑Draft #128继续暂停。
+- 功能：清单表格逐行/逐列删除，操作前确认、至少保留一列；保存事务清理记录、字段、单元格值及对应行列尺寸/格式/合并区域。revision/CSRF保护、Excel和现有表格行为保留。删除控制有无障碍名称，行号文字语义不变。
+- PR head 43363388bccc47e43f423aa8d09d206fb7949a93 完整validation run38222629769 attempt2 / job114724291553 success（51步骤），stability run38222629751 / job114722?? success。完整main validation run38224531182 / job114728667961 success（51步骤），稳定性复查job114732739577与生产部署job114732874695均success。PR原代码受检head e90a22534a9c474649b65217ded0f3b8d44647a2；交接纯文档更新后再对最终PR head完整复验通过。两轮中历史首页切换测试各遇一次SQLite锁/动画取消瞬时失败，按日志重跑后整轮成功。
+- 公网PWA验证run38224531123 / job114732994862 attempt2 success：2026-10-12 16:48（Asia/Shanghai）ONLINE VERIFIED v1.7.12；manifest、work-sheet.js/css、工作清单资源、root service worker及提醒鉴权检查通过。首次检查发生在自动部署前仍见1.7.11，部署job成功后重跑并通过。未登录或修改生产客户数据；不推断用户实际业务体验。
+- 本地表格完整性与清单契约、架构治理、JS/Python/shell语法通过；CI Chromium桌面真实浏览器覆盖删合并行、删有值列、保存后剩余值，截图产物已上传。核心app/work_list_sheet.py、app/static/work-sheet.js/css、app/templates/work_list_detail.html及相关契约/浏览器验收，无新增路由。
+- 开发目录/workspace/scratch/75165f63b510/chen-assistant；当前工作可从GitHub main与本交接记录恢复。清单EXE/XLSM附件未修改，云电脑Draft #128继续暂停。
+- 唯一下一步：等待用户反馈Web1.7.12清单体验或新的明确需求；接管时查main最新CI状态，不推断用户端实际操作结果。
+
+---
+
+## 上一阶段快照（历史：PR #151 已合并，待公网部署核验）
+
 - 更新时间：2026-10-12 16:11（Asia/Shanghai）。工作模式：开发中；用户新增需求“清单增加删除行和列功能”。活动分支 feat/work-list-delete-rows-columns，PR #151（https://github.com/zc202302-lab/chen-assistant/pull/151），当前PR head以GitHub实时值为准，最后代码提交 e90a22534a9c474649b65217ded0f3b8d44647a2。候选Web1.7.12；线上Web1.7.11。Windows0.5.16不变，云电脑Draft #128继续暂停。
 - 已完成：可逐行/逐列删除，二次确认，至少保留一列；保存时事务删除记录/字段并清理单元格值、筛选索引、尺寸、格式和受影响的合并区域。删行列仍受清单revision与CSRF保护，原表格约束与既有功能保留。功能提交da94f7c5e84e42136e62fec22d5d2db0a6a7ab70，兼容性修复e90a22534a9c474649b65217ded0f3b8d44647a2。
 - 浏览器首次发现删行按钮的可见“×”改变了旧行号文本断言，已改为CSS伪元素，保留按钮可访问名称与旧行号语义；第二轮清单真实浏览器验收通过，布局截图产物上传。该兼容修复在功能提交后独立提交。
@@ -10,6 +22,7 @@
 - PR #151仍未合并、未部署；未登录或修改生产数据。生产仍为Web1.7.11，尚无公网1.7.12验证；不从CI推断用户实际业务效果。
 - 开发目录/workspace/scratch/75165f63b510/chen-assistant；本地分支feat/work-list-delete-rows-columns。云电脑Draft #128与附件保持不变。
 - 唯一下一步：保留PR #151供用户审阅；收到明确部署要求后重新核对PR/head与CI，再合并部署Web1.7.12并核验公网版本与资源。云电脑#128继续暂停。
+
 
 ---
 
