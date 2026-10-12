@@ -152,6 +152,22 @@
     "qualname": "work_list_page"
   },
   {
+    "path": "/work/lists/{list_id}/metadata",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_lists.py",
+    "qualname": "edit_work_list_metadata"
+  },
+  {
+    "path": "/work/lists/{list_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_lists.py",
+    "qualname": "delete_work_list"
+  },
+  {
     "path": "/work/lists/{list_id}/settings",
     "methods": [
       "GET"

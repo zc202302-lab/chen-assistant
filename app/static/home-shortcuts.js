@@ -3,8 +3,8 @@
   const script = document.querySelector('script[data-home-shortcut-script]');
   const csrf = script?.dataset.csrf || '';
   const endpoint = '/home/shortcuts';
-  const permitted = href => ['/work/customers?home=payment', '/work/customers?home=promos'].includes(href) || /^\/(?:(?:work|info|life)(?:\/[a-z][a-z0-9_-]*){0,2}|customers|products|search|accounts)$/.test(href);
-  const moduleSelector = '.work-entry-link, .info-overview-card-v160, .v12-life-card, .v10-stat-card, .v10-simple-card';
+  const permitted = href => /^\/work\/lists\/[1-9][0-9]*$/.test(href) || ['/work/customers?home=payment', '/work/customers?home=promos'].includes(href) || /^\/(?:(?:work|info|life)(?:\/[a-z][a-z0-9_-]*){0,2}|customers|products|search|accounts)$/.test(href);
+  const moduleSelector = '.work-entry-link, .info-overview-card-v160, .v12-life-card, .v10-stat-card, .v10-simple-card, .wl-card-link';
   const moduleCards = new Map();
   let items = [];
   async function load() {
@@ -35,7 +35,7 @@
       notice.dataset.homeShortcutNotice = '';
       notice.setAttribute('role', 'status');
       notice.className = 'home-shortcut-notice';
-      document.querySelector('[data-home-shortcuts], [data-work-entries], .v10-shell')?.prepend(notice);
+      document.querySelector('[data-home-shortcuts], [data-work-entries], .v10-shell, .wl-shell')?.prepend(notice);
     }
     notice.textContent = message;
   }
@@ -56,6 +56,7 @@
     let editing = false, snapshot = [];
     async function loadModuleCards() {
       const sources = new Set(items.map(item => {
+        if (/^\/work\/lists\/[1-9][0-9]*$/.test(item.href)) return '/work/lists';
         if (item.href.startsWith('/life')) return '/life';
         if (item.href.startsWith('/info') || item.href === '/accounts') return '/info';
         return '/work';
@@ -75,7 +76,7 @@
             el.removeAttribute('id');
             [...el.attributes].filter(attr => attr.name.startsWith('on')).forEach(attr => el.removeAttribute(attr.name));
           });
-          moduleCards.set(href, {node, scope: source === '/work' ? 'work-entry-launcher' : source === '/info' ? 'info-center-v160' : 'home-life-module'});
+          moduleCards.set(href, {node, scope: source === '/work/lists' ? 'home-list-module' : source === '/work' ? 'work-entry-launcher' : source === '/info' ? 'info-center-v160' : 'home-life-module'});
         });
       }));
       if (results.some(result => result.status === 'rejected')) status('部分原模块暂时无法读取，仍可点击入口进入；刷新可重试。');
@@ -118,6 +119,15 @@
     });
     cancel.addEventListener('click', () => { items = snapshot; editing = false; cancel.hidden = true; edit.textContent = '编辑模块'; render(); });
     load().then(loadModuleCards).then(render).catch(error => status(error.message));
+    return;
+  }
+  const listPins = document.querySelectorAll('[data-list-pin]');
+  if (listPins.length) {
+    listPins.forEach(el => { el.disabled = true; });
+    load().then(() => listPins.forEach(el => {
+      el.disabled = false;
+      el.addEventListener('click', () => pin(el.dataset.href, el.dataset.title, el));
+    })).catch(error => status(error.message));
     return;
   }
   // Work has an existing edit mode: only show the pin control while editing.

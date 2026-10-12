@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}清单 · 晨的助手{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="/static/work-lists.css?v=1690">
+<link rel="stylesheet" href="/static/work-lists.css?v=1711">
 <section class="wl-shell wl-index">
   <div class="wl-head"><div><a href="/work">工作</a><h1>清单</h1></div></div>
   <nav class="wl-section-nav wl-sheet-nav" aria-label="清单功能分类">
@@ -13,7 +13,7 @@
   <h2 class="wl-section-heading">{{ '已归档清单' if archived else '我的清单' }}</h2>
   <form class="wl-toolbar" method="get"><input type="hidden" name="archived" value="{{ 1 if archived else 0 }}"><input name="q" value="{{ q }}" placeholder="搜索清单名称或说明" aria-label="搜索清单"><button type="submit">搜索</button></form>
   <div class="wl-grid">
-  {% for item in lists %}<a class="wl-card" href="/work/lists/{{ item.id }}"><h2>{{ item.title }}</h2>{% if item.description %}<p>{{ item.description }}</p>{% endif %}<span>{{ item.record_count }} 条记录 · {{ '已归档' if item.archived else '使用中' }}</span></a>{% else %}<p class="wl-empty">{{ '暂无已归档清单。' if archived else '暂无清单。' }}</p>{% endfor %}
+  {% for item in lists %}<article class="wl-card"><a class="wl-card-link" href="/work/lists/{{ item.id }}"><span class="wl-card-icon" aria-hidden="true">▦</span><h2>{{ item.title }}</h2><span>{{ item.record_count }} 条记录</span></a><div class="wl-card-actions"><details class="wl-card-edit"><summary>编辑</summary><form class="wl-form" method="post" action="/work/lists/{{ item.id }}/metadata"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ item.revision }}"><label>清单名称<input name="title" required maxlength="200" value="{{ item.title }}"></label><label>说明<textarea name="description" maxlength="2000" rows="2">{{ item.description }}</textarea></label><button type="submit">保存</button></form></details><button type="button" data-list-pin data-href="/work/lists/{{ item.id }}" data-title="{{ item.title }}">发送至首页</button></div></article>{% else %}<p class="wl-empty">{{ '暂无已归档清单。' if archived else '暂无清单。' }}</p>{% endfor %}
   </div>
   {% else %}
   <section class="wl-panel">

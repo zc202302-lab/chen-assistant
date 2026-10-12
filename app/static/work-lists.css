@@ -11,3 +11,19 @@
 .wl-section-nav a:focus-visible{outline:3px solid #6093e8;outline-offset:3px}
 .wl-section-heading{margin:0 0 16px;font-size:20px}
 @media(max-width:700px){.wl-section-nav{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:20px}}
+
+/* Compact list launchers and a single sheet header. */
+.wl-index .wl-grid{grid-template-columns:repeat(auto-fill,minmax(144px,164px));gap:14px;align-items:start}
+.wl-index .wl-card{position:relative;padding:0;border-radius:14px;min-width:0}
+.wl-card-link{display:flex;flex-direction:column;align-items:center;justify-content:center;height:132px;padding:10px;color:inherit;text-decoration:none;text-align:center;box-sizing:border-box;gap:6px}
+.wl-card-icon{font-size:28px;color:#3973be}.wl-card-link h2{font-size:15px;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4}
+.wl-card-actions{display:flex;justify-content:center;align-items:center;gap:9px;padding:8px 4px;border-top:1px solid #edf1f6}
+.wl-card-actions button,.wl-card-edit summary{font-size:11px;white-space:nowrap;background:transparent;color:#315f96;padding:2px;border:0;cursor:pointer}
+.wl-card-edit summary{list-style:none}.wl-card-edit summary::-webkit-details-marker{display:none}
+.wl-card-edit[open] .wl-form{position:absolute;top:100%;left:0;z-index:10;width:min(280px,calc(100vw - 50px));padding:16px;border:1px solid #dce5ef;border-radius:12px;background:white;box-shadow:0 8px 28px #24314922;box-sizing:border-box;gap:10px}
+.wl-card-edit[open]{position:static}.wl-card-edit .wl-form button{background:#315f96;color:white;padding:8px 14px;font-size:13px}
+.wl-card-edit .wl-form label{font-size:13px}.wl-card-edit .wl-form input,.wl-card-edit .wl-form textarea{font-size:14px}
+.wl-sheet-shell .wl-compact-head{flex-direction:row;flex-wrap:wrap;gap:10px;margin-bottom:8px;align-items:center}
+.wl-compact-head h1{font-size:20px;margin:0;flex:1;min-width:100px}.wl-compact-head>a{font-size:13px;white-space:nowrap}.wl-compact-head .wl-actions{gap:12px;font-size:13px}
+.wl-shell .wl-delete{padding:6px 10px;background:#fff1ef;color:#a83a32;font-size:12px}.wl-compact-head form{margin:0}
+@media(max-width:700px){.wl-index .wl-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.wl-card-link{height:124px}.wl-sheet-shell .wl-compact-head h1{font-size:18px}.wl-card-edit[open] .wl-form{width:calc(100vw - 50px)}.wl-card:nth-child(even) .wl-card-edit[open] .wl-form{left:auto;right:0}}

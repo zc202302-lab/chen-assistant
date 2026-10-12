@@ -271,6 +271,11 @@
     if (before) before.disabled = page === 0;
     if (after) after.disabled = (page + 1) * 100 >= matched.length;
   };
+  document.querySelector('[data-list-delete]')?.addEventListener('submit', event => {
+    if (!window.confirm('删除此清单及全部记录？此操作无法撤销。')) { event.preventDefault(); return; }
+    event.currentTarget.querySelector('[name="revision"]').value = String(model.revision);
+    dirty = false;
+  });
   const addRow = (paint = true) => {
     if (readonly || model.rows.length >= 5000) return;
     model.rows.push({id: 'new_r' + serial++, revision: 0, values: model.fields.map(f => f.kind === 'multi' ? [] : '')});

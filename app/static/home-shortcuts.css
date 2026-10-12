@@ -11,3 +11,5 @@
 .home-shortcut-source .home-shortcut-controls{margin-top:8px;justify-content:flex-start}
 .home-shortcut-fallback{width:144px;box-sizing:border-box}
 @media(max-width:600px){.home-shortcut-grid{gap:12px}.home-shortcut-tile.home-shortcut-source.work-entry-launcher,.home-shortcut-fallback{width:128px}.home-shortcut-tile.home-shortcut-source:not(.work-entry-launcher){width:100%}.home-shortcut-section{padding:16px 12px}}
+
+.home-shortcut-tile.home-shortcut-source.home-list-module{width:144px;border:1px solid #e1e8f2;border-radius:14px;background:#fff}.home-list-module .wl-card-link{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:132px;padding:10px;text-align:center;color:#22334b;text-decoration:none;box-sizing:border-box}.home-list-module h2{font-size:15px;overflow-wrap:anywhere;margin:0}.home-list-module .wl-card-icon{font-size:28px;color:#3973be}.home-list-module span{font-size:12px}.home-list-module .home-shortcut-controls{padding:8px}
