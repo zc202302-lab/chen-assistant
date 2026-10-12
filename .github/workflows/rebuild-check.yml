@@ -188,6 +188,14 @@ jobs:
           python tests/work_list_import_contract.py
           python tests/work_list_import_acceptance.py
 
+      - name: Upload list layout previews
+        if: always() && steps.scope.outputs.mode == 'full'
+        uses: actions/upload-artifact@v4
+        with:
+          name: list-compact-preview
+          path: artifacts/list-compact
+          if-no-files-found: ignore
+
       - name: Code governance inventory
         if: steps.scope.outputs.mode == 'full'
         run: python tests/code_governance_inventory.py
