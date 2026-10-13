@@ -140,10 +140,20 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v031_payment_workflow_acceptance.py
 
+      - name: v1.4.3 payment controls acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/v143_payment_controls_acceptance.py
+
+      - name: Legacy customer import browser acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/v032_customer_import_acceptance.py
+
       - name: Work lists contract and browser acceptance
         if: steps.scope.outputs.mode == 'full'
         run: |
           python tests/work_lists_contract.py
+          python tests/payment_next_date_contract.py
+          python tests/payment_next_date_acceptance.py
           python tests/work_sheet_contract.py
           python tests/work_sheet_acceptance.py
           python tests/work_lists_acceptance.py
@@ -303,10 +313,6 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v143_customer_status_acceptance.py
 
-      - name: v1.4.3 payment controls acceptance
-        if: steps.scope.outputs.mode == 'full'
-        run: python tests/v143_payment_controls_acceptance.py
-
       - name: v1.5 customer live refresh acceptance
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v150_live_refresh_acceptance.py
@@ -326,10 +332,6 @@ jobs:
       - name: v1.6.1 responsive desktop/mobile acceptance
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v161_responsive_polish_acceptance.py
-
-      - name: Legacy customer import browser acceptance
-        if: steps.scope.outputs.mode == 'full'
-        run: python tests/v032_customer_import_acceptance.py
 
       - name: Legacy customer browser acceptance
         if: steps.scope.outputs.mode == 'full'

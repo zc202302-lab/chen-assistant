@@ -218,8 +218,8 @@ def _rollback_completed_payment_exact(conn, customer_id: int, period: str, run):
 
     for snap in snapshots:
         conn.execute(
-            'UPDATE services SET last_payment_date=?,next_payment_period=? WHERE id=?',
-            (snap['last_payment_date'], snap['next_payment_period'], snap['service_id']),
+            'UPDATE services SET last_payment_date=?,next_payment_period=?,next_payment_date=? WHERE id=?',
+            (snap['last_payment_date'], snap['next_payment_period'], snap['next_payment_date'], snap['service_id']),
         )
         core._save_runtime(
             conn,

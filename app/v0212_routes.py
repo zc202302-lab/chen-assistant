@@ -10,6 +10,7 @@ from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
+from .payment_schedule import explicit_due, explicit_payment_date, readable_date, computed_next_date
 from .payment_v02 import (
     current_period,
     add_periods,
@@ -99,6 +100,9 @@ def _save_runtime(conn, service_id: int, *, status: str | None = None, deferred_
 
 
 def _natural_due(service, period: str) -> bool:
+    override = explicit_due(service, period)
+    if override is not None:
+        return override
     months = service_interval_months(service)
     if not months or months < 1:
         return False
@@ -108,8 +112,9 @@ def _natural_due(service, period: str) -> bool:
     if next_period:
         return period >= next_period
     last = (service['last_payment_date'] or '').strip()
-    if len(last) >= 7:
-        return period >= add_periods(last[:7], months)
+    parsed_last = readable_date(last)
+    if parsed_last:
+        return period >= add_periods(parsed_last.strftime('%Y-%m'), months)
     return True
 
 
@@ -125,6 +130,10 @@ def _service_due(service, runtime, period: str) -> bool:
 
 
 def _natural_next_period(service, period: str) -> str:
+    explicit = explicit_payment_date(service)
+    if explicit:
+        parsed = readable_date(explicit)
+        return parsed.strftime('%Y-%m') if parsed else explicit
     months = service_interval_months(service)
     if not months:
         return ''
@@ -134,8 +143,9 @@ def _natural_next_period(service, period: str) -> str:
     if nxt:
         return nxt
     last = (service['last_payment_date'] or '').strip()
-    if len(last) >= 7:
-        return add_periods(last[:7], months)
+    parsed_last = readable_date(last)
+    if parsed_last:
+        return add_periods(parsed_last.strftime('%Y-%m'), months)
     return period
 
 
@@ -150,6 +160,9 @@ def _schedule_state(service, runtime, period: str) -> str:
     deferred = (runtime.get('deferred_until_period') or '').strip()
     if deferred and period < deferred:
         return f"延期至 {deferred.replace('-', '/')}"
+    explicit = explicit_payment_date(service)
+    if explicit and readable_date(explicit) is None:
+        return '缴费时间待确认'
     if _natural_due(service, period):
         return '本月应缴'
     nxt = _natural_next_period(service, period)
@@ -168,12 +181,22 @@ def _payment_snapshot_base_v0212(conn, customer_id: int, period: str | None = No
         (customer_id,),
     ).fetchall()
     runtime = _runtime_map(conn, [s['id'] for s in rows])
+    # Keep the completed month's ledger visible for review and rollback, even
+    # after renewal has advanced the reminder date. Future months remain gated.
+    paid_ids = set()
+    run = conn.execute('SELECT id,paid_at FROM customer_payment_runs WHERE customer_id=? AND period=?', (customer_id, period)).fetchone()
+    if run and run['paid_at']:
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='payment_run_service_snapshots_v03'").fetchone():
+            paid_ids = {row['service_id'] for row in conn.execute('SELECT service_id FROM payment_run_service_snapshots_v03 WHERE run_id=?', (run['id'],))}
+        if not paid_ids:
+            paid_ids = {row['service_id'] for row in conn.execute('SELECT service_id FROM payment_entries WHERE period=? AND service_id IN (SELECT id FROM services WHERE customer_id=?)', (period, customer_id))}
     items = []
     required = pending = changed = zero = 0
     total = 0.0
     due_count = 0
     for service in rows:
-        if not _service_due(service, runtime[service['id']], period):
+        paid_visible = service['id'] in paid_ids and runtime[service['id']]['status'] == 'active' and service_active_in_period(service, period)
+        if not paid_visible and not _service_due(service, runtime[service['id']], period):
             continue
         due_count += 1
         pe, rule = ensure_payment_entry(conn, service, period)
@@ -451,8 +474,8 @@ def set_payment_run_v0212(request: Request, customer_id: int, csrf: str = Form(.
                     months = service_interval_months(service)
                     next_period = next_due_after_payment(service, period) if months and months > 1 else ''
                     conn.execute(
-                        'UPDATE services SET last_payment_date=?,next_payment_period=? WHERE id=?',
-                        (today_iso, next_period, service['id']),
+                        'UPDATE services SET last_payment_date=?,next_payment_period=?,next_payment_date=? WHERE id=?',
+                        (today_iso, next_period, computed_next_date(today_iso, months), service['id']),
                     )
                     _save_runtime(conn, service['id'], deferred_until_period='')
             conn.execute('UPDATE customer_payment_runs SET paid_at=?,updated_at=? WHERE id=?', (now, now, run['id']))

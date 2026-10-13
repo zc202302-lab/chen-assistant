@@ -10,10 +10,11 @@ for(const type of Object.keys(handlers)){
   let reject;
   handlers[type]({viewTransition:{ready:{catch:handler=>{reject=handler;}}}});
   reject({name:'AbortError'});reject({name:'InvalidStateError'});
+  reject(new Error('Transition was aborted because of invalid state. ViewTransition opt-in disabled'));
   const unexpected=new Error('unexpected animation failure');
   assert.throws(()=>reject(unexpected), error=>error===unexpected);
 }
 const base=fs.readFileSync('app/templates/base.html','utf8');
 assert(base.indexOf('/static/navigation-transitions.js')<base.indexOf('</head>'));
-assert(base.includes('navigation-transitions.js?v=1791" blocking="render"'));
+assert(base.includes('navigation-transitions.js?v=1714" blocking="render"'));
 console.log('navigation transition contract passed: early observer, expected cancellation and unexpected errors');

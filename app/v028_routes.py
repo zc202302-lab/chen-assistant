@@ -12,6 +12,7 @@ from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
+from .payment_schedule import explicit_payment_date, readable_date
 from .payment_v02 import current_period, service_active_in_period, service_is_due, effective_payment_rule, payment_snapshot, valid_invoice_group
 from .v025_routes import customer_or_404, service_or_404, promotion_or_404, _payment_run
 from .v026_routes import check_csrf, parse_date_text, date_text, month_text, promotion_bucket, derive_schedule
@@ -34,6 +35,7 @@ CORE_ATTRS = {
     'invoice_group': {'label': '发票组', 'kind': 'invoice_group'},
     'package_type': {'label': '套餐类型', 'kind': 'text'},
     'last_payment_date': {'label': '上次缴费日期', 'kind': 'date'},
+    'next_payment_date': {'label': '下次缴费时间', 'kind': 'date'},
     'notes': {'label': '备注', 'kind': 'textarea'},
 }
 DEFAULT_TEMPLATE = [
@@ -73,6 +75,9 @@ def _template(conn):
         try:
             items = json.loads(raw)
             if isinstance(items, list) and items:
+                if not any(item.get('key') == 'next_payment_date' for item in items):
+                    items.append({'key': 'next_payment_date', **CORE_ATTRS['next_payment_date'], 'core': True})
+                    _meta_set(conn, TEMPLATE_META_KEY, json.dumps(items, ensure_ascii=False))
                 return items
         except Exception:
             pass
@@ -103,7 +108,9 @@ def _raw_attr(service, key: str, custom_values: dict) -> str:
     if key == 'payment_interval_months':
         return str(int(service['payment_interval_months'] or 0))
     if key == 'last_payment_date':
-        return date_text(service['last_payment_date'])
+        return str(service['last_payment_date'] or '')
+    if key == 'next_payment_date':
+        return explicit_payment_date(service)
     if key in CORE_ATTRS:
         return str(service[key] or '')
     return ''
@@ -421,14 +428,17 @@ def save_service_attributes_v028(
                 if interval < 0 or interval > 120:
                     raise HTTPException(400, '缴费周期必须是0到120之间的整数月数')
             elif key == 'last_payment_date':
-                last_iso = parse_date_text(value, field='上次缴费日期')
+                last_iso = value
+            elif key == 'next_payment_date':
+                updates['next_payment_date'] = value
             elif key == 'invoice_group':
                 updates['invoice_group_id'] = valid_invoice_group(conn, old_service['customer_id'], value)
             elif key in {'service_type', 'holder_name', 'number', 'account', 'payment_method', 'invoice_type', 'package_type', 'notes'}:
                 updates[key] = value
 
         if 'payment_interval_months' in current_keys or 'last_payment_date' in current_keys:
-            cycle_text, next_period = derive_schedule(old_service, interval, last_iso)
+            parsed_last = readable_date(last_iso)
+            cycle_text, next_period = derive_schedule(old_service, interval, parsed_last.isoformat() if parsed_last else '')
             updates['payment_interval_months'] = interval
             updates['payment_cycle'] = cycle_text
             updates['next_payment_period'] = next_period

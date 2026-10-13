@@ -5,6 +5,7 @@ import os
 import sys
 import tempfile
 from io import BytesIO
+from datetime import datetime
 from pathlib import Path
 
 import xlsxwriter
@@ -54,7 +55,7 @@ def customer_payload(name: str, code: str, number: str, attr_value: str):
         'entities': [],
         'invoices': [['默认开票组', '']],
         'businesses': [[
-            'S001', '成员', '张三', number, '53380001', 1, '微信', '', '默认开票组', '', '', '', attr_value,
+            'S001', '成员', '张三', number, '53380001', 1, '微信', '', '默认开票组', '', datetime(2025,7,12), '2030年10月12日', '', attr_value,
             40, '固定', '', '启用', '', '', '', 10,
         ]],
         'contacts': [['关键联系人', '王经理', '财务', '13800000000']],
@@ -108,6 +109,8 @@ def test_dynamic_template_import_export_roundtrip():
         fixed = conn.execute('SELECT confirmed,source FROM payment_entries ORDER BY service_id').fetchall()
         assert all(r['confirmed'] == 1 and r['source'] == 'fixed' for r in fixed)
         assert len(_template(conn)) == len(template)
+        dates = conn.execute('SELECT last_payment_date,next_payment_date FROM services ORDER BY id').fetchall()
+        assert all(row['last_payment_date'] == '2025-07-12' and row['next_payment_date'] == '2030年10月12日' for row in dates)
 
     exported = Path(_TMPDIR.name) / 'export.xlsx'
     exported.write_bytes(_build_export())
