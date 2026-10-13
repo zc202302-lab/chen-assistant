@@ -450,7 +450,8 @@ def _parse_sheet(conn, sheet_name: str, cells: dict[str, str], template) -> tupl
                 attrs[key] = int(float(text or 0)) if re.fullmatch(r'\d+(?:\.0+)?', text or '0') else 0
                 continue
             elif key == 'last_payment_date':
-                attrs[key] = _normalize_name(val)
+                parsed_date = _normalize_date(val)
+                attrs[key] = parsed_date if parsed_date is not None else _normalize_name(val)
                 continue
             attrs[key] = _normalize_name(val)
         amount = _parse_money(raw.get('payment_amount', ''))
