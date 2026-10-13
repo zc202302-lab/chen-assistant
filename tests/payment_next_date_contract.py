@@ -21,6 +21,7 @@ from app.security import create_session
 from app.payment_schedule import computed_next_date, ensure_payment_date_schema
 from app.payment_v02 import service_is_due, current_period
 from app.v0212_routes import _natural_due, _service_due
+from app.v0212_routes import _payment_snapshot_base_v0212
 from app.v028_routes import _template
 
 
@@ -71,6 +72,9 @@ def main():
             row = conn.execute('SELECT * FROM services WHERE id=?', (sid,)).fetchone()
             assert row['last_payment_date'] == date.today().isoformat()
             assert row['next_payment_date'] == computed_next_date(date.today().isoformat(), 12)
+            assert not _natural_due(row, current_period())
+            paid_items, _ = _payment_snapshot_base_v0212(conn, cid, current_period())
+            assert [item['row']['id'] for item in paid_items] == [sid]
         result = client.post(f'/customers/{cid}/payment-run', data={'csrf': csrf, 'action': 'paid'})
         assert result.status_code == 200, result.text
         with db() as conn:

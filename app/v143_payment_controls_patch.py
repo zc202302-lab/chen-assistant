@@ -4,6 +4,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import JSONResponse
 
 from .db import db, now_iso
+from .payment_schedule import computed_next_date, explicit_payment_date
 from .payment_v02 import current_period, service_active_in_period, service_interval_months, service_is_due
 from .v023_routes import service_or_404
 from .v026_routes import check_csrf
@@ -43,6 +44,9 @@ def _recover_legacy_due_schedule(conn, customer_id: int, period: str) -> None:
     ).fetchall()
     for service in rows:
         months = service_interval_months(service)
+        auto_date = computed_next_date(service['last_payment_date'], months)
+        if auto_date and explicit_payment_date(service) == auto_date:
+            conn.execute('UPDATE services SET next_payment_date=? WHERE id=?', (period + '-01', service['id']))
         if months and months > 1:
             conn.execute(
                 'UPDATE services SET next_payment_period=? WHERE id=?',

@@ -179,12 +179,22 @@ def _payment_snapshot_base_v0212(conn, customer_id: int, period: str | None = No
         (customer_id,),
     ).fetchall()
     runtime = _runtime_map(conn, [s['id'] for s in rows])
+    # Keep the completed month's ledger visible for review and rollback, even
+    # after renewal has advanced the reminder date. Future months remain gated.
+    paid_ids = set()
+    run = conn.execute('SELECT id,paid_at FROM customer_payment_runs WHERE customer_id=? AND period=?', (customer_id, period)).fetchone()
+    if run and run['paid_at']:
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='payment_run_service_snapshots_v03'").fetchone():
+            paid_ids = {row['service_id'] for row in conn.execute('SELECT service_id FROM payment_run_service_snapshots_v03 WHERE run_id=?', (run['id'],))}
+        if not paid_ids:
+            paid_ids = {row['service_id'] for row in conn.execute('SELECT service_id FROM payment_entries WHERE period=? AND service_id IN (SELECT id FROM services WHERE customer_id=?)', (period, customer_id))}
     items = []
     required = pending = changed = zero = 0
     total = 0.0
     due_count = 0
     for service in rows:
-        if not _service_due(service, runtime[service['id']], period):
+        paid_visible = service['id'] in paid_ids and runtime[service['id']]['status'] == 'active' and service_active_in_period(service, period)
+        if not paid_visible and not _service_due(service, runtime[service['id']], period):
             continue
         due_count += 1
         pe, rule = ensure_payment_entry(conn, service, period)

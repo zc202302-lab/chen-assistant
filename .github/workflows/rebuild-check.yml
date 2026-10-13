@@ -140,6 +140,10 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v031_payment_workflow_acceptance.py
 
+      - name: v1.4.3 payment controls acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/v143_payment_controls_acceptance.py
+
       - name: Work lists contract and browser acceptance
         if: steps.scope.outputs.mode == 'full'
         run: |
@@ -304,10 +308,6 @@ jobs:
       - name: v1.4.3 centered navigation and customer status acceptance
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v143_customer_status_acceptance.py
-
-      - name: v1.4.3 payment controls acceptance
-        if: steps.scope.outputs.mode == 'full'
-        run: python tests/v143_payment_controls_acceptance.py
 
       - name: v1.5 customer live refresh acceptance
         if: steps.scope.outputs.mode == 'full'
