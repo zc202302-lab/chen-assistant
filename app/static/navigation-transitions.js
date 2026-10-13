@@ -5,7 +5,12 @@
   for (const type of ['pageswap', 'pagereveal']) {
     window.addEventListener(type, event => {
       event.viewTransition?.ready.catch(error => {
-        if (!['AbortError', 'InvalidStateError'].includes(error.name)) throw error;
+        // Chromium can report an opt-out cancellation as a plain Error rather
+        // than a DOMException. Handle that specific cancellation here too;
+        // unrelated animation failures must still remain observable.
+        const optedOut = error.message ===
+          'Transition was aborted because of invalid state. ViewTransition opt-in disabled';
+        if (!['AbortError', 'InvalidStateError'].includes(error.name) && !optedOut) throw error;
       });
     });
   }
