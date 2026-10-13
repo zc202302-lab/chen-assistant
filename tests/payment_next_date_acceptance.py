@@ -34,7 +34,7 @@ def main():
             page = context.new_page()
             page.goto(base + f'/customers/{cid}?tab=services', wait_until='networkidle')
             page.locator('[data-customer-tab="services"]').click()
-            page.locator(f'[data-business-row][data-service-id="{sid}"] [data-open-service-editor]').click()
+            page.locator(f'[data-business-row][data-service-id="{sid}"] .business-attribute').first.dblclick()
             dialog = page.locator('#businessAttributeDialog')
             expect(dialog).to_be_visible()
             next_date = dialog.locator('[data-key="next_payment_date"] .attr-value')
@@ -50,7 +50,7 @@ def main():
             expect(dialog).not_to_be_visible()
             page.reload(wait_until='networkidle')
             page.locator('[data-customer-tab="services"]').click()
-            page.locator(f'[data-business-row][data-service-id="{sid}"] [data-open-service-editor]').click()
+            page.locator(f'[data-business-row][data-service-id="{sid}"] .business-attribute').first.dblclick()
             expect(next_date).to_have_value('2030年10月12日')
             expect(last_date).to_have_value('日期待确认')
             output = ROOT / 'artifacts' / 'list-compact'
