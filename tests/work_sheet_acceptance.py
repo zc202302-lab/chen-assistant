@@ -123,11 +123,33 @@ def main():
             assert table['layout']['cells']['1|1']['background']=='#225588'
             assert table['layout']['cells']['2|2']['number_format']=='0.00%'
             assert table['layout']['merges']==[{'rows':[3],'cols':[1,2]}]
+            delete_row=page.get_by_role('button',name='删除行',exact=True)
+            delete_col=page.get_by_role('button',name='删除列',exact=True)
+            expect(delete_row).to_be_disabled();expect(delete_col).to_be_disabled()
+            previews=ROOT/'artifacts'/'list-compact';previews.mkdir(parents=True,exist_ok=True)
+            for width,height,label in [(1440,900,'desktop'),(390,844,'mobile')]:
+                page.set_viewport_size({'width':width,'height':height})
+                page.get_by_role('button',name='选择第3行',exact=True).click()
+                expect(page.get_by_role('button',name='选择第3行',exact=True)).to_have_attribute('aria-pressed','true')
+                expect(delete_row).to_be_enabled();expect(delete_col).to_be_disabled()
+                expect(page.locator('tr.ws-row-selected')).to_have_count(1)
+                page.screenshot(path=str(previews/('sheet-actions-'+label+'.png')),full_page=True)
+                page.get_by_role('button',name='选择第3行',exact=True).click()
+                expect(delete_row).to_be_disabled()
+            page.get_by_role('button',name='选择第3行',exact=True).click()
+            page.once('dialog',lambda dialog:dialog.dismiss())
+            delete_row.click()
+            expect(page.locator('.ws-grid tbody tr')).to_have_count(4)
+            expect(delete_row).to_be_enabled()
             page.once('dialog',lambda dialog:dialog.accept())
-            page.get_by_role('button',name='删除第3行',exact=True).click()
+            delete_row.click()
             expect(page.locator('.ws-grid tbody tr')).to_have_count(3)
+            expect(delete_row).to_be_disabled()
+            page.get_by_role('button',name='选择第1列',exact=True).click()
+            expect(delete_col).to_be_enabled();expect(delete_row).to_be_disabled()
+            assert page.locator('.ws-column-selected').count() >= 3
             page.once('dialog',lambda dialog:dialog.accept())
-            page.get_by_role('button',name='删除第1列',exact=True).click()
+            delete_col.click()
             expect(page.locator('.ws-header-input')).to_have_count(2)
             with page.expect_navigation(wait_until='networkidle'):
                 page.get_by_role('button',name='保存表格',exact=True).click()

@@ -41,6 +41,37 @@
     if (text !== undefined) el.textContent = text;
     return el;
   };
+  const deleteRowButton = root.querySelector('[data-sheet-delete-row]');
+  const deleteColumnButton = root.querySelector('[data-sheet-delete-col]');
+  let selection = null;
+  const updateSelection = () => {
+    stage.querySelectorAll('.ws-row-selected,.ws-column-selected').forEach(el => el.classList.remove('ws-row-selected', 'ws-column-selected'));
+    stage.querySelectorAll('.ws-axis-trigger[aria-pressed="true"]').forEach(el => el.setAttribute('aria-pressed', 'false'));
+    if (selection?.axis === 'row') {
+      const row = stage.querySelector('tr[data-row="' + selection.index + '"]');
+      row?.classList.add('ws-row-selected');
+      row?.querySelector('.ws-axis-trigger')?.setAttribute('aria-pressed', 'true');
+    } else if (selection?.axis === 'column') {
+      stage.querySelectorAll('[data-sheet-cols]').forEach(cell => {
+        if (JSON.parse(cell.dataset.sheetCols).includes(selection.index)) cell.classList.add('ws-column-selected');
+      });
+      stage.querySelector('.ws-letters .ws-axis-trigger[data-axis-index="' + selection.index + '"]')?.setAttribute('aria-pressed', 'true');
+    }
+    if (deleteRowButton) deleteRowButton.disabled = selection?.axis !== 'row';
+    if (deleteColumnButton) deleteColumnButton.disabled = selection?.axis !== 'column' || model.fields.length <= 1;
+  };
+  const axisControl = (axis, index, label) => {
+    const button = node('button', 'ws-axis-trigger', label);
+    button.type = 'button';
+    button.dataset.axisIndex = String(index);
+    button.setAttribute('aria-label', '选择第' + (index + 1) + (axis === 'row' ? '行' : '列'));
+    button.setAttribute('aria-pressed', 'false');
+    button.addEventListener('click', () => {
+      selection = selection?.axis === axis && selection.index === index ? null : {axis, index};
+      updateSelection();
+    });
+    return button;
+  };
   const mark = () => {
     dirty = true;
     notice.textContent = '未保存';
@@ -137,13 +168,8 @@
     letters.append(node('th', 'ws-corner', ''));
     model.fields.forEach((field, c) => {
       const th = node('th', '', (() => { let n = c + 1, s = ''; while (n) { n--; s = String.fromCharCode(65 + n % 26) + s; n = Math.floor(n / 26); } return s; })());
-      if (!readonly) {
-        const remove = node('button', 'ws-axis-delete ws-col-delete');
-        remove.type = 'button'; remove.setAttribute('aria-label', '删除第' + (c + 1) + '列');
-        remove.title = '删除“' + field.label + '”列及其中的数据';
-        remove.addEventListener('click', () => deleteColumn(c));
-        th.append(remove);
-      }
+      th.dataset.sheetCols = JSON.stringify([c]);
+      if (!readonly) { const label = th.textContent; th.textContent = ''; th.append(axisControl('column', c, label)); }
       resize(th, 'x', field.id, formats.widths[field.id] || 150, size => { colElements[c].style.width = size + 'px'; updateTableWidth(); });
       letters.append(th);
     });
@@ -162,6 +188,7 @@
       if (headerCovered.has(field.id)) return;
       const th = node('th', 'ws-header-cell');
       if (headerAnchors.has(field.id)) th.colSpan = headerAnchors.get(field.id);
+      th.dataset.sheetCols = JSON.stringify(headerAnchors.has(field.id) ? model.fields.slice(c, c + headerAnchors.get(field.id)).map((_, offset) => c + offset) : [c]);
       applyStyle(th, formats.cells['h|' + field.id]);
       const input = node('input', 'ws-header-input');
       input.value = field.label; input.style.height = ((formats.heights.h || 36) - 1) + 'px'; input.maxLength = 80; input.readOnly = readonly;
@@ -202,7 +229,7 @@
       if (!mr.length || !mc.length) continue;
       const origin = model.rows.find(r => r.id === merge.rows[0]);
       const originCol = model.fields.findIndex(f => f.id === merge.cols[0]);
-      anchors.set(mr[0] + '|' + mc[0], {rowspan: mr.length, colspan: mc.length, rows: mr, value: origin?.values[originCol], origin, originCol});
+      anchors.set(mr[0] + '|' + mc[0], {rowspan: mr.length, colspan: mc.length, rows: mr, cols: mc, value: origin?.values[originCol], origin, originCol});
       mr.forEach(r => mc.forEach(c => { if (r !== mr[0] || c !== mc[0]) covered.add(r + '|' + c); }));
     }
     visible.forEach(({r, i}) => {
@@ -211,16 +238,7 @@
       tr.style.height = height + 'px';
       const index = node('th', 'ws-index', String(i + 1));
       index.scope = 'row';
-      if (!readonly) {
-        const label = node('span', 'ws-row-label', String(i + 1));
-        index.textContent = '';
-        index.append(label);
-        const remove = node('button', 'ws-axis-delete ws-row-delete');
-        remove.type = 'button'; remove.setAttribute('aria-label', '删除第' + (i + 1) + '行');
-        remove.title = '删除此行及其中的数据';
-        remove.addEventListener('click', () => deleteRow(i));
-        index.append(remove);
-      }
+      if (!readonly) { index.textContent = ''; index.append(axisControl('row', i, String(i + 1))); }
       resize(index, 'y', r.id, height, size => { tr.style.height = size + 'px'; table.querySelectorAll('.ws-cell').forEach(el => { const ids = JSON.parse(el.dataset.heightRows); el.style.height = (ids.reduce((sum, id) => sum + (layout().heights[id] || 32), 0) - 1) + 'px'; }); });
       tr.append(index);
       model.fields.forEach((field, c) => {
@@ -230,6 +248,7 @@
         applyStyle(td, formats.cells[key]);
         const merge = anchors.get(key);
         if (merge) { td.rowSpan = merge.rowspan; td.colSpan = merge.colspan; }
+        td.dataset.sheetCols = JSON.stringify(merge ? merge.cols.map(id => model.fields.findIndex(field => field.id === id)).filter(index => index >= 0) : [c]);
         const cell = node('textarea', 'ws-cell');
         const heightRows = merge ? merge.rows : [r.id];
         cell.dataset.heightRows = JSON.stringify(heightRows);
@@ -284,6 +303,7 @@
       body.append(tr);
     });
     table.append(body); stage.append(table);
+    updateSelection();
     root.querySelector('[data-sheet-count]').textContent = matched.length + ' / ' + model.rows.length + ' 行 · ' + model.fields.length + ' 列';
     if (before) before.disabled = page === 0;
     if (after) after.disabled = (page + 1) * 100 >= matched.length;
@@ -320,6 +340,7 @@
     if (!window.confirm('删除第' + (index + 1) + '行及其中的数据？此操作保存后无法撤销。')) return;
     const [removed] = model.rows.splice(index, 1);
     pruneLayout('row', removed.id);
+    selection = null;
     mark(); render();
   };
   const deleteColumn = index => {
@@ -338,10 +359,13 @@
       else if (col > index) shifted.set(col - 1, value);
     });
     filters.clear(); shifted.forEach((value, col) => filters.set(col, value));
+    selection = null;
     mark(); render();
   };
   root.querySelector('[data-sheet-add-row]')?.addEventListener('click', () => addRow());
   root.querySelector('[data-sheet-add-col]')?.addEventListener('click', () => addColumn());
+  deleteRowButton?.addEventListener('click', () => { if (selection?.axis === 'row') deleteRow(selection.index); });
+  deleteColumnButton?.addEventListener('click', () => { if (selection?.axis === 'column') deleteColumn(selection.index); });
   root.querySelector('[data-sheet-clear-filters]')?.addEventListener('click', () => { filters.clear(); page = 0; render(); });
   before?.addEventListener('click', () => { page--; render(); });
   after?.addEventListener('click', () => { page++; render(); });
