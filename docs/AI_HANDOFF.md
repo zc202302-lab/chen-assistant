@@ -2,11 +2,15 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-12 17:30（Asia/Shanghai）。工作模式：清单表格删除交互优化开发中。用户要求点击左侧行号或顶部列字母，像 Excel 一样选中整行/整列，再使用页面顶部删除按钮；活动分支 `feat/list-sheet-polish`，候选 Web 1.7.13。线上仍为 Web 1.7.12，Windows 0.5.16 不变，云电脑 Draft #128 继续暂停。
-- 已实现：移除行列标签内的删除图标和弹出菜单；单击行号/列字母选中，再次单击取消；整行或整列以浅蓝色高亮。工具栏新增“删除行”“删除列”，仅在对应选择存在时启用；确认、至少保留一列、保存时清理数据/格式/合并区域等既有规则保留。合并单元格跨越被选列时也正确高亮。
-- 本地通过：`work_sheet_contract.py`、`work_lists_contract.py`、架构治理、代码治理、稳定性、JS/Python语法及 diff 检查。真实浏览器验收已调整为桌面/手机选择高亮、按钮启禁、取消选择、取消/确认删除及保存后数据检查；当前机器缺少 Playwright Chromium，需由 CI 实际运行并检查截图。
-- 核心文件：`app/templates/work_sheet_grid.html`、`app/static/work-sheet.js`、`app/static/work-sheet.css`、`tests/work_sheet_acceptance.py`。开发目录 `/workspace/scratch/75165f63b510/chen-assistant`。附件未修改。
-- 唯一下一步：推送活动分支并创建 PR，完成云端真实浏览器和完整 CI；通过后再合并部署 Web 1.7.13 并核验公网。
+- 2026-10-13 11:26（Asia/Shanghai）活动任务更新：用户已明确授权推送并部署 Excel 式行列选择改造；PR #152 https://github.com/zc202302-lab/chen-assistant/pull/152，分支 feat/list-sheet-polish，功能 head e5889d7610bb527a268c0c53a2d1baca07408487，候选 Web 1.7.13。本地验证通过，详细实现见活动分支交接。GitHub API 确认该 head 尚无 Actions run，当前连接无首次 workflow dispatch 工具；未合并、未部署。下一步：启动该分支完整 validation 与 stability 工作流，浏览器及完整CI通过后合并部署，再核验公网。以下 1.7.12 为最近已部署基线。
+
+- 更新时间：2026-10-12 16:48（Asia/Shanghai）。用户新增的清单删行/删列功能已完成部署。PR #151 已合并，main合并提交 b4f284ca569d58685f55cf4125270d8f1a16e3aa；Web1.7.12公网核验成功。Windows0.5.16不变，云电脑Draft #128继续暂停。
+- 功能：清单表格逐行/逐列删除，操作前确认、至少保留一列；保存事务清理记录、字段、单元格值及对应行列尺寸/格式/合并区域。revision/CSRF保护、Excel和现有表格行为保留。删除控制有无障碍名称，行号文字语义不变。
+- PR head 43363388bccc47e43f423aa8d09d206fb7949a93 完整validation run38222629769 attempt2 / job114724291553 success（51步骤），stability run38222629751 / job114722326841 success。完整main validation run38224531182 / job114728667961 success（51步骤），稳定性复查job114732739577与生产部署job114732874695均success。PR原代码受检head e90a22534a9c474649b65217ded0f3b8d44647a2；交接纯文档更新后再对最终PR head完整复验通过。两轮中历史首页切换测试各遇一次SQLite锁/动画取消瞬时失败，按日志重跑后整轮成功。
+- 公网PWA验证run38224531123 / job114732994862 attempt2 success：2026-10-12 16:48（Asia/Shanghai）ONLINE VERIFIED v1.7.12；manifest、work-sheet.js/css、工作清单资源、root service worker及提醒鉴权检查通过。首次检查发生在自动部署前仍见1.7.11，部署job成功后重跑并通过。未登录或修改生产客户数据；不推断用户实际业务体验。
+- 本地表格完整性与清单契约、架构治理、JS/Python/shell语法通过；CI Chromium桌面真实浏览器覆盖删合并行、删有值列、保存后剩余值，截图产物已上传。核心app/work_list_sheet.py、app/static/work-sheet.js/css、app/templates/work_list_detail.html及相关契约/浏览器验收，无新增路由。
+- 开发目录/workspace/scratch/75165f63b510/chen-assistant；当前工作可从GitHub main与本交接记录恢复。清单EXE/XLSM附件未修改，云电脑Draft #128继续暂停。
+- 唯一下一步：等待用户反馈Web1.7.12清单体验或新的明确需求；接管时查main最新CI状态，不推断用户端实际操作结果。
 
 ---
 
