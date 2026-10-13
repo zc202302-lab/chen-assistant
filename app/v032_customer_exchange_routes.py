@@ -450,11 +450,7 @@ def _parse_sheet(conn, sheet_name: str, cells: dict[str, str], template) -> tupl
                 attrs[key] = int(float(text or 0)) if re.fullmatch(r'\d+(?:\.0+)?', text or '0') else 0
                 continue
             elif key == 'last_payment_date':
-                norm = _normalize_date(val)
-                if norm is None:
-                    errors.append({'sheet': sheet_name, 'row': raw['_row'], 'message': f'{item["label"]}格式应为 YYYY-MM-DD'})
-                    norm = ''
-                attrs[key] = norm
+                attrs[key] = _normalize_name(val)
                 continue
             attrs[key] = _normalize_name(val)
         amount = _parse_money(raw.get('payment_amount', ''))
@@ -586,6 +582,8 @@ def _commit(payload: dict) -> dict:
                 }
                 scur = conn.execute('''INSERT INTO services(customer_id,service_type,holder_name,number,account,monthly_fee,fixed_fee,payment_cycle,payment_interval_months,next_payment_period,payment_method,invoice_type,package_type,last_payment_date,invoice_group_id,active_from_period,inactive_from_period,source_row,sort_order,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''', (customer_id, values['service_type'], values['holder_name'], values['number'], values['account'], x['amount'], 1 if x['mode']=='fixed' else 0, cycle, interval, x['next_payment_period'], values['payment_method'], values['invoice_type'], values['package_type'], values['last_payment_date'], invoice_id, x['active_from_period'], x['inactive_from_period'], x['source_row'], x['sort_order'] or index*10, values['notes']))
                 sid = int(scur.lastrowid); service_map[x['business_id']] = sid
+                if 'next_payment_date' in attrs:
+                    conn.execute('UPDATE services SET next_payment_date=? WHERE id=?', (attrs['next_payment_date'], sid))
                 for key, value in attrs.items():
                     if key in valid_custom:
                         conn.execute('INSERT OR REPLACE INTO service_custom_attributes(service_id,attr_key,value) VALUES(?,?,?)', (sid, key, str(value or '')))

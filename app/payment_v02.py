@@ -7,6 +7,7 @@ import sqlite3
 
 from fastapi import HTTPException
 from .db import now_iso
+from .payment_schedule import explicit_due
 
 
 def current_period() -> str:
@@ -69,6 +70,9 @@ def service_is_due(row, today: date | None = None) -> bool:
     service can never silently disappear just because the calendar moved forward.
     """
     today = today or date.today()
+    override = explicit_due(row, today.strftime('%Y-%m'))
+    if override is not None:
+        return override
     months = service_interval_months(row)
     if months is None:
         return False

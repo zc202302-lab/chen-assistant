@@ -54,7 +54,7 @@ def customer_payload(name: str, code: str, number: str, attr_value: str):
         'entities': [],
         'invoices': [['默认开票组', '']],
         'businesses': [[
-            'S001', '成员', '张三', number, '53380001', 1, '微信', '', '默认开票组', '', '', '', attr_value,
+            'S001', '成员', '张三', number, '53380001', 1, '微信', '', '默认开票组', '', '', '', '', attr_value,
             40, '固定', '', '启用', '', '', '', 10,
         ]],
         'contacts': [['关键联系人', '王经理', '财务', '13800000000']],

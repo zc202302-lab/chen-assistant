@@ -11,6 +11,7 @@ from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import JSONResponse
 
 from .db import db, now_iso
+from .payment_schedule import computed_next_date
 from .payment_v02 import current_period, add_periods, service_interval_months, format_fee
 from .v025_routes import customer_or_404, service_or_404
 from .v026_routes import check_csrf
@@ -56,6 +57,8 @@ def _ensure_v03(conn):
                PRIMARY KEY(run_id, service_id)
            )'''
     )
+    if not _has_column(conn, 'payment_run_service_snapshots_v03', 'next_payment_date'):
+        conn.execute('ALTER TABLE payment_run_service_snapshots_v03 ADD COLUMN next_payment_date TEXT DEFAULT NULL')
     conn.execute(
         '''CREATE TABLE IF NOT EXISTS payment_email_logs_v03 (
                id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -281,8 +284,8 @@ def set_payment_run_v03(
                 ).fetchall()
                 for snap in snapshots:
                     conn.execute(
-                        'UPDATE services SET last_payment_date=?,next_payment_period=? WHERE id=?',
-                        (snap['last_payment_date'], snap['next_payment_period'], snap['service_id']),
+                        'UPDATE services SET last_payment_date=?,next_payment_period=?,next_payment_date=? WHERE id=?',
+                        (snap['last_payment_date'], snap['next_payment_period'], snap['next_payment_date'], snap['service_id']),
                     )
                     core._save_runtime(
                         conn,
@@ -312,21 +315,22 @@ def set_payment_run_v03(
                     runtime = core._runtime_for(conn, int(service['id']))
                     conn.execute(
                         '''INSERT INTO payment_run_service_snapshots_v03
-                           (run_id,service_id,last_payment_date,next_payment_period,deferred_until_period)
-                           VALUES(?,?,?,?,?)''',
+                           (run_id,service_id,last_payment_date,next_payment_period,deferred_until_period,next_payment_date)
+                           VALUES(?,?,?,?,?,?)''',
                         (
                             run_id,
                             service['id'],
                             (service['last_payment_date'] or '').strip(),
                             (service['next_payment_period'] or '').strip(),
                             (runtime.get('deferred_until_period') or '').strip(),
+                            service['next_payment_date'],
                         ),
                     )
                     months = service_interval_months(service)
                     next_period = add_periods(period, months) if months and months > 1 else ''
                     conn.execute(
-                        'UPDATE services SET last_payment_date=?,next_payment_period=? WHERE id=?',
-                        (today_iso, next_period, service['id']),
+                        'UPDATE services SET last_payment_date=?,next_payment_period=?,next_payment_date=? WHERE id=?',
+                        (today_iso, next_period, computed_next_date(today_iso, months), service['id']),
                     )
                     core._save_runtime(conn, int(service['id']), deferred_until_period='')
 

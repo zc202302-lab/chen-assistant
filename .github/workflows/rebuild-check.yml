@@ -144,6 +144,8 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: |
           python tests/work_lists_contract.py
+          python tests/payment_next_date_contract.py
+          python tests/payment_next_date_acceptance.py
           python tests/work_sheet_contract.py
           python tests/work_sheet_acceptance.py
           python tests/work_lists_acceptance.py

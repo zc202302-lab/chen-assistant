@@ -540,7 +540,7 @@
             <option value="inactive">停用</option>
           </select>
         </label>
-        <div class="v03-payment-state-box"><span>缴费状态</span><strong data-v03-payment-state>—</strong><small>自动同步缴费周期与延期操作</small></div>
+        <div class="v03-payment-state-box"><span>缴费状态</span><strong data-v03-payment-state>—</strong></div>
       </div>`;
     const firstSection = businessForm.querySelector('.business-editor-section-v029');
     businessForm.insertBefore(panel, firstSection || businessForm.querySelector('.attribute-dialog-actions'));

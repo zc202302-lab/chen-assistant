@@ -2,14 +2,12 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 工作模式：已完成部署。用户授权推送并部署 Excel 式行列选择；PR #152 已合并，main 功能合并提交 a5e9f7f72f4260b91cc778d8dad409fe2fd23609。Web 1.7.13 已公网核验；Windows 0.5.16 不变，云电脑 Draft #128 继续暂停。
-- 功能：点击左侧行号选中整行，点击顶部列字母选中整列，浅蓝色高亮；再次点击同一标签取消选择。顶部“删除行”“删除列”按选择启用；删除确认、至少保留一列、整表保存清理数据/格式/合并区域及 revision/CSRF 保护保留。工具栏与表格边框统一为紧凑样式。
-- PR 功能 head e5889d7610bb527a268c0c53a2d1baca07408487：完整 validation 38341551751 / job115113443780 success，stability 38341551733 success。真实桌面/手机浏览器验收及截图产物11787585114已实际检查。与 main 交接文档冲突通过文档合并8c9a494解决，功能代码保持同一受检版本。
-- main 完整 validation 38342630730 / job115116820036 success；稳定性复查115119901490、生产部署115120001320均 success。独立 stability 38342630838 / job115116820480 success。
-- 公网验证38342630707 / job115116820021 success：2026-10-13 11:40:02（Asia/Shanghai）日志明确 ONLINE VERIFIED v1.7.13，PWA manifest、清单和工作资源、root worker scope及提醒鉴权通过。前三次切换期间仍1.7.12，随后实际资源比对通过。未登录或修改生产业务数据，不推断用户实际操作结果。
-- 核心文件：app/static/work-sheet.js/css、app/templates/work_sheet_grid.html、work_list_detail.html、work_lists.html、tests/work_sheet_acceptance.py；版本及部署期待值同步1.7.13。开发目录/workspace/scratch/75165f63b510/chen-assistant；EXE/XLSM附件未修改。
-- 唯一下一步：等待用户反馈 Web 1.7.13 清单选择/删除体验或下一项明确需求。部署授权已履行，不把历史CI排队记录视为当前阻塞。
-
+- 工作模式：开发中，2026-10-13。用户要求新增“下次缴费时间”、初始及完成缴费后按上次日期+周期计算、允许手动覆盖且提醒最高优先级；属性日期取消格式强校验/自动斜杠，默认ISO；优化属性页及单行业务状态栏。此前“提前一个月预存提醒”已取消，不实现提前提醒。
+- 活动分支 feat/payment-next-date，候选 Web1.7.14；线上最近已验证 Web1.7.13，Windows0.5.16不变，云电脑Draft #128保持暂停。
+- 已实现独立可空字段next_payment_date和幂等初始迁移；有效手动日期按月份优先提醒，无法识别文字保存原文、状态标记待确认且保留应缴，停用/延期仍保护。完成缴费以当天实际日期+周期更新，撤回及金额回滚恢复精确原值。动态属性模板、客户Excel往返接入新字段；自由日期输入不自动改写。
+- 本地新日期契约、v03工作核心/缴费模板/缴费面板/工作流、客户导入导出、架构与稳定性通过。浏览器本地下载返回损坏ZIP，真实桌面/手机属性操作与截图验收已接入CI，尚未执行成功。未部署。
+- 核心payment_schedule.py、db/schema、v028/v03/v0212及payments、v032_customer_exchange_routes、v028.js/v03.js/css、base.html、新日期契约/浏览器验收。目录/workspace/scratch/75165f63b510/chen-assistant，附件未修改。
+- 唯一下一步：推送活动分支、建立PR并完成完整CI/浏览器截图检查，修复实际失败后交付可发布结果；不把代码完成当作线上更新。
 
 ---
 

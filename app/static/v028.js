@@ -426,7 +426,7 @@
     } else {
       el = document.createElement('input'); el.type = 'text'; el.value = value || '';
       if (item.kind === 'integer') { el.inputMode = 'numeric'; el.pattern = '\\d{1,3}'; }
-      if (item.kind === 'date') { el.inputMode = 'numeric'; el.placeholder = '1900/07/07'; el.classList.add('manual-date'); bindDateInput(el); }
+      if (item.kind === 'date') { el.placeholder = '2026-10-12'; el.classList.add('attribute-date'); el.autocomplete = 'off'; }
     }
     el.classList.add('attr-value');
     return el;
