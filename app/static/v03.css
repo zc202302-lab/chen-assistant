@@ -471,8 +471,22 @@
 .global-attribute-row-v028 input,.global-attribute-row-v028 select,.global-attribute-row-v028 textarea{font-size:13px;line-height:1.4;border-color:#e0e6ee;border-radius:6px;background:#fff;min-height:32px}
 .global-attribute-row-v028 .attr-label{background:#f7f9fc;color:#475467}
 .global-attribute-row-v028:focus-within{background:#f3f7ff}
+.business-attribute-dialog-v028 .global-attribute-row-v028{grid-template-columns:22px minmax(130px,.8fr) minmax(220px,1.6fr) 90px 28px!important;min-width:0!important;gap:7px;padding:5px 8px}
+.business-attribute-dialog-v028 .global-attribute-row-v028>label{font-size:0;gap:0;min-width:0}
+.business-attribute-dialog-v028 .global-attribute-row-v028>label:has(.attr-label){grid-column:2}
+.business-attribute-dialog-v028 .global-attribute-row-v028>label:has(.attr-value){grid-column:3}
+.business-attribute-dialog-v028 .global-attribute-row-v028>label:has(.attr-kind){grid-column:4}
+.business-attribute-dialog-v028 .global-attribute-delete{grid-column:5}
+.business-attribute-dialog-v028 .global-attribute-row-v028 input,.business-attribute-dialog-v028 .global-attribute-row-v028 select,.business-attribute-dialog-v028 .global-attribute-row-v028 textarea{font-size:13px}
 .business-attribute-editor-v028 .attribute-dialog-actions{position:sticky;bottom:-14px;background:#fbfcfe;border-top:1px solid #e3e8ef;padding:10px 0;margin-top:0}
-@media(max-width:700px){.v03-business-status-panel{overflow-x:auto;gap:10px}.v03-business-status-grid{flex:0 0 auto;gap:10px}.v03-payment-state-box strong{max-width:160px}.business-attribute-editor-v028{padding:10px}.global-attribute-list-v028{overflow-x:auto}}
+@media(max-width:700px){.v03-business-status-panel{overflow-x:auto;gap:10px}.v03-business-status-grid{flex:0 0 auto;gap:10px}.v03-payment-state-box strong{max-width:160px}.business-attribute-editor-v028{padding:10px}.global-attribute-list-v028{overflow-x:auto}
+ .business-attribute-dialog-v028 .global-attribute-row-v028{grid-template-columns:18px minmax(84px,.75fr) minmax(130px,1.25fr) 24px!important;gap:5px;padding:5px 6px}
+ .business-attribute-dialog-v028 .global-attribute-row-v028>label:has(.attr-kind){grid-column:3;grid-row:2}
+ .business-attribute-dialog-v028 .global-attribute-row-v028>label:has(.attr-kind:disabled){display:none}
+ .business-attribute-dialog-v028 .global-attribute-delete{grid-column:4;grid-row:1}
+ .business-attribute-dialog-v028 .global-attribute-handle{grid-column:1;grid-row:1}
+ .business-attribute-dialog-v028 .global-attribute-row-v028>label:has(.attr-label),.business-attribute-dialog-v028 .global-attribute-row-v028>label:has(.attr-value){grid-row:1}
+}
 
 /* ---------------- homepage search ---------------- */
 .v03-home-search{

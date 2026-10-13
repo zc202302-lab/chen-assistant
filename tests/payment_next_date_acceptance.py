@@ -61,6 +61,9 @@ def main():
                 heading = status.locator('.v03-business-status-head>b').bounding_box()
                 state = status.locator('[data-v03-payment-state]').bounding_box()
                 assert abs((heading['y'] + heading['height']/2) - (state['y'] + state['height']/2)) < 8
+                value_width = dialog.locator('[data-key="number"] .attr-value').bounding_box()['width']
+                assert value_width >= 125, value_width
+                assert dialog.locator('[data-key="number"]').bounding_box()['height'] < 60
                 page.screenshot(path=str(output / f'payment-attributes-{width}.png'))
             browser.close()
         print('payment date browser acceptance passed')

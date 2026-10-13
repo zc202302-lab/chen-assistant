@@ -66,8 +66,7 @@
       box.innerHTML = `
         <span>缴费状态</span>
         <select data-v031-payment-mode aria-label="缴费状态"></select>
-        <small class="v031-payment-state-current">当前：<strong data-v03-payment-state>${existing}</strong></small>
-        <small data-v031-payment-help>正常周期由缴费周期自动计算；如当前已延期，可在这里恢复正常。</small>`;
+        <small class="v031-payment-state-current">当前：<strong data-v03-payment-state>${existing}</strong></small>`;
     }
     return box;
   };
