@@ -2,6 +2,8 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-13 11:26（Asia/Shanghai）活动任务更新：用户已明确授权推送并部署 Excel 式行列选择改造；PR #152 https://github.com/zc202302-lab/chen-assistant/pull/152，分支 feat/list-sheet-polish，功能 head e5889d7610bb527a268c0c53a2d1baca07408487，候选 Web 1.7.13。本地验证通过，详细实现见活动分支交接。GitHub API 确认该 head 尚无 Actions run，当前连接无首次 workflow dispatch 工具；未合并、未部署。下一步：启动该分支完整 validation 与 stability 工作流，浏览器及完整CI通过后合并部署，再核验公网。以下 1.7.12 为最近已部署基线。
+
 - 更新时间：2026-10-12 16:48（Asia/Shanghai）。用户新增的清单删行/删列功能已完成部署。PR #151 已合并，main合并提交 b4f284ca569d58685f55cf4125270d8f1a16e3aa；Web1.7.12公网核验成功。Windows0.5.16不变，云电脑Draft #128继续暂停。
 - 功能：清单表格逐行/逐列删除，操作前确认、至少保留一列；保存事务清理记录、字段、单元格值及对应行列尺寸/格式/合并区域。revision/CSRF保护、Excel和现有表格行为保留。删除控制有无障碍名称，行号文字语义不变。
 - PR head 43363388bccc47e43f423aa8d09d206fb7949a93 完整validation run38222629769 attempt2 / job114724291553 success（51步骤），stability run38222629751 / job114722326841 success。完整main validation run38224531182 / job114728667961 success（51步骤），稳定性复查job114732739577与生产部署job114732874695均success。PR原代码受检head e90a22534a9c474649b65217ded0f3b8d44647a2；交接纯文档更新后再对最终PR head完整复验通过。两轮中历史首页切换测试各遇一次SQLite锁/动画取消瞬时失败，按日志重跑后整轮成功。
