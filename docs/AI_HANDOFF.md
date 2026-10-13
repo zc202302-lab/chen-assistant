@@ -10,6 +10,7 @@
 - 浏览器本地下载损坏ZIP，不声称本地浏览器成功；CI实际浏览器验收已通过。EXE/XLSM附件未修改；未合并/部署或写生产业务数据。
 - 核心payment_schedule.py、db/schema、v028/v03/v0212及payments、v032_customer_exchange_routes、v028.js/v03.js/v03_runtime_fix.js/css、base.html、新日期契约/浏览器验收。目录/workspace/scratch/75165f63b510/chen-assistant。
 - 回归修复：最新完整run38380895475在旧缴费控件发现已完成月账目被新日期过滤。功能修复eb021bdd050d421cb253b5e37692aa9d142b38de保留本月已缴快照账目供金额修改/撤回，提醒判定仍使用新日期；旧无快照记录只在自动日期匹配时恢复应缴，手动不同日期不被重算。该原浏览器验收已提前，全部断言保留。新日期契约覆盖已缴账目可见及自然到期仍为false，本地通过。未部署。
+- 最新兼容检查：f0d0290修复Excel原生日期导入兼容，客户Excel往返契约通过。完整CI两次在已有首页跨页动画取消异常停下（ViewTransition opt-in disabled），全部断言保留；8132410精确处理Chromium以普通Error报告的该取消消息，补充独立导航契约并更新缓存。最新完整CI待查，不声称全部通过。
 - 唯一下一步：最新head完整CI通过后转可审阅，交付可发布Web1.7.14；用户决定部署，再合并核验公网。
 
 
