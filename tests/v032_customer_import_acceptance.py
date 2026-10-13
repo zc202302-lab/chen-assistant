@@ -30,10 +30,18 @@ from app.db import db, init_db  # noqa: E402
 from app.importer import XlsmReader  # noqa: E402
 from app.security import create_session  # noqa: E402
 from app.v028_routes import _template  # noqa: E402
-from app.v032_customer_exchange_routes import _write_customer_sheet  # noqa: E402
+from app.v032_customer_exchange_routes import _business_columns, _write_customer_sheet  # noqa: E402
 
 
-def payload(name: str, code: str, number: str, amount: float, mode: str):
+def payload(name: str, code: str, number: str, amount: float, mode: str, template):
+    # Match the current dynamic template instead of assuming fixed column slots.
+    business = {
+        'business_id': 'S001', 'attr:service_type': '成员',
+        'attr:holder_name': '测试成员', 'attr:number': number,
+        'attr:account': '5338' + number[-6:], 'attr:payment_interval_months': 1,
+        'attr:payment_method': '微信', 'payment_amount': amount,
+        'payment_mode': mode, 'runtime_status': '启用', 'sort_order': 10,
+    }
     return {
         'info': {
             'name': name, 'group_code': code, 'tax_id': '', 'relation_summary': '浏览器验收', 'payment_enabled': '是',
@@ -42,10 +50,7 @@ def payload(name: str, code: str, number: str, amount: float, mode: str):
             'employee_own': '', 'employee_share': '', 'leased_own': '', 'leased_other': '', 'other_status': '',
         },
         'entities': [], 'invoices': [],
-        'businesses': [[
-            'S001', '成员', '测试成员', number, '5338' + number[-6:], 1, '微信', '', '', '', '', '',
-            amount, mode, '', '启用', '', '', '', 10,
-        ]],
+        'businesses': [[business.get(key, '') for _, key in _business_columns(template)]],
         'contacts': [['关键联系人', '王经理', '财务', '13812340000']],
         'promotions': [['S001', '浏览器测试优惠', '2026-01-01', '2026-12-31', 60, 'active', '']],
         'tasks': [['浏览器测试待办', '2026-09-30', '', '否']],
@@ -58,8 +63,8 @@ def make_fixture(path: Path):
     with db() as conn:
         template = _template(conn)
     workbook = xlsxwriter.Workbook(str(path))
-    _write_customer_sheet(workbook, workbook.add_worksheet('客户甲'), template, payload('浏览器导入客户甲', 'BATCH-001', '15812340001', 40, '固定'))
-    _write_customer_sheet(workbook, workbook.add_worksheet('客户乙'), template, payload('浏览器导入客户乙', 'BATCH-002', '15812340002', 560, '变动'))
+    _write_customer_sheet(workbook, workbook.add_worksheet('客户甲'), template, payload('浏览器导入客户甲', 'BATCH-001', '15812340001', 40, '固定', template))
+    _write_customer_sheet(workbook, workbook.add_worksheet('客户乙'), template, payload('浏览器导入客户乙', 'BATCH-002', '15812340002', 560, '变动', template))
     workbook.close()
 
 
