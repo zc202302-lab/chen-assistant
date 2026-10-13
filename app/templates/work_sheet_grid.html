@@ -1,6 +1,7 @@
 <div class="ws-editor" data-work-sheet data-new="{{ 1 if new_sheet else 0 }}" data-readonly="{{ 1 if sheet_readonly else 0 }}"{% if not new_sheet %} data-list-id="{{ item.id }}" data-save-url="/work/lists/{{ item.id }}/settings" data-csrf="{{ csrf }}"{% endif %}>
   <div class="ws-toolbar">
     {% if not sheet_readonly %}<button type="button" data-sheet-add-row>＋ 增加行</button><button type="button" data-sheet-add-col>＋ 增加列</button>{% endif %}
+    {% if not sheet_readonly %}<span class="ws-toolbar-divider" aria-hidden="true"></span><button type="button" data-sheet-delete-row disabled>删除行</button><button type="button" data-sheet-delete-col disabled>删除列</button>{% endif %}
     <button type="button" data-sheet-clear-filters>清除筛选</button>
     {% if not new_sheet and not sheet_readonly %}<button type="button" data-sheet-save>保存表格</button>{% endif %}
     <span class="ws-status" data-sheet-count></span>

@@ -15,13 +15,15 @@ body:has(.wl-sheet-shell) .page{max-width:1520px}
 .ws-letters{height:26px;background:#eef2f7;color:#7c889b}
 .ws-letters th{font-size:11px;font-weight:500}
 .ws-index{width:42px;min-width:42px;max-width:42px;text-align:center;background:#eef2f7;color:#7a879a;font-size:11px;font-weight:400;position:sticky!important;left:0;z-index:2}
-.ws-row-label{display:block;padding-right:10px}
-.ws-axis-delete{position:absolute;z-index:6;display:grid;place-items:center;width:18px;height:18px;padding:0!important;border:0!important;border-radius:4px!important;background:#fff;color:#a44848!important;font:600 16px/1 sans-serif!important;cursor:pointer}
-.ws-axis-delete::before{content:"×"}
-.ws-axis-delete:hover,.ws-axis-delete:focus-visible{background:#fdeaea!important;color:#9b2424!important;outline:2px solid #d77!important;outline-offset:0}
-.ws-row-delete{right:1px;top:50%;transform:translateY(-50%)}
-.ws-col-delete{right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;font-size:14px!important}
-.ws-letters th{position:relative;padding-right:24px!important}
+/* Excel-like row and column selection. */
+.ws-editor .ws-axis-trigger{display:block;width:100%;height:100%;min-height:26px;padding:0;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.ws-editor .ws-axis-trigger:hover,.ws-editor .ws-axis-trigger:focus-visible{background:#e0eafb;color:#245baa;outline:2px solid #93b4e3;outline-offset:-2px}
+.ws-axis-trigger[aria-pressed="true"]{background:#cfe1fa!important;color:#174f9c!important;font-weight:600!important}
+.ws-row-selected>th,.ws-row-selected>td,.ws-column-selected{background-color:#edf5ff!important}
+.ws-row-selected>.ws-index,.ws-letters .ws-column-selected{background:#cfe1fa!important;color:#174f9c!important}
+.ws-toolbar-divider{width:1px;height:20px;background:#dce3ec;margin:0 2px}
+.ws-editor .ws-toolbar button[data-sheet-delete-row],.ws-editor .ws-toolbar button[data-sheet-delete-col]{color:#a13e3e}
+.ws-editor .ws-toolbar button[data-sheet-delete-row]:hover:not(:disabled),.ws-editor .ws-toolbar button[data-sheet-delete-col]:hover:not(:disabled){background:#fdecec;color:#8f2929}
 .ws-corner{position:sticky!important;left:0;background:#e8edf4;z-index:3}
 .ws-headers{background:#f3f6fa}
 .ws-header-input{width:100%;height:100%;min-height:0;border:0!important;border-radius:0!important;padding:5px 25px 5px 7px!important;box-sizing:border-box;background:transparent!important;color:inherit!important;font:inherit!important;font-weight:inherit!important;margin:0!important}
@@ -53,3 +55,16 @@ body:has(.wl-sheet-shell) .page{max-width:1520px}
 
 .wl-sheet-shell{padding-top:10px;padding-bottom:12px}.wl-sheet-shell .ws-editor{margin:8px 0}.wl-sheet-shell .ws-stage{max-height:max(240px,calc(100dvh - 250px))}.wl-sheet-shell .ws-notice:empty{display:none}
 @media(max-width:700px){.wl-sheet-shell .ws-stage{max-height:max(220px,calc(100dvh - 300px))}.wl-sheet-shell{padding-bottom:85px}}
+
+/* Quiet toolbar and consistent sheet chrome. */
+.ws-toolbar{padding:8px;background:#f6f8fb;border:1px solid #e4e9f1;border-radius:10px;gap:6px}
+.ws-editor .ws-toolbar button{border-color:transparent;background:transparent;border-radius:6px;padding:7px 10px;color:#53657b;font-size:12px}
+.ws-editor .ws-toolbar button:hover{background:#e7eef8;color:#245baa}
+.ws-editor .ws-toolbar button[data-sheet-save]{background:#245baa;border-color:#245baa;color:white}
+.ws-editor .ws-toolbar button[data-sheet-save]:disabled{background:#edf1f6;border-color:transparent;color:#91a0b2;opacity:1}
+.ws-status{padding-right:6px;font-variant-numeric:tabular-nums}
+.ws-stage{border-color:#dce3ec;border-radius:10px}
+.ws-letters{background:#f4f6fa;color:#8390a3}
+.ws-index{background:#f4f6fa;color:#8390a3;font-variant-numeric:tabular-nums}
+.ws-grid th,.ws-grid td{border-color:#e4e9f0}
+.ws-editor .ws-paging button{font-size:12px;border-color:#e2e8f0;background:transparent}
