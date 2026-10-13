@@ -28,7 +28,7 @@ def main():
     assert detail.matches({'type': 'http', 'path': '/customers/new', 'method': 'GET'})[0] == Match.NONE
     assert detail.matches({'type': 'http', 'path': '/customers/123', 'method': 'GET'})[0] == Match.FULL
     assert 'class="customer-workspace v028-workspace' in template
-    assert '/static/v028.js?v=17110' in base
+    assert '/static/v028.js?v=1714' in base
 
     # Account copy is row-authoritative, not dependent on a visible account column.
     assert 'data-payment-account="{{ s.account|e }}"' in template
