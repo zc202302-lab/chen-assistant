@@ -112,8 +112,9 @@ def _natural_due(service, period: str) -> bool:
     if next_period:
         return period >= next_period
     last = (service['last_payment_date'] or '').strip()
-    if len(last) >= 7:
-        return period >= add_periods(last[:7], months)
+    parsed_last = readable_date(last)
+    if parsed_last:
+        return period >= add_periods(parsed_last.strftime('%Y-%m'), months)
     return True
 
 
@@ -142,8 +143,9 @@ def _natural_next_period(service, period: str) -> str:
     if nxt:
         return nxt
     last = (service['last_payment_date'] or '').strip()
-    if len(last) >= 7:
-        return add_periods(last[:7], months)
+    parsed_last = readable_date(last)
+    if parsed_last:
+        return add_periods(parsed_last.strftime('%Y-%m'), months)
     return period
 
 

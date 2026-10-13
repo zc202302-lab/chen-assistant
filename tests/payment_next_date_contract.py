@@ -30,6 +30,7 @@ def main():
     assert computed_next_date('2024-02-29', 12) == '2025-02-28'
     assert computed_next_date('2026/1/31', 1) == '2026-02-28'
     assert computed_next_date('暂不确定', 12) == ''
+    assert _natural_due({'payment_interval_months': 12, 'payment_cycle': '12个月', 'last_payment_date': '2026-99-99', 'next_payment_period': '', 'next_payment_date': ''}, '2026-10')
     init_db()
     now = now_iso()
     with db() as conn:
