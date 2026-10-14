@@ -148,6 +148,12 @@
     const target = e.target.closest('[data-copy-silent],[data-business-row] .business-attribute');
     // Promotion names own their popover/inline-rename interaction.
     if (!target || target.matches('.promo-name-copy-v028,[data-promo-name-edit]')) return;
+    const attribute = target.closest('[data-business-row] .business-attribute,[data-payment-row] [data-payment-business-cell]');
+    if (attribute && !['number', 'account'].includes(attribute.dataset.attrKey || attribute.dataset.paymentAttrKey)) {
+      // Also reject stale copy markers on a row waiting for normalization.
+      e.stopImmediatePropagation();
+      return;
+    }
     const value = target.matches('.business-attribute')
       ? target.querySelector('strong')?.textContent?.trim()
       : target.dataset.copySilent;

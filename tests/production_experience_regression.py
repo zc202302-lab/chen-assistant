@@ -7,6 +7,7 @@ app_js = (ROOT / 'app' / 'static' / 'app.js').read_text(encoding='utf-8')
 assert "toast(ok ? '已复制' : '复制失败')" in app_js
 assert "[data-copy-silent],[data-business-row] .business-attribute" in app_js
 assert "const ok = await copyText(value)" in app_js
+assert "['number', 'account'].includes(attribute.dataset.attrKey || attribute.dataset.paymentAttrKey)" in app_js
 assert "toast(ok ? '已复制' : '复制失败，请重试')" in app_js
 assert "setTimeout(() => toast('已复制'), 0)" not in app_js
 # Identifier copies retain their payment focus owner, using the shared helper

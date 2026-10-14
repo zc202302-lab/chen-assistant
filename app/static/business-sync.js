@@ -54,7 +54,7 @@
         attr.classList.remove('business-preview-hidden-v030');
         const label = attr.querySelector('small')?.textContent?.trim() || '属性';
         const value = attr.querySelector('strong')?.textContent?.trim() || '';
-        if (value && value !== '—') {
+        if (['number', 'account'].includes(attr.dataset.attrKey) && value && value !== '—') {
           attr.dataset.copySilent = value;
           attr.setAttribute('role', 'button');
           attr.tabIndex = 0;
@@ -65,6 +65,7 @@
           attr.removeAttribute('role');
           attr.removeAttribute('tabindex');
           attr.classList.remove('business-value-copy-v030');
+          attr.title = `${label}：${value || '—'} · 双击编辑`;
         }
       });
     });

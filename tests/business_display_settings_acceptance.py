@@ -59,23 +59,39 @@ def main():
             for replace in (False, True):
                 if replace:
                     row.evaluate("el => {el.innerHTML = el.innerHTML; el.querySelector('[data-open-service-editor]')?.remove();}")
-                cell = cells.first
+                cell = row.locator('.business-attribute[data-attr-key="number"]')
                 expected = cell.locator('strong').inner_text().strip()
                 cell.click()
                 expect(page.locator('.app-toast').last).to_have_text('已复制')
                 assert page.evaluate('window.__copied.at(-1)') == expected
+                account = row.locator('.business-attribute[data-attr-key="account"]')
+                account.click()
+                assert page.evaluate('window.__copied.at(-1)') == account.locator('strong').inner_text().strip()
                 cell.dblclick()
                 expect(editor).to_be_visible()
                 assert editor.locator('[name="service_id"]').input_value() == str(sid)
                 editor.locator('[data-business-editor-close]').first.click()
                 expect(editor).not_to_be_visible()
+                # Other attributes neither copy nor claim success, including
+                # stale markers left on a freshly replaced row.
+                for other in cells.all():
+                    if other.get_attribute('data-attr-key') in ('number', 'account'):
+                        continue
+                    count = page.evaluate('window.__copied.length')
+                    other.evaluate("el => {el.dataset.copySilent = 'must-not-copy';}")
+                    other.click()
+                    page.wait_for_timeout(30)
+                    assert page.evaluate('window.__copied.length') == count
+                    other.dblclick()
+                    expect(editor).to_be_visible()
+                    editor.locator('[data-business-editor-close]').first.click()
             # A denied clipboard must not display a false success toast.
             page.evaluate("""() => {
                 navigator.clipboard.writeText = async () => {throw new Error('denied')};
                 window.__execCommand = document.execCommand;
                 document.execCommand = () => false;
             }""")
-            cells.first.click()
+            row.locator('.business-attribute[data-attr-key="number"]').click()
             expect(page.locator('.app-toast').last).to_have_text('复制失败，请重试')
             page.evaluate('() => { document.execCommand = window.__execCommand; }')
             # A reload must not need the client-side bootstrap to repair the HTML.
@@ -120,7 +136,19 @@ def main():
             payment.evaluate("el => {el.innerHTML = el.innerHTML; el.querySelector('[data-open-service-editor]')?.remove();}")
             fields = payment.locator('[data-payment-business-cell]')
             assert fields.count() > 0
+            page.evaluate("""() => {
+                window.__copied = [];
+                Object.defineProperty(navigator, 'clipboard', {configurable:true,
+                    value:{writeText:async text => window.__copied.push(text)}});
+            }""")
             for field in fields.all():
+                count = page.evaluate('window.__copied.length')
+                key = field.get_attribute('data-payment-attr-key')
+                if key not in ('number', 'account'):
+                    field.evaluate("el => {el.dataset.copySilent = 'must-not-copy';}")
+                field.click()
+                page.wait_for_timeout(30)
+                assert page.evaluate('window.__copied.length') == count + int(key in ('number', 'account'))
                 field.dblclick()
                 expect(editor).to_be_visible()
                 assert editor.locator('[name="service_id"]').input_value() == str(sid)
