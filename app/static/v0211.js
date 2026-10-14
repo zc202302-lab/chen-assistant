@@ -274,7 +274,7 @@
         const shown = displayValue(key, raw, data);
         const strong = cell.querySelector('[data-payment-cell-value]');
         if (strong) strong.textContent = shown;
-        if (raw) cell.dataset.copySilent = shown;
+        if (raw && (key === 'number' || key === 'account')) cell.dataset.copySilent = shown;
         else delete cell.dataset.copySilent;
         if (key === 'number' || key === 'account') {
           if (raw) {
