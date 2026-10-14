@@ -44,7 +44,9 @@ def verify():
     manifest = json.loads(raw)
     if any(manifest.get(k) != v for k,v in {'id':'/','scope':'/','display':'standalone'}.items()):
         raise RuntimeError('PWA manifest is not current')
-    for path in ['app/static/v03.js', 'app/static/v0211.js']:
+    for path in ['app/static/v03.js', 'app/static/v0211.js',
+                 'app/static/live-refresh-v15.js', 'app/static/high-frequency-v152.js',
+                 'app/static/v143_customer_resources.js']:
         _, _, raw = fetch('/' + path.removeprefix('app/'))
         if hashlib.sha256(raw.strip()).digest() != hashlib.sha256((ROOT / path).read_bytes().strip()).digest():
             raise RuntimeError(f'Online property-sync asset differs from validated source: {path}')
