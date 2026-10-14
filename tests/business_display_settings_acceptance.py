@@ -77,7 +77,7 @@ def main():
             }""")
             cells.first.click()
             expect(page.locator('.app-toast').last).to_have_text('复制失败，请重试')
-            page.evaluate('document.execCommand = window.__execCommand')
+            page.evaluate('() => { document.execCommand = window.__execCommand; }')
             # A reload must not need the client-side bootstrap to repair the HTML.
             page.reload(wait_until='networkidle')
             expect(cells).to_have_count(6)
