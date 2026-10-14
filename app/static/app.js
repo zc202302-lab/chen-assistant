@@ -24,11 +24,13 @@
     ta.value = value;
     ta.setAttribute('readonly', '');
     Object.assign(ta.style, {position:'fixed', opacity:'0', left:'-9999px'});
-    document.body.appendChild(ta);
+    const focused = document.activeElement;
+    (document.querySelector('dialog[open]') || document.body).appendChild(ta);
     ta.select();
     let ok = false;
     try { ok = document.execCommand('copy'); } catch (_) {}
     ta.remove();
+    if (focused?.isConnected) focused.focus({preventScroll:true});
     return ok;
   };
 
@@ -142,11 +144,18 @@
     if (disabled) e.preventDefault();
   });
 
-  document.addEventListener('click', (e) => {
-    const target = e.target.closest('.identifier-copy,[data-copy-silent]');
-    if (target && !target.matches('[data-promo-name-edit]')) {
-      setTimeout(() => toast('已复制'), 0);
-    }
+  document.addEventListener('click', async (e) => {
+    const target = e.target.closest('[data-copy-silent],[data-business-row] .business-attribute');
+    // Promotion names own their popover/inline-rename interaction.
+    if (!target || target.matches('.promo-name-copy-v028,[data-promo-name-edit]')) return;
+    const value = target.matches('.business-attribute')
+      ? target.querySelector('strong')?.textContent?.trim()
+      : target.dataset.copySilent;
+    if (!value || value === '—') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const ok = await copyText(value);
+    toast(ok ? '已复制' : '复制失败，请重试');
   }, true);
 
   const filter = document.getElementById('serviceFilter');

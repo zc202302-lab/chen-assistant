@@ -51,7 +51,7 @@ def main():
 
     base = (ROOT / 'app/templates/base.html').read_text(encoding='utf-8')
     assert '/static/v143_customer_resources.css?v=1431' in base
-    assert '/static/v143_customer_resources.js?v=1431' in base
+    assert '/static/v143_customer_resources.js?v=1716' in base
 
     guard = (ROOT / 'app/static/v031_workflow_dom_guard.js').read_text(encoding='utf-8')
     assert 'if (fixedToggle.disabled) fixedToggle.disabled = false;' in guard

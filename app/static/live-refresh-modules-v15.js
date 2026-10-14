@@ -18,7 +18,8 @@
 
   const panelBusy = panel => {
     if (!panel) return false;
-    if (document.activeElement && panel.contains(document.activeElement)) return true;
+    const focused = document.activeElement;
+    if (focused && panel.contains(focused) && focused.matches('input,textarea,select,[contenteditable="true"]')) return true;
     return !!panel.querySelector('[data-chen-dirty="1"],.is-saving,.dragging,.sort-source-v0211,.v03-business-sort-source');
   };
 

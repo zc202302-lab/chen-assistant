@@ -22,7 +22,7 @@ def main():
     assert 'href="/work"' in base
     assert "'/work/customers'" in (ROOT / 'app' / 'work_architecture.py').read_text(encoding='utf-8')
     assert 'high-frequency-v152.css?v=1525' in base
-    assert 'high-frequency-v152.js?v=15101' in base
+    assert 'high-frequency-v152.js?v=1716' in base
     assert 'payment-total-row-v152' in js
     assert "document.querySelector('[data-payment-workbench]')" in js
     assert "event.target.closest?.('[data-payment-workbench] [data-review-toggle]')" in js

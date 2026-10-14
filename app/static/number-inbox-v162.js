@@ -4,11 +4,12 @@ document.addEventListener('click', async (event) => {
   const value = target.getAttribute('data-copy-value') || '';
   if (!value) return;
   try {
-    await navigator.clipboard.writeText(value);
+    if (!await window.ChenCopyText(value)) throw new Error('copy failed');
     const original = target.textContent;
     target.textContent = original + '  ✓';
     window.setTimeout(() => { target.textContent = original; }, 900);
   } catch (_) {
+    window.ChenToast?.('复制失败，请重试');
     const range = document.createRange();
     range.selectNodeContents(target);
     const selection = window.getSelection();

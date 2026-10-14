@@ -196,15 +196,8 @@
 
     if (event.target.closest('[data-v143-resource-copy]')) {
       const text = String(item.value || '');
-      try {
-        await navigator.clipboard.writeText(text);
-        window.ChenToast?.('已复制');
-      } catch (_) {
-        const ta = document.createElement('textarea');
-        ta.value = text; document.body.appendChild(ta); ta.select();
-        try { document.execCommand('copy'); window.ChenToast?.('已复制'); } catch (_) {}
-        ta.remove();
-      }
+      const ok = await window.ChenCopyText(text);
+      window.ChenToast?.(ok ? '已复制' : '复制失败，请重试');
       return;
     }
 
