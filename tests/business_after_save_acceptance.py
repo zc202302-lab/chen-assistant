@@ -109,6 +109,15 @@ def main():
             }''', sid)
             assert hit['key'], hit
             assert 'app-toast' not in hit['top'], hit
+            assert hit['key'] in ['number', 'account'], hit
+            copied = row.locator(f'[data-attr-key="{hit["key"]}"] strong').inner_text()
+            page.mouse.click(hit['x'], hit['y'])
+            assert page.evaluate('navigator.clipboard.readText()') == copied
+            expect(page.locator('.app-toast')).to_have_text('已复制')
+            # The copy feedback is now visible; the second gesture must also
+            # reach the same identifier while that feedback is still shown.
+            assert page.evaluate('''point => document.elementFromPoint(point.x, point.y)
+                ?.closest('.business-attribute')?.dataset.attrKey''', hit) == hit['key']
             page.mouse.click(hit['x'], hit['y'], click_count=2)
             expect(editor).to_be_visible()
             editor.locator('[data-business-editor-close]').first.click()
