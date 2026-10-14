@@ -141,6 +141,7 @@ jobs:
         run: |
           python tests/business_display_settings_contract.py
           python tests/business_display_settings_acceptance.py
+          python tests/business_after_save_acceptance.py
 
       - name: Home module style acceptance
         if: steps.scope.outputs.mode == 'full'
