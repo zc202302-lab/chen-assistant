@@ -2,6 +2,17 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 工作模式：开发/验证中，2026-10-14（Asia/Shanghai）。最新用户反馈业务双击编辑、单击复制经常失效，刷新页面才有效，要求核查全部相关模块。活动分支fix/workspace-edit-copy-interactions，基于main c7996e967d1bf20370f996b614cc79b6413664e9；候选Web1.7.16，暂未部署。已有推送部署授权有效；Windows0.5.16和云电脑Draft #128不变。
+- 上一项显示属性修复PR #154已合并。main完整validation38502726613 / validate115653180189、生产稳定性115657272377、部署115657393655全部success。公网38502726610 / job115653179840日志2026-10-14 10:58:38（Asia/Shanghai）ONLINE VERIFIED v1.7.15，版本/完整资源/PWA/提醒鉴权通过；生产基准为Web1.7.15，不从资源验证推断后端精确commit。
+- 本次WIP：v028统一文档级双击委托直接按service_id打开编辑器，不依赖更新后的隐藏编辑按钮，异步请求序号防旧响应覆盖；app统一业务/优惠复制委托读取当前值且按实际结果提示，共享fallback在打开的dialog内部执行并恢复焦点。缴费标识/高频缴费、客户资料、号码收件箱使用共享复制；保留优惠名单双击改名。live-refresh请求开始及响应应用前避开700ms连续点击窗口与打开的dialog，避免替换首击/第二击目标。
+- 验证：已增加真实浏览器断言覆盖显示设置后无需刷新复制/双击、行innerHTML更新且编辑按钮缺失、拒绝剪贴板时不假报成功、缴费更新后编辑及动态优惠入口；完整浏览器和历史CI尚待运行。本地架构/显示设置/缴费高频/号码契约已运行，缓存号断言随真实资源版本更新而非删除；本地Chromium下载仍损坏，不宣称本地浏览器通过。
+- 核心app.js、v028.js、live-refresh-v15.js、high-frequency-v152.js、v143_customer_resources.js、number-inbox-v162.js、模板缓存号、tests/business_display_settings_acceptance.py。目录/workspace/scratch/75165f63b510/chen-assistant。附件不修改，不登录或操作生产客户数据。
+- 唯一下一步：提交WIP并创建Draft PR，完成实际浏览器/完整CI，发现回归则修复；通过后按授权合并部署1.7.16并独立公网核验。main默认交接入口须同步指向本活动分支。
+
+---
+
+## 上一阶段快照（历史：Web1.7.15发布前，最新部署证据见当前快照）
+
 - 工作模式：完整验收通过，准备发布，2026-10-14（Asia/Shanghai）。用户反馈业务页面“显示属性”无效；活动分支fix/business-display-settings，PR #154 https://github.com/zc202302-lab/chen-assistant/pull/154，候选Web1.7.15。生产最近已核验Web1.7.14；Windows0.5.16不变，云电脑Draft #128暂停。按已有推送和部署授权发布。
 - 根因与修复：客户显示设置API按客户存储，但页面HTML和runtime读取遗漏customer_id，使用旧全局3列配置；保存后的live-refresh用该HTML覆盖刚选的6列。两处读取传入当前客户id，保持列顺序、空列设置、客户隔离与原刷新机制；不修改业务值或缴费逻辑。
 - 新契约修复前实际失败（API6列、HTML3列）、修复后通过，覆盖保存/API/服务器HTML/live-refresh HTML/runtime一致、空列表、新日期属性、另一客户与CSRF。真实浏览器验证实际设置入口、保存、自动刷新、重新加载、桌面/手机6列和客户隔离；截图11865540656的1440/390已实际核查，CI机缺中文字体，不修改产品字体以迎合测试。

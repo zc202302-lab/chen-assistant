@@ -1,5 +1,6 @@
 (() => {
   const copyText = async (value) => {
+    if (window.ChenCopyText) return window.ChenCopyText(value);
     if (!value) return false;
     if (navigator.clipboard && window.isSecureContext) {
       try { await navigator.clipboard.writeText(value); return true; } catch (_) {}
@@ -260,7 +261,8 @@
       if (!id) return;
       e.preventDefault(); e.stopPropagation();
       const keep = activeAmount && document.contains(activeAmount) ? activeAmount : null;
-      await copyText(id.dataset.copy || '');
+      const ok = await copyText(id.dataset.copy || '');
+      window.ChenToast?.(ok ? '已复制' : '复制失败，请重试');
       if (keep) selectAmount(keep);
     }, true);
     window.addEventListener('focus', () => { if (activeAmount) setTimeout(() => selectAmount(activeAmount), 40); });
@@ -453,12 +455,16 @@
     });
   };
 
+  let editorRequest = 0;
   const openBusinessEditor = async (serviceId) => {
     if (!businessDialog || !businessForm) return;
+    if (!serviceId) return;
+    const request = ++editorRequest;
     editorScrollY = window.scrollY;
     try {
       const r = await fetch(`/services/${serviceId}/attributes-v028`, {credentials:'same-origin'});
       const data = await r.json().catch(() => ({}));
+      if (request !== editorRequest) return;
       if (!r.ok || !data.ok) return notifyError(data.error || '读取业务属性失败');
       editorServiceId = serviceId;
       editorTemplate = (data.template || []).map(x => ({...x}));
@@ -466,10 +472,22 @@
       editorInvoiceGroups = data.invoice_groups || [];
       businessForm.elements.service_id.value = serviceId;
       renderEditor();
-      businessDialog.showModal();
+      if (!businessDialog.open) businessDialog.showModal();
       root.dispatchEvent(new CustomEvent('chen:service-editor-opened', {detail:{service_id:serviceId}}));
     } catch (_) { notifyError('网络异常'); }
   };
+
+  // Delegate from stable document: freshly rendered cells need no rebinding
+  // and must not rely on a hidden edit button surviving a row update.
+  document.addEventListener('dblclick', e => {
+    const field = e.target.closest?.('[data-business-row] .business-attribute,[data-payment-row] [data-payment-attr-key],[data-payment-business-cell],[data-promo-service-editor]');
+    if (!field || !root.contains(field)) return;
+    const serviceId = field.dataset.serviceId || field.closest('[data-service-id]')?.dataset.serviceId;
+    if (!serviceId) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    openBusinessEditor(serviceId);
+  }, true);
 
   root.addEventListener('click', e => {
     const btn = e.target.closest('[data-open-service-editor]');

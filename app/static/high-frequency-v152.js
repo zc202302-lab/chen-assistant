@@ -33,6 +33,7 @@
   window.addEventListener('chen:live-refresh', () => ensurePaymentTotalRow());
 
   const copyText = async value => {
+    if (window.ChenCopyText) return window.ChenCopyText(value);
     if (!value) return false;
     if (navigator.clipboard && window.isSecureContext) {
       try { await navigator.clipboard.writeText(value); return true; } catch (_) {}

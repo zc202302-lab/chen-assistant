@@ -9,6 +9,15 @@
   let refreshTimer = 0;
   let refreshing = false;
   let lastHtmlSignature = '';
+  let interactionUntil = 0;
+  // A first click and its second click must see the same DOM node. The
+  // response may arrive after pointerdown, so check this at apply time too.
+  const protectInteraction = event => {
+    if (root.contains(event.target)) interactionUntil = Date.now() + 700;
+  };
+  document.addEventListener('pointerdown', protectInteraction, true);
+  document.addEventListener('click', protectInteraction, true);
+  document.addEventListener('dblclick', protectInteraction, true);
 
   const hashText = text => {
     let hash = 2166136261;
@@ -243,6 +252,7 @@
 
   const refreshNow = async () => {
     if (refreshing || document.hidden) return;
+    if (Date.now() < interactionUntil) return scheduleRefresh(750);
     if (document.querySelector('dialog[open]')) return;
     refreshing = true;
     try {
@@ -254,6 +264,10 @@
       });
       if (!response.ok) return;
       const html = await response.text();
+      if (Date.now() < interactionUntil || document.querySelector('dialog[open]')) {
+        scheduleRefresh(750);
+        return;
+      }
       const signature = hashText(html);
       if (signature === lastHtmlSignature) return;
       lastHtmlSignature = signature;

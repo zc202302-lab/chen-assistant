@@ -48,6 +48,36 @@ def main():
             assert cells.evaluate_all('els => els.map(el => el.dataset.attrKey)') == SELECTED
             headers = page.locator('.business-table-header-cell-v030')
             expect(headers).to_have_text(['姓名/属性', '号码', '账号', '测试金额', '备注', '上次缴费日期'])
+            # No reload/rebinding: exercise new cells immediately after AJAX
+            # settings save, then after replacing a row exactly as live refresh.
+            page.evaluate("""() => {
+                window.__copied = [];
+                Object.defineProperty(navigator, 'clipboard', {configurable:true,
+                    value:{writeText:async text => window.__copied.push(text)}});
+            }""")
+            editor = page.locator('#businessAttributeDialog')
+            for replace in (False, True):
+                if replace:
+                    row.evaluate("el => {el.innerHTML = el.innerHTML; el.querySelector('[data-open-service-editor]')?.remove();}")
+                cell = cells.first
+                expected = cell.locator('strong').inner_text().strip()
+                cell.click()
+                expect(page.locator('.app-toast').last).to_have_text('已复制')
+                assert page.evaluate('window.__copied.at(-1)') == expected
+                cell.dblclick()
+                expect(editor).to_be_visible()
+                assert editor.locator('[name="service_id"]').input_value() == str(sid)
+                editor.locator('[data-business-editor-close]').first.click()
+                expect(editor).not_to_be_visible()
+            # A denied clipboard must not display a false success toast.
+            page.evaluate("""() => {
+                navigator.clipboard.writeText = async () => {throw new Error('denied')};
+                window.__execCommand = document.execCommand;
+                document.execCommand = () => false;
+            }""")
+            cells.first.click()
+            expect(page.locator('.app-toast').last).to_have_text('复制失败，请重试')
+            page.evaluate('document.execCommand = window.__execCommand')
             # A reload must not need the client-side bootstrap to repair the HTML.
             page.reload(wait_until='networkidle')
             expect(cells).to_have_count(6)
@@ -66,6 +96,29 @@ def main():
             assert other.evaluate_all('els => els.map(el => el.dataset.attrKey)') == LEGACY
             page.goto(base + f'/customers/{cid}?tab=services', wait_until='networkidle')
             expect(cells).to_have_count(6)
+            page.goto(base + f'/customers/{cid}?tab=payment', wait_until='networkidle')
+            payment = page.locator(f'[data-payment-row][data-service-id="{sid}"]')
+            expect(payment).to_be_visible()
+            payment.evaluate("el => {el.innerHTML = el.innerHTML; el.querySelector('[data-open-service-editor]')?.remove();}")
+            fields = payment.locator('[data-payment-business-cell]')
+            assert fields.count() > 0
+            for field in fields.all():
+                field.dblclick()
+                expect(editor).to_be_visible()
+                assert editor.locator('[name="service_id"]').input_value() == str(sid)
+                editor.locator('[data-business-editor-close]').first.click()
+            # Promotion triggers inserted by an AJAX table refresh must also
+            # use the stable editor owner without needing another page load.
+            page.evaluate("""sid => {
+                const button = document.createElement('button');
+                button.dataset.promoServiceEditor = '1'; button.dataset.serviceId = sid;
+                button.id = 'dynamic-promotion-test'; button.textContent = '测试优惠业务';
+                document.querySelector('.v028-workspace').appendChild(button);
+            }""", str(sid))
+            page.locator('#dynamic-promotion-test').dblclick()
+            expect(editor).to_be_visible()
+            assert editor.locator('[name="service_id"]').input_value() == str(sid)
+            editor.locator('[data-business-editor-close]').first.click()
             browser.close()
         print('business display settings browser acceptance passed: six columns, live refresh, reload, mobile and customer isolation')
     finally:
