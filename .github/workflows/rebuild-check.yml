@@ -142,6 +142,10 @@ jobs:
           python tests/business_display_settings_contract.py
           python tests/business_display_settings_acceptance.py
 
+      - name: Home module style acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/home_module_style_acceptance.py
+
       - name: Legacy payment workflow browser acceptance
         if: steps.scope.outputs.mode == 'full'
         run: python tests/v031_payment_workflow_acceptance.py
@@ -181,7 +185,6 @@ jobs:
           python tests/work_entry_layout_contract.py
           python tests/work_entry_layout_acceptance.py
           python -m unittest discover -s tests -p test_home_shortcuts_contract.py -v
-          python tests/home_module_style_acceptance.py
           python tests/number_inbox_batch_contract.py
           python tests/number_inbox_batch_acceptance.py
           python tests/promotion_slots_acceptance.py
