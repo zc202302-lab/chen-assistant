@@ -2,12 +2,12 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 工作模式：修复/验证中，2026-10-14 16:26（Asia/Shanghai）。用户明确只修改属性的值，保存返回后的单击/双击失效是偶发。活动分支fix/business-after-save，Draft PR #157 https://github.com/zc202302-lab/chen-assistant/pull/157；候选Web1.7.18，生产仍1.7.17。Windows0.5.16及云电脑Draft #128不变。已有开发、推送和部署授权有效。
+- 工作模式：修复/验证中，2026-10-14 16:28（Asia/Shanghai）。用户明确只修改属性的值，保存返回后的单击/双击失效是偶发。活动分支fix/business-after-save，PR #157 https://github.com/zc202302-lab/chen-assistant/pull/157已转待审；功能提交888a020f3d8de15c45aba7d72ba47dd8a5743d74，候选Web1.7.18，生产仍1.7.17。Windows0.5.16及云电脑Draft #128不变。已有开发、推送和部署授权有效。
 - 已确认缺陷：共享.app-toast提示层opacity变0后仍留在DOM，默认pointer-events:auto、z-index9999，覆盖位置的单击/双击会被提示层截获。精准真实浏览器基线69451fb4f6af6b9d67431cf7e2320f1b888c41a0，validation38534829224 / validate115755062109失败，日志明确账号属性被透明提示层截获：key account、elementFromPoint命中app-toast。之前38534501190先发现提示层遮挡，但坐标未找到底层属性，精准用例已纠正定位；不夸大为用户全部偶发原因。
 - 修复范围：共享v028.css提示层在显示与隐藏时统一pointer-events:none；base.html更新该CSS缓存参数，候选版本1.7.18。业务、缴费及优惠等共用提示样式一起受益，单击仅号码/账号复制及所有属性双击编辑规则保留。未改业务日期、状态和保存接口。
 - 普通连续三次真实保存用例在未改运行代码的6baa8d5fc17e487d79afbd22ca910de8d4fcefbb，CI38532845243第12步已通过；不能据此否定用户偶发反馈。新测试使用31行业务和滚动中间行，屏蔽背景HTML刷新，检查真实保存、实际剪贴板、重新编辑与提示层覆盖位置。原测试断言全部保留。
 - 初读status-v03顺序遗漏customer_id属于死兼容路由，实际先注册所有者v03_mail_draft_routes.py已正确传入customer_id，不再将此视为根因；v028兼容renderer缺少attrKey尚未证明进入当前保存流，不混入本次修复。截图已本地读取，附件不修改、不记录真实客户信息。本地架构治理、显示设置契约、生产体验与语法/diff通过；本地Chromium下载损坏，浏览器验证使用CI。目录/workspace/scratch/75165f63b510/chen-assistant。
-- 唯一下一步：确认实际属性覆盖坐标的基线复现，提交提示层修复并完成全部CI，按既有授权合并部署后独立核验公网1.7.18。
+- 唯一下一步：精准基线已确认账号属性被透明提示层拦截；完成当前修复head全部CI，按既有授权合并部署后独立核验公网1.7.18。
 
 ---
 
