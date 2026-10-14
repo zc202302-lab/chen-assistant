@@ -10,6 +10,11 @@ assert "const ok = await copyText(value)" in app_js
 assert "['number', 'account'].includes(attribute.dataset.attrKey || attribute.dataset.paymentAttrKey)" in app_js
 assert "toast(ok ? '已复制' : '复制失败，请重试')" in app_js
 assert "setTimeout(() => toast('已复制'), 0)" not in app_js
+# Visible and transparent retained feedback must never intercept row gestures.
+import re
+toast_css = (ROOT / 'app/static/v028.css').read_text(encoding='utf-8')
+toast_rule = re.search(r'\.app-toast\{([^}]+)\}', toast_css).group(1)
+assert 'pointer-events:none' in toast_rule
 # Identifier copies retain their payment focus owner, using the shared helper
 # and actual result feedback rather than an unrelated capture-phase toast.
 payment_js = (ROOT / 'app/static/v028.js').read_text(encoding='utf-8')
