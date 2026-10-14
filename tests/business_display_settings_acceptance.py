@@ -5,7 +5,7 @@ import sys
 import time
 import urllib.request
 
-from business_display_settings_contract import ROOT, seed, create_session, LEGACY, SELECTED
+from business_display_settings_contract import ROOT, seed, create_session, LEGACY, SELECTED, db
 
 
 def main():
@@ -83,6 +83,24 @@ def main():
             expect(cells).to_have_count(6)
             assert cells.evaluate_all('els => els.map(el => el.dataset.attrKey)') == SELECTED
             expect(headers).to_have_count(6)
+            # A refresh skipped during editing must be replayed even if the
+            # next server response has exactly the same HTML signature.
+            before = cells.first.locator('strong').inner_text()
+            page.evaluate("""() => {
+                const input = document.createElement('input'); input.id = 'busy-refresh-probe';
+                document.querySelector('[data-customer-panel="services"]').appendChild(input);
+                input.focus();
+            }""")
+            with db() as conn:
+                conn.execute('UPDATE services SET holder_name=? WHERE id=?', ('无需刷新更新成员', sid))
+            with page.expect_response(lambda r: r.request.headers.get('x-chen-live-refresh') == '1'):
+                page.evaluate('window.ChenLiveRefresh.refresh()')
+            page.wait_for_timeout(100)
+            expect(cells.first.locator('strong')).to_have_text(before)
+            page.evaluate("() => {const input=document.querySelector('#busy-refresh-probe'); input.blur(); input.remove();}")
+            with page.expect_response(lambda r: r.request.headers.get('x-chen-live-refresh') == '1'):
+                page.evaluate('window.ChenLiveRefresh.refresh()')
+            expect(cells.first.locator('strong')).to_have_text('无需刷新更新成员')
             output = ROOT / 'artifacts' / 'list-compact'
             output.mkdir(parents=True, exist_ok=True)
             for width in (1440, 390):

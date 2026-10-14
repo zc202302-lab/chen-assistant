@@ -10,14 +10,21 @@
   let refreshing = false;
   let lastHtmlSignature = '';
   let interactionUntil = 0;
+  let pointerHeld = false;
   // A first click and its second click must see the same DOM node. The
   // response may arrive after pointerdown, so check this at apply time too.
   const protectInteraction = event => {
     if (root.contains(event.target)) interactionUntil = Date.now() + 700;
   };
-  document.addEventListener('pointerdown', protectInteraction, true);
-  document.addEventListener('click', protectInteraction, true);
-  document.addEventListener('dblclick', protectInteraction, true);
+  window.addEventListener('pointerdown', event => {
+    if (root.contains(event.target)) pointerHeld = true;
+    protectInteraction(event);
+  }, true);
+  window.addEventListener('pointerup', event => { pointerHeld = false; protectInteraction(event); }, true);
+  window.addEventListener('pointercancel', () => { pointerHeld = false; }, true);
+  window.addEventListener('blur', () => { pointerHeld = false; });
+  window.addEventListener('click', protectInteraction, true);
+  window.addEventListener('dblclick', protectInteraction, true);
 
   const hashText = text => {
     let hash = 2166136261;
@@ -67,8 +74,9 @@
 
   const panelBusy = panel => {
     if (!panel) return false;
-    if (document.activeElement && panel.contains(document.activeElement)) return true;
-    return !!panel.querySelector('[data-chen-dirty="1"],.is-saving,.sort-source-v0211,.v03-business-sort-source');
+    const focused = document.activeElement;
+    if (focused && panel.contains(focused) && focused.matches('input,textarea,select,[contenteditable="true"]')) return true;
+    return !!panel.querySelector('[data-chen-dirty="1"],.is-saving,.dragging,.sort-source-v0211,.v03-business-sort-source');
   };
 
   const syncTaskPreview = freshDocument => {
@@ -252,7 +260,7 @@
 
   const refreshNow = async () => {
     if (refreshing || document.hidden) return;
-    if (Date.now() < interactionUntil) return scheduleRefresh(750);
+    if (pointerHeld || Date.now() < interactionUntil) return scheduleRefresh(750);
     if (document.querySelector('dialog[open]')) return;
     refreshing = true;
     try {
@@ -264,15 +272,20 @@
       });
       if (!response.ok) return;
       const html = await response.text();
-      if (Date.now() < interactionUntil || document.querySelector('dialog[open]')) {
+      if (pointerHeld || Date.now() < interactionUntil || document.querySelector('dialog[open]')) {
         scheduleRefresh(750);
         return;
       }
       const signature = hashText(html);
       if (signature === lastHtmlSignature) return;
-      lastHtmlSignature = signature;
       const freshDocument = new DOMParser().parseFromString(html, 'text/html');
       syncFromDocument(freshDocument);
+      // A busy region was deliberately skipped, not successfully refreshed.
+      // Keep the response eligible for replay after the user stops editing.
+      const focused = document.activeElement;
+      const editing = focused && root.contains(focused) && focused.matches('input,textarea,select,[contenteditable="true"]');
+      const pending = editing || root.querySelector('[data-chen-dirty="1"],.is-saving,.dragging,.sort-source-v0211,.v03-business-sort-source');
+      lastHtmlSignature = pending ? '' : signature;
     } catch (_) {
       // Enhancement only: existing mature page behavior remains the fallback.
     } finally {
@@ -289,6 +302,7 @@
     refresh: () => scheduleRefresh(0),
     refreshSoon: () => scheduleRefresh(180),
   };
+  root.addEventListener('focusout', () => scheduleRefresh(180));
 
   root.addEventListener('input', event => {
     const field = event.target.closest?.('input,textarea,select');
