@@ -39,7 +39,24 @@ def main():
             context.add_cookies([{'name': 'session_token', 'value': token, 'url': base}])
             page = context.new_page()
             errors = []
+            transition_diagnostics = []
             page.on('pageerror', lambda error: errors.append(str(error)))
+            page.on('console', lambda message: transition_diagnostics.append(message.text)
+                    if message.text.startswith('VT_DIAGNOSTIC ') else None)
+            # Observations only: do not handle/reject promises or suppress errors.
+            # Keep enough context to diagnose intermittent browser cancellations.
+            page.add_init_script("""(() => {
+              for (const name of ['pageswap', 'pagereveal']) {
+                window.addEventListener(name, event => console.debug('VT_DIAGNOSTIC ' + JSON.stringify({
+                  event: name, url: location.href, transition: !!event.viewTransition,
+                  readyState: document.readyState
+                })));
+              }
+              window.addEventListener('unhandledrejection', event => console.debug('VT_DIAGNOSTIC ' + JSON.stringify({
+                event: 'unhandledrejection', url: location.href, name: event.reason?.name,
+                message: event.reason?.message, stack: event.reason?.stack
+              })));
+            })();""")
             work = ['/work/customers', '/work/number-inbox', '/work/customers?home=payment', '/work/customers?home=promos']
             selected = [('/work', '.work-entry-link', work),
                         ('/info', '.info-overview-card-v160', ['/info', '/accounts']),
@@ -116,7 +133,7 @@ def main():
             page.unroute('**/work')
             page.reload(wait_until='networkidle')
             expect(page.locator('.home-shortcut-source')).to_have_count(8)
-            assert not errors, errors
+            assert not errors, (errors, transition_diagnostics[-30:])
             browser.close()
         print('Source card visuals/live summaries, mobile layout, cross-space pin/edit, task-panel removal and payment/promo navigation passed')
     finally:

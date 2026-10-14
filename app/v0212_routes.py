@@ -253,7 +253,7 @@ def customer_workspace_v0212(request: Request, customer_id: int, tab: str = 'pay
         template = _template(conn)
         payment_columns = _payment_columns(conn, customer_id, template)
         payment_widths = _payment_widths(conn, customer_id, payment_columns)
-        visible_keys = _visible_keys(conn, template)
+        visible_keys = _visible_keys(conn, template, customer_id)
 
         invoice_groups = conn.execute('SELECT * FROM invoice_groups WHERE customer_id=? ORDER BY id', (customer_id,)).fetchall()
         services = conn.execute(
@@ -353,7 +353,7 @@ def service_runtime_v0212(service_id: int):
     with db() as conn:
         service = service_or_404(conn, service_id)
         template = _template(conn)
-        visible = _visible_keys(conn, template)
+        visible = _visible_keys(conn, template, int(service['customer_id']))
         runtime = _runtime_for(conn, service_id)
         state = _schedule_state(service, runtime, current_period())
     return JSONResponse({
