@@ -2,6 +2,18 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 工作模式：本次修复与部署完成，2026-10-14 16:59（Asia/Shanghai）。用户反馈只修改属性值后偶发单击/双击失效。PR #157 https://github.com/zc202302-lab/chen-assistant/pull/157 已合并，main功能提交5c5423a77cdcd68792d3b38684e617cf552f9733；Web1.7.18已公网核验。fix/business-after-save为历史分支，没有本次WIP；Windows0.5.16及云电脑Draft #128不变、继续暂停。已有推送部署授权已履行。
+- 根因与修复：保存/复制共用.app-toast提示层opacity隐藏后仍留在DOM，默认pointer-events:auto、z-index9999，截获覆盖位置的鼠标。精准基线69451fb4f6af6b9d67431cf7e2320f1b888c41a0，validation38534829224 / validate115755062109真实浏览器明确账号属性被透明app-toast截获。共享v028.css改为显示/隐藏时均pointer-events:none，覆盖业务、缴费、优惠及邮件等共用提示；CSS缓存参数1718、APP_VERSION及deploy.sh期望1.7.18同步。号码/账号才单击复制、全部属性双击编辑、日期和保存接口规则保持。确认的是此遮挡缺陷，不推断未观察到的全部偶发原因。
+- 完整受检head ddba979e6058816eae5e09f555c964e25253d8b2（运行代码2821dfbe7b5b91b3bf292b6ae47db2ccd0dc5e62）：validation38536920077 / validate115761934382、preflight115761934646全部success；stability38536920094 / job115761933870 success。31行业务中间滚动行三轮真实保存，屏蔽背景HTML刷新，验证真实剪贴板、列/key、重开编辑，以及隐藏提示下账号复制、可见提示下双击，全部通过。全部历史缴费、导入、优惠、输入选择、搜索、实时刷新、桌面/手机、架构安全回归保留并通过。第一次修复CI01a235b的第29步因部署期望版本遗漏同步失败，已修正，不删弱原断言。
+- GitHub Git对象核对：ddba979与合并5c5423a的tree均93edec193942eb20d2de128692288ab19d8df84e，代码与测试完全相同。main独立stability38538656183 / job115767696938 success；main重复validation38538656185 / validate115767760666核查时在清单验收运行，未宣称其整轮完成或SSH直推成功。最终交接为仅文档提交，可能取消/触发重复main检查，另查实际状态；不替代上述完整受检head证据。
+- 公网38538656192 / verify115767697594 success，日志2026-10-14 16:58:51（Asia/Shanghai）ONLINE VERIFIED v1.7.18：版本、完整静态资源（含修复v028.css）/PWA清单、root worker scope、提醒鉴权核验通过。前五次切换期间仍1.7.17，最后真实核验1.7.18成功。未登录或手工操作生产客户数据，不从health/静态资源推断精确生产backend SHA。用户实际环境重测尚待反馈。
+- 本地架构治理、显示设置、生产体验、版本一致性、Python/shell语法及diff检查通过；Chromium本地下载损坏，真实浏览器证据来自CI。目录/workspace/scratch/75165f63b510/chen-assistant；截图已本地读取，EXE/XLSM附件未修改，不记录真实客户原始信息。初读status-v03遗漏customer_id属于死兼容所有者，当前先注册v03_mail_draft_routes.py已正确处理；未将未证实的兼容renderer问题混入本次修复。
+- 唯一下一步：等待用户刷新一次加载1.7.18后体验保存属性、账号/号码复制和各属性双击；若仍有失效，进一步区分覆盖区域与全表/全页，按实际事件命中继续定位，或处理用户下一项明确需求。
+
+---
+
+## 上一阶段快照（历史：PR #157验证中，已部署1.7.18）
+
 - 工作模式：修复/验证中，2026-10-14 16:39（Asia/Shanghai）。用户明确只修改属性的值，保存返回后的单击/双击失效是偶发。活动分支fix/business-after-save，PR #157 https://github.com/zc202302-lab/chen-assistant/pull/157已转待审；提示层功能提交888a020f3d8de15c45aba7d72ba47dd8a5743d74，候选Web1.7.18，生产仍1.7.17。Windows0.5.16及云电脑Draft #128不变。已有开发、推送和部署授权有效。
 - 已确认缺陷：共享.app-toast提示层opacity变0后仍留在DOM，默认pointer-events:auto、z-index9999，覆盖位置的单击/双击会被提示层截获。精准真实浏览器基线69451fb4f6af6b9d67431cf7e2320f1b888c41a0，validation38534829224 / validate115755062109失败，日志明确账号属性被透明提示层截获：key account、elementFromPoint命中app-toast。之前38534501190先发现提示层遮挡，但坐标未找到底层属性，精准用例已纠正定位；不夸大为用户全部偶发原因。
 - 修复范围：共享v028.css提示层在显示与隐藏时统一pointer-events:none；base.html更新该CSS缓存参数，候选版本1.7.18。业务、缴费及优惠等共用提示样式一起受益，单击仅号码/账号复制及所有属性双击编辑规则保留。未改业务日期、状态和保存接口。
