@@ -1,5 +1,6 @@
 {
   "styles": [
+    "navigation-transitions.css",
     "app.css",
     "v028.css",
     "layout-refinement.css",
