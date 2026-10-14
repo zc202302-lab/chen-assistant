@@ -94,16 +94,21 @@ def main():
                 const row = document.querySelector(`[data-business-row][data-service-id="${sid}"]`);
                 const toast = document.querySelector('.app-toast');
                 const initial = toast.getBoundingClientRect();
-                const rect = row.getBoundingClientRect();
-                window.scrollBy(0, rect.top + rect.height / 2 - (initial.top + initial.height / 2));
+                const rect = row.querySelector('.business-attribute').getBoundingClientRect();
+                window.scrollBy({top:rect.top + rect.height / 2 - (initial.top + initial.height / 2), behavior:'instant'});
                 const box = toast.getBoundingClientRect();
-                const x = box.left + box.width / 2, y = box.top + box.height / 2;
-                const attribute = document.elementsFromPoint(x, y)
-                    .map(el => el.closest('.business-attribute')).find(Boolean);
+                const y = box.top + box.height / 2;
+                const attribute = [...row.querySelectorAll('.business-attribute')].find(el => {
+                    const r = el.getBoundingClientRect();
+                    return r.left < box.right - 2 && r.right > box.left + 2 && r.top < y && r.bottom > y;
+                });
+                const r = attribute?.getBoundingClientRect();
+                const x = r ? (Math.max(r.left, box.left) + Math.min(r.right, box.right)) / 2 : box.left + box.width / 2;
                 return {x, y, key:attribute?.dataset.attrKey,
                     top:document.elementFromPoint(x, y)?.className};
             }''', sid)
             assert hit['key'], hit
+            assert 'app-toast' not in hit['top'], hit
             page.mouse.click(hit['x'], hit['y'], click_count=2)
             expect(editor).to_be_visible()
             editor.locator('[data-business-editor-close]').first.click()
