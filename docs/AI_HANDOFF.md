@@ -8,6 +8,7 @@
 - 回归：新增business_display_settings_contract.py，旧代码实际失败（选择6列，HTML返回3列），修复后通过；覆盖保存/API/服务器HTML/live-refresh HTML/runtime一致、空列表、新缴费日期属性、其他客户隔离、CSRF拒绝。新增真实浏览器验收覆盖实际显示设置入口、自动刷新、重新加载、手机和其他客户；已接入完整CI，原断言均保留。
 - 本地新契约通过，客户范围/缴费/架构/稳定性回归正在检查；浏览器下载仍损坏ZIP，不声称本地浏览器成功。实际浏览器待CI。版本和部署期待同步1.7.15，尚未合并、部署或核验生产1.7.15。EXE/XLSM附件未修改；未登录或手工修改生产业务数据。
 - 核心app/v0212_routes.py、新契约/浏览器测试、workflow及版本；目录/workspace/scratch/75165f63b510/chen-assistant。当前提交和PR由GitHub实时查询。
+- 最新检查点：PR #154，专项真实浏览器已两轮通过；截图产物11865540656已实际查看桌面1440/手机390，6列表头与数据一致（CI机缺中文字体，未修改产品字体）。完整CI两次在既有首页ViewTransition opt-in disabled异常停止，保留全部断言；诊断056813f确认目标页pagereveal无transition对象但发生InvalidStateError未处理拒绝。将导航启用规则放入最先加载的navigation-transitions.css，保持CSP、不屏蔽全局错误，注册资源清单和公网源码核验；旧首页测试仅增加诊断并提前执行。新导航/架构/稳定性本地通过，最新完整CI待查。
 - 唯一下一步：完成CI和真实浏览器验收，按已有推送部署授权发布Web1.7.15，再核验公网版本和资源。
 
 ---
