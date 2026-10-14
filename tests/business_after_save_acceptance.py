@@ -8,10 +8,22 @@ import urllib.request
 
 from fastapi.testclient import TestClient
 from business_display_settings_contract import ROOT, app, seed, create_session, SELECTED
+from app.db import db
 
 
 def main():
     (cid, sid), _ = seed()
+    # Enough rows to exercise the scrolled region where the fixed toast lives.
+    with db() as conn:
+        for index in range(30):
+            new_sid = conn.execute('''INSERT INTO services(customer_id,service_type,holder_name,number,account,
+                payment_interval_months,payment_cycle,last_payment_date,notes,monthly_fee,fixed_fee)
+                SELECT customer_id,service_type,holder_name,number,account,payment_interval_months,
+                payment_cycle,last_payment_date,notes,monthly_fee,fixed_fee FROM services WHERE id=?''',
+                (sid,)).lastrowid
+            if index == 15:
+                edited_sid = new_sid
+    sid = edited_sid
     token, csrf, _ = create_session()
     with TestClient(app) as client:
         client.cookies.set('session_token', token)
@@ -73,9 +85,31 @@ def main():
                 expect(editor).to_be_visible()
                 assert editor.locator('[data-key="notes"] .attr-value').input_value() == f'真实保存{turn}'
                 editor.locator('[data-business-editor-close]').first.click()
+            # Toasts are noninteractive, including after their opacity animation
+            # has hidden them. Click the real coordinate under the retained toast,
+            # not a locator center that happens to miss its small covered area.
+            page.evaluate("window.ChenToast('业务已保存')")
+            page.wait_for_timeout(1200)
+            hit = page.evaluate('''sid => {
+                const row = document.querySelector(`[data-business-row][data-service-id="${sid}"]`);
+                const toast = document.querySelector('.app-toast');
+                const initial = toast.getBoundingClientRect();
+                const rect = row.getBoundingClientRect();
+                window.scrollBy(0, rect.top + rect.height / 2 - (initial.top + initial.height / 2));
+                const box = toast.getBoundingClientRect();
+                const x = box.left + box.width / 2, y = box.top + box.height / 2;
+                const attribute = document.elementsFromPoint(x, y)
+                    .map(el => el.closest('.business-attribute')).find(Boolean);
+                return {x, y, key:attribute?.dataset.attrKey,
+                    top:document.elementFromPoint(x, y)?.className};
+            }''', sid)
+            assert hit['key'], hit
+            page.mouse.click(hit['x'], hit['y'], click_count=2)
+            expect(editor).to_be_visible()
+            editor.locator('[data-business-editor-close]').first.click()
             assert not errors, errors
             browser.close()
-        print('real business save/reopen/copy acceptance passed: three saves without refresh')
+        print('real business save/reopen/copy acceptance passed: three saves, scrolled rows and toast hit testing')
     finally:
         process.terminate()
         process.wait(timeout=10)
