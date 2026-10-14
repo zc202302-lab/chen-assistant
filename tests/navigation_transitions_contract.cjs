@@ -17,4 +17,5 @@ for(const type of Object.keys(handlers)){
 const base=fs.readFileSync('app/templates/base.html','utf8');
 assert(base.indexOf('/static/navigation-transitions.js')<base.indexOf('</head>'));
 assert(base.includes('navigation-transitions.js?v=1714" blocking="render"'));
+assert(base.indexOf('<style>@view-transition{navigation:auto}</style>') < base.indexOf('/static/navigation-transitions.js'));
 console.log('navigation transition contract passed: early observer, expected cancellation and unexpected errors');
