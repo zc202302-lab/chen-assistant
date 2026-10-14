@@ -2,6 +2,18 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 工作模式：已完成部署，2026-10-14（Asia/Shanghai）。用户要求修复业务双击编辑、单击复制经常失效且刷新才有效，并核查全部相关模块。PR #155 https://github.com/zc202302-lab/chen-assistant/pull/155 已合并，main功能合并提交bbb76ee778fb324bd74bff1ef0ff86ce748e35ef；Web1.7.16已公网核验。fix/workspace-edit-copy-interactions为历史分支，不再有本次WIP；Windows0.5.16不变，云电脑Draft #128暂停。
+- 根因与修复：实时刷新会替换行内元素、打断连续点击；编辑区域跳过刷新却被缓存为整页已更新，导致相同服务器响应不再补更新。现在文档级统一双击按service_id打开属性，不依赖隐藏编辑按钮，异步请求序号避免旧响应覆盖；窗口capture保护连续点击/按住指针；busy响应可重放，退出编辑补刷新，复制按钮焦点不永久拦截更新。缴费实时刷新扩展同步busy规则。业务/缴费/优惠动态入口、客户资料/号码收件箱复制统一共享回退与实际成功/失败反馈；优惠名单的双击改名、原缴费快捷键、状态锁保持。
+- 完整受检功能head fbb75fd888d9f335b7886b364d86363eca8469ae：validation38506172808 / validate115664327726 success，部署预检115664327795 success，stability38506172796 / job115664077302 success。全部原历史断言保留；旧源码断言更新为实际委托owner并新增禁止假成功，不删减兼容性或安全检查。真实浏览器覆盖显示设置后立即编辑/复制、行innerHTML替换且编辑按钮缺失、复制拒绝提示、缴费动态字段/优惠入口，以及编辑时暂缓、退出后同一HTML补更新。全量旧缴费、导入、优惠、输入、资料、号码、实时刷新、桌面/手机与架构安全回归通过。
+- main bbb76ee与受检fbb75fd的GitHub compare files为空，运行代码和测试完全一致。main独立stability38507490693 / job115668218049 success。main重复完整validation38507490812 / validate115668218736核查时仍在Work lists步骤运行，未宣称这轮完整成功或SSH部署完成。本次最终交接提交只改文档，可能触发/取消重复main检查；后续另查当前run，不替代上述明确head的完整验收和实际公网证据。
+- 公网验证38507490695 / job115668218639 success：2026-10-14 11:42:52（Asia/Shanghai）日志ONLINE VERIFIED v1.7.16，版本、PWA清单、全部受检公共资源、root worker scope及提醒鉴权通过。核验包括app.js、v028.js、live-refresh-v15.js及modules、high-frequency-v152.js、v143_customer_resources.js、number-inbox-v162.js。未登录或手工修改生产业务数据，不从版本/静态资源推断生产精确backend commit。代码与CI发布、实际公网验证分开记录。
+- 本地架构治理、显示设置、稳定性、高频/Enter缴费、号码批次、复制反馈、导航/导出与优惠契约通过；无变化的服务器HTML逐字一致已核实。本地Chromium下载损坏，真实浏览器验收来自CI，不宣称本地浏览器通过。本次不改缴费日期机制/业务值；目录/workspace/scratch/75165f63b510/chen-assistant，EXE/XLSM附件未修改。
+- 唯一下一步：等待用户刷新一次加载Web1.7.16后反馈实际业务/缴费/优惠编辑和复制体验，或处理新的明确需求。后续接管先核对main文档后自动重复CI实际状态，有相关失败再按证据诊断；Windows与云电脑不发布。本任务已按已有推送部署授权完成。
+
+---
+
+## 上一阶段快照（历史：PR #155开发/验证中，已被当前部署快照替代）
+
 - 工作模式：开发/验证中，2026-10-14（Asia/Shanghai）。最新用户反馈业务双击编辑、单击复制经常失效，刷新页面才有效，要求核查全部相关模块。活动分支fix/workspace-edit-copy-interactions，Draft PR #155 https://github.com/zc202302-lab/chen-assistant/pull/155，基于main c7996e967d1bf20370f996b614cc79b6413664e9；候选Web1.7.16，暂未部署。已有推送部署授权有效；Windows0.5.16和云电脑Draft #128不变。
 - 上一项显示属性修复PR #154已合并。main完整validation38502726613 / validate115653180189、生产稳定性115657272377、部署115657393655全部success。公网38502726610 / job115653179840日志2026-10-14 10:58:38（Asia/Shanghai）ONLINE VERIFIED v1.7.15，版本/完整资源/PWA/提醒鉴权通过；生产基准为Web1.7.15，不从资源验证推断后端精确commit。
 - 本次WIP：v028统一文档级双击委托直接按service_id打开编辑器，不依赖更新后的隐藏编辑按钮，异步请求序号防旧响应覆盖；app统一业务/优惠复制委托读取当前值且按实际结果提示，共享fallback在打开的dialog内部执行并恢复焦点。缴费标识/高频缴费、客户资料、号码收件箱使用共享复制；保留优惠名单双击改名。live-refresh请求开始及响应应用前避开700ms连续点击窗口与打开的dialog，避免替换首击/第二击目标。
