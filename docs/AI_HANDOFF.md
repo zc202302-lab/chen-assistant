@@ -2,14 +2,13 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 工作模式：修复验收中，2026-10-14（Asia/Shanghai）。用户反馈业务页面“显示属性”无效；活动分支fix/business-display-settings，基于main1a82fc5，候选Web1.7.15。生产最近已核验Web1.7.14；Windows0.5.16不变，云电脑Draft #128暂停。
-- 已确认：截图为显示设置选择6列而表格仅3列。客户显示设置接口使用客户级meta，但客户页面HTML及runtime读取遗漏customer_id，回到旧全局默认配置；live-refresh在保存后自动读取该HTML，覆盖刚保存的显示列。不能归因浏览器缓存。
-- 修复：customer_workspace_v0212与runtime读取均传入当前customer_id，保持现有客户隔离、列顺序、空列设置和实时刷新机制。不修改客户业务值、缴费逻辑或前端数据覆盖策略。
-- 回归：新增business_display_settings_contract.py，旧代码实际失败（选择6列，HTML返回3列），修复后通过；覆盖保存/API/服务器HTML/live-refresh HTML/runtime一致、空列表、新缴费日期属性、其他客户隔离、CSRF拒绝。新增真实浏览器验收覆盖实际显示设置入口、自动刷新、重新加载、手机和其他客户；已接入完整CI，原断言均保留。
-- 本地新契约通过，客户范围/缴费/架构/稳定性回归正在检查；浏览器下载仍损坏ZIP，不声称本地浏览器成功。实际浏览器待CI。版本和部署期待同步1.7.15，尚未合并、部署或核验生产1.7.15。EXE/XLSM附件未修改；未登录或手工修改生产业务数据。
-- 核心app/v0212_routes.py、新契约/浏览器测试、workflow及版本；目录/workspace/scratch/75165f63b510/chen-assistant。当前提交和PR由GitHub实时查询。
-- 最新检查点：PR #154，专项真实浏览器已两轮通过；截图产物11865540656已实际查看桌面1440/手机390，6列表头与数据一致（CI机缺中文字体，未修改产品字体）。完整CI两次在既有首页ViewTransition opt-in disabled异常停止，保留全部断言；诊断056813f确认目标页pagereveal无transition对象但发生InvalidStateError未处理拒绝。将导航启用规则放入最先加载的navigation-transitions.css，保持CSP、不屏蔽全局错误，注册资源清单和公网源码核验；旧首页测试仅增加诊断并提前执行。新导航/架构/稳定性本地通过，最新完整CI待查。
-- 唯一下一步：完成CI和真实浏览器验收，按已有推送部署授权发布Web1.7.15，再核验公网版本和资源。
+- 工作模式：完整验收通过，准备发布，2026-10-14（Asia/Shanghai）。用户反馈业务页面“显示属性”无效；活动分支fix/business-display-settings，PR #154 https://github.com/zc202302-lab/chen-assistant/pull/154，候选Web1.7.15。生产最近已核验Web1.7.14；Windows0.5.16不变，云电脑Draft #128暂停。按已有推送和部署授权发布。
+- 根因与修复：客户显示设置API按客户存储，但页面HTML和runtime读取遗漏customer_id，使用旧全局3列配置；保存后的live-refresh用该HTML覆盖刚选的6列。两处读取传入当前客户id，保持列顺序、空列设置、客户隔离与原刷新机制；不修改业务值或缴费逻辑。
+- 新契约修复前实际失败（API6列、HTML3列）、修复后通过，覆盖保存/API/服务器HTML/live-refresh HTML/runtime一致、空列表、新日期属性、另一客户与CSRF。真实浏览器验证实际设置入口、保存、自动刷新、重新加载、桌面/手机6列和客户隔离；截图11865540656的1440/390已实际核查，CI机缺中文字体，不修改产品字体以迎合测试。
+- 完整功能受检head f2d29444b49268c25fa98e0e7d26640e21eb5e12：validation38501352544 / validate115649190915 success；stability38501352481状态已核对。所有历史缴费、输入、导入、号码、手机、架构安全测试保留并通过。本地新业务显示契约、客户范围、缴费日期、runtime、导航、架构和稳定性通过；本地Chromium下载损坏，实际浏览器验收为CI。
+- 回归处理：先前两次同head及诊断head38500828194在已有首页ViewTransition opt-in disabled异常中断。诊断明确目标页pagereveal无transition对象却发生InvalidStateError未处理拒绝。导航启用规则用CSP允许的navigation-transitions.css最先加载，早于阻塞脚本；不屏蔽全局错误、不放宽CSP、不删改原测试断言。资源清单/公网资源核验同步；原首页验收仅加诊断并提前执行，新完整验收已通过。
+- 核心app/v0212_routes.py、base.html、navigation-transitions.css、新契约/浏览器测试与资源清单、workflow及版本。目录/workspace/scratch/75165f63b510/chen-assistant。本交接提交仅文档，功能证据对应上面的明确head/run。尚未合并部署1.7.15；EXE/XLSM附件不改，未登录或手工修改生产业务数据。
+- 唯一下一步：合并PR #154，核对main检查/部署与实际公网Web1.7.15和资源，分别记录证据后交付。
 
 ---
 
