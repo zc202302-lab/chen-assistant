@@ -8,7 +8,7 @@
 - 普通连续三次真实保存用例在未改运行代码的6baa8d5fc17e487d79afbd22ca910de8d4fcefbb，CI38532845243第12步已通过；不能据此否定用户偶发反馈。新测试使用31行业务和滚动中间行，屏蔽背景HTML刷新，检查真实保存、实际剪贴板、重新编辑与提示层覆盖位置。原测试断言全部保留。
 - 修复受检head01a235b1c11d475245de14f095376cfba2254201：validation38535394983 / validate115756932730第12步完整真实保存/隐藏提示下实际账号复制/显示提示下双击全部通过；stability38535394978 / job115756931505 success。完整CI在第29步v161_responsive_polish_contract.py因deploy.sh EXPECTED_VERSION仍1.7.17而失败，非产品交互失败；已同步deploy.sh期望/检查日志至1.7.18，本地该契约通过，保留原断言，重新运行完整CI。尚未合并部署。
 - 初读status-v03顺序遗漏customer_id属于死兼容路由，实际先注册所有者v03_mail_draft_routes.py已正确传入customer_id，不再将此视为根因；v028兼容renderer缺少attrKey尚未证明进入当前保存流，不混入本次修复。截图已本地读取，附件不修改、不记录真实客户信息。本地架构治理、显示设置契约、生产体验与语法/diff通过；本地Chromium下载损坏，浏览器验证使用CI。目录/workspace/scratch/75165f63b510/chen-assistant。
-- 唯一下一步：精准基线已确认账号属性被透明提示层拦截；完成当前修复head全部CI，按既有授权合并部署后独立核验公网1.7.18。
+- 唯一下一步：版本同步及原文件权限核对提交2821dfbe7b5b91b3bf292b6ae47db2ccd0dc5e62；完成该运行代码的全部CI，按既有授权合并部署后独立核验公网1.7.18。
 
 ---
 
