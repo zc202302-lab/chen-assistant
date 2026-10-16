@@ -2,7 +2,7 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-16（Asia/Shanghai）；工作模式：厨艺资料库独立首版及真实样书离线验证完成，尚未生产启用。用户授权独立模块，仅电子书和杂志，不含爆款菜谱；入口明确放左上角☰隐藏菜单，顶部首页/工作/资料不变。
+- 更新时间：2026-10-16（Asia/Shanghai）；工作模式：用户2026-10-16 23:17（Asia/Shanghai）明确要求完成部署；当前部署受服务器执行通道与私有样书包传输阻塞，尚未合并/生产启用。用户授权独立模块，仅电子书和杂志，不含爆款菜谱；入口明确放左上角☰隐藏菜单，顶部首页/工作/资料不变。
 - 活动分支feat/cooking-library，Draft PR #159 https://github.com/zc202302-lab/chen-assistant/pull/159。最后功能提交661512cf57546fb84b7a59db586af3497563b7d2（实际栏间空隙定位、完整样书验证）；前置中文OCR改进d61ce4b6dbb7cce6ca8a610071bf1781bdcc0337。未合并、未部署。现网已知Web1.7.19；本轮main只有交接文档更新。Windows与云电脑Draft #128仍暂停。
 - 隔离：app/cooking_library/拥有独立SQLite、模板、样式、离线导入CLI与可选依赖；COOKING_LIBRARY_ENABLED默认0，仅启用时挂载/cooking并显示隐藏菜单。共享原登录，不开放公共文件，不改客户/缴费/号码表、不启动OCR worker、不增加主站requirements。COOKING_LIBRARY_DIR默认data/cooking-library；同机导入仍共享CPU/内存，部署时需资源限制。
 - 样书用户已提供《流行酱卤60款》电子版_579.pdf：74,757,776字节，98页，全部图片页无文字层。原件SHA256 99a9c078c86eac929b355d932fa7b58c3f0bbe5456cf2e228ef46eacc6388e16，处理前后核对未变。真实原文、原图和数据库未提交公开GitHub。
@@ -13,7 +13,22 @@
 - 限制：没有AI问答、语义检索、自动跨页菜谱合并；当前关键词搜索最多展示100条/书刊最多200本。真实OSS联调、生产安装和真实手机样书体验待做。预览占服务器额外磁盘；失败可遗留预览/识别记录。样本压缩比与质量不可外推所有书刊。导入器单本限1GiB/5000页。
 - OSS用户仓库chen-cooking-library，青岛，ebooks/已存样书；未获取或打印密钥，未更改私有访问权限。本次本地PDF识别无需从OSS重新下载。
 - 核心：app/cooking_library/、app/main.py开关挂载、app/templates/base.html隐藏菜单、tests/cooking_library_contract.py、tests/cooking_navigation_acceptance.py、docs/COOKING_LIBRARY.md及独立两份路由清单。路径/workspace/scratch/3b63417353f2/chen-assistant；真实测试库临时路径/tmp/cooking-sample/rapid-library，耐久交付以保存的ZIP为准。
-- 唯一下一步：核对PR最新CI后，在小助手服务器独立目录安装已保存样书库并启用模块，保持原数据库与服务依赖边界，完成登录后搜索/预览实测；后续再配置最小只读OSS身份和批量导入。不宣称已经上线。新聊天先读本快照并核对PR #159，而非回到微信或Windows历史工作。
+- 部署检查：PR head f0c2bbf2f68e13788b20f22a12c17941c51b703e的完整validation38920707987与独立资料库38920707984 success；稳定性38920707943核查时仍运行。生产预检job117040161590明确输出LOCAL_PRODUCTION_AVAILABLE=no与REMOTE_DEPLOY_SECRETS=incomplete。当前工作区亦无/opt/chen-assistant生产目录。已有生产timer可能更新代码，但不能据此声称完成私有样书安装或环境开关启用。未提取/索要主账号密钥，未将样书上传公开GitHub，未合并或改生产。
+- 唯一下一步：用户登录青岛服务器，提供服务User/WorkingDirectory/ActiveState、磁盘与Git只读状态检查输出，并将cooking_library_sample_579.zip放到服务器；据实际目录给出不覆盖已有数据的安装/启用命令，随后完成生产搜索/预览验收。不宣称已经上线。新聊天先读本快照并核对PR #159，而非回到微信或Windows历史工作。
+
+---
+
+## 上一阶段快照（历史：微信首版工程与Web1.7.19）
+
+- 工作模式：2026-10-16原生小程序首版工程完成，青岛后端Web1.7.19已实际公网核验。PR #158 https://github.com/zc202302-lab/chen-assistant/pull/158 已合并，main功能提交30369f3580c1ae78a9ea030858f1e4ddf1f62958；feat/wechat-number-collection为已完成历史分支，无本次未合并WIP。微信平台上传/真机验收/发布待管理员操作，不能描述成小程序已经上线。用户开发、推送部署授权已履行；Windows0.5.16与云电脑Draft #128保持暂停。
+- 已实现：miniprogram原生工程，AppID wxcb9395eac340e8cb；入口码接入、最多100行号码、同意说明、重复数量、失败保留输入和防重复点击。新增POST /number-submit/mini/submit，Bearer入口鉴权、32KiB限制、整批校验、共享网页入库去重；仅返回本次计数，无名单查询。无需AppSecret，未硬编码真实入口码。
+- 完整受检head088b16a03e1aae7ed2725d6698316cb6e1ba2d71：validation38885060154 / validate116920683674与preflight116920683442全部success；stability38885060061 / job116920682923 success。全部历史浏览器、缴费、导入、号码批次、移动/桌面、安全、兼容性保留通过；新API和微信API mock页面契约通过。首轮94292e9的38883659858因旧CSRF审计仅识别网页直接_token_matches写法失败；扩充精确native接口owner的Bearer来源、委托先于读取body和入库再校验审计后通过，原网页断言保留。
+- GitHub受检088b16a与合并30369f3的tree均9926cdc0543748934a98ca3bf85ee8e9bcd0b421，文件完全一致。main独立stability38886691550 / job116926044653 success；main重复完整validation38886691599未宣称结束，最终仅文档提交可能取消/重启它，不能替代上述完整受检head证据或据此宣称SSH直推成功。
+- 公网38886691576 / job116926044942 success，日志2026-10-16 18:23:38（Asia/Shanghai）ONLINE VERIFIED v1.7.19：health版本、全部既有静态资源/PWA/鉴权检查通过；新增jituan域名root与/login为404、无凭证POST /number-submit/mini/submit为401且返回JSON鉴权错误。前三轮仍1.7.18，第四轮实际验证1.7.19。没有写入/读取生产号码，没有从health推断精确生产backend SHA；真实微信提交仍待用户联调。
+- 小程序AppID wxcb9395eac340e8cb，备案用户已提交审核但未确认结果。未进行微信开发者工具编译、真机预览、平台代码审核或上传发布；无AppSecret需求。工程miniprogram/，导入与发布说明docs/MINIPROGRAM_DEPLOYMENT.md。本地API、原收件箱/批次、架构治理、路由、安全委托、稳定性、生产体验和JS/JSON/页面完整性检查通过；不将mock或语法检查描述成微信编译/真机通过。
+- 网络已由用户操作迁至青岛47.104.233.200，Caddy容器sms-relay-caddy-1代理172.19.0.1:8010，jituan.zbassistant.site仅放行/number-submit/*和两个既有静态文件。用户10月15日确认恢复正常；本次API路径已被现规则覆盖。美国172.245.54.83旧代理按用户要求暂不删除。不得误清理其他服务器或服务。
+- 唯一下一步：用户在微信开发者工具导入miniprogram目录，管理员扫码登录；后台request合法域名配置https://jituan.zbassistant.site，首开粘贴既有收集链接，真机预览填写并在原后台验证收到；随后补齐平台隐私资料、备案及代码审核后发布。后续接管先读此快照并核对main和实际微信联调反馈，不重复发布Windows或清理美国代理。目录/workspace/scratch/75165f63b510/chen-assistant，附件未修改，真实入口码与客户号码未写入源码。
+
 
 ---
 
