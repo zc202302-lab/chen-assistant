@@ -1,0 +1,14 @@
+<view class="screen">
+  <view class="card result-card" wx:if="{{result}}">
+    <view class="success-mark">✓</view>
+    <view class="title">{{result.added > 0 ? '提交完成' : '号码已在待录列表'}}</view>
+    <view class="subtitle">本次提交已处理，请勿重复提交。</view>
+    <view class="stats">
+      <view><view class="stat-number">{{result.added}}</view><view class="muted">新增号码</view></view>
+      <view><view class="stat-number muted-number">{{result.duplicates}}</view><view class="muted">重复号码</view></view>
+    </view>
+    <view class="muted">新增号码已进入管理员的待录列表，后续由管理员处理。</view>
+  </view>
+  <view class="card" wx:else>暂无本次提交结果，请返回填写页面。</view>
+  <button class="primary" bindtap="continueCollecting">继续填写</button>
+</view>

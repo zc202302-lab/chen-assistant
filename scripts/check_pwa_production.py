@@ -10,10 +10,31 @@ from pathlib import Path
 import sys
 import time
 from urllib.parse import urlsplit
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = 'https://assistant.ziboxiaozhushou.cn'
+COLLECTION_BASE = 'https://jituan.zbassistant.site'
+
+
+def verify_collection_boundary():
+    # Deliberately omit the invitation: no numbers are submitted or listed.
+    checks = [('/', None, 404), ('/login', None, 404),
+              ('/number-submit/mini/submit', b'{}', 401)]
+    for path, body, expected in checks:
+        request = Request(COLLECTION_BASE + path, data=body,
+                          headers={'Content-Type': 'application/json'})
+        try:
+            with urlopen(request, timeout=12):
+                raise RuntimeError(f'Collection boundary unexpectedly allowed: {path}')
+        except HTTPError as exc:
+            if exc.code != expected or urlsplit(exc.url).netloc != urlsplit(COLLECTION_BASE).netloc:
+                raise RuntimeError(f'Collection boundary mismatch: {path}, HTTP {exc.code}')
+            if body is not None:
+                payload = json.loads(exc.read(4096))
+                if not isinstance(payload.get('detail'), str):
+                    raise RuntimeError('Collection API did not return its authentication error')
 
 
 def expected_version():
@@ -64,7 +85,8 @@ def verify():
             raise RuntimeError(f'Unauthenticated reminder endpoint did not redirect to login: {path}')
         if path == '/work/number-inbox' and 'http://127.0.0.1:18764' not in headers.get('Content-Security-Policy', ''):
             raise RuntimeError('Online page CSP does not allow the signed number batch bridge')
-    return f'ONLINE VERIFIED: v{version}; PWA manifest, exact work, list and push assets, root worker scope and authenticated reminder routes'
+    verify_collection_boundary()
+    return f'ONLINE VERIFIED: v{version}; PWA manifest, exact work, list and push assets, root worker scope, authenticated reminder routes and collection-domain boundary'
 
 
 def main():

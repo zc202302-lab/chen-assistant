@@ -1,0 +1,13 @@
+page{background:#f4f7fb;color:#162439;font-family:system-ui,-apple-system,sans-serif;font-size:28rpx;line-height:1.6}
+view,button,input{box-sizing:border-box}
+.screen{padding:38rpx 32rpx 64rpx;padding-bottom:calc(64rpx + env(safe-area-inset-bottom))}
+.eyebrow{font-size:22rpx;letter-spacing:3rpx;color:#168d86;font-weight:600}
+.title{font-size:46rpx;line-height:1.3;font-weight:700;margin:12rpx 0}
+.subtitle,.muted{color:#718096;font-size:25rpx}
+.card{background:#fff;border:1rpx solid #e5ebf2;border-radius:28rpx;padding:30rpx;margin-top:30rpx}
+.primary{background:#128b83;color:#fff;border-radius:20rpx;font-size:30rpx;font-weight:600;margin-top:30rpx}
+button::after{border:0}
+button[disabled]{opacity:.5}
+.secondary{background:#eaf5f3;color:#177b74;border-radius:18rpx;font-size:27rpx;margin-top:20rpx}
+.link{color:#168d86}
+.error{padding:20rpx 24rpx;background:#fff0ed;color:#ac4533;border-radius:16rpx;margin-top:22rpx;font-size:25rpx}

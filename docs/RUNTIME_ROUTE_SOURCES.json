@@ -1,5 +1,11 @@
 [
   {
+    "path": "/number-submit/mini/submit",
+    "methods": ["POST"],
+    "source": "number_collection_api.py",
+    "qualname": "mini_program_submit"
+  },
+  {
     "path": "/reminders",
     "methods": [
       "GET"
