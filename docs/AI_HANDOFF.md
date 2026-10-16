@@ -2,28 +2,18 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-16（Asia/Shanghai）；工作模式：厨艺资料库独立模块开发中。用户明确授权接入zc202302-lab/chen-assistant，并要求独立、不影响现有模块；只收录电子书和杂志，不含爆款菜谱。用户最新补充：入口放左上角☰隐藏菜单，不是顶部导航栏。
-- 基线main：88068bb05e920da7d546fb0e80304864c56abd4b，现网已知Web1.7.19。本轮分支feat/cooking-library，最后功能提交2b73098ad7393f9b82e1a87a868aa42efee4670e（独立模块及左上角隐藏菜单入口；含中文OCR语言数据预检）；路由清单测试提交d46e4690073cbdaa92c2addaf5c683cccda30866，Draft PR #159 https://github.com/zc202302-lab/chen-assistant/pull/159；未合并、未部署、未配置生产密钥。云电脑Draft #128与Windows暂停状态保留。历史Open PR未接续。
-- 首版：app/cooking_library拥有独立SQLite、模板、样式、导入CLI与可选依赖；COOKING_LIBRARY_ENABLED默认0，仅启用时挂载/cooking。共享原登录校验，不开放公共文件，不启动OCR worker，不更改原数据库结构、页面或主站依赖。COOKING_LIBRARY_DIR默认data/cooking-library。
-- 本地已验证：合成文字PDF导入、SHA/Object查重、中文三字以上FTS与一二字匹配、出处页码、HTML转义、登录保护、原页JPEG、失效页404、数据库故障503且主站health可用；原186条路由顺序及owner不变。routing_registry_contract、architecture_governance_contract、stability_contract通过。首个功能提交独立CI38916160038、清单测试提交独立CI38916353548已success；首个功能提交stability38916159985已success。完整validation因后续提交被取消，不宣称通过。e42bb70的独立CI38916526969、stability38916526967和validation38916526834已触发、核查时queued；本地最新测试及原路由/架构/稳定性再次通过。后续文档提交可能触发新CI，按head复核；全部历史完整CI、真实手机浏览器与中文OCR未宣称通过；菜单开关/位置、原导航与架构契约本地通过，新增320/390/768/1440浏览器点击用例接入原validation（本地Chromium下载损坏，需CI验收）。
-- 已知限制：UI首版；已加左上角隐藏菜单“厨艺资料库”，顶部首页/工作/资料不变；无AI/语义搜索；最多展示100条搜索/200本书；OCR依赖外部中文Tesseract（本机仅eng/osd），真实样书未读取。原件在OSS，预览JPEG在独立目录会额外占服务器磁盘，失败可遗留预览；同机导入仍共享CPU/内存，生产需进程资源限制。单本限制1GiB/5000页；不自动批量扫描OSS。
-- OSS用户提供：chen-cooking-library，青岛，ebooks/已上传约71.3MB《流行酱卤60款》PDF；完整Object名待从详情复制确认。未获凭据，未尝试访问私有原件，未改变OSS权限。
-- 核心：app/main.py仅追加开关挂载，app/cooking_library/，tests/cooking_library_contract.py，docs/COOKING_LIBRARY.md；工作目录/workspace/scratch/3b63417353f2/chen-assistant。
-- 唯一下一步：用户提供已上传OSS的那本本地PDF（无需密钥），完成真实样书文字/OCR质量、预览占用抽检，并核对PR最新CI后决定生产启用；不能称为已上线。main同步本活动分支入口；主站功能未合并。
-
----
-
-
-## 上一阶段快照（历史：微信首版工程与Web1.7.19）
-
-- 工作模式：2026-10-16原生小程序首版工程完成，青岛后端Web1.7.19已实际公网核验。PR #158 https://github.com/zc202302-lab/chen-assistant/pull/158 已合并，main功能提交30369f3580c1ae78a9ea030858f1e4ddf1f62958；feat/wechat-number-collection为已完成历史分支，无本次未合并WIP。微信平台上传/真机验收/发布待管理员操作，不能描述成小程序已经上线。用户开发、推送部署授权已履行；Windows0.5.16与云电脑Draft #128保持暂停。
-- 已实现：miniprogram原生工程，AppID wxcb9395eac340e8cb；入口码接入、最多100行号码、同意说明、重复数量、失败保留输入和防重复点击。新增POST /number-submit/mini/submit，Bearer入口鉴权、32KiB限制、整批校验、共享网页入库去重；仅返回本次计数，无名单查询。无需AppSecret，未硬编码真实入口码。
-- 完整受检head088b16a03e1aae7ed2725d6698316cb6e1ba2d71：validation38885060154 / validate116920683674与preflight116920683442全部success；stability38885060061 / job116920682923 success。全部历史浏览器、缴费、导入、号码批次、移动/桌面、安全、兼容性保留通过；新API和微信API mock页面契约通过。首轮94292e9的38883659858因旧CSRF审计仅识别网页直接_token_matches写法失败；扩充精确native接口owner的Bearer来源、委托先于读取body和入库再校验审计后通过，原网页断言保留。
-- GitHub受检088b16a与合并30369f3的tree均9926cdc0543748934a98ca3bf85ee8e9bcd0b421，文件完全一致。main独立stability38886691550 / job116926044653 success；main重复完整validation38886691599未宣称结束，最终仅文档提交可能取消/重启它，不能替代上述完整受检head证据或据此宣称SSH直推成功。
-- 公网38886691576 / job116926044942 success，日志2026-10-16 18:23:38（Asia/Shanghai）ONLINE VERIFIED v1.7.19：health版本、全部既有静态资源/PWA/鉴权检查通过；新增jituan域名root与/login为404、无凭证POST /number-submit/mini/submit为401且返回JSON鉴权错误。前三轮仍1.7.18，第四轮实际验证1.7.19。没有写入/读取生产号码，没有从health推断精确生产backend SHA；真实微信提交仍待用户联调。
-- 小程序AppID wxcb9395eac340e8cb，备案用户已提交审核但未确认结果。未进行微信开发者工具编译、真机预览、平台代码审核或上传发布；无AppSecret需求。工程miniprogram/，导入与发布说明docs/MINIPROGRAM_DEPLOYMENT.md。本地API、原收件箱/批次、架构治理、路由、安全委托、稳定性、生产体验和JS/JSON/页面完整性检查通过；不将mock或语法检查描述成微信编译/真机通过。
-- 网络已由用户操作迁至青岛47.104.233.200，Caddy容器sms-relay-caddy-1代理172.19.0.1:8010，jituan.zbassistant.site仅放行/number-submit/*和两个既有静态文件。用户10月15日确认恢复正常；本次API路径已被现规则覆盖。美国172.245.54.83旧代理按用户要求暂不删除。不得误清理其他服务器或服务。
-- 唯一下一步：用户在微信开发者工具导入miniprogram目录，管理员扫码登录；后台request合法域名配置https://jituan.zbassistant.site，首开粘贴既有收集链接，真机预览填写并在原后台验证收到；随后补齐平台隐私资料、备案及代码审核后发布。后续接管先读此快照并核对main和实际微信联调反馈，不重复发布Windows或清理美国代理。目录/workspace/scratch/75165f63b510/chen-assistant，附件未修改，真实入口码与客户号码未写入源码。
+- 更新时间：2026-10-16（Asia/Shanghai）；工作模式：厨艺资料库独立首版及真实样书离线验证完成，尚未生产启用。用户授权独立模块，仅电子书和杂志，不含爆款菜谱；入口明确放左上角☰隐藏菜单，顶部首页/工作/资料不变。
+- 活动分支feat/cooking-library，Draft PR #159 https://github.com/zc202302-lab/chen-assistant/pull/159。最后功能提交661512cf57546fb84b7a59db586af3497563b7d2（实际栏间空隙定位、完整样书验证）；前置中文OCR改进d61ce4b6dbb7cce6ca8a610071bf1781bdcc0337。未合并、未部署。现网已知Web1.7.19；本轮main只有交接文档更新。Windows与云电脑Draft #128仍暂停。
+- 隔离：app/cooking_library/拥有独立SQLite、模板、样式、离线导入CLI与可选依赖；COOKING_LIBRARY_ENABLED默认0，仅启用时挂载/cooking并显示隐藏菜单。共享原登录，不开放公共文件，不改客户/缴费/号码表、不启动OCR worker、不增加主站requirements。COOKING_LIBRARY_DIR默认data/cooking-library；同机导入仍共享CPU/内存，部署时需资源限制。
+- 样书用户已提供《流行酱卤60款》电子版_579.pdf：74,757,776字节，98页，全部图片页无文字层。原件SHA256 99a9c078c86eac929b355d932fa7b58c3f0bbe5456cf2e228ef46eacc6388e16，处理前后核对未变。真实原文、原图和数据库未提交公开GitHub。
+- 原180dpi Tesseract中英混合结果有大量乱码，因此默认改为300dpi RapidOCR 1.4.4（中文ONNX，导入进程单线程配置），Tesseract保留显式选择并检查中文语言数据。保留模型返回的每行原文、四角坐标、置信度与阅读顺序至ocr-audit/<SHA>/<页码>.json，不自动纠字。真实版面栏间空隙偏离画布中心；已修正，并从保留原始行重建样书索引，新增偏心双栏测试。
+- 样书结果：98页全部索引、58,772字符、无空文字页。搜索北派香辣卤/烤猪手专用卤水/正宗盐水鸭卤水分别命中正文PDF11/40/55页及目录第4页，网页搜索、页面文字与对应JPEG通过；62.5克、2.5千克、7.5克抽查保留。仍有荜拨、枳壳等生僻名误识，不能声称逐字准确、所有用量准确或全面无遗漏；配方使用必须核对原页。
+- 体积：预览17,415,407字节、OCR行记录968,078字节、SQLite1,593,344字节，合计约19.1MiB（不含原PDF）。样书库cooking_library_sample_579.zip约17.1MiB，已保存为用户可下载文件，包含98页预览、数据库、原始识别记录、校验清单和使用说明；只用于空资料库初始化，不可覆盖已有库。可按该文件名从用户文件中查找，避免重新OCR。
+- 验证：受检476d06d69bb0d7dc7823b79ba692c5440180f6ee完整validation38917223919、stability38917223982、独立资料库38917223867全部success，含320/390/768/1440真实浏览器隐藏菜单点击。d61ce4b独立38919541901和稳定性38919541763 success，完整38919541464当时仍运行。最新661512c及后续文档head的CI需实时核对，不能用前述旧head代替。最新本地独立模块、原路由186条、架构治理、稳定性、偏心双栏与真实样书测试通过。
+- 限制：没有AI问答、语义检索、自动跨页菜谱合并；当前关键词搜索最多展示100条/书刊最多200本。真实OSS联调、生产安装和真实手机样书体验待做。预览占服务器额外磁盘；失败可遗留预览/识别记录。样本压缩比与质量不可外推所有书刊。导入器单本限1GiB/5000页。
+- OSS用户仓库chen-cooking-library，青岛，ebooks/已存样书；未获取或打印密钥，未更改私有访问权限。本次本地PDF识别无需从OSS重新下载。
+- 核心：app/cooking_library/、app/main.py开关挂载、app/templates/base.html隐藏菜单、tests/cooking_library_contract.py、tests/cooking_navigation_acceptance.py、docs/COOKING_LIBRARY.md及独立两份路由清单。路径/workspace/scratch/3b63417353f2/chen-assistant；真实测试库临时路径/tmp/cooking-sample/rapid-library，耐久交付以保存的ZIP为准。
+- 唯一下一步：核对PR最新CI后，在小助手服务器独立目录安装已保存样书库并启用模块，保持原数据库与服务依赖边界，完成登录后搜索/预览实测；后续再配置最小只读OSS身份和批量导入。不宣称已经上线。新聊天先读本快照并核对PR #159，而非回到微信或Windows历史工作。
 
 ---
 
