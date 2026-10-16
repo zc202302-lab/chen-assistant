@@ -36,6 +36,6 @@ python -m app.cooking_library.import_book --file '/path/to/book.pdf' --key 'eboo
 
 ## 启用与回退
 
-完成离线与主站回归后，设置主站服务`COOKING_LIBRARY_ENABLED=1`及相同`COOKING_LIBRARY_DIR`并重启，然后登录访问`/cooking/`。暂未在现有主导航添加入口，先通过独立路径验证；下一阶段再加入入口。关闭开关并重启即撤下新模块，原数据保留。
+完成离线与主站回归后，设置主站服务`COOKING_LIBRARY_ENABLED=1`及相同`COOKING_LIBRARY_DIR`并重启，然后登录访问`/cooking/`。启用后左上角☰隐藏菜单显示“厨艺资料库”，关闭时隐藏；顶部首页/工作/资料不变。模块内部也提供折叠菜单返回首页与生活。关闭开关并重启即撤下新模块，原数据保留。
 
 不得把本地合成PDF测试描述为真实书刊OCR、OSS联调或生产部署通过。下一步：真实样书导入、OCR质量抽检、手机页面验证、资源测量；随后增加批量任务状态、语义检索和带出处的AI研究。

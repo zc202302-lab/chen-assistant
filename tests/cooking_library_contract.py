@@ -111,3 +111,18 @@ repo_root=Path(__file__).resolve().parents[1]
 assert module_routes == json.loads((repo_root/'docs/COOKING_RUNTIME_ROUTES.json').read_text())
 assert module_sources == json.loads((repo_root/'docs/COOKING_RUNTIME_ROUTE_SOURCES.json').read_text())
 print('optional module route and source inventories passed')
+
+# Sidebar navigation only exposes the optional module when enabled; old assets unchanged.
+from app.templating import Jinja2Templates
+from starlette.requests import Request
+templates = Jinja2Templates(directory=repo_root/'app/templates')
+request=Request({'type':'http','path':'/','app':app,'headers':[]})
+enabled=templates.TemplateResponse('base.html',{'request':request}).body.decode()
+assert 'href="/cooking/"' in enabled
+assert enabled.index('href="/cooking/"') > enabled.index('<dialog id="sidebar-navigation"')
+assert enabled.index('href="/cooking/"') < enabled.index('</dialog>')
+app.state.cooking_library_enabled=False
+disabled=templates.TemplateResponse('base.html',{'request':request}).body.decode()
+assert 'href="/cooking/"' not in disabled
+app.state.cooking_library_enabled=True
+print('optional cooking sidebar-navigation visibility passed')

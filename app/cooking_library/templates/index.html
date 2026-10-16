@@ -1,4 +1,5 @@
 <!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>厨艺资料库</title><link rel="stylesheet" href="/cooking/style.css"><body>
+{% include "navigation.html" %}
 <header><a href="/">晨的小助手</a> / 厨艺资料库</header>
 <h1>厨艺资料库</h1><nav><a href="/cooking/">书刊</a> · <a href="/cooking/?q=">全文搜索</a></nav>
 <form action="/cooking/" method="get"><label>菜名或知识点 <input name="q" value="{{ q }}" maxlength="100" placeholder="例如：鱼肉去腥"></label><button>搜索</button></form>
