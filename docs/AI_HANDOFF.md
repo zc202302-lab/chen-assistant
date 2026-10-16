@@ -2,7 +2,7 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 工作模式：2026-10-16原生微信小程序开发中。活动分支feat/wechat-number-collection，基于main 912dcfeeea28e3865572ac68c0d38ea05af822de。候选Web1.7.19，尚未提交完整CI或部署；生产基线1.7.18。用户授权开发、推送部署有效。Windows0.5.16及云电脑Draft #128继续暂停。
+- 工作模式：2026-10-16原生微信小程序开发中。活动分支feat/wechat-number-collection，基于main 912dcfeeea28e3865572ac68c0d38ea05af822de。候选Web1.7.19，Draft PR #158 https://github.com/zc202302-lab/chen-assistant/pull/158 已提交，head 6ef99eb16972735420d2e2535108522c9b3702ed，完整CI运行中，尚未部署；生产基线1.7.18。用户授权开发、推送部署有效。Windows0.5.16及云电脑Draft #128继续暂停。
 - 已实现：miniprogram原生工程，AppID wxcb9395eac340e8cb；入口码接入、最多100行号码、同意说明、重复数量、失败保留输入和防重复点击。新增POST /number-submit/mini/submit，Bearer入口鉴权、32KiB限制、整批校验、共享网页入库去重；仅返回本次计数，无名单查询。无需AppSecret，未硬编码真实入口码。
 - 本地首轮通过：原号码收件箱契约、新JSON接口鉴权/轮换/回滚/跨端去重契约、微信API mock页面控制契约、架构治理。尚未开发者工具编译、真机预览、平台代码审核或发布；小程序备案用户已提交审核，未确认结果。部署说明docs/MINIPROGRAM_DEPLOYMENT.md。
 - 网络已由用户操作迁至青岛47.104.233.200，Caddy容器sms-relay-caddy-1代理172.19.0.1:8010，jituan.zbassistant.site仅放行/number-submit/*和两个既有静态文件。用户10月15日确认恢复正常；本次API路径已被现规则覆盖。美国172.245.54.83旧代理按用户要求暂不删除。不得误清理其他服务器或服务。
