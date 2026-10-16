@@ -2,8 +2,8 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-16（Asia/Shanghai）；工作模式：用户2026-10-16 23:17（Asia/Shanghai）明确要求完成部署；当前部署受服务器执行通道与私有样书包传输阻塞，尚未合并/生产启用。用户授权独立模块，仅电子书和杂志，不含爆款菜谱；入口明确放左上角☰隐藏菜单，顶部首页/工作/资料不变。
-- 活动分支feat/cooking-library，Draft PR #159 https://github.com/zc202302-lab/chen-assistant/pull/159。最后功能提交661512cf57546fb84b7a59db586af3497563b7d2（实际栏间空隙定位、完整样书验证）；前置中文OCR改进d61ce4b6dbb7cce6ca8a610071bf1781bdcc0337。未合并、未部署。现网已知Web1.7.19；本轮main只有交接文档更新。Windows与云电脑Draft #128仍暂停。
+- 更新时间：2026-10-16（Asia/Shanghai）；工作模式：用户明确要求完成部署，现由用户登录青岛服务器配合安装；PR #159于2026-10-16 23:22（Asia/Shanghai）已合并，私有样书包尚待用户上传，模块尚未确认生产启用。用户授权独立模块，仅电子书和杂志，不含爆款菜谱；入口明确放左上角☰隐藏菜单，顶部首页/工作/资料不变。
+- 历史已合并分支feat/cooking-library，PR #159 https://github.com/zc202302-lab/chen-assistant/pull/159。最后功能提交661512cf57546fb84b7a59db586af3497563b7d2（实际栏间空隙定位、完整样书验证）；前置中文OCR改进d61ce4b6dbb7cce6ca8a610071bf1781bdcc0337。合并提交ed72b7e763591dca574c54437c5f21bb229dc736；代码已进入main，自动部署/生产安装状态需另查，不能以合并冒充上线。现网此前已知Web1.7.19，本模块未改变APP_VERSION。Windows与云电脑Draft #128仍暂停。
 - 隔离：app/cooking_library/拥有独立SQLite、模板、样式、离线导入CLI与可选依赖；COOKING_LIBRARY_ENABLED默认0，仅启用时挂载/cooking并显示隐藏菜单。共享原登录，不开放公共文件，不改客户/缴费/号码表、不启动OCR worker、不增加主站requirements。COOKING_LIBRARY_DIR默认data/cooking-library；同机导入仍共享CPU/内存，部署时需资源限制。
 - 样书用户已提供《流行酱卤60款》电子版_579.pdf：74,757,776字节，98页，全部图片页无文字层。原件SHA256 99a9c078c86eac929b355d932fa7b58c3f0bbe5456cf2e228ef46eacc6388e16，处理前后核对未变。真实原文、原图和数据库未提交公开GitHub。
 - 原180dpi Tesseract中英混合结果有大量乱码，因此默认改为300dpi RapidOCR 1.4.4（中文ONNX，导入进程单线程配置），Tesseract保留显式选择并检查中文语言数据。保留模型返回的每行原文、四角坐标、置信度与阅读顺序至ocr-audit/<SHA>/<页码>.json，不自动纠字。真实版面栏间空隙偏离画布中心；已修正，并从保留原始行重建样书索引，新增偏心双栏测试。
@@ -13,8 +13,8 @@
 - 限制：没有AI问答、语义检索、自动跨页菜谱合并；当前关键词搜索最多展示100条/书刊最多200本。真实OSS联调、生产安装和真实手机样书体验待做。预览占服务器额外磁盘；失败可遗留预览/识别记录。样本压缩比与质量不可外推所有书刊。导入器单本限1GiB/5000页。
 - OSS用户仓库chen-cooking-library，青岛，ebooks/已存样书；未获取或打印密钥，未更改私有访问权限。本次本地PDF识别无需从OSS重新下载。
 - 核心：app/cooking_library/、app/main.py开关挂载、app/templates/base.html隐藏菜单、tests/cooking_library_contract.py、tests/cooking_navigation_acceptance.py、docs/COOKING_LIBRARY.md及独立两份路由清单。路径/workspace/scratch/3b63417353f2/chen-assistant；真实测试库临时路径/tmp/cooking-sample/rapid-library，耐久交付以保存的ZIP为准。
-- 部署检查：PR head f0c2bbf2f68e13788b20f22a12c17941c51b703e的完整validation38920707987与独立资料库38920707984 success；稳定性38920707943核查时仍运行。生产预检job117040161590明确输出LOCAL_PRODUCTION_AVAILABLE=no与REMOTE_DEPLOY_SECRETS=incomplete。当前工作区亦无/opt/chen-assistant生产目录。已有生产timer可能更新代码，但不能据此声称完成私有样书安装或环境开关启用。未提取/索要主账号密钥，未将样书上传公开GitHub，未合并或改生产。
-- 唯一下一步：用户登录青岛服务器，提供服务User/WorkingDirectory/ActiveState、磁盘与Git只读状态检查输出，并将cooking_library_sample_579.zip放到服务器；据实际目录给出不覆盖已有数据的安装/启用命令，随后完成生产搜索/预览验收。不宣称已经上线。新聊天先读本快照并核对PR #159，而非回到微信或Windows历史工作。
+- 部署检查：PR head f0c2bbf2f68e13788b20f22a12c17941c51b703e的完整validation38920707987与独立资料库38920707984 success；稳定性38920707943已success；f0c2bbf全部三项检查通过。8503fcd相对该受检head仅docs/AI_HANDOFF.md变化，GitHub compare已核对；8503fcd独立38923001980及稳定性38923001763 success，重复完整38923001752合并前仍运行。生产预检job117040161590明确输出LOCAL_PRODUCTION_AVAILABLE=no与REMOTE_DEPLOY_SECRETS=incomplete。当前工作区亦无/opt/chen-assistant生产目录。已有生产timer可能更新代码，但不能据此声称完成私有样书安装或环境开关启用。用户23:21截图确认：/opt/chen-assistant，User=chenassistant，ActiveState=active；40GB盘剩余24GB；git status仅有未跟踪app/static/win-assistants/，必须保留。未提取/索要主账号密钥，未将样书上传公开GitHub。代码已正常合并，生产数据与启用配置尚未操作。
+- 唯一下一步：用户通过SSH客户端SFTP上传cooking_library_sample_579.zip到青岛服务器/tmp/cooking_library_sample_579.zip并确认文件；随后给出空目录安装、校验、配置独立COOKING_LIBRARY_DIR和环境开关、重启及真实登录搜索/原页验证命令。保留原数据库、.env安全配置和未跟踪Windows更新资产，不覆盖已有资料库。不宣称已经上线。
 
 ---
 
