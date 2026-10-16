@@ -32,8 +32,10 @@ from .v101_workspace_routes import router as v101_workspace_router
 from .work_list_import import router as work_list_import_router, ensure_work_list_import_schema
 from .work_lists import router as work_lists_router, ensure_work_lists_schema
 from .v160_information_center import router as v160_information_center_router, ensure_v160_schema
+from .number_collection_api import router as number_collection_router
 
 ROUTER_REGISTRATION = (
+    ('_number_collection_routes', number_collection_router),
     ('_reminder_routes', reminders_router),
     ('_v02_routes', v02_router),
     ('_v021_routes', v021_router),
@@ -62,6 +64,7 @@ ROUTER_REGISTRATION = (
     ('_work_list_import_routes', work_list_import_router),
 )
 ROUTER_PRIORITY = (
+    '_number_collection_routes',
     '_reminder_routes',
     '_work_list_import_routes',
     '_work_lists_routes',

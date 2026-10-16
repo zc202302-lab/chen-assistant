@@ -14,6 +14,7 @@ from . import config
 from .db import execute_schema, connection_scope, db, now_iso
 from .security import require_csrf
 from . import number_inbox_batch
+from .number_collection import normalize_number, collect_numbers
 
 router = APIRouter()
 templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
@@ -79,15 +80,7 @@ def _csrf(request: Request, value: str):
 
 
 def _normalize_number(value: str) -> tuple[str, str]:
-    raw = (value or '').strip()
-    if len(raw) > 64:
-        raise HTTPException(400, '号码过长')
-    digits = re.sub(r'\D', '', raw)
-    if digits.startswith('86') and len(digits) == 13:
-        digits = digits[2:]
-    if len(digits) < 5 or len(digits) > 20:
-        raise HTTPException(400, '请输入有效号码')
-    return raw, digits
+    return normalize_number(value)
 
 
 def _token_matches(conn, token: str) -> bool:
@@ -183,17 +176,8 @@ def public_number_submit(
             return templates.TemplateResponse('number_submit_v162.html', {
                 'request': request, 'token': token, 'numbers': number, 'error': exc.detail,
             }, status_code=400)
-        inserted = 0
-        batch = secrets.token_urlsafe(24)
-        submitted_at = now_iso()
-        for digits in dict.fromkeys(normalized):
-            cur = conn.execute(
-                """INSERT OR IGNORE INTO number_inbox
-                   (number,normalized_number,submitter,note,status,submitted_at,completed_at,submit_batch)
-                   VALUES(?,?, '', '', 'pending', ?, '', ?)""",
-                (digits, digits, submitted_at, batch),
-            )
-            inserted += cur.rowcount
+        collected = collect_numbers(conn, normalized)
+        inserted, batch = collected['added'], collected['batch']
         result = 'success' if inserted else 'duplicate'
     response = RedirectResponse(f'/number-submit/{token}/pending?result={result}', status_code=303)
     response.set_cookie('number_inbox_batch', batch, httponly=True,

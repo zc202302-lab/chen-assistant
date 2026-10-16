@@ -2,6 +2,16 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 工作模式：2026-10-16原生微信小程序开发中。活动分支feat/wechat-number-collection，基于main 912dcfeeea28e3865572ac68c0d38ea05af822de。候选Web1.7.19，尚未提交完整CI或部署；生产基线1.7.18。用户授权开发、推送部署有效。Windows0.5.16及云电脑Draft #128继续暂停。
+- 已实现：miniprogram原生工程，AppID wxcb9395eac340e8cb；入口码接入、最多100行号码、同意说明、重复数量、失败保留输入和防重复点击。新增POST /number-submit/mini/submit，Bearer入口鉴权、32KiB限制、整批校验、共享网页入库去重；仅返回本次计数，无名单查询。无需AppSecret，未硬编码真实入口码。
+- 本地首轮通过：原号码收件箱契约、新JSON接口鉴权/轮换/回滚/跨端去重契约、微信API mock页面控制契约、架构治理。尚未开发者工具编译、真机预览、平台代码审核或发布；小程序备案用户已提交审核，未确认结果。部署说明docs/MINIPROGRAM_DEPLOYMENT.md。
+- 网络已由用户操作迁至青岛47.104.233.200，Caddy容器sms-relay-caddy-1代理172.19.0.1:8010，jituan.zbassistant.site仅放行/number-submit/*和两个既有静态文件。用户10月15日确认恢复正常；本次API路径已被现规则覆盖。美国172.245.54.83旧代理按用户要求暂不删除。不得误清理其他服务器或服务。
+- 唯一下一步：提交本分支Draft PR并更新main入口，完整CI通过后按已有授权部署后端、核验公网，交付原生工程给用户扫码联调。不得将服务端/mock通过描述成微信真机通过。
+
+---
+
+## 上一阶段快照（历史：Web1.7.18已部署）
+
 - 工作模式：本次修复与部署完成，2026-10-14 16:59（Asia/Shanghai）。用户反馈只修改属性值后偶发单击/双击失效。PR #157 https://github.com/zc202302-lab/chen-assistant/pull/157 已合并，main功能提交5c5423a77cdcd68792d3b38684e617cf552f9733；Web1.7.18已公网核验。fix/business-after-save为历史分支，没有本次WIP；Windows0.5.16及云电脑Draft #128不变、继续暂停。已有推送部署授权已履行。
 - 根因与修复：保存/复制共用.app-toast提示层opacity隐藏后仍留在DOM，默认pointer-events:auto、z-index9999，截获覆盖位置的鼠标。精准基线69451fb4f6af6b9d67431cf7e2320f1b888c41a0，validation38534829224 / validate115755062109真实浏览器明确账号属性被透明app-toast截获。共享v028.css改为显示/隐藏时均pointer-events:none，覆盖业务、缴费、优惠及邮件等共用提示；CSS缓存参数1718、APP_VERSION及deploy.sh期望1.7.18同步。号码/账号才单击复制、全部属性双击编辑、日期和保存接口规则保持。确认的是此遮挡缺陷，不推断未观察到的全部偶发原因。
 - 完整受检head ddba979e6058816eae5e09f555c964e25253d8b2（运行代码2821dfbe7b5b91b3bf292b6ae47db2ccd0dc5e62）：validation38536920077 / validate115761934382、preflight115761934646全部success；stability38536920094 / job115761933870 success。31行业务中间滚动行三轮真实保存，屏蔽背景HTML刷新，验证真实剪贴板、列/key、重开编辑，以及隐藏提示下账号复制、可见提示下双击，全部通过。全部历史缴费、导入、优惠、输入选择、搜索、实时刷新、桌面/手机、架构安全回归保留并通过。第一次修复CI01a235b的第29步因部署期望版本遗漏同步失败，已修正，不删弱原断言。

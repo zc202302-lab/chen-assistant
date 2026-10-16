@@ -1,0 +1,8 @@
+{
+  "description": "小助手收集：集团成员号码提交",
+  "projectname": "小助手收集",
+  "appid": "wxcb9395eac340e8cb",
+  "compileType": "miniprogram",
+  "miniprogramRoot": "./",
+  "setting": {"urlCheck": true, "es6": true, "postcss": true, "minified": true}
+}

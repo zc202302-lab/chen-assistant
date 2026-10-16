@@ -1,5 +1,11 @@
 [
   {
+    "path": "/number-submit/mini/submit",
+    "methods": ["POST"],
+    "module": "app.number_collection_api",
+    "name": "mini_program_submit"
+  },
+  {
     "path": "/reminders",
     "methods": [
       "GET"

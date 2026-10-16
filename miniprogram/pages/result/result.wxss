@@ -1,0 +1,2 @@
+.result-card{text-align:center;padding:48rpx 26rpx}.success-mark{width:110rpx;height:110rpx;line-height:110rpx;border-radius:50%;margin:0 auto 28rpx;background:#e6f5ee;color:#128b83;font-size:62rpx}
+.result-card .title{font-size:38rpx}.stats{display:flex;justify-content:space-around;padding:38rpx 0;margin:26rpx 0;border-top:1rpx solid #edf0f5;border-bottom:1rpx solid #edf0f5}.stat-number{font-size:64rpx;font-weight:700;color:#128b83}.muted-number{color:#718096}
