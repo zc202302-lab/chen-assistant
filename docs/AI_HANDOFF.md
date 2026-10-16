@@ -2,6 +2,20 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-16（Asia/Shanghai）；工作模式：厨艺资料库独立模块开发中。用户明确授权接入zc202302-lab/chen-assistant，并要求独立、不影响现有模块；只收录电子书和杂志，不含爆款菜谱。
+- 基线main：88068bb05e920da7d546fb0e80304864c56abd4b，现网已知Web1.7.19。本轮分支feat/cooking-library，最后功能提交dab7bab485f5968978d0ead033767fdf3d5f148f；路由清单测试提交d46e4690073cbdaa92c2addaf5c683cccda30866，Draft PR #159 https://github.com/zc202302-lab/chen-assistant/pull/159；未合并、未部署、未配置生产密钥。云电脑Draft #128与Windows暂停状态保留。历史Open PR未接续。
+- 首版：app/cooking_library拥有独立SQLite、模板、样式、导入CLI与可选依赖；COOKING_LIBRARY_ENABLED默认0，仅启用时挂载/cooking。共享原登录校验，不开放公共文件，不启动OCR worker，不更改原数据库结构、页面或主站依赖。COOKING_LIBRARY_DIR默认data/cooking-library。
+- 本地已验证：合成文字PDF导入、SHA/Object查重、中文三字以上FTS与一二字匹配、出处页码、HTML转义、登录保护、原页JPEG、失效页404、数据库故障503且主站health可用；原186条路由顺序及owner不变。routing_registry_contract、architecture_governance_contract、stability_contract通过。首个功能提交独立CI38916160038已success；原完整validation38916160009与stability38916159985当时仍运行；最新清单测试提交的CI需重新核对；全部历史完整CI、真实手机浏览器与中文OCR未宣称通过。
+- 已知限制：UI首版、未加主导航；无AI/语义搜索；最多展示100条搜索/200本书；OCR依赖外部中文Tesseract（本机仅eng/osd），真实样书未读取。原件在OSS，预览JPEG在独立目录会额外占服务器磁盘，失败可遗留预览；同机导入仍共享CPU/内存，生产需进程资源限制。单本限制1GiB/5000页；不自动批量扫描OSS。
+- OSS用户提供：chen-cooking-library，青岛，ebooks/已上传约71.3MB《流行酱卤60款》PDF；完整Object名待从详情复制确认。未获凭据，未尝试访问私有原件，未改变OSS权限。
+- 核心：app/main.py仅追加开关挂载，app/cooking_library/，tests/cooking_library_contract.py，docs/COOKING_LIBRARY.md；工作目录/workspace/scratch/3b63417353f2/chen-assistant。
+- 唯一下一步：提交Draft并核对CI，取得本地样书或在用户服务器安全配置最小只读OSS身份，完成真实样书导入/OCR质量与预览占用抽检，再决定生产启用；不能称为已上线。main同步本活动分支入口；主站功能未合并。
+
+---
+
+
+## 上一阶段快照（历史：微信首版工程与Web1.7.19）
+
 - 工作模式：2026-10-16原生小程序首版工程完成，青岛后端Web1.7.19已实际公网核验。PR #158 https://github.com/zc202302-lab/chen-assistant/pull/158 已合并，main功能提交30369f3580c1ae78a9ea030858f1e4ddf1f62958；feat/wechat-number-collection为已完成历史分支，无本次未合并WIP。微信平台上传/真机验收/发布待管理员操作，不能描述成小程序已经上线。用户开发、推送部署授权已履行；Windows0.5.16与云电脑Draft #128保持暂停。
 - 已实现：miniprogram原生工程，AppID wxcb9395eac340e8cb；入口码接入、最多100行号码、同意说明、重复数量、失败保留输入和防重复点击。新增POST /number-submit/mini/submit，Bearer入口鉴权、32KiB限制、整批校验、共享网页入库去重；仅返回本次计数，无名单查询。无需AppSecret，未硬编码真实入口码。
 - 完整受检head088b16a03e1aae7ed2725d6698316cb6e1ba2d71：validation38885060154 / validate116920683674与preflight116920683442全部success；stability38885060061 / job116920682923 success。全部历史浏览器、缴费、导入、号码批次、移动/桌面、安全、兼容性保留通过；新API和微信API mock页面契约通过。首轮94292e9的38883659858因旧CSRF审计仅识别网页直接_token_matches写法失败；扩充精确native接口owner的Bearer来源、委托先于读取body和入库再校验审计后通过，原网页断言保留。
