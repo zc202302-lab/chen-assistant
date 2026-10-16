@@ -2,7 +2,7 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-16（Asia/Shanghai）；工作模式：用户明确要求完成部署，现由用户登录青岛服务器配合安装；PR #159于2026-10-16 23:22（Asia/Shanghai）已合并，私有样书包尚待用户上传，模块尚未确认生产启用。用户授权独立模块，仅电子书和杂志，不含爆款菜谱；入口明确放左上角☰隐藏菜单，顶部首页/工作/资料不变。
+- 更新时间：2026-10-16（Asia/Shanghai）；工作模式：用户明确要求完成部署，现由用户登录青岛服务器配合安装；PR #159于2026-10-16 23:22（Asia/Shanghai）已合并，用户2026-10-17 07:42（Asia/Shanghai）截图确认：样书包SHA/文件与SQLite校验通过，98页安装至data/cooking-library，权限归chenassistant，模块代码已存在；尚待配置开关、重启和网页验收。用户授权独立模块，仅电子书和杂志，不含爆款菜谱；入口明确放左上角☰隐藏菜单，顶部首页/工作/资料不变。
 - 历史已合并分支feat/cooking-library，PR #159 https://github.com/zc202302-lab/chen-assistant/pull/159。最后功能提交661512cf57546fb84b7a59db586af3497563b7d2（实际栏间空隙定位、完整样书验证）；前置中文OCR改进d61ce4b6dbb7cce6ca8a610071bf1781bdcc0337。合并提交ed72b7e763591dca574c54437c5f21bb229dc736；代码已进入main，自动部署/生产安装状态需另查，不能以合并冒充上线。现网此前已知Web1.7.19，本模块未改变APP_VERSION。Windows与云电脑Draft #128仍暂停。
 - 隔离：app/cooking_library/拥有独立SQLite、模板、样式、离线导入CLI与可选依赖；COOKING_LIBRARY_ENABLED默认0，仅启用时挂载/cooking并显示隐藏菜单。共享原登录，不开放公共文件，不改客户/缴费/号码表、不启动OCR worker、不增加主站requirements。COOKING_LIBRARY_DIR默认data/cooking-library；同机导入仍共享CPU/内存，部署时需资源限制。
 - 样书用户已提供《流行酱卤60款》电子版_579.pdf：74,757,776字节，98页，全部图片页无文字层。原件SHA256 99a9c078c86eac929b355d932fa7b58c3f0bbe5456cf2e228ef46eacc6388e16，处理前后核对未变。真实原文、原图和数据库未提交公开GitHub。
@@ -14,7 +14,7 @@
 - OSS用户仓库chen-cooking-library，青岛，ebooks/已存样书；未获取或打印密钥，未更改私有访问权限。本次本地PDF识别无需从OSS重新下载。
 - 核心：app/cooking_library/、app/main.py开关挂载、app/templates/base.html隐藏菜单、tests/cooking_library_contract.py、tests/cooking_navigation_acceptance.py、docs/COOKING_LIBRARY.md及独立两份路由清单。路径/workspace/scratch/3b63417353f2/chen-assistant；真实测试库临时路径/tmp/cooking-sample/rapid-library，耐久交付以保存的ZIP为准。
 - 部署检查：PR head f0c2bbf2f68e13788b20f22a12c17941c51b703e的完整validation38920707987与独立资料库38920707984 success；稳定性38920707943已success；f0c2bbf全部三项检查通过。8503fcd相对该受检head仅docs/AI_HANDOFF.md变化，GitHub compare已核对；8503fcd独立38923001980及稳定性38923001763 success，重复完整38923001752合并前仍运行。生产预检job117040161590明确输出LOCAL_PRODUCTION_AVAILABLE=no与REMOTE_DEPLOY_SECRETS=incomplete。当前工作区亦无/opt/chen-assistant生产目录。已有生产timer可能更新代码，但不能据此声称完成私有样书安装或环境开关启用。用户23:21截图确认：/opt/chen-assistant，User=chenassistant，ActiveState=active；40GB盘剩余24GB；git status仅有未跟踪app/static/win-assistants/，必须保留。未提取/索要主账号密钥，未将样书上传公开GitHub。代码已正常合并，生产数据与启用配置尚未操作。
-- 唯一下一步：用户通过SSH客户端SFTP上传cooking_library_sample_579.zip到青岛服务器/tmp/cooking_library_sample_579.zip并确认文件；随后给出空目录安装、校验、配置独立COOKING_LIBRARY_DIR和环境开关、重启及真实登录搜索/原页验证命令。保留原数据库、.env安全配置和未跟踪Windows更新资产，不覆盖已有资料库。不宣称已经上线。
+- 唯一下一步：用户在青岛服务器添加独立systemd drop-in，设置COOKING_LIBRARY_ENABLED=1与COOKING_LIBRARY_DIR=/opt/chen-assistant/data/cooking-library，重启chen-assistant后检查health，再在登录网页的左上角隐藏菜单验证搜索和原页。截图已确认98页样书安装成功、模块代码存在；不得重跑空库安装或覆盖当前资料库。
 
 ---
 
