@@ -36,7 +36,7 @@ def import_pdf(path, key, title, ocr=False, ocr_engine="rapidocr", progress=None
             method = 'pdf'
             if len(text.strip()) < 20:
                 if not ocr:
-                    raise ValueError(f'第{number}页需要OCR，请安装中文Tesseract后添加--ocr；未写入半本书')
+                    raise ValueError(f'第{number}页需要OCR，请安装独立导入依赖后添加--ocr；未写入半本书')
                 if ocr_engine == 'tesseract' and not languages_checked:
                     languages = subprocess.run(['tesseract', '--list-langs'], capture_output=True,
                                                text=True, check=True, timeout=15).stdout.splitlines()

@@ -1,5 +1,6 @@
 """Optional offline OCR adapters. Preserve model output and geometry for auditing."""
 import json
+from importlib.metadata import version, PackageNotFoundError
 from pathlib import Path
 
 
@@ -15,10 +16,21 @@ def reading_order(lines, width):
         xs=[p[0] for p in line[0]];ys=[p[1] for p in line[0]]
         return min(xs),min(ys),max(xs),max(ys)
     indexed=[(i,bounds(line)) for i,line in enumerate(lines)]
-    seam=width/2
-    left=[item for item in indexed if item[1][2]<=seam]
-    right=[item for item in indexed if item[1][0]>=seam]
-    spanning=[item for item in indexed if item not in left and item not in right]
+    # Printed content is not necessarily centred on the PDF canvas. Search for
+    # a persistent gutter instead of cutting through a column at width/2.
+    body_start=sorted(b[1] for _,b in indexed)[min(len(indexed)-1,max(1,len(indexed)//10))]
+    candidates=[]
+    for step in range(30,71):
+        seam=width*step/100
+        left=[item for item in indexed if item[1][2]<=seam]
+        right=[item for item in indexed if item[1][0]>=seam]
+        spanning=[item for item in indexed if item not in left and item not in right]
+        if min(len(left),len(right))>=4:
+            body_crossings=sum(box[1]>=body_start for _,box in spanning)
+            candidates.append(((body_crossings,abs(len(left)-len(right)),abs(step-50)),left,right,spanning))
+    if not candidates:
+        return list(range(len(lines)))
+    _,left,right,spanning=min(candidates,key=lambda item:item[0])
     if min(len(left),len(right))<4 or len(spanning)>len(lines)*.25:
         return list(range(len(lines)))
     order=[]
@@ -44,7 +56,11 @@ class RapidReader:
         lines,_=self.engine(str(image_path),text_score=0.0)
         lines=lines or []
         order=reading_order(lines,width)
-        payload={'engine':'rapidocr-onnxruntime','width':width,
+        try:
+            engine_version=version('rapidocr-onnxruntime')
+        except PackageNotFoundError:
+            engine_version='unknown'
+        payload={'engine':'rapidocr-onnxruntime','version':engine_version,'width':width,
                  'lines':lines,'reading_order':order,
                  'warning':'OCR未人工逐字核对，置信度不是准确率；用量以原页为准'}
         Path(audit_path).parent.mkdir(parents=True,exist_ok=True)

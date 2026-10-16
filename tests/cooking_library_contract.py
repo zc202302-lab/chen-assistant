@@ -147,3 +147,10 @@ with tempfile.TemporaryDirectory() as tmp:
     assert payload['lines']==lines and sorted(payload['reading_order'])==list(range(len(lines)))
     assert text.startswith('标题\n左0\n左1')
 print('OCR raw geometry and conservative column reading order passed')
+# An off-centre print gutter must not split a right-hand column at canvas/2.
+offcentre=[[[[300,0],[600,0],[600,20],[300,20]],'heading',.99]]
+for n in range(4):
+    offcentre += [[[[50,50+30*n],[380,50+30*n],[380,65+30*n],[50,65+30*n]],f'L{n}',.99],
+                  [[[440,50+30*n],[770,50+30*n],[770,65+30*n],[440,65+30*n]],f'R{n}',.99]]
+assert [offcentre[i][1] for i in reading_order(offcentre,1000)]==['heading','L0','L1','L2','L3','R0','R1','R2','R3']
+print('off-centre printed-column gutter regression passed')
