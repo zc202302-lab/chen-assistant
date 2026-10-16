@@ -8,8 +8,10 @@ import tempfile
 from .store import database, root
 
 
-def import_pdf(path, key, title, ocr=False):
+def import_pdf(path, key, title, ocr=False, ocr_engine="rapidocr", progress=None):
     import fitz
+    if ocr_engine not in {'rapidocr','tesseract'}:
+        raise ValueError('未知OCR引擎')
     kind = key.split('/')[0]
     if kind not in {'ebooks', 'magazines'} or not key.lower().endswith('.pdf'):
         raise ValueError('仅允许ebooks/或magazines/下的PDF')
@@ -23,6 +25,7 @@ def import_pdf(path, key, title, ocr=False):
     previews.mkdir(parents=True, exist_ok=True)
     texts = []
     languages_checked = False
+    rapid_reader = None
     with fitz.open(path) as doc:
         if doc.needs_pass or not 0 < len(doc) <= 5000:
             raise ValueError('加密PDF或页数超限')
@@ -34,21 +37,29 @@ def import_pdf(path, key, title, ocr=False):
             if len(text.strip()) < 20:
                 if not ocr:
                     raise ValueError(f'第{number}页需要OCR，请安装中文Tesseract后添加--ocr；未写入半本书')
-                if not languages_checked:
+                if ocr_engine == 'tesseract' and not languages_checked:
                     languages = subprocess.run(['tesseract', '--list-langs'], capture_output=True,
                                                text=True, check=True, timeout=15).stdout.splitlines()
                     if not {'chi_sim', 'eng'}.issubset(set(languages)):
                         raise ValueError('OCR缺少chi_sim或eng语言数据，未导入')
                     languages_checked = True
-                pix = page.get_pixmap(dpi=180)
+                pix = page.get_pixmap(dpi=300)
                 with tempfile.TemporaryDirectory() as tmp:
                     image_path = Path(tmp)/'page.png'
                     pix.save(image_path)
-                    text = subprocess.run(['tesseract',str(image_path),'stdout','-l','chi_sim+eng'], capture_output=True,text=True,check=True,timeout=180).stdout
-                method = 'ocr'
+                    if ocr_engine == 'rapidocr':
+                        if rapid_reader is None:
+                            from .ocr import RapidReader
+                            rapid_reader = RapidReader()
+                        text = rapid_reader.read(image_path,pix.width,root()/'ocr-audit'/digest/f'{number}.json')
+                    else:
+                        text = subprocess.run(['tesseract',str(image_path),'stdout','-l','chi_sim+eng'], capture_output=True,text=True,check=True,timeout=180).stdout
+                method = 'ocr:'+ocr_engine
             target = previews / f'{number}.jpg'
             page.get_pixmap(dpi=110).save(target)
             texts.append((number,text,method))
+            if progress:
+                progress(number,len(doc))
     with database() as conn:
         # Recheck under the write transaction; UNIQUE also protects concurrent imports.
         existing = conn.execute('SELECT id FROM books WHERE sha256=? OR object_key=?',(digest,key)).fetchone()
@@ -67,11 +78,12 @@ def main():
     parser.add_argument('--title',required=True)
     parser.add_argument('--file',type=Path,help='已有本地PDF；省略时从配置的OSS下载')
     parser.add_argument('--ocr',action='store_true')
+    parser.add_argument('--ocr-engine',choices=['rapidocr','tesseract'],default='rapidocr')
     args = parser.parse_args()
     if args.key.split('/')[0] not in {'ebooks', 'magazines'} or not args.key.lower().endswith('.pdf'):
         parser.error('仅允许ebooks/或magazines/下的PDF')
     if args.file:
-        print(import_pdf(args.file,args.key,args.title,args.ocr))
+        print(import_pdf(args.file,args.key,args.title,args.ocr,args.ocr_engine,lambda page,total: print(f'识别 {page}/{total}',flush=True)))
         return
     import oss2
     # Credentials only come from the importer environment. Never print signed URLs/keys.
@@ -94,7 +106,7 @@ def main():
             response.close()
         if received != size:
             raise ValueError('下载长度不符，请重试')
-        print(import_pdf(path,args.key,args.title,args.ocr))
+        print(import_pdf(path,args.key,args.title,args.ocr,args.ocr_engine,lambda page,total: print(f'识别 {page}/{total}',flush=True)))
 
 
 if __name__ == '__main__':

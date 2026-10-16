@@ -61,7 +61,7 @@ with tempfile.TemporaryDirectory() as tmp:
     from types import SimpleNamespace
     with patch('app.cooking_library.import_book.subprocess.run',return_value=SimpleNamespace(stdout='eng\nosd\n')):
         try:
-            import_pdf(blank,'magazines/blank.pdf','blank',ocr=True)
+            import_pdf(blank,'magazines/blank.pdf','blank',ocr=True,ocr_engine='tesseract')
         except ValueError as error:
             assert 'chi_sim' in str(error)
         else:
@@ -69,11 +69,11 @@ with tempfile.TemporaryDirectory() as tmp:
     with database() as conn:
         assert conn.execute('SELECT count(*) FROM books').fetchone()[0]==1
     with patch('app.cooking_library.import_book.subprocess.run',side_effect=[SimpleNamespace(stdout='chi_sim\neng\n'),SimpleNamespace(stdout='用盐2克，姜片5克。')]):
-        ocr_id, created = import_pdf(blank,'magazines/blank.pdf','OCR样本',ocr=True)
+        ocr_id, created = import_pdf(blank,'magazines/blank.pdf','OCR样本',ocr=True,ocr_engine='tesseract')
         assert created
     with database() as conn:
         row = conn.execute('SELECT text,method FROM pages WHERE book_id=?',(ocr_id,)).fetchone()
-        assert row['text']=='用盐2克，姜片5克。' and row['method']=='ocr'
+        assert row['text']=='用盐2克，姜片5克。' and row['method']=='ocr:tesseract'
     assert not Path(os.environ['APP_DB_PATH']).exists(), 'import must not touch business DB'
 print('cooking library isolation/import/search/auth/preview contract passed')
 
@@ -126,3 +126,24 @@ disabled=templates.TemplateResponse('base.html',{'request':request}).body.decode
 assert 'href="/cooking/"' not in disabled
 app.state.cooking_library_enabled=True
 print('optional cooking sidebar-navigation visibility passed')
+
+# OCR preserves every returned line and raw geometry; column layout changes order only.
+from app.cooking_library.ocr import reading_order, RapidReader
+from types import SimpleNamespace
+
+def box(x,y,text):
+    return [[[x,y],[x+100,y],[x+100,y+15],[x,y+15]],text,.99]
+lines=[[[[350,0],[650,0],[650,20],[350,20]],'标题',.99]]
+for n in range(4):
+    lines += [box(50,50+30*n,f'左{n}'),box(600,50+30*n,f'右{n}')]
+ordered=reading_order(lines,1000)
+assert [lines[i][1] for i in ordered]==['标题','左0','左1','左2','左3','右0','右1','右2','右3']
+assert reading_order(lines[:2],1000)==[0,1]
+with tempfile.TemporaryDirectory() as tmp:
+    fake_engine=lambda *args,**kwargs:(lines,None)
+    with patch.dict(sys.modules,{'rapidocr_onnxruntime':SimpleNamespace(RapidOCR=lambda **kwargs:fake_engine)}):
+        text=RapidReader().read('unused.png',1000,Path(tmp)/'audit.json')
+    payload=json.loads((Path(tmp)/'audit.json').read_text())
+    assert payload['lines']==lines and sorted(payload['reading_order'])==list(range(len(lines)))
+    assert text.startswith('标题\n左0\n左1')
+print('OCR raw geometry and conservative column reading order passed')

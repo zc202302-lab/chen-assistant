@@ -1,3 +1,4 @@
 # Install in a separate importer environment, not the assistant web environment.
 PyMuPDF==1.26.7
 oss2==2.19.1
+rapidocr-onnxruntime==1.4.4
