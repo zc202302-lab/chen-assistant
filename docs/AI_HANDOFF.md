@@ -2,11 +2,14 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 工作模式：2026-10-16原生微信小程序开发中。活动分支feat/wechat-number-collection，基于main 912dcfeeea28e3865572ac68c0d38ea05af822de。候选Web1.7.19，Draft PR #158 https://github.com/zc202302-lab/chen-assistant/pull/158 已提交，head 6ef99eb16972735420d2e2535108522c9b3702ed，完整CI运行中，尚未部署；生产基线1.7.18。用户授权开发、推送部署有效。Windows0.5.16及云电脑Draft #128继续暂停。
+- 工作模式：2026-10-16原生小程序首版工程完成，青岛后端Web1.7.19已实际公网核验。PR #158 https://github.com/zc202302-lab/chen-assistant/pull/158 已合并，main功能提交30369f3580c1ae78a9ea030858f1e4ddf1f62958；feat/wechat-number-collection为已完成历史分支，无本次未合并WIP。微信平台上传/真机验收/发布待管理员操作，不能描述成小程序已经上线。用户开发、推送部署授权已履行；Windows0.5.16与云电脑Draft #128保持暂停。
 - 已实现：miniprogram原生工程，AppID wxcb9395eac340e8cb；入口码接入、最多100行号码、同意说明、重复数量、失败保留输入和防重复点击。新增POST /number-submit/mini/submit，Bearer入口鉴权、32KiB限制、整批校验、共享网页入库去重；仅返回本次计数，无名单查询。无需AppSecret，未硬编码真实入口码。
-- 本地首轮通过：原号码收件箱契约、新JSON接口鉴权/轮换/回滚/跨端去重契约、微信API mock页面控制契约、架构治理、号码批次、生产体验和稳定性。94292e96284825f4aaf957f6747ee2b90b45abd1 的完整CI38883659858在旧CSRF审计仅识别网页直接_token_matches写法处失败；扩充精确原生接口owner的Bearer来源、校验委托先于读取请求体及入库再校验检查，原断言保留，重新完整验证。此前浏览器业务、缴费、导入、工作列表、号码批次和安全依赖审计已通过；稳定性38883659838 success。尚未开发者工具编译、真机预览、平台代码审核或发布；小程序备案用户已提交审核，未确认结果。部署说明docs/MINIPROGRAM_DEPLOYMENT.md。
+- 完整受检head088b16a03e1aae7ed2725d6698316cb6e1ba2d71：validation38885060154 / validate116920683674与preflight116920683442全部success；stability38885060061 / job116920682923 success。全部历史浏览器、缴费、导入、号码批次、移动/桌面、安全、兼容性保留通过；新API和微信API mock页面契约通过。首轮94292e9的38883659858因旧CSRF审计仅识别网页直接_token_matches写法失败；扩充精确native接口owner的Bearer来源、委托先于读取body和入库再校验审计后通过，原网页断言保留。
+- GitHub受检088b16a与合并30369f3的tree均9926cdc0543748934a98ca3bf85ee8e9bcd0b421，文件完全一致。main独立stability38886691550 / job116926044653 success；main重复完整validation38886691599未宣称结束，最终仅文档提交可能取消/重启它，不能替代上述完整受检head证据或据此宣称SSH直推成功。
+- 公网38886691576 / job116926044942 success，日志2026-10-16 18:23:38（Asia/Shanghai）ONLINE VERIFIED v1.7.19：health版本、全部既有静态资源/PWA/鉴权检查通过；新增jituan域名root与/login为404、无凭证POST /number-submit/mini/submit为401且返回JSON鉴权错误。前三轮仍1.7.18，第四轮实际验证1.7.19。没有写入/读取生产号码，没有从health推断精确生产backend SHA；真实微信提交仍待用户联调。
+- 小程序AppID wxcb9395eac340e8cb，备案用户已提交审核但未确认结果。未进行微信开发者工具编译、真机预览、平台代码审核或上传发布；无AppSecret需求。工程miniprogram/，导入与发布说明docs/MINIPROGRAM_DEPLOYMENT.md。本地API、原收件箱/批次、架构治理、路由、安全委托、稳定性、生产体验和JS/JSON/页面完整性检查通过；不将mock或语法检查描述成微信编译/真机通过。
 - 网络已由用户操作迁至青岛47.104.233.200，Caddy容器sms-relay-caddy-1代理172.19.0.1:8010，jituan.zbassistant.site仅放行/number-submit/*和两个既有静态文件。用户10月15日确认恢复正常；本次API路径已被现规则覆盖。美国172.245.54.83旧代理按用户要求暂不删除。不得误清理其他服务器或服务。
-- 唯一下一步：提交本分支Draft PR并更新main入口，完整CI通过后按已有授权部署后端、核验公网，交付原生工程给用户扫码联调。不得将服务端/mock通过描述成微信真机通过。
+- 唯一下一步：用户在微信开发者工具导入miniprogram目录，管理员扫码登录；后台request合法域名配置https://jituan.zbassistant.site，首开粘贴既有收集链接，真机预览填写并在原后台验证收到；随后补齐平台隐私资料、备案及代码审核后发布。后续接管先读此快照并核对main和实际微信联调反馈，不重复发布Windows或清理美国代理。目录/workspace/scratch/75165f63b510/chen-assistant，附件未修改，真实入口码与客户号码未写入源码。
 
 ---
 
