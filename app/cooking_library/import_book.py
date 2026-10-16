@@ -22,6 +22,7 @@ def import_pdf(path, key, title, ocr=False):
     previews = root() / 'previews' / digest
     previews.mkdir(parents=True, exist_ok=True)
     texts = []
+    languages_checked = False
     with fitz.open(path) as doc:
         if doc.needs_pass or not 0 < len(doc) <= 5000:
             raise ValueError('加密PDF或页数超限')
@@ -33,6 +34,12 @@ def import_pdf(path, key, title, ocr=False):
             if len(text.strip()) < 20:
                 if not ocr:
                     raise ValueError(f'第{number}页需要OCR，请安装中文Tesseract后添加--ocr；未写入半本书')
+                if not languages_checked:
+                    languages = subprocess.run(['tesseract', '--list-langs'], capture_output=True,
+                                               text=True, check=True, timeout=15).stdout.splitlines()
+                    if not {'chi_sim', 'eng'}.issubset(set(languages)):
+                        raise ValueError('OCR缺少chi_sim或eng语言数据，未导入')
+                    languages_checked = True
                 pix = page.get_pixmap(dpi=180)
                 with tempfile.TemporaryDirectory() as tmp:
                     image_path = Path(tmp)/'page.png'

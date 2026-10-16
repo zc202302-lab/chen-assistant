@@ -58,8 +58,22 @@ with tempfile.TemporaryDirectory() as tmp:
         assert 'OCR' in str(error)
     else:
         raise AssertionError('image-only input must not silently enter catalogue')
+    from types import SimpleNamespace
+    with patch('app.cooking_library.import_book.subprocess.run',return_value=SimpleNamespace(stdout='eng\nosd\n')):
+        try:
+            import_pdf(blank,'magazines/blank.pdf','blank',ocr=True)
+        except ValueError as error:
+            assert 'chi_sim' in str(error)
+        else:
+            raise AssertionError('Chinese OCR must not silently fall back to English')
     with database() as conn:
         assert conn.execute('SELECT count(*) FROM books').fetchone()[0]==1
+    with patch('app.cooking_library.import_book.subprocess.run',side_effect=[SimpleNamespace(stdout='chi_sim\neng\n'),SimpleNamespace(stdout='用盐2克，姜片5克。')]):
+        ocr_id, created = import_pdf(blank,'magazines/blank.pdf','OCR样本',ocr=True)
+        assert created
+    with database() as conn:
+        row = conn.execute('SELECT text,method FROM pages WHERE book_id=?',(ocr_id,)).fetchone()
+        assert row['text']=='用盐2克，姜片5克。' and row['method']=='ocr'
     assert not Path(os.environ['APP_DB_PATH']).exists(), 'import must not touch business DB'
 print('cooking library isolation/import/search/auth/preview contract passed')
 
