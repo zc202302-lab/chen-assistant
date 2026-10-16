@@ -88,3 +88,12 @@ with tempfile.TemporaryDirectory() as tmp:
             assert client.get('/health').status_code==200
     assert not Path(os.environ['COOKING_LIBRARY_DIR']).joinpath('business.db').exists()
 print('real assistant mount/auth/failure boundary passed')
+module_routes = route_inventory(mount.app)
+module_sources = route_source_inventory(mount.app)
+for rows in (module_routes,module_sources):
+    for row in rows:
+        row['path']='/cooking'+row['path']
+repo_root=Path(__file__).resolve().parents[1]
+assert module_routes == json.loads((repo_root/'docs/COOKING_RUNTIME_ROUTES.json').read_text())
+assert module_sources == json.loads((repo_root/'docs/COOKING_RUNTIME_ROUTE_SOURCES.json').read_text())
+print('optional module route and source inventories passed')

@@ -1,0 +1,6 @@
+[
+  {"path":"/cooking/style.css","methods":["GET"],"module":"app.cooking_library.web","name":"stylesheet"},
+  {"path":"/cooking/","methods":["GET"],"module":"app.cooking_library.web","name":"catalogue"},
+  {"path":"/cooking/books/{book_id}/pages/{page}","methods":["GET"],"module":"app.cooking_library.web","name":"page_view"},
+  {"path":"/cooking/books/{book_id}/images/{page}","methods":["GET"],"module":"app.cooking_library.web","name":"page_image"}
+]

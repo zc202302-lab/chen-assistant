@@ -1,0 +1,6 @@
+[
+  {"path":"/cooking/style.css","methods":["GET"],"source":"web.py","qualname":"create_app.<locals>.stylesheet"},
+  {"path":"/cooking/","methods":["GET"],"source":"web.py","qualname":"create_app.<locals>.catalogue"},
+  {"path":"/cooking/books/{book_id}/pages/{page}","methods":["GET"],"source":"web.py","qualname":"create_app.<locals>.page_view"},
+  {"path":"/cooking/books/{book_id}/images/{page}","methods":["GET"],"source":"web.py","qualname":"create_app.<locals>.page_image"}
+]
