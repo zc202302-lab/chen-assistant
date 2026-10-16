@@ -86,3 +86,11 @@ async def stop_number_retention_worker():
     if hasattr(app.state, 'number_retention_worker'):
         app.state.number_retention_stop.set()
         await app.state.number_retention_worker
+
+# Opt-in subapplication: no cooking DB, OSS connection or OCR work at startup.
+# Registered after the governed business router; its namespace cannot shadow it.
+import os as _os
+if _os.environ.get('COOKING_LIBRARY_ENABLED', '0') == '1':
+    from .cooking_library.web import create_app as _create_cooking_library
+    app.state.cooking_library_enabled = True
+    app.mount('/cooking', _create_cooking_library(), name='cooking_library')

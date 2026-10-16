@@ -1,0 +1,9 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>厨艺资料库</title><link rel="stylesheet" href="/cooking/style.css"><body>
+{% include "navigation.html" %}
+<header><a href="/">晨的小助手</a> / 厨艺资料库</header>
+<h1>厨艺资料库</h1><nav><a href="/cooking/">书刊</a> · <a href="/cooking/?q=">全文搜索</a></nav>
+<form action="/cooking/" method="get"><label>菜名或知识点 <input name="q" value="{{ q }}" maxlength="100" placeholder="例如：鱼肉去腥"></label><button>搜索</button></form>
+{% if q %}<h2>“{{ q }}”的原文结果</h2><p>当前为原文关键词搜索；尚未启用同义词、语义检索或AI分析。</p>
+{% for hit in hits %}<article><h3><a href="/cooking/books/{{ hit.id }}/pages/{{ hit.page }}">{{ hit.title }} · PDF第{{ hit.page }}页</a></h3><p>{{ hit.text[:1200] }}</p></article>{% else %}<p>未找到匹配内容。</p>{% endfor %}{% if more %}<p>仅显示前100条，请缩小搜索范围。</p>{% endif %}
+{% else %}<h2>电子书与杂志</h2>{% for book in books %}<article><h3><a href="/cooking/books/{{ book.id }}/pages/1">{{ book.title }}</a></h3><p>{{ '电子书' if book.kind == 'ebooks' else '杂志' }} · {{ book.pages }}页</p></article>{% else %}<p>尚未导入书刊。请先完成一本书的文字识别与导入。</p>{% endfor %}{% endif %}
+</body></html>

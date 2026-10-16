@@ -1,0 +1,21 @@
+name: cooking library isolation
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  cooking-library:
+    runs-on: [self-hosted, linux, x64, chen-assistant]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependencies
+        run: pip install -r requirements.txt PyMuPDF==1.26.7
+      - name: Test independent import, retrieval, access and failure isolation
+        run: python tests/cooking_library_contract.py
+      - name: Verify original business routing and architecture
+        run: |
+          python tests/routing_registry_contract.py
+          python tests/architecture_governance_contract.py

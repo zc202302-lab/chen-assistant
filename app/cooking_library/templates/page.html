@@ -1,0 +1,6 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ row.title }} · 第{{ row.page }}页</title><link rel="stylesheet" href="/cooking/style.css"><body>
+{% include "navigation.html" %}
+<a href="/cooking/">返回厨艺资料库</a><h1>{{ row.title }}</h1><p>PDF第{{ row.page }}页 · {{ 'OCR识别文字，请核对原图中的数字与单位' if row.method != 'pdf' else 'PDF提取文字，请核对原页' }}</p>
+<nav>{% if row.page > 1 %}<a href="/cooking/books/{{ row.book_id }}/pages/{{ row.page-1 }}">上一页</a> · {% endif %}{% if row.page < row.pages %}<a href="/cooking/books/{{ row.book_id }}/pages/{{ row.page+1 }}">下一页</a>{% endif %}</nav>
+<h2>原页</h2><img src="/cooking/books/{{ row.book_id }}/images/{{ row.page }}" width="800" alt="原书页面" style="max-width:100%;height:auto">
+<h2>识别文字</h2><pre style="white-space:pre-wrap">{{ row.text }}</pre></body></html>

@@ -49,6 +49,7 @@
 </head>
 <body data-compact-navigation data-pwa-scope="{{ csrf|default('') }}">
 {% set _path = request.url.path %}
+{% set _is_cooking = _path == '/cooking' or _path.startswith('/cooking/') %}
 {% set _is_info = _path == '/info' or _path.startswith('/info/') or _path.startswith('/accounts') %}
 {% set _is_work = _path == '/work' or _path.startswith('/work/') or _path == '/search' or _path.startswith('/customers') or _path.startswith('/products') %}
 {% set _is_life = _path.startswith('/life') %}
@@ -75,7 +76,7 @@
 </header>
 <dialog id="sidebar-navigation" class="sidebar-navigation" data-sidebar-navigation aria-label="侧边导航">
   <div class="sidebar-heading"><strong>导航</strong><button type="button" data-sidebar-close aria-label="关闭侧边导航" autofocus>×</button></div>
-  <nav aria-label="其他空间"><a href="/life"{% if _is_life %} class="active" aria-current="page"{% endif %}>生活</a></nav>
+  <nav aria-label="其他空间"><a href="/life"{% if _is_life %} class="active" aria-current="page"{% endif %}>生活</a>{% if request.app.state.cooking_library_enabled|default(false) %}<a href="/cooking/"{% if _is_cooking %} class="active" aria-current="page"{% endif %}>厨艺资料库</a>{% endif %}</nav>
 </dialog>
 <div class="quick-search-v15" data-quick-search-v15 data-search-scope="{{ _search_scope }}" hidden>
   <div class="quick-search-card-v15" role="dialog" aria-modal="true" aria-label="搜索">
