@@ -1,9 +1,0 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>厨艺资料库</title><link rel="stylesheet" href="/cooking/style.css"><body>
-{% include "navigation.html" %}
-<header><a href="/">晨的小助手</a> / 厨艺资料库</header>
-<h1>厨艺资料库</h1><p class="muted">翻阅电子书与杂志，从目录找到想看的内容。</p><nav class="library-tabs" aria-label="书刊类型"><a href="/cooking/" {% if not kind %}aria-current="page"{% endif %}>全部书刊</a><a href="/cooking/?kind=ebooks" {% if kind == 'ebooks' %}aria-current="page"{% endif %}>电子书</a><a href="/cooking/?kind=magazines" {% if kind == 'magazines' %}aria-current="page"{% endif %}>杂志</a></nav>
-<form action="/cooking/" method="get"><label>搜索已识别文字 <input name="q" value="{{ q }}" maxlength="100" placeholder="例如：鱼肉去腥"></label><button>搜索</button></form>
-{% if q %}<h2>“{{ q }}”的原文结果</h2><p>当前为原文关键词搜索；尚未启用同义词、语义检索或AI分析。</p>
-{% for hit in hits %}<article><h3><a href="/cooking/books/{{ hit.id }}/pages/{{ hit.page }}">{{ hit.title }} · PDF第{{ hit.page }}页</a></h3><p>{{ hit.text[:1200] }}</p></article>{% else %}<p>未找到匹配内容。</p>{% endfor %}{% if more %}<p>仅显示前100条，请缩小搜索范围。</p>{% endif %}
-{% else %}<h2>{{ "电子书" if kind == "ebooks" else "杂志" if kind == "magazines" else "全部书刊" }}</h2><div class="book-grid">{% for book in books %}<article class="book-card"><a class="cover-link" href="/cooking/books/{{ book.id }}"><img loading="lazy" src="/cooking/books/{{ book.id }}/images/1" alt="{{ book.title }}封面"></a><h3><a href="/cooking/books/{{ book.id }}">{{ book.title }}</a></h3><p>{{ '电子书' if book.kind == 'ebooks' else '杂志' }} · {{ book.pages }}页</p></article>{% else %}<p>此分类尚未导入书刊。</p>{% endfor %}</div>{% endif %}
-</body></html>
