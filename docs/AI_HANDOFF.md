@@ -2,15 +2,15 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-17 15:29后（Asia/Shanghai）；工作模式：用户明确要求将书刊模块从晨的小助手移除，开发与验证中。后续独立网站域名cook.ziboxiaozhushou.cn，拟共用青岛服务器与原私有OSS；尚未创建/部署独立新站、操作DNS或配置新站自动部署。美国OCR、Windows和云电脑Draft #128仍暂停。
-- 活动分支remove/cooking-library，基于main c7ad076d59072c45d04082ab294f09fad6a8097f，PR待创建后核对。旧PR #159/#160均为历史已合并，不再继续开发小助手内书刊功能。
-- 候选移除：隐藏菜单资料库入口、app/main.py的/cooking子应用挂载、app/cooking_library完整源码、独立路由清单；撤下已移出功能的OCR/导入/阅读测试，改用移除回归和原导航浏览器验收。原业务完整CI、架构、路由、稳定性和导航检查保留，非为通过CI弱化测试。主requirements和APP_VERSION1.7.19不变。
+- 更新时间：2026-10-17 （Asia/Shanghai）；工作模式：小助手内书刊模块移除代码完成、完整CI通过且已合并，等待青岛现网更新与实际验证。后续独立网站域名cook.ziboxiaozhushou.cn，拟共用青岛服务器与原私有OSS；尚未创建/部署独立新站、操作DNS或配置新站自动部署。美国OCR、Windows和云电脑Draft #128仍暂停。
+- 移除分支remove/cooking-library已完成，无未合并功能WIP；PR #161 https://github.com/zc202302-lab/chen-assistant/pull/161已合并，最后功能提交4546ddecaec66d04acfd5fde580b57737b210540，合并提交4db054a5d8b4c6bd6332f34d58b1262c5031ebd9。旧PR #159/#160均为历史已合并，不再继续开发小助手内书刊功能。
+- 已合并移除：隐藏菜单资料库入口、app/main.py的/cooking子应用挂载、app/cooking_library完整源码、独立路由清单；撤下已移出功能的OCR/导入/阅读测试，改用移除回归和原导航浏览器验收。原业务完整CI、架构、路由、稳定性和导航检查保留，非为通过CI弱化测试。主requirements和APP_VERSION1.7.19不变。
 - 数据保留：不删除/opt/chen-assistant/data/cooking-library及其SQLite、JPEG、OCR记录；不改OSS中的原PDF和私有权限；已保存样书ZIP与47条目录JSON保留；新站可从历史提交0f810227425566ca1261d88897b479efde613b1b恢复模块源码。遗留COOKING_LIBRARY_ENABLED/COOKING_LIBRARY_DIR配置在代码移除后无效，无需通过删除数据来卸载。保留未跟踪app/static/win-assistants/。
-- 本地验证：遗留启用开关=1时无/cooking路由、登录后原目录/书页/图片/JS全部404、未登录仍原鉴权跳转、无菜单入口、原首页/工作/资料/生活保留、私有测试数据逐字节不变；原路由186条基线/架构/稳定性/导航契约通过。真实浏览器和完整CI待检查。
-- 已知生产：用户15:17部署截图为7ab4599，health1.7.19，原静态资源一致；本轮移除尚未上线。15:18目录导入因/tmp JSON缺失失败，后提供按样书SHA直接导入47条命令，但未收到成功证据；不继续催促旧模块导入。127.0.0.1:18790既有远程资料存储健康失败未修复，此服务非厨艺OSS。
-- 部署能力：此前预检无生产checkout且SSH secrets不完整；无本会话直接SSH生产能力。代码提交、完整CI、合并、生产更新分别记录，不声称移除已在现网生效。
+- 本地验证：遗留启用开关=1时无/cooking路由、登录后原目录/书页/图片/JS全部404、未登录仍原鉴权跳转、无菜单入口、原首页/工作/资料/生活保留、私有测试数据逐字节不变；原路由186条基线/架构/稳定性/导航契约通过。功能head4546dde完整validation39013974722/job117342136416、assistant module isolation39013974739、stability39013974674全部success；320/390/768/1440真实浏览器确认原导航/生活保留且旧资料库入口消失，原全部客户/缴费/清单/号码收集/资料/导航/安全与兼容性回归通过。后续main重复检查独立记录，不用合并冒充生产完成。
+- 已知生产：用户15:17部署截图为7ab4599，health1.7.19，原静态资源一致；本轮移除已合并，尚无青岛执行更新后的截图或业务证据，不能声称现网已移除。15:18目录导入因/tmp JSON缺失失败，后提供按样书SHA直接导入47条命令，但未收到成功证据；不继续催促旧模块导入。127.0.0.1:18790既有远程资料存储健康失败未修复，此服务非厨艺OSS。
+- 部署能力：本轮预检job117342136155实际输出LOCAL_PRODUCTION_AVAILABLE=no、REMOTE_DEPLOY_SECRETS=incomplete；无本会话直接SSH生产能力。代码提交、完整CI、合并、生产更新分别记录，不声称移除已在现网生效。
 - 核心：app/main.py、app/templates/base.html、tests/cooking_removal_contract.py、tests/assistant_navigation_acceptance.py、.github/workflows/assistant-module-isolation.yml、docs/COOKING_LIBRARY.md。目录/workspace/scratch/3b63417353f2/chen-assistant。
-- 唯一下一步：提交并验证移除PR，通过后合并并让青岛更新源码/重启，验证资料库入口消失、登录后/cooking为404、原业务和健康正常；随后在独立项目开展新站工作，不在小助手继续加书刊功能。
+- 唯一下一步：用户在青岛执行bash /opt/chen-assistant/deploy.sh更新源码与重启，验证资料库入口消失、登录后/cooking为404、原业务和健康正常。保留书刊数据，不再在旧模块导入目录；新站在独立项目继续。
 
 ## 上一阶段快照（历史：阅读版交付与生产更新）
 
