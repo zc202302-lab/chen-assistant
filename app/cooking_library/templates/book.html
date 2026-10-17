@@ -1,0 +1,8 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ book.title }} · 厨艺资料库</title><link rel="stylesheet" href="/cooking/style.css"><script src="/cooking/reader.js" defer></script><body>
+{% include "navigation.html" %}
+<a href="/cooking/?kind={{ book.kind }}">返回{{ '电子书' if book.kind == 'ebooks' else '杂志' }}</a>
+<main data-book="{{ book.id }}" data-total="{{ book.pages }}">
+<section class="book-header"><img class="cover" src="/cooking/books/{{ book.id }}/images/1" alt="{{ book.title }}封面"><div><p class="eyebrow">{{ '电子书' if book.kind == 'ebooks' else '杂志' }} · {{ book.pages }}页</p><h1>{{ book.title }}</h1><p>随时翻阅，按目录找到想看的内容。</p><a class="button" href="/cooking/books/{{ book.id }}/pages/1">开始阅读</a> <a class="button secondary" id="continue-reading" href="/cooking/books/{{ book.id }}/pages/1" hidden>继续阅读</a><p id="saved-position" class="muted"></p></div></section>
+<section class="contents"><h2>书刊目录 <small>{{ contents|length }}篇</small></h2>
+{% if contents %}<ol>{% for item in contents %}<li><a class="toc-link level-{{ item.level }}" href="/cooking/books/{{ book.id }}/pages/{{ item.page }}"><span>{{ item.title }}</span><small>PDF {{ item.page }}</small></a></li>{% endfor %}</ol>{% else %}<p>本书尚未录入章节目录，可以先开始阅读或输入页码跳转。</p>{% endif %}</section>
+</main></body></html>

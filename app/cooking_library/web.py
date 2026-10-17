@@ -27,22 +27,38 @@ def create_app():
     def stylesheet():
         return FileResponse(Path(__file__).parent / 'style.css', media_type='text/css')
 
+    @app.get('/reader.js')
+    def reader_script():
+        return FileResponse(Path(__file__).parent / 'reader.js', media_type='application/javascript')
+
     @app.get('/')
-    def catalogue(request: Request, q: str = ''):
+    def catalogue(request: Request, q: str = '', kind: str = ''):
+        if kind not in {'','ebooks','magazines'}:
+            raise HTTPException(400,'未知书刊类型')
         if len(q) > 100:
             raise HTTPException(400, '搜索词最多100字')
         with database() as conn:
-            books = conn.execute('SELECT * FROM books ORDER BY id DESC LIMIT 200').fetchall()
+            books = conn.execute("SELECT * FROM books WHERE (?='' OR kind=?) ORDER BY id DESC LIMIT 200",(kind,kind)).fetchall()
             hits = search(conn, q)
-        return TEMPLATES.TemplateResponse('index.html', {'request': request, 'books': books, 'hits': hits[:100], 'more': len(hits)>100, 'q': q})
+        return TEMPLATES.TemplateResponse('index.html', {'request': request, 'books': books, 'hits': hits[:100], 'more': len(hits)>100, 'q': q, 'kind':kind})
+
+    @app.get('/books/{book_id}')
+    def book_detail(request: Request, book_id: int):
+        with database() as conn:
+            book=conn.execute('SELECT * FROM books WHERE id=?',(book_id,)).fetchone()
+            contents=conn.execute('SELECT * FROM book_contents WHERE book_id=? ORDER BY position',(book_id,)).fetchall()
+        if not book:
+            raise HTTPException(404,'书刊不存在')
+        return TEMPLATES.TemplateResponse('book.html',{'request':request,'book':book,'contents':contents})
 
     @app.get('/books/{book_id}/pages/{page}')
     def page_view(request: Request, book_id: int, page: int):
         with database() as conn:
+            contents=conn.execute('SELECT * FROM book_contents WHERE book_id=? ORDER BY position',(book_id,)).fetchall()
             row = conn.execute('SELECT b.title,b.pages,p.* FROM pages p JOIN books b ON b.id=p.book_id WHERE book_id=? AND page=?', (book_id,page)).fetchone()
         if not row:
             raise HTTPException(404, '未找到页面')
-        return TEMPLATES.TemplateResponse('page.html', {'request': request, 'row': row})
+        return TEMPLATES.TemplateResponse('page.html', {'request': request, 'row': row, 'contents':contents})
 
     @app.get('/books/{book_id}/images/{page}')
     def page_image(book_id: int, page: int):

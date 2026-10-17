@@ -47,3 +47,31 @@ python -m app.cooking_library.import_book --file '/path/to/book.pdf' --key 'eboo
 样书体积：原件74,757,776字节；预览17,415,407字节，原始OCR行/坐标968,078字节，SQLite1,593,344字节，派生数据约19.1MiB。测试库压缩包约17.1MiB，保存为cooking_library_sample_579.zip，用户可用于空资料库初始化；没有放进公开仓库。此样本不能用于保证其他书刊的压缩比、识别准确率或检索完整率。
 
 已有主站/隐藏菜单实现受检head476d06d69bb0d7dc7823b79ba692c5440180f6ee：validation38917223919、stability38917223982、独立资料库38917223867全部success；包含320/390/768/1440隐藏菜单点击实测。后续OCR改进另查最新head的CI；不是生产启用或真实OSS联调证据。
+
+## 书刊阅读第一版
+
+入口保持左上角隐藏菜单。书刊库按电子书/杂志浏览封面；点击进入书刊详情，目录显示章节标题及实际PDF页码，点击跳到原页。阅读器支持前后翻页、页码跳转、50%～250%缩放、适合宽度。上次阅读页码只保存在当前浏览器本地，不跨设备同步。关键词搜索保留，图片书未识别的正文不能搜索。
+
+阅读不要求全文OCR。原PDF保持青岛私有OSS，当前阅读使用服务器上的110dpi JPEG衍生预览；不向浏览器泄露OSS凭据，不增加主站依赖，不启用美国worker。预览缩放不会恢复原PDF细节。目录为新增独立book_contents表，旧书库原页、识别文字和索引保留。
+
+只生成阅读预览并自动提取PDF书签：
+
+```bash
+python -m app.cooking_library.import_book --key 'magazines/example.pdf' --title '刊物名称' --reading-only
+```
+
+OSS环境变量沿用上文。也可加`--file /path/to/source.pdf`使用本地原件；不会把原PDF复制进资料库。导入仍为显式离线CLI，尚未增加网页上传/OSS自动同步。
+
+对已经导入的同一本书补提取书签（SHA必须一致）：
+
+```bash
+python -m app.cooking_library.contents --book-id 1 --pdf /path/to/source.pdf
+```
+
+无书签时导入UTF-8 JSON数组，各项`title`标题、`page`实际PDF页码（从1开始）、可选`level`层级1～10；例如`[{"title":"第一章","page":6}]`。印刷页码与实际PDF页码可能不同，不自动推算；允许同页多章节和非单调页码。全量校验成功后事务替换目录，失败保留旧目录；空数组明确清空。目录维护目前为管理员CLI，未提供网页编辑器。
+
+```bash
+python -m app.cooking_library.contents --book-id 1 --json /path/to/contents.json
+```
+
+现有98页样书没有PDF书签，需另行校对/导入目录；不能把有阅读器等同于真实书刊目录均已补全。下载工具webdownload的部分目录正文采集流程会写入PDF书签，新下载的这类书刊可直接提取，其他导出模式不保证有书签。

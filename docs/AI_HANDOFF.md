@@ -2,6 +2,21 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-10-17（Asia/Shanghai）。工作模式：用户要求先完成书刊阅读第一版，开发与验证中。美国VPS远程OCR方案暂停，未实现或安装worker。云电脑Draft #128、Windows工作继续暂停。
+- 活动分支feat/cooking-reader，基于main 6bfd198286809c7a0b1294780df5f9d3649158a2；PR创建后从GitHub查明。旧feat/cooking-remote-worker只建立过本地分支，未提交功能，已改名。
+- 最新需求：仿东方美食书刊详情的封面/基本信息/完整目录结构，在小助手查看电子书、杂志，点章节跳转原页。入口继续左上角隐藏菜单，原有业务与顶部导航不改。分类细化、AI总结后续做。
+- 已实现候选：电子书/杂志封面网格、书刊详情目录、前后翻页/实际PDF页码跳转、50%～250%缩放/适合宽度、本浏览器阅读进度/继续阅读；独立book_contents幂等建表。阅读导入--reading-only不调用OCR；自动提取PDF书签；已有书目录维护CLI可按匹配SHA的PDF或已校对JSON事务替换。无网页上传/目录编辑器/自动OSS同步。
+- 原PDF仍在青岛私有OSS；阅读沿用服务器110dpi JPEG预览，不引入OSS公开访问或主站新依赖。OCR关键词搜索保留，不声称图片书可全文搜索。阅读进度仅当前浏览器，不跨设备同步；缩放不会提高预览原始清晰度。
+- 目录证据：webdownload当前main 8bc982f48d9ab19de5669b70257ea0c5d344fbd5的collector.build_pdf会在传入outline时写PDF书签；不能外推所有采集模式。已提供98页样书无PDF书签（本轮实际读取get_toc为空），真实目录需另外校对导入，不能伪造目录或推断印刷页码。
+- 本地测试：旧资料库契约、阅读模式/书签与目录原子校验、新旧路由清单、架构治理、稳定性通过；JS语法检查通过。新增浏览器验收覆盖320/390/768/1440、目录跳页/放大复位/跳页/刷新与继续阅读；本机Chromium下载损坏，等待CI真实浏览器结果，未宣称浏览器已通过或已部署。
+- 生产仍为已启用首版资料库与98页样书，健康Web1.7.19、用户原页显示截图已验证；本轮未改版本号，未安装阅读新版，精确生产SHA未知。生产/opt/chen-assistant以chenassistant运行，未跟踪app/static/win-assistants/必须保留。
+- 核心app/cooking_library/{web,store,import_book,contents}.py、templates/{index,book,page}.html、reader.js、style.css，tests/cooking_reader_contract.py、cooking_navigation_acceptance.py、docs/COOKING_LIBRARY.md与独立路由清单。本地/workspace/scratch/3b63417353f2/chen-assistant。
+- 美国机器截图Ubuntu24.04、2核/1.9GiB、可用约1.3GiB、34GiB盘余22GiB，GitHubRunner/WARP/x-ui运行；无授权删除既有服务。此架构不再是当前实施重点。
+- 唯一下一步：提交PR并完成完整CI与手机/桌面真实浏览器验证，通过后交付阅读版并补真实书刊目录/核验生产；GitHub提交、CI、生产安装分别记录。
+
+## 上一阶段快照（历史：资料库首版与样书验收）
+
+
 - 更新时间：2026-10-17 07:49（Asia/Shanghai）；工作模式：厨艺资料库独立首版部署与原页显示验收完成。用户截图确认北派香辣卤页面的原页图像与识别文字均显示；当前仅一本98页样书，AI问答、语义检索和批量导入尚未实现。入口为左上角☰隐藏菜单，顶部原导航保留。
 - 历史已合并分支feat/cooking-library，PR #159 https://github.com/zc202302-lab/chen-assistant/pull/159。最后功能提交661512cf57546fb84b7a59db586af3497563b7d2（实际栏间空隙定位、完整样书验证）；前置中文OCR改进d61ce4b6dbb7cce6ca8a610071bf1781bdcc0337。合并提交ed72b7e763591dca574c54437c5f21bb229dc736；代码已进入main，自动部署/生产安装状态需另查，不能以合并冒充上线。现网此前已知Web1.7.19，本模块未改变APP_VERSION。Windows与云电脑Draft #128仍暂停。
 - 隔离：app/cooking_library/拥有独立SQLite、模板、样式、离线导入CLI与可选依赖；COOKING_LIBRARY_ENABLED默认0，仅启用时挂载/cooking并显示隐藏菜单。共享原登录，不开放公共文件，不改客户/缴费/号码表、不启动OCR worker、不增加主站requirements。COOKING_LIBRARY_DIR默认data/cooking-library；同机导入仍共享CPU/内存，部署时需资源限制。

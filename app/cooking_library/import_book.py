@@ -8,7 +8,7 @@ import tempfile
 from .store import database, root
 
 
-def import_pdf(path, key, title, ocr=False, ocr_engine="rapidocr", progress=None):
+def import_pdf(path, key, title, ocr=False, ocr_engine="rapidocr", progress=None, reading_only=False):
     import fitz
     if ocr_engine not in {'rapidocr','tesseract'}:
         raise ValueError('未知OCR引擎')
@@ -29,32 +29,36 @@ def import_pdf(path, key, title, ocr=False, ocr_engine="rapidocr", progress=None
     with fitz.open(path) as doc:
         if doc.needs_pass or not 0 < len(doc) <= 5000:
             raise ValueError('加密PDF或页数超限')
+        contents = doc.get_toc()
         for number, page in enumerate(doc, 1):
             if page.rect.width > 3000 or page.rect.height > 3000:
                 raise ValueError(f'第{number}页尺寸超限')
             text = page.get_text(sort=True)
             method = 'pdf'
             if len(text.strip()) < 20:
-                if not ocr:
+                if reading_only:
+                    method = 'image'
+                elif not ocr:
                     raise ValueError(f'第{number}页需要OCR，请安装独立导入依赖后添加--ocr；未写入半本书')
-                if ocr_engine == 'tesseract' and not languages_checked:
-                    languages = subprocess.run(['tesseract', '--list-langs'], capture_output=True,
-                                               text=True, check=True, timeout=15).stdout.splitlines()
-                    if not {'chi_sim', 'eng'}.issubset(set(languages)):
-                        raise ValueError('OCR缺少chi_sim或eng语言数据，未导入')
-                    languages_checked = True
-                pix = page.get_pixmap(dpi=300)
-                with tempfile.TemporaryDirectory() as tmp:
-                    image_path = Path(tmp)/'page.png'
-                    pix.save(image_path)
-                    if ocr_engine == 'rapidocr':
-                        if rapid_reader is None:
-                            from .ocr import RapidReader
-                            rapid_reader = RapidReader()
-                        text = rapid_reader.read(image_path,pix.width,root()/'ocr-audit'/digest/f'{number}.json')
-                    else:
-                        text = subprocess.run(['tesseract',str(image_path),'stdout','-l','chi_sim+eng'], capture_output=True,text=True,check=True,timeout=180).stdout
-                method = 'ocr:'+ocr_engine
+                if not reading_only:
+                    if ocr_engine == 'tesseract' and not languages_checked:
+                        languages = subprocess.run(['tesseract', '--list-langs'], capture_output=True,
+                                                   text=True, check=True, timeout=15).stdout.splitlines()
+                        if not {'chi_sim', 'eng'}.issubset(set(languages)):
+                            raise ValueError('OCR缺少chi_sim或eng语言数据，未导入')
+                        languages_checked = True
+                    pix = page.get_pixmap(dpi=300)
+                    with tempfile.TemporaryDirectory() as tmp:
+                        image_path = Path(tmp)/'page.png'
+                        pix.save(image_path)
+                        if ocr_engine == 'rapidocr':
+                            if rapid_reader is None:
+                                from .ocr import RapidReader
+                                rapid_reader = RapidReader()
+                            text = rapid_reader.read(image_path,pix.width,root()/'ocr-audit'/digest/f'{number}.json')
+                        else:
+                            text = subprocess.run(['tesseract',str(image_path),'stdout','-l','chi_sim+eng'], capture_output=True,text=True,check=True,timeout=180).stdout
+                    method = 'ocr:'+ocr_engine
             target = previews / f'{number}.jpg'
             page.get_pixmap(dpi=110).save(target)
             texts.append((number,text,method))
@@ -66,6 +70,9 @@ def import_pdf(path, key, title, ocr=False, ocr_engine="rapidocr", progress=None
         if existing:
             return existing['id'], False
         book_id = conn.execute('INSERT INTO books(title,kind,object_key,sha256,pages) VALUES(?,?,?,?,?)',(title,kind,key,digest,len(texts))).lastrowid
+        for position, (level, name, target_page) in enumerate(contents, 1):
+            if 1 <= target_page <= len(texts):
+                conn.execute('INSERT INTO book_contents VALUES(?,?,?,?,?)',(book_id,position,name,target_page,level))
         for number,text,method in texts:
             conn.execute('INSERT INTO pages VALUES(?,?,?,?)',(book_id,number,text,method))
             conn.execute('INSERT INTO page_search(text,book_id,page) VALUES(?,?,?)',(text,book_id,number))
@@ -77,13 +84,15 @@ def main():
     parser.add_argument('--key',required=True,help='OSS完整Object名称，含ebooks/或magazines/')
     parser.add_argument('--title',required=True)
     parser.add_argument('--file',type=Path,help='已有本地PDF；省略时从配置的OSS下载')
-    parser.add_argument('--ocr',action='store_true')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--ocr',action='store_true')
+    mode.add_argument('--reading-only',action='store_true',help='只生成阅读预览并提取书签目录，不做OCR')
     parser.add_argument('--ocr-engine',choices=['rapidocr','tesseract'],default='rapidocr')
     args = parser.parse_args()
     if args.key.split('/')[0] not in {'ebooks', 'magazines'} or not args.key.lower().endswith('.pdf'):
         parser.error('仅允许ebooks/或magazines/下的PDF')
     if args.file:
-        print(import_pdf(args.file,args.key,args.title,args.ocr,args.ocr_engine,lambda page,total: print(f'识别 {page}/{total}',flush=True)))
+        print(import_pdf(args.file,args.key,args.title,args.ocr,args.ocr_engine,lambda page,total: print(f'处理 {page}/{total}',flush=True),reading_only=args.reading_only))
         return
     import oss2
     # Credentials only come from the importer environment. Never print signed URLs/keys.
@@ -106,7 +115,7 @@ def main():
             response.close()
         if received != size:
             raise ValueError('下载长度不符，请重试')
-        print(import_pdf(path,args.key,args.title,args.ocr,args.ocr_engine,lambda page,total: print(f'识别 {page}/{total}',flush=True)))
+        print(import_pdf(path,args.key,args.title,args.ocr,args.ocr_engine,lambda page,total: print(f'处理 {page}/{total}',flush=True),reading_only=args.reading_only))
 
 
 if __name__ == '__main__':
