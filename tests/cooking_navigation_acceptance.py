@@ -16,6 +16,17 @@ import uvicorn
 ROOT=Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory() as tmp:
     os.environ['COOKING_LIBRARY_DIR']=str(Path(tmp)/'library')
+    from app.cooking_library.store import database, root
+    # Synthetic three-page book: no customer data, no OCR dependency.
+    import base64
+    jpeg=base64.b64decode('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAgP/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdAAf/2Q==')
+    with database() as conn:
+        conn.execute("INSERT INTO books VALUES(1,'测试样刊','magazines','magazines/test.pdf',?,3)",('a'*64,))
+        for n in range(1,4):
+            conn.execute("INSERT INTO pages VALUES(1,?,'','image')",(n,))
+        conn.execute("INSERT INTO book_contents VALUES(1,1,'P8 测试章节',2,1)")
+    folder=root()/'previews'/('a'*64);folder.mkdir(parents=True)
+    for n in range(1,4):(folder/f'{n}.jpg').write_bytes(jpeg)
     from app.cooking_library.web import create_app
     app=FastAPI()
     app.state.cooking_library_enabled=True
@@ -23,7 +34,9 @@ with tempfile.TemporaryDirectory() as tmp:
     @app.middleware('http')
     async def session(request,call_next):
         request.state.session={'csrf_token':'test-only'}
-        return await call_next(request)
+        response=await call_next(request)
+        response.headers['Content-Security-Policy']="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:"
+        return response
     @app.get('/')
     def home(request:Request):
         return templates.TemplateResponse('base.html',{'request':request})
@@ -59,6 +72,24 @@ with tempfile.TemporaryDirectory() as tmp:
                 page.get_by_label('打开菜单').click()
                 assert page.get_by_role('navigation',name='其他空间').get_by_role('link',name='厨艺资料库').get_attribute('aria-current')=='page'
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'),width
+                page.goto(f'http://127.0.0.1:{port}/cooking/?kind=magazines')
+                page.get_by_role('link',name='测试样刊',exact=True).click()
+                assert page.get_by_role('heading',name='书刊目录').is_visible()
+                page.get_by_role('link',name='P8 测试章节 PDF 2').click()
+                page.wait_for_url('**/pages/2')
+                page.get_by_role('button',name='放大',exact=True).click()
+                assert page.locator('#zoom-label').inner_text()=='125%'
+                page.get_by_role('button',name='适合宽度').click()
+                assert page.locator('#zoom-label').inner_text()=='100%'
+                assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'),width
+                page.get_by_label('页码',exact=True).fill('3')
+                page.get_by_role('button',name='前往',exact=True).click()
+                page.wait_for_url('**/pages/3')
+                page.reload()
+                assert page.get_by_role('link',name='下一页',exact=True).count()==0
+                page.get_by_role('link',name='返回书刊详情').click()
+                page.get_by_role('link',name='继续阅读',exact=True).click()
+                page.wait_for_url('**/pages/3')
                 page.close()
             browser.close()
     finally:

@@ -20,6 +20,7 @@ def database():
         conn.execute('PRAGMA foreign_keys=ON')
         conn.execute('CREATE TABLE IF NOT EXISTS books(id INTEGER PRIMARY KEY,title TEXT NOT NULL,kind TEXT NOT NULL CHECK(kind IN (\'ebooks\',\'magazines\')),object_key TEXT UNIQUE NOT NULL,sha256 TEXT UNIQUE NOT NULL,pages INTEGER NOT NULL)')
         conn.execute('CREATE TABLE IF NOT EXISTS pages(book_id INTEGER REFERENCES books(id),page INTEGER,text TEXT NOT NULL,method TEXT NOT NULL,PRIMARY KEY(book_id,page))')
+        conn.execute('CREATE TABLE IF NOT EXISTS book_contents(book_id INTEGER REFERENCES books(id),position INTEGER,title TEXT NOT NULL,page INTEGER NOT NULL,level INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(book_id,position))')
         # Trigram handles Chinese without splitting recipes into individual characters.
         conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS page_search USING fts5(text,book_id UNINDEXED,page UNINDEXED,tokenize='trigram')")
         yield conn

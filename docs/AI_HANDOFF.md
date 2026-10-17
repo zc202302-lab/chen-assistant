@@ -2,17 +2,19 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 更新时间：2026-10-17（Asia/Shanghai）。工作模式：用户要求先完成书刊阅读第一版，开发与验证中。美国VPS远程OCR方案暂停，未实现或安装worker。云电脑Draft #128、Windows工作继续暂停。
-- 活动分支feat/cooking-reader，基于main 6bfd198286809c7a0b1294780df5f9d3649158a2；PR #160 https://github.com/zc202302-lab/chen-assistant/pull/160；候选功能提交7622ac7c47ee05a39e4f66b312a37664ffb9ac3c。旧feat/cooking-remote-worker只建立过本地分支，未提交功能，已改名。
+- 更新时间：2026-10-17（Asia/Shanghai）。工作模式：用户要求先完成书刊阅读第一版，代码及完整验收完成，进入生产更新与样书目录导入阶段。美国VPS远程OCR方案暂停，未实现或安装worker。云电脑Draft #128、Windows工作继续暂停。
+- 阅读实现分支feat/cooking-reader，交付PR #160 https://github.com/zc202302-lab/chen-assistant/pull/160，最后功能提交7622ac7c47ee05a39e4f66b312a37664ffb9ac3c。基于main 6bfd198286809c7a0b1294780df5f9d3649158a2；PR合并状态从GitHub核对。旧feat/cooking-remote-worker只建立过本地分支，未提交功能，已改名。
 - 最新需求：仿东方美食书刊详情的封面/基本信息/完整目录结构，在小助手查看电子书、杂志，点章节跳转原页。入口继续左上角隐藏菜单，原有业务与顶部导航不改。分类细化、AI总结后续做。
 - 已实现候选：电子书/杂志封面网格、书刊详情目录、前后翻页/实际PDF页码跳转、50%～250%缩放/适合宽度、本浏览器阅读进度/继续阅读；独立book_contents幂等建表。阅读导入--reading-only不调用OCR；自动提取PDF书签；已有书目录维护CLI可按匹配SHA的PDF或已校对JSON事务替换。无网页上传/目录编辑器/自动OSS同步。
 - 原PDF仍在青岛私有OSS；阅读沿用服务器110dpi JPEG预览，不引入OSS公开访问或主站新依赖。OCR关键词搜索保留，不声称图片书可全文搜索。阅读进度仅当前浏览器，不跨设备同步；缩放不会提高预览原始清晰度。
 - 目录证据：webdownload当前main 8bc982f48d9ab19de5669b70257ea0c5d344fbd5的collector.build_pdf会在传入outline时写PDF书签；不能外推所有采集模式。已提供98页样书无PDF书签（本轮实际读取get_toc为空），真实目录需另外校对导入，不能伪造目录或推断印刷页码。
-- 本地测试：旧资料库契约、阅读模式/书签与目录原子校验、新旧路由清单、架构治理、稳定性通过；JS语法检查通过。新增浏览器验收覆盖320/390/768/1440、目录跳页/放大复位/跳页/刷新与继续阅读；本机Chromium下载损坏，等待CI真实浏览器结果，未宣称浏览器已通过或已部署。
+- 验证：功能head7622ac7c47ee05a39e4f66b312a37664ffb9ac3c完整validation39010930293/job117333111594、资料库隔离39010930316、稳定性39010930292全部success。真实Chromium320/390/768/1440目录跳页、缩放复位、页码跳转、刷新和继续阅读全部通过，原有所有客户/缴费/清单/号码收集/远程资料/导航/安全与兼容性回归通过；本地原契约与新增阅读契约、JS语法亦通过。后续仅交接文档同步不得冒充新的功能受检head。
 - 生产仍为已启用首版资料库与98页样书，健康Web1.7.19、用户原页显示截图已验证；本轮未改版本号，未安装阅读新版，精确生产SHA未知。生产/opt/chen-assistant以chenassistant运行，未跟踪app/static/win-assistants/必须保留。
 - 核心app/cooking_library/{web,store,import_book,contents}.py、templates/{index,book,page}.html、reader.js、style.css，tests/cooking_reader_contract.py、cooking_navigation_acceptance.py、docs/COOKING_LIBRARY.md与独立路由清单。本地/workspace/scratch/3b63417353f2/chen-assistant。
 - 美国机器截图Ubuntu24.04、2核/1.9GiB、可用约1.3GiB、34GiB盘余22GiB，GitHubRunner/WARP/x-ui运行；无授权删除既有服务。此架构不再是当前实施重点。
-- 唯一下一步：提交PR并完成完整CI与手机/桌面真实浏览器验证，通过后交付阅读版并补真实书刊目录/核验生产；GitHub提交、CI、生产安装分别记录。
+- 样书目录：人工对照纸面目录整理47项，逐项绑定PDF页码；同页双条目、页码偏移已核对，标题识别异常位置已看原图。私有文件cooking_sample_579_contents.json已保存可供用户下载；未提交书刊原文/图像/真实数据库或目录内容到公开仓库。本地副本47个目录目标及JPEG接口、首末页/越界均通过，所有旧books/pages/page_search行与原ZIP逐行一致，SQLite完整性ok。生产尚未导入47项目录。
+- 部署预检job117333111790明确LOCAL_PRODUCTION_AVAILABLE=no、REMOTE_DEPLOY_SECRETS=incomplete；本会话无法直接操作青岛生产。不得把代码合并、CI成功或既有部署timer推断为新阅读器已上线。
+- 唯一下一步：完成PR合并后，用户在青岛执行bash /opt/chen-assistant/deploy.sh更新服务，再向现有样书校验SHA后导入47项目录，登录核验封面→详情→目录跳页→继续阅读。当前无美国VPS安装任务。
 
 ## 上一阶段快照（历史：资料库首版与样书验收）
 
