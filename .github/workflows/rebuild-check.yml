@@ -116,8 +116,8 @@ jobs:
             echo "LD_LIBRARY_PATH=${portable_libs}:${LD_LIBRARY_PATH:-}" >> "${GITHUB_ENV}"
           fi
 
-      - name: Cooking navigation desktop and mobile
-        run: python tests/cooking_navigation_acceptance.py
+      - name: Assistant navigation desktop and mobile
+        run: python tests/assistant_navigation_acceptance.py
 
       - name: Fast UI contracts
         if: steps.scope.outputs.mode == 'fast'
