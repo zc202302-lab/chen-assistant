@@ -2,6 +2,9 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 书刊独立站最新入口（2026-10-17）：用户已创建 https://github.com/zc202302-lab/chen-cook 并要求在该仓库部署cook.ziboxiaozhushou.cn。新仓库首版功能head04bf866085d33c96400b7b0162fa25270d4c1fd6的CI39016038873全部success，含8项测试和四宽度真实浏览器。独立站代码/部署配置已提交，青岛首次安装、DNS/HTTPS与真实OSS仍待用户执行验证；不可说已上线。后续开发读取chen-cook/docs/AI_HANDOFF.md，不在小助手重加书刊功能。小助手自身本次移除的现网更新结果仍未知。
+
+
 - 更新时间：2026-10-17 （Asia/Shanghai）；工作模式：小助手内书刊模块移除代码完成、完整CI通过且已合并，等待青岛现网更新与实际验证。后续独立网站域名cook.ziboxiaozhushou.cn，拟共用青岛服务器与原私有OSS；尚未创建/部署独立新站、操作DNS或配置新站自动部署。美国OCR、Windows和云电脑Draft #128仍暂停。
 - 移除分支remove/cooking-library已完成，无未合并功能WIP；PR #161 https://github.com/zc202302-lab/chen-assistant/pull/161已合并，最后功能提交4546ddecaec66d04acfd5fde580b57737b210540，合并提交4db054a5d8b4c6bd6332f34d58b1262c5031ebd9。旧PR #159/#160均为历史已合并，不再继续开发小助手内书刊功能。
 - 已合并移除：隐藏菜单资料库入口、app/main.py的/cooking子应用挂载、app/cooking_library完整源码、独立路由清单；撤下已移出功能的OCR/导入/阅读测试，改用移除回归和原导航浏览器验收。原业务完整CI、架构、路由、稳定性和导航检查保留，非为通过CI弱化测试。主requirements和APP_VERSION1.7.19不变。
