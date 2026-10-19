@@ -2,9 +2,10 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 工作模式：2026-10-19业务保存后交互失效核查中。用户明确：修改属性后鼠标点击“保存并关闭”会失去单击复制/双击编辑，通过回车保存有效。活动分支fix/business-mouse-save-interactions，Draft PR #162 https://github.com/zc202302-lab/chen-assistant/pull/162，基线main235b6dae84b9eb177d6717d502b9ee1bcaaeb374，尚未修改运行代码或部署。截图显示生产1.7.19；旧PR #157透明提示层修复已在基线，不重复推断为根因。
-- 已核对：实际表单提交owner为v03.js，v028兼容bubble保存被capture阻止；business-editor-hotfix.js未在当前页面加载，不拿死入口猜原因。v03保存前替换全部业务属性节点，再关闭dialog；可能破坏modal记住的焦点节点，正在新增鼠标/回车对照与节点恢复验收，不把推测描述成已证实根因。本地浏览器下载损坏，真实浏览器验证使用CI；附件图片已读取，EXE/XLSM不修改。
-- 唯一下一步：提交Draft PR和对照回归，定位并修复实际路径，完整CI后按既有授权部署验证。Windows、云电脑#128、美国代理保持原暂停/不清理；书刊只在独立chen-cook继续，不在小助手恢复模块。
+- 工作模式：2026-10-19业务保存后交互恢复修复中。用户明确鼠标“保存并关闭”后复制/双击失效、回车有效。活动分支fix/business-mouse-save-interactions，Draft PR #162 https://github.com/zc202302-lab/chen-assistant/pull/162，基线235b6dae84b9eb177d6717d502b9ee1bcaaeb374；候选Web1.7.20，未部署，截图生产1.7.19。Windows、云电脑#128和美国代理保持暂停/不清理，书刊只在chen-cook开发。
+- 基线证据：只改测试的ce6d87755512fbd2d2378b69d43042f1f16d3d5a，CI39214327463 / job117934557869真实浏览器在首轮鼠标保存后失败：modal opener已被移除，focus退到body。确认了保存销毁焦点节点的问题，不宣称已复现所有用户偶发症状。实际owner v03.js，v028兼容bubble被capture阻止，business-editor-hotfix.js未加载；旧提示层pointer-events修复保留。
+- 修复：v03.js按key更新/复用属性节点；保存成功先恢复按钮、关闭modal再更新业务/触发缴费等面板刷新；鼠标提交按钮先释放焦点，增加保存重入保护。缓存参数1720及APP_VERSION/deploy期望1.7.20同步。扩充原浏览器回归：三轮鼠标+三轮Enter、modal焦点、真实剪贴板、关闭重开、延迟请求重入；原提示层命中测试保留。完整修复CI待验证；本地架构、显示设置、旧v03、生产体验、版本及语法通过。本地Chromium下载损坏，浏览器证据使用CI。图片已读取，EXE/XLSM不修改，无真实客户信息入库。
+- 唯一下一步：推送运行修复，完成全部CI后按既有授权合并部署并核验公网；用户实际环境重测另记，不用CI替代。
 
 ## 上一阶段快照（历史：书刊移出小助手）
 
