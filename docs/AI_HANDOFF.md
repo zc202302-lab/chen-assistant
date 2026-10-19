@@ -2,10 +2,13 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 工作模式：2026-10-19业务保存后交互恢复修复中。用户明确鼠标“保存并关闭”后复制/双击失效、回车有效。活动分支fix/business-mouse-save-interactions，Draft PR #162 https://github.com/zc202302-lab/chen-assistant/pull/162，基线235b6dae84b9eb177d6717d502b9ee1bcaaeb374；候选Web1.7.20，未部署，截图生产1.7.19。Windows、云电脑#128和美国代理保持暂停/不清理，书刊只在chen-cook开发。
+- 工作模式：2026-10-19 15:31（Asia/Shanghai）本轮修复与部署完成。用户明确鼠标“保存并关闭”后复制/双击失效、回车有效。PR #162 https://github.com/zc202302-lab/chen-assistant/pull/162 已合并，main功能提交3bd9a7a2168a27f1d022567773bb6f3183ea0a06；Web1.7.20已实际公网核验。fix/business-mouse-save-interactions为已完成历史分支，无本次未合并WIP。用户实际环境重测待反馈。Windows、云电脑#128和美国代理保持暂停/不清理，书刊只在chen-cook开发。
 - 基线证据：只改测试的ce6d87755512fbd2d2378b69d43042f1f16d3d5a，CI39214327463 / job117934557869真实浏览器在首轮鼠标保存后失败：modal opener已被移除，focus退到body。确认了保存销毁焦点节点的问题，不宣称已复现所有用户偶发症状。实际owner v03.js，v028兼容bubble被capture阻止，business-editor-hotfix.js未加载；旧提示层pointer-events修复保留。
-- 修复：v03.js按key更新/复用属性节点；保存成功先恢复按钮、关闭modal再更新业务/触发缴费等面板刷新；鼠标提交按钮先释放焦点，增加保存重入保护。缓存参数1720及APP_VERSION/deploy期望1.7.20同步。扩充原浏览器回归：三轮鼠标+三轮Enter、modal焦点、真实剪贴板、关闭重开、延迟请求重入；原提示层命中测试保留。完整修复CI待验证；本地架构、显示设置、旧v03、生产体验、版本及语法通过。本地Chromium下载损坏，浏览器证据使用CI。图片已读取，EXE/XLSM不修改，无真实客户信息入库。
-- 唯一下一步：推送运行修复，完成全部CI后按既有授权合并部署并核验公网；用户实际环境重测另记，不用CI替代。
+- 修复：v03.js按key更新/复用属性节点；保存成功先恢复按钮、关闭modal再更新业务/触发缴费等面板刷新；鼠标提交按钮先释放焦点，增加保存重入保护。缓存参数1720及APP_VERSION/deploy期望1.7.20同步。原号码/账号复制限制、其他属性双击编辑、日期/缴费规则保持。
+- 完整受检head94bd237340e2b0cde48daa8c511e3db8f2b76999：validation39214692177 / validate117935712253与preflight117935711927 success，stability39214692219与assistant module isolation39214691985 success。新增三轮鼠标+三轮Enter、modal焦点与节点连续性、真实剪贴板、立即双击重开、150ms请求延迟期间重复提交；原提示层命中及全部历史业务/缴费/导入/号码/实时刷新/安全/桌面手机检查保留并通过。日志07:17:21 UTC明确mouse and Enter saves, focus restoration通过。本地架构、显示设置、旧v03、生产体验、版本与语法通过；本地Chromium下载损坏，不宣称本地浏览器通过。
+- GitHub对象核对：受检94bd237与合并3bd9a7a的tree均fbdf5182cf93dc057c31c514a4abb2f51596b0b0，文件完全一致。main独立stability39216242848 / job117940655692 success；main重复完整validation39216243011未宣称结束，最终仅文档提交可能取消/重跑它，不替代上述完整受检head证据。
+- 公网39216242873 / job117940655640 success，日志2026-10-19 15:30:47（Asia/Shanghai）ONLINE VERIFIED v1.7.20，health版本、含v03.js的全部受检静态资源、PWA、提醒鉴权与号码收集域名边界全部通过。前三次仍1.7.19，第四次真实验证1.7.20。preflight实际LOCAL_PRODUCTION_AVAILABLE=no / REMOTE_DEPLOY_SECRETS=incomplete，不把本次公网更新说成会话SSH直推；不从health/静态资源推断精确生产backend SHA。没有登录或写入生产客户数据。截图已本地读取，EXE/XLSM未修改，不记录真实客户原始信息。
+- 唯一下一步：用户Ctrl+F5刷新一次确认左上角1.7.20，重测修改属性后按钮保存、号码/账号复制及各属性双击；回车路径保持。若仍出现偶发失效，继续核对实际点击命中/焦点与浏览器版本，不把此次节点/焦点缺陷推断成所有症状的唯一根因。固定接管docs/PROJECT_CONTEXT.md与本快照；目录/workspace/scratch/75165f63b510/chen-assistant。
 
 ## 上一阶段快照（历史：书刊移出小助手）
 
