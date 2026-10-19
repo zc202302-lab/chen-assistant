@@ -57,9 +57,11 @@ def main():
             page.goto(base + f'/customers/{cid}?tab=services', wait_until='networkidle')
             row = page.locator(f'[data-business-row][data-service-id="{sid}"]')
             editor = page.locator('#businessAttributeDialog')
-            for turn in range(3):
+            for turn in range(6):
                 row.locator('[data-attr-key="number"]').dblclick()
                 expect(editor).to_be_visible()
+                page.evaluate('''sid => {window.__saveOpener = document.querySelector(
+                    `[data-business-row][data-service-id="${sid}"] [data-attr-key="number"]`);}''', sid)
                 expect(editor.locator('[data-v031-payment-mode]')).to_be_enabled()
                 number = f'00138000000{turn}'
                 account = f'00053380000{turn}'
@@ -68,9 +70,16 @@ def main():
                 editor.locator('[data-key="notes"] .attr-value').fill(f'真实保存{turn}')
                 with page.expect_response(lambda r: r.url.endswith('/status-v03')
                         and r.request.method == 'POST') as saved:
-                    editor.locator('[data-business-attribute-form] button[type="submit"]').click()
+                    if turn < 3:
+                        editor.locator('[data-business-attribute-form] button[type="submit"]').click()
+                    else:
+                        editor.locator('[data-key="account"] .attr-value').press('Enter')
                 assert saved.value.ok
                 expect(editor).not_to_be_visible()
+                assert page.evaluate('window.__saveOpener.isConnected'), {
+                    'mode': 'mouse' if turn < 3 else 'enter',
+                    'error': 'saving removed the modal opener before focus could be restored',
+                    'focus': page.evaluate('document.activeElement?.outerHTML.slice(0,200)')}
                 keys = row.locator('.business-attribute').evaluate_all('els => els.map(el => el.dataset.attrKey)')
                 assert keys == SELECTED, {'turn': turn, 'keys': keys, 'errors': errors}
                 for key, value in [('number', number), ('account', account)]:
