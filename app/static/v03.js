@@ -578,28 +578,40 @@
       if (!card) return;
       const grid = card.querySelector('[data-business-attrs]');
       if (grid) {
-        grid.innerHTML = '';
-        (payload.preview_attributes || []).forEach(attr => {
-          const box = document.createElement('div');
-          box.className = 'business-attribute';
+        // Keep the modal opener and other unchanged cells connected. Replacing
+        // them during save discards native focus restoration and pending gestures.
+        const existing = new Map([...grid.querySelectorAll('.business-attribute')]
+          .map(box => [box.dataset.attrKey, box]));
+        const kept = new Set();
+        (payload.preview_attributes || []).forEach((attr, index) => {
+          const box = existing.get(attr.key) || document.createElement('div');
+          box.classList.add('business-attribute');
           box.dataset.attrKey = attr.key || '';
           box.title = `${attr.label || '属性'}：${attr.value || '—'} · 双击编辑`;
-          const small = document.createElement('small');
-          small.textContent = attr.label || '属性';
-          const strong = document.createElement('strong');
-          strong.textContent = attr.value || '—';
-          box.append(small, strong);
-          grid.appendChild(box);
+          let small = box.querySelector('small');
+          let strong = box.querySelector('strong');
+          if (!small || !strong) {
+            small = document.createElement('small');
+            strong = document.createElement('strong');
+            box.replaceChildren(small, strong);
+          }
+          if (small.textContent !== (attr.label || '属性')) small.textContent = attr.label || '属性';
+          if (strong.textContent !== (attr.value || '—')) strong.textContent = attr.value || '—';
+          if (grid.children[index] !== box) grid.insertBefore(box, grid.children[index] || null);
+          kept.add(box);
         });
+        [...grid.children].forEach(box => { if (!kept.has(box)) box.remove(); });
       }
       if (payload.due !== undefined) card.dataset.filterDue = payload.due ? '1' : '0';
     });
     fitBusiness();
   };
 
+  let businessSaving = false;
   businessForm?.addEventListener('submit', async e => {
     e.preventDefault();
     e.stopImmediatePropagation();
+    if (businessSaving) return;
     const sid = String(businessForm.elements.service_id?.value || '').trim();
     if (!sid || !attrList) return toast('未识别到当前业务');
     const template = [];
@@ -620,6 +632,8 @@
     if (invalid || !template.length) return toast('属性名称不能为空，且至少保留一个属性');
 
     const submit = businessForm.querySelector('button[type="submit"]');
+    businessSaving = true;
+    if (document.activeElement === submit) submit.blur();
     submit.disabled = true;
     try {
       const attrFd = new FormData();
@@ -633,13 +647,17 @@
       statusFd.append('csrf', businessForm.elements.csrf.value);
       statusFd.append('status', businessDialog.querySelector('[data-v03-business-enabled]')?.value || 'active');
       const statusData = await postForm(`/services/${sid}/status-v03`, statusFd);
+      // Finish the native modal/focus lifecycle before refreshing any opener
+      // in the business, payment or promotion panels.
+      submit.disabled = false;
+      businessDialog.close();
       updateBusinessRows(statusData.rows || {});
       root.dispatchEvent(new CustomEvent('chen:service-properties-updated', {detail:{rows:attrData.rows || {}}}));
-      businessDialog.close();
       toast('业务已保存');
     } catch (err) {
       toast(err.message || '业务保存失败');
     } finally {
+      businessSaving = false;
       submit.disabled = false;
     }
   }, true);
