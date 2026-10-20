@@ -15,7 +15,7 @@ def main():
     for invalid in ({}, {'common':['customers'],'auxiliary':[]}, {'common':[1],'auxiliary':[]},
                     {'common':DEFAULT_ENTRY_LAYOUT['common']*2,'auxiliary':DEFAULT_ENTRY_LAYOUT['auxiliary']}):
         assert client.post('/work/entry-layout',data={'csrf':csrf,'layout':json.dumps(invalid)}).status_code == 400
-    layout = {'common':['numbers', 'lists'], 'auxiliary':['search','products','library','customers','all_customers','payment','promos']}
+    layout = {'common':['numbers', 'lists', 'processes'], 'auxiliary':['search','products','library','customers','all_customers','payment','promos']}
     result = client.post('/work/entry-layout', data={'csrf':csrf,'layout':json.dumps(layout)})
     assert result.json()['ok']
     fresh = TestClient(app);fresh.cookies.set('session_token',token)
@@ -30,6 +30,11 @@ def main():
         conn.execute('INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)', (LAYOUT_KEY,json.dumps(legacy)))
         assert entry_layout(conn) == layout
     assert '/work/customers?home=payment' in page and '/work/customers?home=promos' in page
+    assert '/work/processes' in page
+    previous = {'common':['numbers','lists'], 'auxiliary':['search','products','library','customers','all_customers','payment','promos']}
+    with db() as conn:
+        conn.execute('UPDATE app_meta SET value=? WHERE key=?', (json.dumps(previous), LAYOUT_KEY))
+        assert entry_layout(conn) == layout
     print('work entry authenticated layout persistence, exact-key validation, ordering and left header passed')
 
 

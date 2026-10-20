@@ -1,5 +1,117 @@
 [
   {
+    "path": "/work/processes",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_list"
+  },
+  {
+    "path": "/work/processes/new",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_new"
+  },
+  {
+    "path": "/work/processes/new",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_create"
+  },
+  {
+    "path": "/work/processes/{process_id}/edit",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_edit"
+  },
+  {
+    "path": "/work/processes/{process_id}/edit",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_update"
+  },
+  {
+    "path": "/work/processes/{process_id}",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_detail"
+  },
+  {
+    "path": "/work/processes/{process_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_delete"
+  },
+  {
+    "path": "/work/processes/{process_id}/steps/new",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_step_new"
+  },
+  {
+    "path": "/work/processes/{process_id}/steps/{step_id}/edit",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_step_edit"
+  },
+  {
+    "path": "/work/processes/{process_id}/steps/new",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_step_create"
+  },
+  {
+    "path": "/work/processes/{process_id}/steps/{step_id}/edit",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_step_update"
+  },
+  {
+    "path": "/work/processes/{process_id}/steps/{step_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_step_delete"
+  },
+  {
+    "path": "/work/processes/{process_id}/steps/{step_id}/move",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_step_move"
+  },
+  {
+    "path": "/work/processes/images/{image_id}",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.business_process_routes",
+    "name": "process_image"
+  },
+  {
     "path": "/number-submit/mini/submit",
     "methods": ["POST"],
     "module": "app.number_collection_api",

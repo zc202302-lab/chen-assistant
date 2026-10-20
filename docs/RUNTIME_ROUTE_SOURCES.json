@@ -1,5 +1,117 @@
 [
   {
+    "path": "/work/processes",
+    "methods": [
+      "GET"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_list"
+  },
+  {
+    "path": "/work/processes/new",
+    "methods": [
+      "GET"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_new"
+  },
+  {
+    "path": "/work/processes/new",
+    "methods": [
+      "POST"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_create"
+  },
+  {
+    "path": "/work/processes/{process_id}/edit",
+    "methods": [
+      "GET"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_edit"
+  },
+  {
+    "path": "/work/processes/{process_id}/edit",
+    "methods": [
+      "POST"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_update"
+  },
+  {
+    "path": "/work/processes/{process_id}",
+    "methods": [
+      "GET"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_detail"
+  },
+  {
+    "path": "/work/processes/{process_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_delete"
+  },
+  {
+    "path": "/work/processes/{process_id}/steps/new",
+    "methods": [
+      "GET"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_step_new"
+  },
+  {
+    "path": "/work/processes/{process_id}/steps/{step_id}/edit",
+    "methods": [
+      "GET"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_step_edit"
+  },
+  {
+    "path": "/work/processes/{process_id}/steps/new",
+    "methods": [
+      "POST"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_step_create"
+  },
+  {
+    "path": "/work/processes/{process_id}/steps/{step_id}/edit",
+    "methods": [
+      "POST"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_step_update"
+  },
+  {
+    "path": "/work/processes/{process_id}/steps/{step_id}/delete",
+    "methods": [
+      "POST"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_step_delete"
+  },
+  {
+    "path": "/work/processes/{process_id}/steps/{step_id}/move",
+    "methods": [
+      "POST"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_step_move"
+  },
+  {
+    "path": "/work/processes/images/{image_id}",
+    "methods": [
+      "GET"
+    ],
+    "source": "business_process_routes.py",
+    "qualname": "process_image"
+  },
+  {
     "path": "/number-submit/mini/submit",
     "methods": ["POST"],
     "source": "number_collection_api.py",

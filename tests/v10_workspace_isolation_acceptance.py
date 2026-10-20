@@ -137,7 +137,8 @@ def main():
             for width in (1450, 768, 390, 320):
                 page.set_viewport_size({'width': width, 'height': 950})
                 cards = page.locator('.work-launcher .work-entry-tile')
-                expect(cards).to_have_count(9)
+                expect(cards).to_have_count(10)
+                expect(page.locator('[data-entry-key=processes] a')).to_have_attribute('href', '/work/processes')
                 boxes = [card.bounding_box() for card in cards.all()]
                 for card, box in zip(cards.all(), boxes):
                     assert box and abs(box['width'] - box['height']) <= 2, (width, box)

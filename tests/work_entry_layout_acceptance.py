@@ -35,7 +35,8 @@ def main():
             previews=ROOT/'artifacts'/'number-inbox-batch';previews.mkdir(parents=True,exist_ok=True)
             for width in [1440,768,390,320]:
                 page.set_viewport_size({'width':width,'height':1000})
-                tiles=page.locator('.work-entry-tile');expect(tiles).to_have_count(9)
+                tiles=page.locator('.work-entry-tile');expect(tiles).to_have_count(10)
+                expect(page.locator('[data-entry-key=processes] a')).to_have_attribute('href', '/work/processes')
                 boxes=[t.bounding_box() for t in tiles.all()]
                 for box in boxes:assert box and abs(box['width']-box['height'])<2 and box['width']<=146
                 assert len(set(round(b['width']) for b in boxes))==1
@@ -60,12 +61,14 @@ def main():
             page.get_by_role('button',name='编辑模块').click()
             handle=page.locator('[data-entry-key=numbers] [data-entry-handle]')
             handle.focus();handle.press('Space');handle.press('ArrowLeft')
+            assert page.locator('[data-entry-zone=common] [data-entry-key]').evaluate_all('(els)=>els.map(e=>e.dataset.entryKey)') == ['customers','library','lists','numbers','processes']
+            handle.press('ArrowLeft')
             expect(page.locator('[data-entry-zone=common] [data-entry-key=numbers]')).to_have_count(1)
             page.get_by_role('button',name='保存布局').click()
             expect(page.locator('[data-entry-feedback]')).to_have_text('布局已保存')
             page.reload(wait_until='networkidle')
             keys=page.locator('[data-entry-zone=common] [data-entry-key]').evaluate_all('(els)=>els.map(e=>e.dataset.entryKey)')
-            assert keys==['customers','library','numbers','lists'],keys
+            assert keys==['customers','library','numbers','lists','processes'],keys
             # Saved layout survives a fresh browser session.
             fresh=browser.new_context();fresh.add_cookies([{'name':'session_token','value':session,'url':base}])
             fresh_page=fresh.new_page();fresh_page.goto(base+'/work',wait_until='networkidle')

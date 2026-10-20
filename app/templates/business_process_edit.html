@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ '编辑' if item.title else '新建' }}{{ '步骤' if mode=='step' else '流程' }} · 业务流程{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/business-processes.css?v=1721">
+<section class="v10-shell bp-shell bp-edit">
+  <a class="v10-back" href="{{ '/work/processes/' ~ process.id if process else '/work/processes' }}">← {{ process.title if process else '全部业务流程' }}</a>
+  <header class="bp-heading"><div><span class="bp-eyebrow">{{ '逐步记录操作方法' if mode=='step' else '整理可复用的工作方法' }}</span><h1>{{ '编辑' if item.title else '新建' }}{{ '步骤' if mode=='step' else '流程' }}</h1></div></header>
+  {% if error %}<div class="bp-error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" enctype="multipart/form-data" class="bp-form" data-process-editor>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% if process %}<input type="hidden" name="revision" value="{{ item.revision }}">{% endif %}
+    <label>{{ '步骤名称' if mode=='step' else '流程名称' }}<input name="title" value="{{ item.title or '' }}" required maxlength="120" placeholder="{{ '例如：提交受理申请' if mode=='step' else '例如：集团成员新增办理流程' }}"></label>
+    <label>文字说明<textarea name="description" rows="9" maxlength="20000" placeholder="{{ '记录需要做什么、如何操作，以及注意事项。' if mode=='step' else '简要说明适用场景、办理条件与准备材料。具体操作在后续步骤中填写。' }}">{{ item.description or '' }}</textarea></label>
+    {% if mode=='step' %}
+      <section><h2>步骤配图</h2><p class="bp-muted">支持PNG、JPEG、WebP静态图片，单张最多8MB；每次最多添加12张，一次保存最多32MB。</p>
+        {% if images %}<div class="bp-image-edit">{% for photo in images %}<figure><a href="/work/processes/images/{{ photo.id }}" target="_blank" rel="noopener"><img src="/work/processes/images/{{ photo.id }}" alt="已保存的步骤配图{{ loop.index }}"></a><label><input type="checkbox" name="remove_images" value="{{ photo.id }}">删除此配图</label></figure>{% endfor %}</div>{% endif %}
+        <label class="bp-upload">添加配图<input type="file" name="images" accept="image/png,image/jpeg,image/webp" multiple data-process-images></label>
+        <div class="bp-error" data-image-error hidden role="alert"></div><div class="bp-image-edit" data-image-preview></div>
+      </section>
+    {% endif %}
+    <div class="bp-form-actions"><a href="{{ '/work/processes/' ~ process.id if process else '/work/processes' }}">取消</a><button class="bp-primary" type="submit">{{ '保存步骤' if mode=='step' else '保存流程' }}</button></div>
+  </form>
+</section>
+<script src="/static/business-processes.js?v=1721"></script>
+{% endblock %}
