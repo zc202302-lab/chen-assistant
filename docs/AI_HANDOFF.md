@@ -2,6 +2,13 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 工作模式：2026-10-20业务流程模块开发中。用户要求工作空间新增业务流程，含流程名称、分步文字说明和配图，可随时编辑、增删。活动分支feat/business-processes，基于main8ad32b16761b4c258464f21c7658a24c37ea4c54，候选1.7.21，尚未部署；最近现网已核验1.7.20。已有开发/推送/部署授权有效，Windows/云电脑#128/美国代理保持原暂停状态，书刊独立chen-cook不变。
+- 已实现：工作入口processes及旧自定义布局增量迁移，流程列表/搜索、分步阅读/目录、流程和步骤增删改、步骤上移下移、多配图上传/移除与预览。三张SQLite表及runtime schema登记；图片登录鉴权，校验/重编码WebP去元数据，不依赖现有远程资料服务；8MB单图/32MB请求体/每次12张，csrf和revision防覆盖，删除事务级联无孤立图片。路由两份清单已更新。原业务/号码/缴费规则未修改。
+- 本地新模块HTTP契约通过：登录、CSRF、CRUD、步骤顺序、搜索、图片鉴权/解码、伪造图片、大小限制、跨步骤删除拒绝、过期编辑冲突与回滚、级联删除。浏览器与完整CI待验证，不宣称已上线。核心app/business_processes.py、business_process_routes.py、模板/静态business-process*、work_architecture.py及tests/business_process*；目录/workspace/scratch/75165f63b510/chen-assistant。附件不修改。
+- 唯一下一步：推送Draft PR、完整接口/浏览器/安全/架构回归，通过后合并部署1.7.21并实际核验公网，再交付使用入口。
+
+## 上一阶段快照（历史：Web1.7.20业务保存修复已部署）
+
 - 工作模式：2026-10-19 15:31（Asia/Shanghai）本轮修复与部署完成。用户明确鼠标“保存并关闭”后复制/双击失效、回车有效。PR #162 https://github.com/zc202302-lab/chen-assistant/pull/162 已合并，main功能提交3bd9a7a2168a27f1d022567773bb6f3183ea0a06；Web1.7.20已实际公网核验。fix/business-mouse-save-interactions为已完成历史分支，无本次未合并WIP。用户实际环境重测待反馈。Windows、云电脑#128和美国代理保持暂停/不清理，书刊只在chen-cook开发。
 - 基线证据：只改测试的ce6d87755512fbd2d2378b69d43042f1f16d3d5a，CI39214327463 / job117934557869真实浏览器在首轮鼠标保存后失败：modal opener已被移除，focus退到body。确认了保存销毁焦点节点的问题，不宣称已复现所有用户偶发症状。实际owner v03.js，v028兼容bubble被capture阻止，business-editor-hotfix.js未加载；旧提示层pointer-events修复保留。
 - 修复：v03.js按key更新/复用属性节点；保存成功先恢复按钮、关闭modal再更新业务/触发缴费等面板刷新；鼠标提交按钮先释放焦点，增加保存重入保护。缓存参数1720及APP_VERSION/deploy期望1.7.20同步。原号码/账号复制限制、其他属性双击编辑、日期/缴费规则保持。
