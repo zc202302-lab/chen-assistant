@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}业务流程 · 晨的助手{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/business-processes.css?v=1721">
+<section class="v10-shell bp-shell">
+  <a class="v10-back" href="/work">← 工作空间</a>
+  <header class="bp-heading"><div><span class="bp-eyebrow">工作知识库</span><h1>业务流程</h1><p>把操作方法整理成清晰的步骤，随时查阅与更新。</p></div><a class="bp-primary" href="/work/processes/new">＋ 新建流程</a></header>
+  <form class="bp-search" method="get"><input name="q" value="{{ q }}" placeholder="搜索流程名称、说明或步骤" aria-label="搜索业务流程"><button>搜索</button>{% if q %}<a href="/work/processes">清除</a>{% endif %}</form>
+  <div class="bp-list">
+  {% for item in items %}
+    <a class="bp-process-card" href="/work/processes/{{ item.id }}"><div class="bp-card-icon" aria-hidden="true">↳</div><div><h2>{{ item.title }}</h2><p>{{ item.description or '尚未填写流程说明' }}</p><small>{{ item.step_count }} 个步骤 · 随时编辑更新</small></div><span aria-hidden="true">→</span></a>
+  {% else %}
+    <div class="bp-empty"><h2>{{ '没有匹配的流程' if q else '建立你的第一份业务流程' }}</h2><p>{{ '换一个关键词试试。' if q else '先填写流程名称，再逐步添加说明与配图。' }}</p>{% if not q %}<a class="bp-primary" href="/work/processes/new">新建流程</a>{% endif %}</div>
+  {% endfor %}
+  </div>
+</section>
+{% endblock %}

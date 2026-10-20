@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ process.title }} · 业务流程{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/business-processes.css?v=1721">
+<section class="v10-shell bp-shell">
+  <a class="v10-back" href="/work/processes">← 全部业务流程</a>
+  <header class="bp-heading"><div><span class="bp-eyebrow">业务流程 · {{ steps|length }} 个步骤</span><h1>{{ process.title }}</h1></div><div class="bp-toolbar"><a href="/work/processes/{{ process.id }}/edit">编辑流程信息</a><a class="bp-primary" href="/work/processes/{{ process.id }}/steps/new">＋ 添加步骤</a></div></header>
+  {% if process.description %}<div class="bp-intro bp-text">{{ process.description }}</div>{% endif %}
+  <div class="bp-reader">
+    {% if steps %}<aside class="bp-toc"><h2>步骤目录</h2>{% for step in steps %}<a href="#step-{{ step.id }}"><span>{{ loop.index }}</span>{{ step.title }}</a>{% endfor %}</aside>{% endif %}
+    <div class="bp-steps">
+    {% for step in steps %}
+      <article class="bp-step" id="step-{{ step.id }}" data-process-step="{{ step.id }}">
+        <header class="bp-step-head"><span class="bp-step-number">{{ loop.index }}</span><h2>{{ step.title }}</h2><details class="bp-actions"><summary>操作</summary><div><a href="/work/processes/{{ process.id }}/steps/{{ step.id }}/edit">编辑步骤</a>
+          {% for direction,label,disabled in [('up','上移',loop.first),('down','下移',loop.last)] %}<form method="post" action="/work/processes/{{ process.id }}/steps/{{ step.id }}/move"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ process.revision }}"><input type="hidden" name="direction" value="{{ direction }}"><button {% if disabled %}disabled{% endif %}>{{ label }}</button></form>{% endfor %}
+          <form method="post" action="/work/processes/{{ process.id }}/steps/{{ step.id }}/delete" data-confirm="确定删除此步骤及其配图吗？"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ process.revision }}"><button class="bp-danger">删除步骤</button></form>
+        </div></details></header>
+        {% if step.description %}<div class="bp-text">{{ step.description }}</div>{% endif %}
+        {% if step.images %}<div class="bp-images">{% for photo in step.images %}<a href="/work/processes/images/{{ photo.id }}" target="_blank" rel="noopener"><img src="/work/processes/images/{{ photo.id }}" loading="lazy" alt="{{ step.title }}，配图{{ loop.index }}"><span>配图 {{ loop.index }} · 点击查看原尺寸</span></a>{% endfor %}</div>{% endif %}
+      </article>
+    {% else %}<div class="bp-empty"><h2>从第一个步骤开始</h2><p>填写操作说明，配上截图，让流程更容易照着执行。</p><a class="bp-primary" href="/work/processes/{{ process.id }}/steps/new">添加第一个步骤</a></div>{% endfor %}
+    </div>
+  </div>
+  <footer class="bp-footer"><a href="/work/processes">返回流程列表</a><form method="post" action="/work/processes/{{ process.id }}/delete" data-confirm="确定永久删除整个流程、全部步骤和配图吗？"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ process.revision }}"><button class="bp-danger">删除整个流程</button></form></footer>
+</section>
+{% endblock %}

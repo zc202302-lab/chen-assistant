@@ -8,3 +8,4 @@ xlsxwriter==3.2.9
 httpx==0.28.1
 xlrd==2.0.2
 pywebpush==2.5.0
+Pillow==12.3.0

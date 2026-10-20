@@ -35,7 +35,8 @@ def main():
             previews=ROOT/'artifacts'/'number-inbox-batch';previews.mkdir(parents=True,exist_ok=True)
             for width in [1440,768,390,320]:
                 page.set_viewport_size({'width':width,'height':1000})
-                tiles=page.locator('.work-entry-tile');expect(tiles).to_have_count(9)
+                tiles=page.locator('.work-entry-tile');expect(tiles).to_have_count(10)
+                expect(page.locator('[data-entry-key=processes] a')).to_have_attribute('href', '/work/processes')
                 boxes=[t.bounding_box() for t in tiles.all()]
                 for box in boxes:assert box and abs(box['width']-box['height'])<2 and box['width']<=146
                 assert len(set(round(b['width']) for b in boxes))==1
