@@ -61,12 +61,14 @@ def main():
             page.get_by_role('button',name='编辑模块').click()
             handle=page.locator('[data-entry-key=numbers] [data-entry-handle]')
             handle.focus();handle.press('Space');handle.press('ArrowLeft')
+            assert page.locator('[data-entry-zone=common] [data-entry-key]').evaluate_all('(els)=>els.map(e=>e.dataset.entryKey)') == ['customers','library','lists','numbers','processes']
+            handle.press('ArrowLeft')
             expect(page.locator('[data-entry-zone=common] [data-entry-key=numbers]')).to_have_count(1)
             page.get_by_role('button',name='保存布局').click()
             expect(page.locator('[data-entry-feedback]')).to_have_text('布局已保存')
             page.reload(wait_until='networkidle')
             keys=page.locator('[data-entry-zone=common] [data-entry-key]').evaluate_all('(els)=>els.map(e=>e.dataset.entryKey)')
-            assert keys==['customers','library','numbers','lists'],keys
+            assert keys==['customers','library','numbers','lists','processes'],keys
             # Saved layout survives a fresh browser session.
             fresh=browser.new_context();fresh.add_cookies([{'name':'session_token','value':session,'url':base}])
             fresh_page=fresh.new_page();fresh_page.goto(base+'/work',wait_until='networkidle')

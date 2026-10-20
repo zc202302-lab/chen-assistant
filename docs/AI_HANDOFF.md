@@ -4,7 +4,7 @@
 
 - 工作模式：2026-10-20业务流程模块开发中。用户要求工作空间新增业务流程，含流程名称、分步文字说明和配图，可随时编辑、增删。活动分支feat/business-processes，基于main8ad32b16761b4c258464f21c7658a24c37ea4c54，候选1.7.21，尚未部署；最近现网已核验1.7.20。已有开发/推送/部署授权有效，Windows/云电脑#128/美国代理保持原暂停状态，书刊独立chen-cook不变。
 - 已实现：工作入口processes及旧自定义布局增量迁移，流程列表/搜索、分步阅读/目录、流程和步骤增删改、步骤上移下移、多配图上传/移除与预览。三张SQLite表及runtime schema登记；图片登录鉴权，校验/重编码WebP去元数据，不依赖现有远程资料服务；8MB单图/32MB请求体/每次12张，csrf和revision防覆盖，删除事务级联无孤立图片。路由两份清单已更新。原业务/号码/缴费规则未修改。
-- 本地新模块HTTP契约通过：登录、CSRF、CRUD、步骤顺序、搜索、图片鉴权/解码、伪造图片、大小限制、跨步骤删除拒绝、过期编辑冲突与回滚、级联删除。浏览器与完整CI待验证，不宣称已上线。核心app/business_processes.py、business_process_routes.py、模板/静态business-process*、work_architecture.py及tests/business_process*；目录/workspace/scratch/75165f63b510/chen-assistant。附件不修改。
+- 本地新模块HTTP契约、旧布局迁移、架构/路由/CSRF/版本契约通过。功能head5c20c67cfb2a7b85fcf946e4ed5f758b91674e2a，Draft PR #163 https://github.com/zc202302-lab/chen-assistant/pull/163；CI39364430872 / job118437862223的新模块真实浏览器、原显示/保存、缴费、导入、工作列表通过；在旧入口排序测试硬编码原4项common序列处失败（新增processes后为5项），已同步新增模块序列并继续检查每次键盘移动，原指针拖拽/取消/保存失败/新会话持久化断言保留。图片测试增加真实EXIF输入以核验去元数据。完整修复CI待重跑，不宣称已上线。核心app/business_processes.py、business_process_routes.py、模板/静态business-process*、work_architecture.py及tests/business_process*；目录/workspace/scratch/75165f63b510/chen-assistant。附件不修改。
 - 唯一下一步：推送Draft PR、完整接口/浏览器/安全/架构回归，通过后合并部署1.7.21并实际核验公网，再交付使用入口。
 
 ## 上一阶段快照（历史：Web1.7.20业务保存修复已部署）

@@ -8,7 +8,9 @@ from app.schema import SCHEMA_STAGES
 
 def image_bytes():
     out = BytesIO()
-    Image.new('RGB', (80, 50), '#497baf').save(out, 'PNG')
+    metadata = Image.Exif()
+    metadata[270] = 'private metadata must not survive upload'
+    Image.new('RGB', (80, 50), '#497baf').save(out, 'PNG', exif=metadata)
     return out.getvalue()
 
 
