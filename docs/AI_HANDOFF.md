@@ -2,10 +2,12 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-21（Asia/Shanghai）用户明确恢复Windows久坐助手开发：强制休息完成后不得自动返回桌面，须输入客户端自设密码；内容不限。活动分支feat/sedentary-password-unlock，基于main505ff51ae61ff9af9f4c2a113b81de9ca9de8ba5，候选客户端0.5.17，当前release分支仍0.5.16。允许推送发布；Web1.7.21不改，云电脑#128和美国代理仍暂停，附件不修改。
-- 实现休息完成等待密码、原样UTF-8非空密码及确认、独立设置并验证旧密码修改、首次升级设置引导、随机盐PBKDF2摘要、输入焦点保留、运行状态等待解锁和下一轮复位。核心windows/win-assistants/sedentary/ui.py、unlock.py，win_assistants/sedentary.py。新增密码与真实Tk门禁测试，CI原生Windows检查已纳入；原更新回退和Excel Windows锁测试保留。
-- 当前本地测试进行中；尚未声明CI、EXE构建、发布或用户安装成功。下一步：完整测试、Draft PR及Windows构建/原生UI/最终EXE更新回退通过后发布0.5.17，并核验公网更新清单与EXE哈希。
-- 目录/workspace/scratch/75165f63b510/chen-assistant。
+- 2026-10-21（Asia/Shanghai）用户明确恢复Windows久坐助手开发：强制休息完成后须输入客户端自设密码返回桌面，内容不限。PR #164 https://github.com/zc202302-lab/chen-assistant/pull/164 已合并，main功能提交d2d3583959bc591bed63e42bb667802e69c1b9a6，候选客户端0.5.17；release公网仍待实际核验，不宣称用户已安装。feat/sedentary-password-unlock已完成。允许推送发布，云电脑#128和美国代理仍暂停，附件不修改。
+- 已实现：休息完成保留遮罩等待正确密码，计时未完不能提前解锁；等待期间暂停新周期，成功后复位。久坐→模块设置→久坐设置→设置/修改解锁密码，可独立于摄像头保存，修改验证旧密码；任意非空UTF-8内容，中文/符号/空格原样保留，无复杂度要求。旧安装首次休息完成设定并确认。密码本机随机盐PBKDF2摘要，文件%APPDATA%/久坐提醒/rest-unlock.json，不保存明文、不上传；无配置损坏时的静默免密降级。此为休息遮罩非Windows账户锁屏；管理员/系统界面仍可结束进程。忘记密码恢复方式见客户端README。核心windows/win-assistants/sedentary/ui.py、unlock.py、win_assistants/sedentary.py、tests/test_sedentary_unlock.py。
+- 最终受检head4beacabecd5af10033974861882ba26bdcb1d036，完整validation39553162203 / validate119066715147及preflight119066715466 success，安全审核success；stability39553161619、模块隔离39553161663 success。Windows cross build39553161702全通过：source119066713714、build119066713959、native119066714028、真实Windows最终EXE更新替换/重启/失败回退和Excel文件锁119068592251 success。原生Tk包含密码设置、错误密码、首次设置、两轮门禁、输入焦点、真实_poll转换及等待期不重复计时；所有历史检查保留。本地102项OK，12项GUI因无显示环境跳过；架构治理、流程图片契约通过，不宣称本地GUI或用户真实业务通过。
+- 首轮完整CI39552221108安全审计发现Pillow12.3.0新增8项漏洞（CVE-2026-112895/112400/112397/112896/112897/112395/112404/112899），非久坐功能失败。主requirements升级13.0.0修复；本地pip-audit无已知漏洞及完整CI通过。Windows功能与4d22814相同；Web功能规则和版本1.7.21不改，仅服务端图片依赖升级，生产依赖版本未知，不从health版本推断。受检head和合并提交tree均cdbf192b5b78b89ba89d54a12cd87eb8c819a8a1。
+- 合并后客户端正式构建发布39554659008进行中，公网完整清单与EXE哈希尚未验证；main重复完整validation39554658964不替代上述已通过PR完整受检证据。Web公网检查39554658992另行记录。
+- 目录/workspace/scratch/75165f63b510/chen-assistant。唯一下一步：等待正式Windows构建/验收/发布完成，核验公网0.5.17清单、完整EXE大小与SHA-256，再通知用户客户端检查更新和设置密码。
 
 ## 上一阶段快照（历史：业务流程Web1.7.21已部署）
 
