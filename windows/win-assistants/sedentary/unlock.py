@@ -17,9 +17,13 @@ def password_path() -> Path:
 def load_password() -> dict | None:
     try:
         record = json.loads(password_path().read_text(encoding="utf-8"))
-        if (record.get("iterations") != 200_000
-                or len(bytes.fromhex(record["salt"])) != 16
-                or len(bytes.fromhex(record["digest"])) != 32):
+        try:
+            valid = (isinstance(record, dict) and record.get("iterations") == 200_000
+                     and len(bytes.fromhex(record["salt"])) == 16
+                     and len(bytes.fromhex(record["digest"])) == 32)
+        except (KeyError, TypeError, ValueError):
+            valid = False
+        if not valid:
             raise ValueError("解锁密码配置损坏，请恢复 rest-unlock.json 后重启。")
         return record
     except FileNotFoundError:

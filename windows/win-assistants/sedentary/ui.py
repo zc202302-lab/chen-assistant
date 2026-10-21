@@ -768,10 +768,14 @@ class SedentaryApp:
             if self.reminder_window and self.reminder_window.winfo_exists():
                 window.destroy()
                 return
-            if record and not matches(record, values[0].get()):
-                error.set("当前密码不正确。")
-                return
             try:
+                current = load_password()
+                if current != record:
+                    error.set("密码已在其他窗口修改，请关闭后重新打开。")
+                    return
+                if current and not matches(current, values[0].get()):
+                    error.set("当前密码不正确。")
+                    return
                 save_password(values[-2].get(), values[-1].get())
             except (OSError, ValueError) as exc:
                 error.set(str(exc))

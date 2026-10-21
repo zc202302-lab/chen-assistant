@@ -37,9 +37,10 @@ class PasswordTests(unittest.TestCase):
         self.assertNotEqual(first["salt"], save_password("old", "old")["salt"])
 
     def test_corruption_is_not_treated_as_first_time_setup(self):
-        password_path().write_text("{}")
-        with self.assertRaises((ValueError, KeyError)):
-            load_password()
+        for raw in ["{}", "[]", "null", '{"iterations":200000,"salt":null}', "invalid"]:
+            password_path().write_text(raw)
+            with self.assertRaises(ValueError):
+                load_password()
         self.assertFalse(matches({"unreadable": True}, "anything"))
 
 
@@ -117,6 +118,59 @@ class UnlockWindowTests(PasswordTests):
         self.app._try_unlock()
         self.assertTrue(matches(load_password(), "新密码"))
         self.assertIsNone(self.app.reminder_window)
+
+    def test_real_poll_transitions_and_wait_does_not_start_new_cycle(self):
+        import queue
+        import time
+        from sedentary.storage import DailyStats, Settings
+        from sedentary.camera import CameraStatus
+        save_password("1", "1")
+        self.app.show_reminder()
+        self.app._closing = False
+        self.app.camera_events = queue.Queue()
+        self.app.daily_stats = DailyStats.load_today()
+        self.app.settings = Settings()
+        self.app._last_stats_save = time.monotonic()
+        self.app.last_tick = time.monotonic() - 4
+        self.app._refresh_labels = lambda: None
+        self.app._consume_external_command = lambda: None
+        self.app._poll()
+        self.assertTrue(self.app.rest_completed)
+        self.assertIsNotNone(self.app.reminder_window)
+        self.assertEqual(self.app.daily_stats.completed_break_count, 1)
+        self.app.camera_status = CameraStatus(True, True, "")
+        self.app.last_tick -= 10
+        self.app._poll()
+        self.assertEqual(self.app.tracker.work_seconds, 0)
+        self.assertEqual(self.app.daily_stats.completed_break_count, 1)
+
+    def test_password_settings_independent_of_camera_and_requires_current_password(self):
+        from tkinter import ttk
+        def descendants(widget):
+            for child in widget.winfo_children():
+                yield child
+                yield from descendants(child)
+        self.app.show_unlock_settings()
+        window = self.root.winfo_children()[-1]
+        widgets = list(descendants(window))
+        entries = [w for w in widgets if isinstance(w, ttk.Entry)]
+        for entry in entries:
+            entry.insert(0, "新密码")
+        next(w for w in widgets if isinstance(w, ttk.Button)).invoke()
+        self.assertTrue(matches(load_password(), "新密码"))
+        self.app.show_unlock_settings()
+        window = self.root.winfo_children()[-1]
+        widgets = list(descendants(window))
+        entries = [w for w in widgets if isinstance(w, ttk.Entry)]
+        for entry, value in zip(entries, ["wrong", "2", "2"]):
+            entry.insert(0, value)
+        button = next(w for w in widgets if isinstance(w, ttk.Button))
+        button.invoke()
+        self.assertTrue(matches(load_password(), "新密码"))
+        entries[0].delete(0, "end")
+        entries[0].insert(0, "新密码")
+        button.invoke()
+        self.assertTrue(matches(load_password(), "2"))
 
 
 if __name__ == "__main__":
