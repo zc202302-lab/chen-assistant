@@ -334,6 +334,8 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_navigation.py -v
           if ($LASTEXITCODE -ne 0) { throw "Native navigation acceptance failed" }
+          python -m unittest discover -s tests -p test_sedentary_unlock.py -v
+          if ($LASTEXITCODE -ne 0) { throw "Native rest password acceptance failed" }
           python -m pip install Pillow
           if ($LASTEXITCODE -ne 0) { throw "Preview dependency failed" }
           python tests/render_navigation.py
@@ -392,7 +394,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": f"v{version}：号码按设定时间提醒、短信验证码后台自动复制、首页快捷模块编辑；保留批量Excel填写与可靠更新重启。",
+              "notes": f"v{version}：强制休息完成后输入自设密码返回桌面；在久坐设置中设置或修改密码，支持任意非空内容。保留号码、短信、批量Excel及可靠更新重启。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),

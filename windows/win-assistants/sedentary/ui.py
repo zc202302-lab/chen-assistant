@@ -19,6 +19,7 @@ from .camera import (
 )
 from .control_bridge import consume_control_command, write_runtime_status
 from .state import Phase, SedentaryTracker
+from .unlock import load_password, matches, save_password
 from .startup import set_startup
 from .shortcut import create_desktop_shortcut
 from .storage import (
@@ -53,6 +54,10 @@ class SedentaryApp:
         self.last_tick = time.monotonic()
         self.camera_status = CameraStatus(False, False, "尚未配置RTSP摄像头")
         self.reminder_window: tk.Toplevel | None = None
+        self.rest_completed = False
+        self.unlock_record = None
+        self.unlock_entry = None
+        self.unlock_panel = None
         self.lock_countdown_label = None
         self.lock_state_label = None
         self.lock_progress: ttk.Progressbar | None = None
@@ -238,6 +243,12 @@ class SedentaryApp:
         if self.embedded_mode:
             startup_check.state(["disabled"])
         ttk.Button(settings_card, text="保存全部设置", style="Accent.TButton", command=self.save_settings).grid(row=next_row + 1, column=0, columnspan=2, sticky="ew", pady=(7, 0))
+
+        password_card = ttk.LabelFrame(outer, text=" 休息结束解锁密码 ", padding=12)
+        password_card.pack(fill="x", pady=(10, 0))
+        ttk.Label(password_card, text="休息完成后输入此密码返回桌面。内容不限，至少输入一个字符；独立于摄像头及 Windows 密码。",
+                  wraplength=480).pack(anchor="w")
+        ttk.Button(password_card, text="设置 / 修改解锁密码", command=self.show_unlock_settings).pack(anchor="w", pady=(8, 0))
 
         update_card = ttk.LabelFrame(outer, text=" 程序与启动 ", padding=12)
         update_card.pack(fill="x", pady=(10, 0))
@@ -431,7 +442,7 @@ class SedentaryApp:
             self.daily_stats = DailyStats(date=today)
             self._last_stats_save = now
 
-        if self.camera_status.available:
+        if self.camera_status.available and not self.rest_completed:
             self.daily_stats.add_sample(self.camera_status.present, elapsed)
             update = self.tracker.tick(self.camera_status.present, elapsed)
             if update.reminder_due:
@@ -442,7 +453,8 @@ class SedentaryApp:
                 self.daily_stats.completed_break_count += 1
                 log_event("完成有效休息", self.settings.break_minutes * 60)
                 if self.reminder_window and self.reminder_window.winfo_exists():
-                    self.close_reminder()
+                    self.rest_completed = True
+                    self._update_lock_screen()
             if time.monotonic() - self._last_stats_save >= 10:
                 self.daily_stats.save()
                 self._last_stats_save = time.monotonic()
@@ -453,7 +465,9 @@ class SedentaryApp:
 
     def _publish_runtime_status(self) -> None:
         snap = self.tracker.snapshot()
-        if not self.camera_status.available:
+        if self.rest_completed:
+            title = "等待密码解锁"
+        elif not self.camera_status.available:
             title = "检测异常"
         elif snap.phase == Phase.REMINDING:
             title = "工作中" if self.camera_status.present else "已休息"
@@ -467,7 +481,8 @@ class SedentaryApp:
                     "detail": self.camera_status.message,
                     "available": bool(self.camera_status.available),
                     "present": bool(self.camera_status.present),
-                    "reminder_active": bool(self.tracker.reminder_active),
+                    "reminder_active": bool(self.tracker.reminder_active or self.rest_completed),
+                    "awaiting_unlock": bool(self.rest_completed),
                     "work_seconds": round(max(0.0, snap.work_seconds), 1),
                     "away_seconds": round(max(0.0, snap.away_seconds), 1),
                     "remaining_break_seconds": round(max(0.0, snap.remaining_break_seconds), 1),
@@ -565,6 +580,12 @@ class SedentaryApp:
         if self.reminder_window and self.reminder_window.winfo_exists():
             self.reminder_window.lift()
             return
+        self.rest_completed = False
+        # Snapshot the credential for this rest cycle; settings cannot change it mid-lock.
+        try:
+            self.unlock_record = load_password()
+        except (OSError, ValueError, KeyError, TypeError):
+            self.unlock_record = {"unreadable": True}
         window = tk.Toplevel(self.root)
         self.reminder_window = window
         window.title("强制休息")
@@ -606,6 +627,23 @@ class SedentaryApp:
         )
         self.lock_state_label.pack(pady=(18, 0))
 
+        self.unlock_panel = tk.Frame(content, bg="#0B1F1A")
+        self.unlock_value = tk.StringVar(master=window)
+        self.unlock_confirmation = tk.StringVar(master=window)
+        self.unlock_error = tk.StringVar(master=window)
+        tk.Label(self.unlock_panel, text="输入解锁密码" if self.unlock_record else "首次使用：设置解锁密码，并再次输入确认",
+                 bg="#0B1F1A", fg="white", font=("Microsoft YaHei UI", 12)).pack(pady=(20, 8))
+        self.unlock_entry = ttk.Entry(self.unlock_panel, textvariable=self.unlock_value, show="●", width=30)
+        self.unlock_entry.pack()
+        self.unlock_entry.bind("<Return>", self._try_unlock)
+        if self.unlock_record is None:
+            confirmation = ttk.Entry(self.unlock_panel, textvariable=self.unlock_confirmation, show="●", width=30)
+            confirmation.pack(pady=(8, 0))
+            confirmation.bind("<Return>", self._try_unlock)
+        ttk.Button(self.unlock_panel, text="解锁返回桌面", command=self._try_unlock).pack(pady=(12, 0))
+        tk.Label(self.unlock_panel, textvariable=self.unlock_error, bg="#0B1F1A", fg="#FFB4A9",
+                 wraplength=480).pack(pady=(8, 0))
+
         try:
             window.grab_set_global()
         except tk.TclError:
@@ -624,15 +662,19 @@ class SedentaryApp:
     def _update_lock_screen(self) -> None:
         if not self.reminder_window or not self.reminder_window.winfo_exists():
             return
-        if not self.tracker.reminder_active:
-            self.close_reminder()
+        if self.rest_completed:
+            self.lock_countdown_label.configure(text="休息完成", font=("Microsoft YaHei UI", 40, "bold"))
+            self.lock_state_label.configure(text="输入密码后返回桌面")
+            if not self.unlock_panel.winfo_manager():
+                self.unlock_panel.pack()
+                self.unlock_entry.focus_set()
             return
 
         snap = self.tracker.snapshot()
         completed = min(snap.away_seconds, self.tracker.break_seconds)
 
         if self.lock_countdown_label and self.lock_countdown_label.winfo_exists():
-            self.lock_countdown_label.configure(text=self._format_mmss(completed))
+            self.lock_countdown_label.configure(text=self._format_mmss(self.tracker.break_seconds - completed))
         if self.lock_state_label and self.lock_state_label.winfo_exists():
             if not self.camera_status.available:
                 state_text = "检测异常，休息计时暂停"
@@ -649,10 +691,37 @@ class SedentaryApp:
             return
         self.reminder_window.attributes("-topmost", True)
         self.reminder_window.lift()
-        self.reminder_window.focus_force()
+        focused = self.reminder_window.focus_displayof()
+        if not focused or focused.winfo_toplevel() != self.reminder_window:
+            self.reminder_window.focus_force()
+            if self.rest_completed and self.unlock_entry:
+                self.unlock_entry.focus_set()
         self.reminder_window.after(1000, self._enforce_lock_focus)
 
     def close_reminder(self) -> None:
+        # All ordinary close paths must keep the rest/password gate in place.
+        if self.reminder_window and self.reminder_window.winfo_exists():
+            return
+
+    def _try_unlock(self, _event=None) -> str:
+        if not self.rest_completed or not self.reminder_window:
+            return "break"
+        value = self.unlock_value.get()
+        try:
+            if self.unlock_record is None:
+                self.unlock_record = save_password(value, self.unlock_confirmation.get())
+            elif not matches(self.unlock_record, value):
+                self.unlock_error.set("密码配置无法读取，请恢复配置后重启程序。" if self.unlock_record.get("unreadable") else "密码不正确，请重新输入。")
+                self.unlock_value.set("")
+                self.unlock_entry.focus_set()
+                return "break"
+        except (OSError, ValueError) as exc:
+            self.unlock_error.set(str(exc))
+            return "break"
+        self._release_reminder()
+        return "break"
+
+    def _release_reminder(self) -> None:
         if self.reminder_window and self.reminder_window.winfo_exists():
             try:
                 self.reminder_window.grab_release()
@@ -662,6 +731,53 @@ class SedentaryApp:
         self.reminder_window = None
         self.lock_countdown_label = None
         self.lock_state_label = None
+        self.unlock_entry = None
+        self.unlock_panel = None
+        self.unlock_record = None
+        self.rest_completed = False
+        self.tracker.reset_cycle(present=self.camera_status.present)
+        self.last_tick = time.monotonic()
+        self._publish_runtime_status()
+
+    def show_unlock_settings(self) -> None:
+        if self.reminder_window and self.reminder_window.winfo_exists():
+            self.reminder_window.lift()
+            return
+        try:
+            record = load_password()
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            messagebox.showerror("密码配置无法读取", str(exc))
+            return
+        window = tk.Toplevel(self.root)
+        window.title("休息结束解锁密码")
+        window.resizable(False, False)
+        frame = ttk.Frame(window, padding=24)
+        frame.pack()
+        values = []
+        labels = (["当前密码"] if record else []) + ["新密码", "确认新密码"]
+        for label in labels:
+            ttk.Label(frame, text=label).pack(anchor="w", pady=(8, 3))
+            value = tk.StringVar(master=window)
+            values.append(value)
+            ttk.Entry(frame, textvariable=value, show="●", width=32).pack()
+        ttk.Label(frame, text="内容不限；至少一个字符，空格也按原样保存。", wraplength=330).pack(pady=(12, 0))
+        error = tk.StringVar(master=window)
+        ttk.Label(frame, textvariable=error, foreground=RED, wraplength=330).pack(pady=(8, 0))
+
+        def save():
+            if self.reminder_window and self.reminder_window.winfo_exists():
+                window.destroy()
+                return
+            if record and not matches(record, values[0].get()):
+                error.set("当前密码不正确。")
+                return
+            try:
+                save_password(values[-2].get(), values[-1].get())
+            except (OSError, ValueError) as exc:
+                error.set(str(exc))
+                return
+            window.destroy()
+        ttk.Button(frame, text="保存密码", command=save).pack(fill="x", pady=(8, 0))
 
     def show_window(self) -> None:
         self.root.after(0, self._show_window_ui)

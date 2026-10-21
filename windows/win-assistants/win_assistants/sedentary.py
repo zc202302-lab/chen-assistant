@@ -51,6 +51,8 @@ def send_command(action: str) -> str:
 
 def status_text(status: dict[str, object]) -> str:
     title = str(status.get("status") or "运行中")
+    if status.get("awaiting_unlock"):
+        return "休息完成 · 等待密码解锁"
     work_seconds = max(0.0, float(status.get("work_seconds", 0) or 0))
     away_seconds = max(0.0, float(status.get("away_seconds", 0) or 0))
     if title == "已休息":

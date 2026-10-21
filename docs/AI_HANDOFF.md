@@ -2,6 +2,13 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-21（Asia/Shanghai）用户明确恢复Windows久坐助手开发：强制休息完成后不得自动返回桌面，须输入客户端自设密码；内容不限。活动分支feat/sedentary-password-unlock，基于main505ff51ae61ff9af9f4c2a113b81de9ca9de8ba5，候选客户端0.5.17，当前release分支仍0.5.16。允许推送发布；Web1.7.21不改，云电脑#128和美国代理仍暂停，附件不修改。
+- 实现休息完成等待密码、原样UTF-8非空密码及确认、独立设置并验证旧密码修改、首次升级设置引导、随机盐PBKDF2摘要、输入焦点保留、运行状态等待解锁和下一轮复位。核心windows/win-assistants/sedentary/ui.py、unlock.py，win_assistants/sedentary.py。新增密码与真实Tk门禁测试，CI原生Windows检查已纳入；原更新回退和Excel Windows锁测试保留。
+- 当前本地测试进行中；尚未声明CI、EXE构建、发布或用户安装成功。下一步：完整测试、Draft PR及Windows构建/原生UI/最终EXE更新回退通过后发布0.5.17，并核验公网更新清单与EXE哈希。
+- 目录/workspace/scratch/75165f63b510/chen-assistant。
+
+## 上一阶段快照（历史：业务流程Web1.7.21已部署）
+
 - 工作模式：2026-10-20 11:55（Asia/Shanghai）业务流程模块开发、完整验证与部署完成。用户要求工作空间新增业务流程，含流程名称、分步文字说明和配图，可随时编辑、增删。PR #163 https://github.com/zc202302-lab/chen-assistant/pull/163 已合并，main功能提交2dfe870231db4ab69764e4be4f223d20a9bb8de9；Web1.7.21已实际公网核验。feat/business-processes已完成，无未合并功能WIP；实际使用反馈待用户确认。已有推送/部署授权有效。Windows/云电脑#128/美国代理保持原暂停状态，书刊独立chen-cook不变，附件不修改。
 - 使用入口：工作空间→业务流程（/work/processes），先新建流程名称及说明，再添加图文步骤。支持流程/步骤增删改、步骤上移下移、搜索名称/说明/步骤文字、多图上传预览/移除、电脑目录和手机布局。旧自定义工作布局自动增量加入processes并保留已有顺序。
 - 实现：app/business_processes.py、business_process_routes.py、三张模板、静态business-processes.css/js；work_architecture.py、routing.py、schema.py、两份路由清单同步。三张SQLite表存储流程/步骤/私有图片，包含于原数据库备份；不依赖远程资料服务。图片登录鉴权，校验PNG/JPEG/WebP后重编码WebP去元数据，8MiB单图/32MiB请求/每次12张，最大16MP；CSRF、revision防覆盖、事务级联清理。原业务、号码、缴费规则未修改。使用说明docs/BUSINESS_PROCESSES.md。
