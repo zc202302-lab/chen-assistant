@@ -2,12 +2,13 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-24（Asia/Shanghai）用户要求先完成邮箱密码重置，再新建菜谱；最新要求系统优化“编辑标准”，腌肉等同环节物料集中一栏。账户已部署1.7.22，证据见历史。菜谱PR #166 https://github.com/zc202302-lab/chen-assistant/pull/166 已合并，main功能提交f4fc712eb18becd5a1af6039492a84af8d015ba4，候选Web1.7.23，正在等待生产更新及公网验证；尚不可宣称现网23已完成。允许推送部署，无未合并功能WIP。Windows、云电脑#128、美国代理与chen-cook保持原状；EXE/XLSM附件未读取或修改。
+- 2026-10-24（Asia/Shanghai）用户要求先完成邮箱密码重置，再新建菜谱；最新要求系统优化“编辑标准”，腌肉等同环节物料集中一栏。账户已部署1.7.22，证据见历史。菜谱PR #166 https://github.com/zc202302-lab/chen-assistant/pull/166 已合并，main功能提交f4fc712eb18becd5a1af6039492a84af8d015ba4，Web1.7.23已部署并于2026-10-24 17:34:21（Asia/Shanghai）公网核验通过，实际使用反馈待用户确认。允许推送部署，无未合并功能WIP。Windows、云电脑#128、美国代理与chen-cook保持原状；EXE/XLSM附件未读取或修改。
 - 入口：生活/菜谱库→＋新建菜谱→创建并编辑配方；manual纳入数量、搜索、分类和最近记录，原18份标准及目录类历史保留。新建V1后配方保存V2，中断可从库中续写。编辑按原group_name首次出现顺序归组，组名只填一次；物料/用量/单位同行，比例/备注/所属环节展开编辑，可移动单个物料保留全部字段；环节改名/上下移动/增删及物料增删，含物料删除确认。改进说明常显，菜谱信息折叠；紧凑保存栏。空组不保存，组名不可重复。无新schema或路由，原CSRF/数值校验、步骤全部字段、版本和打印保留。
 - 核心app/recipe_library.py、app/v12_tools_routes.py、创建/列表/编辑模板、recipe-editor.css/js、v10.js及base缓存参数1723。说明docs/RECIPE_CREATION.md，验收tests/recipe_creation_contract.py和recipe_creation_acceptance.py，公网check_pwa_production.py增加新编辑器与v10.js精确资源核对。
 - 最终受检head75e19fcf51ec3d1f80882942bf1a856c30e7b8ca：完整validation40081357127（validate120835574787、preflight120835574932）success；stability40081357133、模块隔离40081357120 success。新增真实浏览器创建、分组与跨组移动/字段保留、排序、增删、保存重开、换算、搜索、版本、打印及1440/390同行/无溢出/保存栏高度通过，全部原账户/业务/缴费/清单/号码/提醒/生活和安全回归保留通过。本地18份原标准表单保存逐字段核对通过，架构/v12/v144/稳定性和JS语法通过；本地无Chromium，不宣称本地GUI。CI截图已实际查看，runner缺少中文字体显示方框，几何检查通过，真实终端字体观感待用户验证。受检和合并tree均090a5d268243d5e6e67f2b3c5b7d2567bf0e272b，代码完全一致。
 - 首轮40080468273在新增打印测试以纯菜名定位失败；实际页使用“菜名·Excel版式”和“菜名 A4菜谱”article。改为验证实际具名article及原步骤文本，保留严格无脚本错误断言；后续完整受检已全部通过。其他中间取消run不作为最终受检证据。
-- 唯一下一步：监控main的PWA production verification40082383053（或此交接文档后的新run），确认实际ONLINE VERIFIED v1.7.23，必要时待自动部署后重试；再更新最终交接。未对生产私有数据写入或发邮件，不宣称SSH直推或生产精确backend SHA。所有者SMTP配置、绑定邮箱及真实收信仍待设置。目录/workspace/scratch/75165f63b510/chen-assistant。
+- 公网证据：PWA production verification40082383053 / job120838411017 success，日志2026-10-24 17:34:21（Asia/Shanghai）ONLINE VERIFIED v1.7.23。已实际核验health版本、PWA、原有精确资源及新增recipe-editor.css/js和v10.js、账户路由鉴权、找回/重置公开表单与号码收集域名边界。未写入生产私有数据或发邮件，不宣称会话SSH直推或生产精确backend SHA。main重复validation40082383013及文档后的40082441103等独立记录，不替代上述完整PR受检证据。
+- 唯一下一步：用户刷新进入生活→菜谱库，试用＋新建菜谱或打开原标准编辑；同环节集中添加物料、按需移动所属环节并保存重开，实际手机操作观感待反馈。所有者SMTP配置、绑定邮箱和真实收信仍待设置（详见docs/ACCOUNT_SECURITY.md）；用户实际改密后登录结果待反馈。无需继续Windows、美国代理或chen-cook工作。目录/workspace/scratch/75165f63b510/chen-assistant。
 
 ## 上一阶段快照（历史：账户邮箱找回Web1.7.22已部署）
 
