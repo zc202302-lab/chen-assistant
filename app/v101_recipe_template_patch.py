@@ -112,10 +112,11 @@ def _print_step_principle(step):
 def _excel_print_layout(conn, version):
     ingredients, steps, grouped = _version_payload(conn, version['id'])
     ordered_groups = list(grouped.items())
-    main_index = next((idx for idx, (name, _) in enumerate(ordered_groups) if name == '主材'), 0)
-    main_name, main_rows = ordered_groups.pop(main_index) if ordered_groups else ('主材', [])
+    # An absent 主材 group must not promote the first cooking stage into the main row.
+    main_index = next((idx for idx, (name, _) in enumerate(ordered_groups) if name == '主材'), None)
+    main_name, main_rows = ordered_groups.pop(main_index) if main_index is not None else ('主材', [])
 
-    main_slots = [''] * 8
+    main_slots = [''] * 9
     overflow_notes = []
     for idx, row in enumerate(main_rows):
         item_text = f"{row['name']} {_print_amount(row, version)}".strip()
@@ -127,7 +128,7 @@ def _excel_print_layout(conn, version):
 
     grid_groups = []
     for group_name, rows in ordered_groups:
-        chunks = [rows[i:i + 8] for i in range(0, len(rows), 8)] or [[]]
+        chunks = [rows[i:i + 9] for i in range(0, len(rows), 9)] or [[]]
         for chunk_index, chunk in enumerate(chunks):
             grid_groups.append({
                 'name': group_name if chunk_index == 0 else f'{group_name}（续）',
@@ -151,7 +152,7 @@ def _excel_print_layout(conn, version):
     while len(grid_groups) < 4:
         grid_groups.append({'name': '', 'items': []})
     for group in grid_groups:
-        group['items'] = group['items'][:8] + [{'name': '', 'amount': ''}] * (8 - len(group['items']))
+        group['items'] = group['items'][:9] + [{'name': '', 'amount': ''}] * (9 - len(group['items']))
 
     ingredient_notes = []
     for row in ingredients:
