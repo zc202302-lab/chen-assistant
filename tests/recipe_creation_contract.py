@@ -60,8 +60,18 @@ def main():
     detail = client.get(f'/life/recipes/{rid}')
     assert detail.status_code == 200 and '准备原料' in detail.text and '记录原理' in detail.text
     assert '<script>unsafe</script>' not in detail.text and '&lt;script&gt;' in detail.text
-    assert client.get(f'/life/recipes/{rid}/print').status_code == 200
-    assert '准备原料' in client.get(f'/life/recipes/{rid}/print').text
+    printed = client.get(f'/life/recipes/{rid}/print')
+    assert printed.status_code == 200
+    assert '准备原料' in printed.text
+    import re
+    print_rows = re.findall(r'<tr class="excel-ingredient-row">(.*?)</tr>', printed.text, re.S)
+    assert print_rows and '<th scope="row">主材</th>' in print_rows[0]
+    assert '<th scope="row" rowspan="2">腌肉</th>' in print_rows[1]
+    assert '鲜鱼' in print_rows[1] and '白胡椒粉' in print_rows[1]
+    assert '<th>备注</th>' not in printed.text
+    assert '<th rowspan="2">原理</th>' not in printed.text
+    assert '<th colspan="9" rowspan="2">方法</th>' in printed.text
+    assert 'class="excel-step-method" colspan="9"' in printed.text
     assert client.get(f'/life/recipes/{rid}/versions').status_code == 200
     with db() as conn:
         versions = conn.execute('SELECT * FROM recipe_versions WHERE recipe_id=? ORDER BY version_no', (rid,)).fetchall()
