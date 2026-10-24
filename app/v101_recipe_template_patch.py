@@ -112,8 +112,9 @@ def _print_step_principle(step):
 def _excel_print_layout(conn, version):
     ingredients, steps, grouped = _version_payload(conn, version['id'])
     ordered_groups = list(grouped.items())
-    main_index = next((idx for idx, (name, _) in enumerate(ordered_groups) if name == '主材'), 0)
-    main_name, main_rows = ordered_groups.pop(main_index) if ordered_groups else ('主材', [])
+    # An absent 主材 group must not promote the first cooking stage into the main row.
+    main_index = next((idx for idx, (name, _) in enumerate(ordered_groups) if name == '主材'), None)
+    main_name, main_rows = ordered_groups.pop(main_index) if main_index is not None else ('主材', [])
 
     main_slots = [''] * 8
     overflow_notes = []
