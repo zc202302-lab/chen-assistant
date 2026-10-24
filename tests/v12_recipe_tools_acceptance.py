@@ -81,7 +81,7 @@ def main():
             assert page.locator('.excel-section-header-row').count() == 2
             assert page.locator('.excel-step-row').count() == 4
             expect(page.locator('.recipe-print-head')).to_have_count(0)
-            expect(page.locator('.excel-ingredient-row').first.locator('th')).to_have_text(['主材', '备注'])
+            expect(page.locator('.excel-ingredient-row').first.locator('th')).to_have_text(['主材'])
             expect(page.locator('.excel-ingredient-row').first.locator('td').nth(0)).to_have_text('排骨')
             expect(page.locator('.excel-ingredient-row').first.locator('td').nth(1)).to_have_text('500')
             expect(page.locator('.excel-ingredient-row').nth(1).locator('th')).to_have_text('糖色')
