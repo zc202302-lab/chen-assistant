@@ -2,6 +2,8 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-24 最新用户要求“继续”部署PR #168。新测试提交d2f19818f8ba4fc0ae0042a4976ffb708629eca5新增10等宽列、主材首行9单元格、方法合并列浏览器断言；此前旧版CI 40091601553仅失败于已删除备注列的过时断言，已修复。GitHub连接的fetch_commit_workflow_runs对7d59a45及d2f19818均返回无记录；本地容器github.com DNS解析失败，无法从本机拉代码/实际CI复核。按docs/DEVELOPMENT_RULES不得以旧head测试代替新head，仍未合并/部署，PR #168 Ready，下一步需要使最新head跑出完整validation和stability/isolation成功后合并核验线上；目前自动工作流未触发这一项是阻塞。
+
 - 2026-10-24 最新用户明确要求以后开发默认直至部署，并本次要求完成部署。PR #168 的先前完整 validation 40091601553 在 tests/v12_recipe_tools_acceptance.py 因旧断言仍期待已按用户要求删除的“备注”列失败；实际页面首行已只有“主材”。已在活动分支 fix/recipe-print-main-row-20261024 提交测试同步修复7d59a45bc022ea34fdd1a3bdf0e9662fc4948225，PR改为Ready。先前同轮稳定性40091601572、模块隔离40091601546 success，但最新head在本会话多次读取 fetch_commit_workflow_runs 尚无新CI记录，不能以旧head通过代替；因此尚未合并/部署。下一步唯一动作：获取当前head完整validation、stability、isolation成功证据后合并PR #168并验证公网部署；不能跳过安全门槛。
 
 - 2026-10-24 19:51（Asia/Shanghai）新任务正在Draft PR #168 https://github.com/zc202302-lab/chen-assistant/pull/168 ，分支fix/recipe-print-main-row-20261024：打印首行强制主材、删除右侧备注独立列，改成10等宽列；删除下方独立原理列并合入方法格；数据不删除。未合并/未部署，待完整CI/稳定性验证；唯一下一步查看PR #168 CI然后决定合并部署。详细检查点见该分支AI_HANDOFF；这条更新覆盖下方旧快照的“唯一下一步”描述。
