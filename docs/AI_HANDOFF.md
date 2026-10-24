@@ -2,6 +2,8 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-24 最新用户明确要求以后开发默认直至部署，并本次要求完成部署。PR #168 的先前完整 validation 40091601553 在 tests/v12_recipe_tools_acceptance.py 因旧断言仍期待已按用户要求删除的“备注”列失败；实际页面首行已只有“主材”。已在活动分支 fix/recipe-print-main-row-20261024 提交测试同步修复7d59a45bc022ea34fdd1a3bdf0e9662fc4948225，PR改为Ready。先前同轮稳定性40091601572、模块隔离40091601546 success，但最新head在本会话多次读取 fetch_commit_workflow_runs 尚无新CI记录，不能以旧head通过代替；因此尚未合并/部署。下一步唯一动作：获取当前head完整validation、stability、isolation成功证据后合并PR #168并验证公网部署；不能跳过安全门槛。
+
 - 2026-10-24 19:51（Asia/Shanghai）新任务正在Draft PR #168 https://github.com/zc202302-lab/chen-assistant/pull/168 ，分支fix/recipe-print-main-row-20261024：打印首行强制主材、删除右侧备注独立列，改成10等宽列；删除下方独立原理列并合入方法格；数据不删除。未合并/未部署，待完整CI/稳定性验证；唯一下一步查看PR #168 CI然后决定合并部署。详细检查点见该分支AI_HANDOFF；这条更新覆盖下方旧快照的“唯一下一步”描述。
 
 - 2026-10-24（Asia/Shanghai）用户要求继续开发 chen-assistant。当前任务为生活→菜谱库→编辑标准紧凑布局；已按既有推送部署授权将PR #167由Draft转Ready并squash合并至main，合并提交a8e5338f769a4d56c367722539690f428553b805；原开发分支style/recipe-editor-density提交86ab95ffb94e33c57cf86e8c51c46ccd0f2646c4。候选Web1.7.24；确认代码已合并，不代表生产已部署。此前有独立公网证据的版本仍为1.7.23。
