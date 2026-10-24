@@ -14,6 +14,7 @@
   window.addEventListener('beforeprint', fit);
   document.querySelector('[data-recipe-print]')?.addEventListener('click', () => {
     fit();
-    setTimeout(() => window.print(), 60);
+    // Keep printing in the click gesture: Safari may ignore deferred print calls.
+    window.print();
   });
 })();
