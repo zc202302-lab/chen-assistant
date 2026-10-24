@@ -2,10 +2,14 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-24（Asia/Shanghai）用户IMG_3132反馈已上线标准编辑仍不够紧凑，要求继续优化页面布局。允许继续推送部署；活动分支style/recipe-editor-density，基于main33b27926f154cf73439b0fa25fe45ece4d618fa7，候选1.7.24。已知现网1.7.23，证据见历史。Windows/云电脑#128/美国代理/chen-cook保持原状，EXE/XLSM附件未读取修改。
-- 当前改动：每物料行的比例/备注/所属环节改为同行⋯设置入口，保留全部字段与跨环节移动；行高目标≤54px，输入16px、36px高，按钮32×36px。收紧环节标题/卡片留白，步骤文本区缩短初始高度但可滚动/拉伸，保存栏说明改为“历史版本保留”，高度目标≤58px。样式仅限原recipe-editor.css与编辑模板，原JS数据逻辑不变。候选config/deploy1.7.24，编辑器资源查询1724。
-- 本次浏览器验收增补行高、输入字号、设置入口命中、展开编辑及保存栏高度，原创建/分组/跨组移动/保存/换算/历史/打印断言保留。尚未完成本轮本地、CI及生产验证，不宣称已部署24。
-- 唯一下一步：本地相关契约，推送检查点与Draft PR，完整CI/稳定性/隔离通过后合并部署并核验公网24。核心recipe-editor.css、recipe_edit_v10.html、recipe_creation_acceptance.py。目录/workspace/scratch/75165f63b510/chen-assistant。
+- 2026-10-24（Asia/Shanghai）用户要求继续开发 chen-assistant。当前任务为生活→菜谱库→编辑标准紧凑布局；已按既有推送部署授权将PR #167由Draft转Ready并squash合并至main，合并提交a8e5338f769a4d56c367722539690f428553b805；原开发分支style/recipe-editor-density提交86ab95ffb94e33c57cf86e8c51c46ccd0f2646c4。候选Web1.7.24；确认代码已合并，不代表生产已部署。此前有独立公网证据的版本仍为1.7.23。
+- 本轮：物料行比例/备注/所属环节移入同行⋯设置，保留跨组移动、完整字段；紧凑环节标题和卡片、缩短步骤文本区初始高度、保存栏高度目标≤58px；物料收起行高目标≤54px、输入16px/36px、按钮32×36px。范围仅配方编辑样式/模板、浏览器测试及Web版本/部署资源号，不改原JS数据逻辑或数据库。
+- 受检PR head86ab95ffb94e33c57cf86e8c51c46ccd0f2646c4：GitHub Actions validation 40087599981的validate120853604224与preflight120853604177 success；stability gate40087600006 success，assistant module isolation40087599964 success。真实浏览器配方创建/编辑及保存、回归等对应CI步骤通过。已合并PR https://github.com/zc202302-lab/chen-assistant/pull/167 。生产部署/健康检查/用户实机视觉反馈均待核查：本次会话容器外网DNS不可用，不能宣称线上1.7.24。main合并后CI/生产状态亦未直接取证。
+- Windows/云电脑#128/美国代理/chen-cook保持原状，EXE/XLSM附件未读取修改。唯一下一步：确认main自动部署与公网health/精确静态资源已升级1.7.24；如未升级，按既有发布规则核查部署状态，不推断成功；完成后请用户手机实测紧凑布局。当前无进行中的菜谱功能PR。
+
+## 上一阶段快照（历史：紧凑配方编辑1.7.24 PR开发中）
+
+- 原活动分支style/recipe-editor-density基于main33b27926f154cf73439b0fa25fe45ece4d618fa7；原状态为候选1.7.24尚未CI及生产验收，后续已由上述当前快照更新。历史工作目标：收紧物料行、折叠设置、保留原数据与回归。
 
 ## 上一阶段快照（历史：菜谱新建与分组编辑Web1.7.23已部署）
 
