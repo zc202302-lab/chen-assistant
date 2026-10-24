@@ -45,7 +45,10 @@ def main():
             page.get_by_role('button', name='保存步骤', exact=True).click()
             expect(page.locator('.bp-step')).to_have_count(1)
             expect(page.locator('.bp-step img')).to_have_count(2)
-            assert page.locator('.bp-step img').first.evaluate('img => img.complete && img.naturalWidth > 0')
+            first_image = page.locator('.bp-step img').first
+            first_image.scroll_into_view_if_needed()
+            first_image.evaluate('img => img.decode()')
+            assert first_image.evaluate('img => img.complete && img.naturalWidth > 0')
             page.locator('.bp-actions summary').click()
             page.get_by_role('link', name='编辑步骤', exact=True).click()
             page.get_by_label('步骤名称', exact=True).fill('核对资料与授权')
