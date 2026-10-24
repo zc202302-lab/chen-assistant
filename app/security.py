@@ -83,7 +83,7 @@ def delete_session(token: str | None):
 
 
 def require_csrf(session: dict, csrf: str):
-    if not session or not csrf or not hmac.compare_digest(session["csrf_token"], csrf):
+    if not session or not isinstance(csrf, str) or not csrf or not hmac.compare_digest(session["csrf_token"].encode(), csrf.encode()):
         raise ValueError("CSRF校验失败")
 
 

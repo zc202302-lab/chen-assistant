@@ -40,6 +40,7 @@ def main():
     assert anonymous.get('/account/security', follow_redirects=False).status_code == 303
     for path in ['/account/password', '/account/email/request', '/account/email/confirm', '/account/sessions/revoke']:
         assert client.post(path, data={'csrf': 'bad'}).status_code == 403
+        assert client.post(path, data={'csrf': '错误令牌'}).status_code == 403
     for path in ['/account/forgot', '/account/reset']:
         assert anonymous.get(path).status_code == 200
         assert anonymous.post(path, data={}).status_code == 403
@@ -94,6 +95,10 @@ def main():
         request_reset()  # resend cooldown cannot replace or email another code
         assert len(sent) == before + 1
         reset_code = sent[-1][1]
+        for _ in range(6):
+            assert not service.reset_password('unknown@example.test', 'invalid', 'new-password', 'new-password', 'unknown-guess')
+        with db() as conn:
+            assert conn.execute("SELECT attempts FROM account_email_challenges WHERE purpose='reset'").fetchone()[0] == 0
         for _ in range(5):
             assert not service.reset_password('owner@example.test', 'invalid', 'new-password', 'new-password', 'guess-test')
         assert not service.reset_password('owner@example.test', reset_code, 'new-password', 'new-password', 'guess-test')
@@ -155,6 +160,20 @@ def main():
     with patch.dict('os.environ', {'ACCOUNT_SMTP_HOST':'smtp.example.test', 'ACCOUNT_SMTP_FROM':'mail@example.test',
                                  'ACCOUNT_SMTP_USE_SSL':'0', 'ACCOUNT_SMTP_STARTTLS':'0'}):
         assert not available(), 'plaintext recovery transport must be rejected'
+    # Emergency CLI uses the same persistent credential path and preserves data.
+    from contextlib import redirect_stdout
+    from io import StringIO
+    from scripts.reset_account_password import main as cli_reset
+    env_fixture = config.DB_PATH.parent / '.env'
+    env_fixture.write_text('existing-secret-config-must-not-change\n')
+    env_fixture.chmod(0o600)
+    original_env = (env_fixture.read_bytes(), env_fixture.stat().st_uid, env_fixture.stat().st_gid, env_fixture.stat().st_mode)
+    with patch.object(config, 'ROOT', config.DB_PATH.parent), patch('getpass.getpass', side_effect=['server-password', 'server-password']), redirect_stdout(StringIO()):
+        cli_reset()
+    assert (env_fixture.read_bytes(), env_fixture.stat().st_uid, env_fixture.stat().st_gid, env_fixture.stat().st_mode) == original_env
+    assert verify_login(config.APP_USERNAME, 'server-password')
+    assert not verify_login(config.APP_USERNAME, 'final-password')
+    assert config.APP_ENCRYPTION_KEY == key and decrypt_secret(cipher) == 'existing private business value'
     print('account security passed: legacy migration, CSRF, verified email, single-use expiry, retries, concurrent reset, session revocation, rollback and preserved encrypted data; mocked SMTP only')
 
 

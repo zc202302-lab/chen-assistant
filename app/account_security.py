@@ -158,7 +158,7 @@ def deliver_challenge(purpose, email, code, digest):
 def consume_challenge(conn, purpose, email, code):
     from .security import token_digest
     row = conn.execute('SELECT * FROM account_email_challenges WHERE purpose=?', (purpose,)).fetchone()
-    if not row or row['state'] != 'sent' or row['expires'] <= time.time() or row['attempts'] >= 5:
+    if not row or row['email'] != email or row['state'] != 'sent' or row['expires'] <= time.time() or row['attempts'] >= 5:
         return False
     conn.execute('UPDATE account_email_challenges SET attempts=attempts+1 WHERE purpose=?', (purpose,))
     valid = (row['email'] == email and row['generation'] == generation(account(conn))
