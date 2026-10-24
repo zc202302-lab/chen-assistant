@@ -2,6 +2,14 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-24（Asia/Shanghai）用户选择“邮箱找回”，授权开发网页版账户密码管理：账户与安全、修改密码、已验证邮箱绑定/更换、忘记密码验证码重置、退出其他设备。活动分支feat/account-email-recovery，基于main7ad6488e947a99e820c501b7bbf230818ce32085，候选Web1.7.22；Windows0.5.17已发布不改，云电脑#128、美国代理和其他项目不恢复，EXE/XLSM附件不修改。
+- 已实现职责模块account_security.py/account_mail.py/account_routes.py，9个路由、两张模板和作用域CSS；现有单一账户，原.env凭据无缝回退，改密后SQLite凭据优先，运行迁移登记。随机8位邮箱码/HMAC摘要/10分钟/5次/60秒及IP和账户发送限额，独立公开表单签名CSRF，SMTP后台SSL/STARTTLS发送，统一找回提示，不在URL/日志/响应显示密码或验证码。改密/重置撤销所有登录，登录验证和会话签发同事务，密钥和业务数据不改。
+- 新增服务器交互恢复脚本scripts/reset_account_password.py，先私密备份数据库，只改凭据不重写.env；启用数据库密码后不能仅修改.env密码字段。首次忘记密码且未绑定邮箱仍需SSH恢复。邮件默认复用已有SMTP设置，可ACCOUNT_SMTP_*独立配置，生产SMTP配置与真实收信尚未知，不能宣称实际邮件已送达。
+- 核心接口测试和真实浏览器测试已加入CI，接口本地复核中；两份路由清单已更新，架构/CSRF契约初轮通过。完整CI与公网部署尚未完成，不能宣称Web1.7.22已上线。说明docs/ACCOUNT_SECURITY.md。唯一下一步：完成HTTP/并发/回滚/SMTP模拟与浏览器验收、完整历史回归，通过后合并部署核验；生产邮件由用户绑定实际邮箱验证。
+- 工作目录/workspace/scratch/75165f63b510/chen-assistant。
+
+## 上一阶段快照（历史：Windows0.5.17已发布）
+
 - 2026-10-21（Asia/Shanghai）用户明确恢复Windows久坐助手开发：强制休息完成后须输入客户端自设密码返回桌面，内容不限。PR #164 https://github.com/zc202302-lab/chen-assistant/pull/164 已合并，main功能提交d2d3583959bc591bed63e42bb667802e69c1b9a6，客户端0.5.17已正式发布且公网完整验证通过；用户安装及实际摄像头场景重测待反馈。feat/sedentary-password-unlock已完成。允许推送发布，云电脑#128和美国代理仍暂停，附件不修改。
 - 已实现：休息完成保留遮罩等待正确密码，计时未完不能提前解锁；等待期间暂停新周期，成功后复位。久坐→模块设置→久坐设置→设置/修改解锁密码，可独立于摄像头保存，修改验证旧密码；任意非空UTF-8内容，中文/符号/空格原样保留，无复杂度要求。旧安装首次休息完成设定并确认。密码本机随机盐PBKDF2摘要，文件%APPDATA%/久坐提醒/rest-unlock.json，不保存明文、不上传；无配置损坏时的静默免密降级。此为休息遮罩非Windows账户锁屏；管理员/系统界面仍可结束进程。忘记密码恢复方式见客户端README。核心windows/win-assistants/sedentary/ui.py、unlock.py、win_assistants/sedentary.py、tests/test_sedentary_unlock.py。
 - 最终受检head4beacabecd5af10033974861882ba26bdcb1d036，完整validation39553162203 / validate119066715147及preflight119066715466 success，安全审核success；stability39553161619、模块隔离39553161663 success。Windows cross build39553161702全通过：source119066713714、build119066713959、native119066714028、真实Windows最终EXE更新替换/重启/失败回退和Excel文件锁119068592251 success。原生Tk包含密码设置、错误密码、首次设置、两轮门禁、输入焦点、真实_poll转换及等待期不重复计时；所有历史检查保留。本地102项OK，12项GUI因无显示环境跳过；架构治理、流程图片契约通过，不宣称本地GUI或用户真实业务通过。
