@@ -2,9 +2,11 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-24（Asia/Shanghai）用户明确继续开发，沿用直接完成部署授权。活动PR #169，分支fix/recipe-print-main-row-20261024；功能基于d2f19818f8ba4fc0ae0042a4976ffb708629eca5。已实际git clone并发现该分支与main的docs/AI_HANDOFF.md存在合并冲突；正在合入main解决文档冲突，恢复PR可合并性及CI触发，未更改功能或绕过测试。
-- 打印修改：首行固定主材，10等宽列（分类+9物料），去掉备注独立列，方法与原理合并。尚未合并生产；完整validation、stability、isolation与生产验证均待新head证据。其他项目及附件保持原状。
-- 唯一下一步：推送冲突修复，核对当前head全部必要CI，成功后合并并验证公网打印资源。
+- 2026-10-24（Asia/Shanghai）用户要求继续开发，并沿用直接完成部署授权。本轮打印修复PR #169 https://github.com/zc202302-lab/chen-assistant/pull/169 已squash合并，main功能提交1fab21e8af1801c2cd1af247bac051cc38e5e4a7。活动打印分支已完成，无待合并功能WIP；Windows/云电脑#128/美国代理/chen-cook与上传附件均未修改。
+- 已实现：打印首行固定“主材”，无该分组时留空而不将腌肉等环节冒充主材；删除右侧备注独立列，改为10等宽列（分类+9物料）；下方方法跨9格，原理文字并入方法格，数据库和历史数据不变。核心app/v101_recipe_template_patch.py、recipe_print_v101.html、recipe-print-v101.css；缓存参数1725，Web版本沿用1.7.24。
+- 已解决此前CI未触发的明确原因：打印分支与main在docs/AI_HANDOFF.md存在合并冲突。已合入main并解冲突，受检head905bdf6b1078727beb70755f66f8312e0f0752ed。完整validation40094068232（validate120872544872、preflight120872544624）、stability40094068224、模块隔离40094068223全部success。打印浏览器验收包含主材首行、10等宽列/9物料格、方法合并列及单页A4；完整历史业务回归保留并通过。本地菜谱创建/打印契约、架构治理、稳定性通过，首次依赖未安装失败后安装requirements再通过。
+- 受检head与合并main的tree均5aacd5f244217e39aa71d847e9cc36857e011a41，确认合并代码一致。公网已读到health版本1.7.24；合并前打印CSS与候选不一致，合并后20:44—20:46（Asia/Shanghai）公网/static/recipe-print-v101.css?v=1725与受检源码逐字节（strip）一致。自动部署已同步新打印资源；未取得生产精确backend SHA，也未登录生产查看私有菜谱或写入业务数据。全站scripts/check_pwa_production.py亦已完成并返回ONLINE VERIFIED v1.7.24，原精确静态资源、PWA、账户鉴权/找回公开表单和号码域名边界全部通过；不将资源一致推断为私有打印页人工验收。
+- 环境：/workspace/scratch/1dc24d163d10/chen-assistant已git clone；本机git push无凭据，使用已连接GitHub工具发布冲突修复并合并。只读公网可用。唯一下一步：用户刷新菜谱打印页核对实际布局；若有新截图/需求，在该main基线上继续开发和部署。
 
 ## 前序打印排障记录（历史）
 
