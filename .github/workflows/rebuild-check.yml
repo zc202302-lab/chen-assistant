@@ -142,6 +142,8 @@ jobs:
       - name: Business display settings regression
         if: steps.scope.outputs.mode == 'full'
         run: |
+          python tests/account_security_contract.py
+          python tests/account_security_acceptance.py
           python tests/business_process_contract.py
           python tests/business_process_acceptance.py
           python tests/business_display_settings_contract.py
