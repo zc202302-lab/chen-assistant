@@ -86,7 +86,7 @@ def verify():
         if path == '/work/number-inbox' and 'http://127.0.0.1:18764' not in headers.get('Content-Security-Policy', ''):
             raise RuntimeError('Online page CSP does not allow the signed number batch bridge')
     verify_collection_boundary()
-    for path in ['business-processes.css', 'business-processes.js', 'account-security.css', 'recipe-editor.css', 'recipe-editor.js', 'v10.js']:
+    for path in ['business-processes.css', 'business-processes.js', 'account-security.css', 'recipe-editor.css', 'recipe-editor.js', 'v10.js', 'recipe-print-v101.js', 'recipe-print-v101.css']:
         _, _, raw = fetch('/static/' + path)
         if raw.strip() != (ROOT / 'app/static' / path).read_bytes().strip():
             raise RuntimeError('Online business process asset differs: ' + path)

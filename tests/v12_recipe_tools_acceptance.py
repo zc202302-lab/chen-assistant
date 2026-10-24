@@ -74,6 +74,19 @@ def main():
 
             page.emulate_media(media='print')
             page.goto(f'http://127.0.0.1:8142/life/recipes/{rid}/print', wait_until='networkidle')
+            # Exercise the button itself, preserving the synchronous user gesture.
+            page.emulate_media(media='screen')
+            page.evaluate('''() => {
+                window.__printCalls = [];
+                window.print = () => window.__printCalls.push(navigator.userActivation.isActive);
+                document.querySelector('[data-recipe-print]').addEventListener('click', () => {
+                    window.__printCallsAtClickEnd = window.__printCalls.length;
+                });
+            }''')
+            page.locator('[data-recipe-print]').click()
+            assert page.evaluate('window.__printCalls') == [True]
+            assert page.evaluate('window.__printCallsAtClickEnd') == 1
+            page.emulate_media(media='print')
             grid = page.locator('.excel-recipe-grid')
             expect(grid).to_be_visible()
             assert page.locator('.excel-recipe-grid tr').count() == 15
