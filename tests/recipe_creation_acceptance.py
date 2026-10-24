@@ -105,6 +105,12 @@ def main():
                     page.goto(base + path, wait_until='networkidle')
                     page.evaluate('() => Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {})))')
                     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), (width, path)
+                    if label == 'edit':
+                        # Main material inputs stay on one row even on the phone.
+                        dimensions = page.locator('.recipe-material-main').first.locator('input').evaluate_all('(inputs) => inputs.map(input => {const r = input.getBoundingClientRect(); return {top:r.top,width:r.width};})')
+                        assert max(d['top'] for d in dimensions) - min(d['top'] for d in dimensions) < 2, dimensions
+                        assert all(d['width'] > 35 for d in dimensions), dimensions
+                        assert page.locator('.v10-sticky-save').bounding_box()['height'] < 90
                     page.screenshot(path=str(directory / f'{label}-{width}.png'), full_page=True)
             page.goto(base + f'/life/recipes/{rid}/versions', wait_until='networkidle')
             expect(page.get_by_text('首次填写配方', exact=True)).to_be_visible()
