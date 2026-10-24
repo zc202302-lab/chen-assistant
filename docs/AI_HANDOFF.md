@@ -2,6 +2,14 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-24（Asia/Shanghai）用户反馈“点击打印无反应”，已授权修复并继续至部署。活动PR #170 https://github.com/zc202302-lab/chen-assistant/pull/170，分支fix/recipe-print-button，功能head35e2fc2b29f8926564e6174fb75376184ca6d0f0，基于main67d833664fa7a659938c4bb63e5c0dbc17ed391f。尚未合并/部署此按钮修复。
+- 打印按钮原先setTimeout延时60ms调用window.print，移动浏览器可能丢失用户手势。已改为点击内同步调用，保留fit及原布局，缓存参数1726；新增浏览器实际点击断言（同一click调用完成、userActivation有效），公网核验增加打印JS/CSS精确对比。本地Node语法和同步点击模拟通过；架构检查已运行，完整CI待结果。不将推测当作用户终端已确认根因。
+- 核心app/static/recipe-print-v101.js、app/templates/recipe_print_v101.html、tests/v12_recipe_tools_acceptance.py、scripts/check_pwa_production.py。Windows/其他项目/附件均不动。现网此前版式修复#169已部署，版本1.7.24，用户按钮问题待此轮验证。
+- 唯一下一步：检查#170当前head完整validation/stability/isolation，成功后合并，核对公网新打印脚本并请用户终端重试。
+
+## 上一阶段（历史：打印版式修复已部署）
+
+
 - 2026-10-24（Asia/Shanghai）用户要求继续开发，并沿用直接完成部署授权。本轮打印修复PR #169 https://github.com/zc202302-lab/chen-assistant/pull/169 已squash合并，main功能提交1fab21e8af1801c2cd1af247bac051cc38e5e4a7。活动打印分支已完成，无待合并功能WIP；Windows/云电脑#128/美国代理/chen-cook与上传附件均未修改。
 - 已实现：打印首行固定“主材”，无该分组时留空而不将腌肉等环节冒充主材；删除右侧备注独立列，改为10等宽列（分类+9物料）；下方方法跨9格，原理文字并入方法格，数据库和历史数据不变。核心app/v101_recipe_template_patch.py、recipe_print_v101.html、recipe-print-v101.css；缓存参数1725，Web版本沿用1.7.24。
 - 已解决此前CI未触发的明确原因：打印分支与main在docs/AI_HANDOFF.md存在合并冲突。已合入main并解冲突，受检head905bdf6b1078727beb70755f66f8312e0f0752ed。完整validation40094068232（validate120872544872、preflight120872544624）、stability40094068224、模块隔离40094068223全部success。打印浏览器验收包含主材首行、10等宽列/9物料格、方法合并列及单页A4；完整历史业务回归保留并通过。本地菜谱创建/打印契约、架构治理、稳定性通过，首次依赖未安装失败后安装requirements再通过。
