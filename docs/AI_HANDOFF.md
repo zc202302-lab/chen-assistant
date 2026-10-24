@@ -2,6 +2,13 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-24（Asia/Shanghai）用户IMG_3132反馈已上线标准编辑仍不够紧凑，要求继续优化页面布局。允许继续推送部署；活动分支style/recipe-editor-density，基于main33b27926f154cf73439b0fa25fe45ece4d618fa7，候选1.7.24。已知现网1.7.23，证据见历史。Windows/云电脑#128/美国代理/chen-cook保持原状，EXE/XLSM附件未读取修改。
+- 当前改动：每物料行的比例/备注/所属环节改为同行⋯设置入口，保留全部字段与跨环节移动；行高目标≤54px，输入16px、36px高，按钮32×36px。收紧环节标题/卡片留白，步骤文本区缩短初始高度但可滚动/拉伸，保存栏说明改为“历史版本保留”，高度目标≤58px。样式仅限原recipe-editor.css与编辑模板，原JS数据逻辑不变。候选config/deploy1.7.24，编辑器资源查询1724。
+- 本次浏览器验收增补行高、输入字号、设置入口命中、展开编辑及保存栏高度，原创建/分组/跨组移动/保存/换算/历史/打印断言保留。尚未完成本轮本地、CI及生产验证，不宣称已部署24。
+- 唯一下一步：本地相关契约，推送检查点与Draft PR，完整CI/稳定性/隔离通过后合并部署并核验公网24。核心recipe-editor.css、recipe_edit_v10.html、recipe_creation_acceptance.py。目录/workspace/scratch/75165f63b510/chen-assistant。
+
+## 上一阶段快照（历史：菜谱新建与分组编辑Web1.7.23已部署）
+
 - 2026-10-24（Asia/Shanghai）用户要求先完成邮箱密码重置，再新建菜谱；最新要求系统优化“编辑标准”，腌肉等同环节物料集中一栏。账户已部署1.7.22，证据见历史。菜谱PR #166 https://github.com/zc202302-lab/chen-assistant/pull/166 已合并，main功能提交f4fc712eb18becd5a1af6039492a84af8d015ba4，Web1.7.23已部署并于2026-10-24 17:34:21（Asia/Shanghai）公网核验通过，实际使用反馈待用户确认。允许推送部署，无未合并功能WIP。Windows、云电脑#128、美国代理与chen-cook保持原状；EXE/XLSM附件未读取或修改。
 - 入口：生活/菜谱库→＋新建菜谱→创建并编辑配方；manual纳入数量、搜索、分类和最近记录，原18份标准及目录类历史保留。新建V1后配方保存V2，中断可从库中续写。编辑按原group_name首次出现顺序归组，组名只填一次；物料/用量/单位同行，比例/备注/所属环节展开编辑，可移动单个物料保留全部字段；环节改名/上下移动/增删及物料增删，含物料删除确认。改进说明常显，菜谱信息折叠；紧凑保存栏。空组不保存，组名不可重复。无新schema或路由，原CSRF/数值校验、步骤全部字段、版本和打印保留。
 - 核心app/recipe_library.py、app/v12_tools_routes.py、创建/列表/编辑模板、recipe-editor.css/js、v10.js及base缓存参数1723。说明docs/RECIPE_CREATION.md，验收tests/recipe_creation_contract.py和recipe_creation_acceptance.py，公网check_pwa_production.py增加新编辑器与v10.js精确资源核对。

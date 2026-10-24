@@ -118,6 +118,16 @@ def main():
                         assert max(d['top'] for d in dimensions) - min(d['top'] for d in dimensions) < 2, dimensions
                         assert all(d['width'] > 35 for d in dimensions), dimensions
                         assert page.locator('.v10-sticky-save').bounding_box()['height'] < 90
+                        row = page.locator('.recipe-material').first
+                        assert row.bounding_box()['height'] <= 54, row.bounding_box()
+                        assert page.locator('.v10-sticky-save').bounding_box()['height'] <= 58
+                        assert row.get_by_label('物料名称', exact=True).evaluate('el => parseFloat(getComputedStyle(el).fontSize)') >= 16
+                        # The compact settings entry has its own hit target, next to delete.
+                        summary = row.locator('summary')
+                        assert summary.evaluate('el => {const r=el.getBoundingClientRect(); return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}')
+                        summary.click()
+                        expect(row.get_by_label('用量方式', exact=True)).to_be_visible()
+                        summary.click()
                     page.screenshot(path=str(directory / f'{label}-{width}.png'), full_page=True)
             page.goto(base + f'/life/recipes/{rid}/versions', wait_until='networkidle')
             expect(page.get_by_text('首次填写配方', exact=True)).to_be_visible()
