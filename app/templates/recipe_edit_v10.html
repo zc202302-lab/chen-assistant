@@ -1,3 +1,56 @@
 {% extends "base.html" %}
 {% block title %}编辑 {{ recipe.name }} · 菜谱{% endblock %}
-{% block content %}<section class="v10-shell v10-editor" data-v10-recipe-editor><a class="v10-back" href="/life/recipes/{{ recipe.id }}">← 返回 {{ recipe.name }}</a><div class="v10-page-head"><div><span class="v10-kicker">当前 V{{ version.version_no }} → 新版本</span><h1>编辑标准配方</h1><p>保存不会覆盖历史，而是创建 V{{ version.version_no + 1 }} 并设为当前标准。</p></div></div><form method="post" class="v10-editor-form"><input type="hidden" name="csrf" value="{{ csrf }}"><section class="v10-form-card"><h2>菜谱信息</h2><div class="v10-form-grid"><label>菜名<input name="name" value="{{ recipe.name }}" required></label><label>分类<input name="category" value="{{ recipe.category }}"></label><label>标签<input name="tags" value="{{ recipe.tags }}"></label><label>改进说明<input name="change_summary" placeholder="这次为什么修改？" required></label><label>标准主材重量<input name="base_amount" type="number" step="0.01" value="{{ version.base_amount }}" required></label><label>单位<input name="base_unit" value="{{ version.base_unit }}"></label></div><label>菜谱说明<textarea name="description" rows="3">{{ recipe.description }}</textarea></label></section><section class="v10-form-card"><div class="v10-section-head"><div><h2>配料</h2><p>按比例 / 固定量 / 手工决定</p></div><button type="button" class="v10-secondary" data-add-ingredient>＋ 配料</button></div><div data-ingredient-list>{% for ing in ingredients %}<div class="v10-edit-row"><input name="ingredient_group" value="{{ ing.group_name }}" placeholder="分组"><input name="ingredient_name" value="{{ ing.name }}" placeholder="配料名" required><input name="ingredient_amount" type="number" step="0.01" value="{{ ing.amount if ing.amount is not none else '' }}" placeholder="用量"><input name="ingredient_unit" value="{{ ing.unit }}" placeholder="单位"><select name="ingredient_mode"><option value="proportional" {% if ing.scale_mode=='proportional' %}selected{% endif %}>按主材比例</option><option value="fixed" {% if ing.scale_mode=='fixed' %}selected{% endif %}>固定量</option><option value="manual" {% if ing.scale_mode=='manual' %}selected{% endif %}>手工决定</option></select><input name="ingredient_note" value="{{ ing.note }}" placeholder="备注"><button type="button" class="v10-remove" data-remove-row>×</button></div>{% endfor %}</div><template id="v10IngredientTemplate"><div class="v10-edit-row"><input name="ingredient_group" value="配料" placeholder="分组"><input name="ingredient_name" placeholder="配料名" required><input name="ingredient_amount" type="number" step="0.01" placeholder="用量"><input name="ingredient_unit" value="g" placeholder="单位"><select name="ingredient_mode"><option value="proportional">按主材比例</option><option value="fixed">固定量</option><option value="manual">手工决定</option></select><input name="ingredient_note" placeholder="备注"><button type="button" class="v10-remove" data-remove-row>×</button></div></template></section><section class="v10-form-card"><div class="v10-section-head"><div><h2>步骤</h2><p>沿用 Excel 的“步骤 / 方法 / 原理”原始文本，不强制拆成火力、时间等字段。</p></div><button type="button" class="v10-secondary" data-add-step>＋ 步骤</button></div><div data-step-list>{% for s in steps %}<article class="v10-step-edit"><div class="v10-step-edit-head"><strong>步骤 {{ loop.index }}</strong><button type="button" class="v10-remove" data-remove-row>删除</button></div><label>步骤标题<input name="step_title" value="{{ s.title }}" placeholder="例如：主材准备"></label><label>方法原文<textarea name="step_action" rows="6">{{ s.action }}</textarea></label><label>原理 / 备注原文<textarea name="step_principle" rows="4">{{ s.principle }}</textarea></label><input type="hidden" name="step_heat" value="{{ s.heat }}"><input type="hidden" name="step_duration" value="{{ s.duration }}"><input type="hidden" name="step_judgement" value="{{ s.judgement }}"><input type="hidden" name="step_risk" value="{{ s.risk }}"></article>{% endfor %}</div><template id="v10StepTemplate"><article class="v10-step-edit"><div class="v10-step-edit-head"><strong>新步骤</strong><button type="button" class="v10-remove" data-remove-row>删除</button></div><label>步骤标题<input name="step_title" placeholder="例如：主材准备"></label><label>方法原文<textarea name="step_action" rows="6"></textarea></label><label>原理 / 备注原文<textarea name="step_principle" rows="4"></textarea></label><input type="hidden" name="step_heat" value=""><input type="hidden" name="step_duration" value=""><input type="hidden" name="step_judgement" value=""><input type="hidden" name="step_risk" value=""></article></template></section><div class="v10-sticky-save"><span>保存后生成新标准版本，旧版本永久保留。</span><button class="v10-primary" type="submit">保存为 V{{ version.version_no + 1 }}</button></div></form></section>{% endblock %}
+{% macro material(ing=none) %}
+<div class="v10-edit-row recipe-material">
+  <input type="hidden" name="ingredient_group" value="{{ ing.group_name if ing else '配料' }}">
+  <div class="recipe-material-main">
+    <input aria-label="物料名称" name="ingredient_name" value="{{ ing.name if ing else '' }}" placeholder="物料名称" required>
+    <input aria-label="用量" name="ingredient_amount" type="number" inputmode="decimal" step="0.01" value="{{ ing.amount if ing and ing.amount is not none else '' }}" placeholder="用量">
+    <input aria-label="物料单位" name="ingredient_unit" value="{{ ing.unit if ing else 'g' }}" placeholder="单位">
+    <button type="button" class="recipe-icon" data-remove-material aria-label="删除物料">×</button>
+  </div>
+  <details class="recipe-material-options">
+    <summary>比例与备注 · <span data-mode-label>{{ '固定量' if ing and ing.scale_mode == 'fixed' else ('手工决定' if ing and ing.scale_mode == 'manual' else '按主材比例') }}</span>{% if ing and ing.note %} · {{ ing.note }}{% endif %}</summary>
+    <div class="recipe-option-fields">
+      <label>所属环节<select data-material-group aria-label="所属环节"></select></label>
+      <label>用量方式<select name="ingredient_mode"><option value="proportional">按主材比例</option><option value="fixed" {% if ing and ing.scale_mode == 'fixed' %}selected{% endif %}>固定量</option><option value="manual" {% if ing and ing.scale_mode == 'manual' %}selected{% endif %}>手工决定</option></select></label>
+      <label>备注<input name="ingredient_note" value="{{ ing.note if ing else '' }}" placeholder="例如：分两次加入"></label>
+    </div>
+  </details>
+</div>
+{% endmacro %}
+{% macro group(name='新环节', items=[]) %}
+<article class="recipe-group" data-recipe-group>
+  <header class="recipe-group-head">
+    <label class="recipe-group-title"><span>操作环节</span><input data-group-name aria-label="环节名称" value="{{ name }}" placeholder="例如：腌肉" required></label>
+    <div class="recipe-group-actions">
+      <button type="button" class="recipe-icon" data-group-up aria-label="上移环节">↑</button>
+      <button type="button" class="recipe-icon" data-group-down aria-label="下移环节">↓</button>
+      <button type="button" class="recipe-icon" data-delete-group aria-label="删除环节">×</button>
+    </div>
+  </header>
+  <div class="recipe-column-labels" aria-hidden="true"><span>物料</span><span>用量</span><span>单位</span><span></span></div>
+  <div data-group-materials>{% for ing in items %}{{ material(ing) }}{% endfor %}</div>
+  <button type="button" class="recipe-add-material" data-add-ingredient>＋ 添加物料</button>
+</article>
+{% endmacro %}
+{% block content %}
+<link rel="stylesheet" href="/static/recipe-editor.css?v=1723">
+<script src="/static/recipe-editor.js?v=1723" defer></script>
+<section class="v10-shell v10-editor" data-v10-recipe-editor data-grouped-recipe-editor><a class="v10-back" href="/life/recipes/{{ recipe.id }}">← 返回 {{ recipe.name }}</a><div class="v10-page-head"><div><span class="v10-kicker">当前 V{{ version.version_no }} → 新版本</span><h1>编辑标准配方</h1><p>保存不会覆盖历史，而是创建 V{{ version.version_no + 1 }} 并设为当前标准。</p></div></div><form method="post" class="v10-editor-form"><input type="hidden" name="csrf" value="{{ csrf }}"><section class="v10-form-card"><label>改进说明<input name="change_summary" placeholder="这次为什么修改？" required></label><details class="recipe-metadata"><summary>菜谱信息 <span>{{ recipe.name }} · {{ version.base_amount }} {{ version.base_unit }}</span></summary><div class="v10-form-grid"><label>菜名<input name="name" value="{{ recipe.name }}" required></label><label>分类<input name="category" value="{{ recipe.category }}"></label><label>标签<input name="tags" value="{{ recipe.tags }}"></label><label>标准主材重量<input name="base_amount" type="number" step="0.01" value="{{ version.base_amount }}" required></label><label>单位<input name="base_unit" value="{{ version.base_unit }}"></label></div><label>菜谱说明<textarea name="description" rows="3">{{ recipe.description }}</textarea></label></details></section>
+<section class="v10-form-card recipe-ingredients">
+  <div class="v10-section-head"><div><h2>环节与物料</h2><p>同一环节集中填写物料；用量方式与备注可展开编辑。</p></div><button type="button" class="v10-secondary" data-add-group>＋ 添加环节</button></div>
+  <div data-ingredient-list>
+    {% set seen = namespace(names=[]) %}
+    {% for ing in ingredients %}
+      {% if ing.group_name not in seen.names %}
+        {% set seen.names = seen.names + [ing.group_name] %}
+        {{ group(ing.group_name, ingredients|selectattr('group_name', 'equalto', ing.group_name)|list) }}
+      {% endif %}
+    {% endfor %}
+  </div>
+  <p class="recipe-empty" data-empty-groups {% if ingredients %}hidden{% endif %}>先添加一个环节，例如“腌肉”，再在其中添加所需物料。</p>
+  <template id="recipeGroupTemplate">{{ group() }}</template>
+  <template id="v10IngredientTemplate">{{ material() }}</template>
+</section>
+<section class="v10-form-card"><div class="v10-section-head"><div><h2>步骤</h2><p>沿用 Excel 的“步骤 / 方法 / 原理”原始文本，不强制拆成火力、时间等字段。</p></div><button type="button" class="v10-secondary" data-add-step>＋ 步骤</button></div><div data-step-list>{% for s in steps %}<article class="v10-step-edit"><div class="v10-step-edit-head"><strong>步骤 {{ loop.index }}</strong><button type="button" class="v10-remove" data-remove-row>删除</button></div><label>步骤标题<input name="step_title" value="{{ s.title }}" placeholder="例如：主材准备"></label><label>方法原文<textarea name="step_action" rows="6">{{ s.action }}</textarea></label><label>原理 / 备注原文<textarea name="step_principle" rows="4">{{ s.principle }}</textarea></label><input type="hidden" name="step_heat" value="{{ s.heat }}"><input type="hidden" name="step_duration" value="{{ s.duration }}"><input type="hidden" name="step_judgement" value="{{ s.judgement }}"><input type="hidden" name="step_risk" value="{{ s.risk }}"></article>{% endfor %}</div><template id="v10StepTemplate"><article class="v10-step-edit"><div class="v10-step-edit-head"><strong>新步骤</strong><button type="button" class="v10-remove" data-remove-row>删除</button></div><label>步骤标题<input name="step_title" placeholder="例如：主材准备"></label><label>方法原文<textarea name="step_action" rows="6"></textarea></label><label>原理 / 备注原文<textarea name="step_principle" rows="4"></textarea></label><input type="hidden" name="step_heat" value=""><input type="hidden" name="step_duration" value=""><input type="hidden" name="step_judgement" value=""><input type="hidden" name="step_risk" value=""></article></template></section><div class="v10-sticky-save"><span>保存生成新版本，历史保留。</span><button class="v10-primary" type="submit">保存为 V{{ version.version_no + 1 }}</button></div></form></section>{% endblock %}

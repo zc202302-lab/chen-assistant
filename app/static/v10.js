@@ -40,7 +40,7 @@
         if (label) label.textContent = `步骤 ${idx + 1}`;
       });
     };
-    editor.querySelector('[data-add-ingredient]')?.addEventListener('click', () => {
+    if (!editor.hasAttribute('data-grouped-recipe-editor')) editor.querySelector('[data-add-ingredient]')?.addEventListener('click', () => {
       if (ingredientTpl && ingredientList) ingredientList.appendChild(ingredientTpl.content.cloneNode(true));
     });
     editor.querySelector('[data-add-step]')?.addEventListener('click', () => {

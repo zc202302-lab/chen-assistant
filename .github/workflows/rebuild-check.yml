@@ -144,6 +144,8 @@ jobs:
         run: |
           python tests/account_security_contract.py
           python tests/account_security_acceptance.py
+          python tests/recipe_creation_contract.py
+          python tests/recipe_creation_acceptance.py
           python tests/business_process_contract.py
           python tests/business_process_acceptance.py
           python tests/business_display_settings_contract.py
@@ -157,6 +159,15 @@ jobs:
           name: account-security-ui-preview
           retention-days: 1
           path: artifacts/account-security
+          if-no-files-found: error
+
+      - name: Upload manual recipe UI previews
+        if: always() && steps.scope.outputs.mode == 'full'
+        uses: actions/upload-artifact@v4
+        with:
+          name: recipe-creation-ui-preview
+          retention-days: 1
+          path: artifacts/recipe-creation
           if-no-files-found: error
 
       - name: Home module style acceptance
