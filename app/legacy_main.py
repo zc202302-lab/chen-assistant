@@ -96,7 +96,7 @@ def ctx(request: Request, **extra):
 @app.middleware('http')
 async def auth_and_headers(request: Request, call_next):
     path = request.url.path
-    public = path == '/login' or path.startswith('/static/') or path.startswith('/number-submit/') or path in {'/api/number-inbox/pending', '/api/number-inbox/batch-complete'} or (path.startswith('/api/number-inbox/') and path.endswith('/done')) or path in {'/manifest.webmanifest','/sw.js','/health'}
+    public = path == '/login' or path in {'/account/forgot', '/account/reset'} or path.startswith('/static/') or path.startswith('/number-submit/') or path in {'/api/number-inbox/pending', '/api/number-inbox/batch-complete'} or (path.startswith('/api/number-inbox/') and path.endswith('/done')) or path in {'/manifest.webmanifest','/sw.js','/health'}
     if not public:
         session = get_session(request.cookies.get('session_token'))
         if not session:
@@ -143,17 +143,20 @@ def service_worker():
 
 
 @app.get('/login', response_class=HTMLResponse)
-def login_page(request: Request, error: str = ''):
-    return templates.TemplateResponse('login.html', {'request': request, 'error': error, 'configured': configured()})
+def login_page(request: Request, error: str = '', notice: str = ''):
+    message = '密码已更新，请使用新密码登录。' if notice == 'password-updated' else ''
+    return templates.TemplateResponse('login.html', {'request': request, 'error': error, 'notice': message, 'configured': configured()})
 
 
 @app.post('/login')
 def login(request: Request, username: str = Form(...), password: str = Form(...)):
     if not configured():
         return RedirectResponse('/login?error=尚未运行setup_env.py', status_code=303)
-    if not verify_login(username.strip(), password):
+    from .security import login_session
+    session = login_session(username.strip(), password, request.client.host if request.client else 'unknown')
+    if not session:
         return RedirectResponse('/login?error=用户名或密码错误', status_code=303)
-    token, _, _ = create_session()
+    token, _, _ = session
     target = request.cookies.get('post_login_path', '/')
     if not target.startswith('/') or target.startswith('//') or any(c in target for c in ('\\', '\r', '\n', '\x00')):
         target = '/'

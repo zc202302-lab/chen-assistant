@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}账户与安全 · 晨的助手{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/account-security.css?v=1722">
+<section class="account-security">
+  <header class="account-heading"><div><p class="account-eyebrow">个人设置</p><h1>账户与安全</h1><p>管理登录密码与找回邮箱</p></div><a href="/">返回首页</a></header>
+  {% if message %}<div class="account-message" role="status">{{ message }}</div>{% endif %}
+  {% if error %}<div class="account-error" role="alert">{{ error }}</div>{% endif %}
+  <div class="account-overview"><div><span>登录账户</span><strong>{{ username }}</strong></div><div><span>找回邮箱</span><strong>{{ email or '尚未绑定' }}</strong></div></div>
+  <details class="account-card"><summary><span><strong>修改登录密码</strong><small>验证当前密码，保存后所有设备重新登录</small></span></summary>
+    <form method="post" action="/account/password" class="account-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>当前密码<input type="password" name="current" autocomplete="current-password" maxlength="512" required></label>
+      <label>新密码<input type="password" name="password" autocomplete="new-password" maxlength="512" required></label>
+      <label>确认新密码<input type="password" name="confirmation" autocomplete="new-password" maxlength="512" required></label>
+      <button class="primary" type="submit">保存新密码</button>
+    </form>
+  </details>
+  <details class="account-card" {% if pending %}open{% endif %}><summary><span><strong>{{ '更换' if email else '绑定' }}找回邮箱</strong><small>验证邮箱后，可在登录页自行重置密码</small></span></summary>
+    {% if not mail_available %}<p class="account-error">服务器尚未配置邮件发送。请按账户安全文档配置 SMTP 后再绑定；不会自动使用业务收件人作为找回邮箱。</p>{% endif %}
+    {% if pending and pending.state == 'failed' %}<p class="account-error">邮件发送失败，请检查服务器 SMTP 配置后重新申请。原有绑定邮箱保持有效。</p>{% endif %}
+    <form method="post" action="/account/email/request" class="account-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>当前密码<input type="password" name="current" autocomplete="current-password" maxlength="512" required></label>
+      <label>新找回邮箱<input type="email" name="email" autocomplete="email" maxlength="254" value="{{ pending.email if pending else '' }}" required></label>
+      <button type="submit">发送绑定验证码</button>
+    </form>
+    {% if pending %}<div class="account-step"><h2>验证邮箱</h2><p>请填写发送至 {{ pending.email }} 的8位验证码，10分钟内有效。</p>
+    <form method="post" action="/account/email/confirm" class="account-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="email" value="{{ pending.email }}">
+      <label>当前密码<input type="password" name="current" autocomplete="current-password" maxlength="512" required></label>
+      <label>邮箱验证码<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{8}" required></label>
+      <button class="primary" type="submit">验证并绑定邮箱</button>
+    </form></div>{% endif %}
+  </details>
+  <details class="account-card"><summary><span><strong>退出其他设备</strong><small>保留当前登录，撤销其他设备的登录状态</small></span></summary>
+    <form method="post" action="/account/sessions/revoke" class="account-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label>当前密码<input type="password" name="current" autocomplete="current-password" maxlength="512" required></label>
+      <button type="submit">退出其他设备</button>
+    </form>
+  </details>
+  {% if events %}<section class="account-card account-events"><h2>最近安全操作</h2><ul>{% for event in events %}<li>{{ event.kind }}</li>{% endfor %}</ul></section>{% endif %}
+  <p class="account-footnote">密码修改与重置只更新登录凭据，保留客户、业务及已保存的加密数据。未绑定邮箱时，需要通过服务器恢复访问。</p>
+</section>
+{% endblock %}

@@ -79,18 +79,22 @@ def verify():
             raise RuntimeError(f'Online asset differs from validated source: {url}')
         if url == '/sw.js' and headers.get('Service-Worker-Allowed') != '/':
             raise RuntimeError('Service Worker does not control the root scope')
-    for path in ['/reminders','/api/reminders','/work/number-inbox','/work/processes','/work/processes/images/1']:
+    for path in ['/reminders','/api/reminders','/work/number-inbox','/work/processes','/work/processes/images/1','/account/security']:
         final, headers, _ = fetch(path)
         if urlsplit(final).path != '/login':
             raise RuntimeError(f'Unauthenticated reminder endpoint did not redirect to login: {path}')
         if path == '/work/number-inbox' and 'http://127.0.0.1:18764' not in headers.get('Content-Security-Policy', ''):
             raise RuntimeError('Online page CSP does not allow the signed number batch bridge')
     verify_collection_boundary()
-    for path in ['business-processes.css', 'business-processes.js']:
+    for path in ['business-processes.css', 'business-processes.js', 'account-security.css']:
         _, _, raw = fetch('/static/' + path)
         if raw.strip() != (ROOT / 'app/static' / path).read_bytes().strip():
             raise RuntimeError('Online business process asset differs: ' + path)
-    return f'ONLINE VERIFIED: v{version}; PWA manifest, exact work, list and push assets, root worker scope, authenticated reminder routes and collection-domain boundary'
+    for path in ['/account/forgot', '/account/reset']:
+        final, headers, body = fetch(path)
+        if urlsplit(final).path != path or b'account_recovery_csrf' not in headers.get('Set-Cookie', '').encode() or b'name="csrf"' not in body:
+            raise RuntimeError('Online recovery form is unavailable: ' + path)
+    return f'ONLINE VERIFIED: v{version}; PWA manifest, exact work, list, account and push assets, authenticated account routes, public recovery forms and collection-domain boundary'
 
 
 def main():

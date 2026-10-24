@@ -1,0 +1,17 @@
+<!doctype html><html lang="zh-CN"><head><link rel="stylesheet" href="/static/navigation-transitions.css?v=1715"><script src="/static/navigation-transitions.js?v=1714" blocking="render"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><link rel="stylesheet" href="/static/app.css"><link rel="stylesheet" href="/static/account-security.css?v=1722"><title>{{ '找回密码' if page == 'forgot' else '重置密码' }} · 晨的助手</title></head>
+<body class="login-body"><main class="login-card account-recovery"><div class="login-logo">晨</div><h1>{{ '找回密码' if page == 'forgot' else '重置密码' }}</h1>
+{% if message %}<div class="account-message" role="status">{{ message }}</div>{% endif %}
+{% if error %}<div class="account-error" role="alert">{{ error }}</div>{% endif %}
+{% if page == 'forgot' %}<p class="muted">使用提前绑定并验证的邮箱接收验证码。</p>
+<form method="post" action="/account/forgot" class="account-form"><input type="hidden" name="csrf" value="{{ csrf }}">
+<label>已绑定邮箱<input type="email" name="email" autocomplete="email" maxlength="254" required></label><button class="primary" type="submit">发送重置验证码</button></form>
+<a class="account-secondary" href="/account/reset">已经收到验证码</a>
+{% else %}<p class="muted">验证码10分钟内有效，只能使用一次。输错5次需重新申请。</p>
+<form method="post" action="/account/reset" class="account-form"><input type="hidden" name="csrf" value="{{ csrf }}">
+<label>已绑定邮箱<input type="email" name="email" autocomplete="email" maxlength="254" required></label>
+<label>邮箱验证码<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{8}" required></label>
+<label>新密码<input type="password" name="password" autocomplete="new-password" maxlength="512" required></label>
+<label>确认新密码<input type="password" name="confirmation" autocomplete="new-password" maxlength="512" required></label>
+<button class="primary" type="submit">重置密码</button></form><a class="account-secondary" href="/account/forgot">重新申请验证码</a>
+{% endif %}
+<a class="account-secondary" href="/login">返回登录</a><p class="account-footnote">尚未绑定邮箱，或无法访问原邮箱？请通过服务器管理终端恢复账户。不会向临时提供的其他邮箱开放重置。</p></main></body></html>

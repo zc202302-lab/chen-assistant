@@ -1,5 +1,77 @@
 [
   {
+    "path": "/account/security",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.account_routes",
+    "name": "account_settings"
+  },
+  {
+    "path": "/account/password",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.account_routes",
+    "name": "account_password_change"
+  },
+  {
+    "path": "/account/email/request",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.account_routes",
+    "name": "account_email_request"
+  },
+  {
+    "path": "/account/email/confirm",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.account_routes",
+    "name": "account_email_confirm"
+  },
+  {
+    "path": "/account/sessions/revoke",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.account_routes",
+    "name": "account_sessions_revoke"
+  },
+  {
+    "path": "/account/forgot",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.account_routes",
+    "name": "account_forgot_page"
+  },
+  {
+    "path": "/account/forgot",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.account_routes",
+    "name": "account_forgot"
+  },
+  {
+    "path": "/account/reset",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.account_routes",
+    "name": "account_reset_page"
+  },
+  {
+    "path": "/account/reset",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.account_routes",
+    "name": "account_reset"
+  },
+  {
     "path": "/work/processes",
     "methods": [
       "GET"
@@ -113,7 +185,9 @@
   },
   {
     "path": "/number-submit/mini/submit",
-    "methods": ["POST"],
+    "methods": [
+      "POST"
+    ],
     "module": "app.number_collection_api",
     "name": "mini_program_submit"
   },

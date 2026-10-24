@@ -19,7 +19,7 @@ os.environ.update(APP_DB_PATH=str(Path(tmp.name)/'app.db'),APP_USERNAME='push-te
 from fastapi.testclient import TestClient
 from app.main import app
 from app.db import init_db, db, now_iso
-from app.security import create_session, decrypt_secret
+from app.security import create_session, decrypt_secret, password_hash
 from app.reminders import ensure_reminder_schema,publish_reminder,collect_due,deliver_one,due_timestamp,b64,vapid_subject,push_error
 from app.v162_number_inbox import ensure_number_inbox_schema
 from pywebpush import WebPushException
@@ -134,12 +134,12 @@ def main():
     guest=TestClient(app)
     redirect=guest.get(f'/reminders/open/{rid}',follow_redirects=False)
     assert redirect.status_code==303 and guest.cookies.get('post_login_path').strip(chr(34))==f'/reminders/open/{rid}'
-    with patch('app.legacy_main.verify_login',return_value=True):
+    with patch.object(config, 'APP_PASSWORD_HASH', password_hash('test', config.APP_PASSWORD_SALT)):
         logged=guest.post('/login',data={'username':'push-test','password':'test'},follow_redirects=False)
     assert logged.headers['location']==f'/reminders/open/{rid}'
     assert guest.cookies.get('post_login_path') is None
     guest.cookies.set('post_login_path','//evil.test')
-    with patch('app.legacy_main.verify_login',return_value=True):
+    with patch.object(config, 'APP_PASSWORD_HASH', password_hash('test', config.APP_PASSWORD_SALT)):
         assert guest.post('/login',data={'username':'push-test','password':'test'},follow_redirects=False).headers['location']=='/'
     assert client.get('/customers/new').status_code==200
     assert client.get('/work').status_code==200

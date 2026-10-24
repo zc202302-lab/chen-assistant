@@ -5,7 +5,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from cryptography.fernet import Fernet
 from . import config
-from .db import db
+from .db import db, connection_scope
 
 
 def configured() -> bool:
@@ -26,23 +26,39 @@ def password_hash(password: str, salt_b64: str) -> str:
 def verify_login(username: str, password: str) -> bool:
     if not configured() or username != config.APP_USERNAME:
         return False
-    got = password_hash(password, config.APP_PASSWORD_SALT)
-    return hmac.compare_digest(got, config.APP_PASSWORD_HASH)
+    from .account_security import account, password_matches
+    with db() as conn:
+        return password_matches(account(conn), password)
 
 
 def token_digest(token: str) -> str:
     return hmac.new(config.APP_SESSION_SECRET.encode(), token.encode(), hashlib.sha256).hexdigest()
 
 
-def create_session(days: int = 30):
+def create_session(days: int = 30, conn=None):
     token = secrets.token_urlsafe(36)
     csrf = secrets.token_urlsafe(24)
     expires = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat(timespec="seconds")
     digest = token_digest(token)
-    with db() as conn:
-        conn.execute("DELETE FROM sessions WHERE expires_at < ?", (datetime.now(timezone.utc).isoformat(timespec='seconds'),))
-        conn.execute("INSERT INTO sessions(token_hash, csrf_token, expires_at) VALUES(?,?,?)", (digest, csrf, expires))
+    with connection_scope(conn) as active:
+        active.execute("DELETE FROM sessions WHERE expires_at < ?", (datetime.now(timezone.utc).isoformat(timespec='seconds'),))
+        active.execute("INSERT INTO sessions(token_hash, csrf_token, expires_at) VALUES(?,?,?)", (digest, csrf, expires))
     return token, csrf, expires
+
+
+def login_session(username, password, identity):
+    """Password verification and session issuance cannot straddle a password reset."""
+    from .account_security import account, ensure_account_schema, limit, password_matches
+    if not configured():
+        return None
+    with db(immediate=True) as conn:
+        ensure_account_schema(conn)
+        if not limit(conn, 'login', identity, 30):
+            return None
+        valid = password_matches(account(conn), password)
+        if not valid or username != config.APP_USERNAME:
+            return None
+        return create_session(conn=conn)
 
 
 def get_session(token: str | None):
@@ -67,7 +83,7 @@ def delete_session(token: str | None):
 
 
 def require_csrf(session: dict, csrf: str):
-    if not session or not csrf or not hmac.compare_digest(session["csrf_token"], csrf):
+    if not session or not isinstance(csrf, str) or not csrf or not hmac.compare_digest(session["csrf_token"].encode(), csrf.encode()):
         raise ValueError("CSRF校验失败")
 
 

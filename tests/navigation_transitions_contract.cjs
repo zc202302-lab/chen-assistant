@@ -2,6 +2,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const source=fs.readFileSync('app/static/navigation-transitions.js','utf8');
+for(const name of ['login.html','account_recovery.html']){
+  const auth=fs.readFileSync('app/templates/'+name,'utf8');
+  assert(auth.includes('/static/navigation-transitions.js?v=1714" blocking="render"'));
+  assert(auth.indexOf('/static/navigation-transitions.css?v=1715')<auth.indexOf('/static/navigation-transitions.js'));
+  assert(auth.indexOf('/static/navigation-transitions.js')<auth.indexOf('</head>'));
+}
 const handlers={};
 vm.runInNewContext(source,{window:{addEventListener:(name,handler)=>handlers[name]=handler}});
 assert.deepEqual(Object.keys(handlers),['pageswap','pagereveal']);

@@ -142,11 +142,22 @@ jobs:
       - name: Business display settings regression
         if: steps.scope.outputs.mode == 'full'
         run: |
+          python tests/account_security_contract.py
+          python tests/account_security_acceptance.py
           python tests/business_process_contract.py
           python tests/business_process_acceptance.py
           python tests/business_display_settings_contract.py
           python tests/business_display_settings_acceptance.py
           python tests/business_after_save_acceptance.py
+
+      - name: Upload account security UI previews
+        if: always() && steps.scope.outputs.mode == 'full'
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-security-ui-preview
+          retention-days: 1
+          path: artifacts/account-security
+          if-no-files-found: error
 
       - name: Home module style acceptance
         if: steps.scope.outputs.mode == 'full'
