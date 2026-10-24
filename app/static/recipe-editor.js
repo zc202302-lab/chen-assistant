@@ -12,6 +12,15 @@
       const input = card.querySelector('[data-group-name]');
       input.setCustomValidity(names.filter(name => name === names[index]).length > 1 ? '环节名称重复，请使用不同名称。' : '');
       card.querySelectorAll('[name=ingredient_group]').forEach(field => { field.value = names[index] || '配料'; });
+      card.querySelectorAll('[data-material-group]').forEach(select => {
+        select.replaceChildren(...names.map((name, targetIndex) => {
+          const option = document.createElement('option');
+          option.value = String(targetIndex);
+          option.textContent = name || '配料';
+          option.selected = targetIndex === index;
+          return option;
+        }));
+      });
       card.querySelector('[data-group-up]').disabled = index === 0;
       card.querySelector('[data-group-down]').disabled = index === cards.length - 1;
     });
@@ -21,6 +30,12 @@
     if (event.target.matches('[data-group-name]')) sync();
   });
   editor.addEventListener('change', event => {
+    if (event.target.matches('[data-material-group]')) {
+      const target = groups()[Number(event.target.value)];
+      const row = event.target.closest('.recipe-material');
+      if (target && row) target.querySelector('[data-group-materials]').append(row);
+      sync();
+    }
     if (event.target.matches('[name=ingredient_mode]')) {
       event.target.closest('.recipe-material').querySelector('[data-mode-label]').textContent = event.target.selectedOptions[0].textContent;
     }

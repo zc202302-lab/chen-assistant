@@ -63,6 +63,13 @@ def main():
                     row.locator('summary').click()
                     row.locator('[name=ingredient_mode]').select_option(mode)
                     row.get_by_label('备注', exact=True).fill('保留备注 ' + name)
+            # Move an existing material between groups without retyping its data.
+            card.locator('.recipe-material').last.get_by_label('所属环节', exact=True).select_option(label='主材')
+            expect(card.locator('.recipe-material')).to_have_count(1)
+            moved = page.locator('[data-recipe-group]').first.locator('.recipe-material').last
+            expect(moved.get_by_label('备注', exact=True)).to_have_value('保留备注 白胡椒粉')
+            moved.get_by_label('所属环节', exact=True).select_option(label='腌肉')
+            expect(card.locator('.recipe-material')).to_have_count(2)
             # Rename and move an entire group without separating its materials.
             card.get_by_label('环节名称', exact=True).fill('腌制')
             card.get_by_role('button', name='上移环节', exact=True).click()

@@ -12,6 +12,7 @@
   <details class="recipe-material-options">
     <summary>比例与备注 · <span data-mode-label>{{ '固定量' if ing and ing.scale_mode == 'fixed' else ('手工决定' if ing and ing.scale_mode == 'manual' else '按主材比例') }}</span>{% if ing and ing.note %} · {{ ing.note }}{% endif %}</summary>
     <div class="recipe-option-fields">
+      <label>所属环节<select data-material-group aria-label="所属环节"></select></label>
       <label>用量方式<select name="ingredient_mode"><option value="proportional">按主材比例</option><option value="fixed" {% if ing and ing.scale_mode == 'fixed' %}selected{% endif %}>固定量</option><option value="manual" {% if ing and ing.scale_mode == 'manual' %}selected{% endif %}>手工决定</option></select></label>
       <label>备注<input name="ingredient_note" value="{{ ing.note if ing else '' }}" placeholder="例如：分两次加入"></label>
     </div>
