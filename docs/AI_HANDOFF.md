@@ -2,6 +2,8 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-24 19:51（Asia/Shanghai）新任务正在Draft PR #168 https://github.com/zc202302-lab/chen-assistant/pull/168 ，分支fix/recipe-print-main-row-20261024：打印首行强制主材、删除右侧备注独立列，改成10等宽列；删除下方独立原理列并合入方法格；数据不删除。未合并/未部署，待完整CI/稳定性验证；唯一下一步查看PR #168 CI然后决定合并部署。详细检查点见该分支AI_HANDOFF；这条更新覆盖下方旧快照的“唯一下一步”描述。
+
 - 2026-10-24（Asia/Shanghai）用户要求继续开发 chen-assistant。当前任务为生活→菜谱库→编辑标准紧凑布局；已按既有推送部署授权将PR #167由Draft转Ready并squash合并至main，合并提交a8e5338f769a4d56c367722539690f428553b805；原开发分支style/recipe-editor-density提交86ab95ffb94e33c57cf86e8c51c46ccd0f2646c4。候选Web1.7.24；确认代码已合并，不代表生产已部署。此前有独立公网证据的版本仍为1.7.23。
 - 本轮：物料行比例/备注/所属环节移入同行⋯设置，保留跨组移动、完整字段；紧凑环节标题和卡片、缩短步骤文本区初始高度、保存栏高度目标≤58px；物料收起行高目标≤54px、输入16px/36px、按钮32×36px。范围仅配方编辑样式/模板、浏览器测试及Web版本/部署资源号，不改原JS数据逻辑或数据库。
 - 受检PR head86ab95ffb94e33c57cf86e8c51c46ccd0f2646c4：GitHub Actions validation 40087599981的validate120853604224与preflight120853604177 success；stability gate40087600006 success，assistant module isolation40087599964 success。真实浏览器配方创建/编辑及保存、回归等对应CI步骤通过。已合并PR https://github.com/zc202302-lab/chen-assistant/pull/167 。生产部署/健康检查/用户实机视觉反馈均待核查：本次会话容器外网DNS不可用，不能宣称线上1.7.24。main合并后CI/生产状态亦未直接取证。
