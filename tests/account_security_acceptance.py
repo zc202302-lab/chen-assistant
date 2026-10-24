@@ -76,6 +76,8 @@ def main():
             form.get_by_label('邮箱验证码', exact=True).fill(code)
             form.get_by_role('button', name='验证并绑定邮箱', exact=True).click()
             expect(page.get_by_role('status')).to_contain_text('已验证并绑定')
+            page.wait_for_load_state('networkidle')
+            page.evaluate('() => Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {})))')
             directory = ROOT / 'artifacts/account-security'
             directory.mkdir(parents=True, exist_ok=True)
             for width in [1440, 390]:
