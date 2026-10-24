@@ -2,9 +2,10 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-24（Asia/Shanghai）用户要求先完成密码重置，再继续生活模块新增手动新建菜谱。密码阶段已合并部署Web1.7.22并公网核验完成，现在开始菜谱阶段，活动分支feat/life-recipe-creation（基于账户功能main9ba304caf7cf054ec053c22a96dd111a43ba817f，文档基准由GitHub查询），候选1.7.23。允许继续推送部署，不再询问开始许可。Windows0.5.17、云电脑#128、美国代理及chen-cook保持原状；不读取/修改EXE和XLSM附件。
-- 只读确认：实际生活首页和菜谱列表owner源码app/v12_tools_routes.py（兼容元数据标为v10），当前仅展示带TEMPLATE_IMPORT_MARKER的18个标准模板，隐藏手动新建入口及manual来源。GET新建/编辑和POST创建/编辑后端已存在，保留v144 CSRF/正数校验及版本/打印链路。下一阶段应在生活首页和菜谱库补入口，纳入手动菜谱的列表、数量、分类/搜索，贯通新建→配料步骤编辑→详情/版本/打印；不得将manual伪装成Excel导入或覆盖已有菜谱。保持33条目录类历史和原18模板不被误删/改写。
-- 当前尚未改动菜谱源码。唯一下一步：按实际owner实现入口及手动菜谱可见性，新增端到端验收和历史回归，通过后合并部署核验。核心预期app/v12_tools_routes.py、life_home_v12.html、recipe_list_v12.html、recipe_new_v10.html及新增菜谱验收。目录/workspace/scratch/75165f63b510/chen-assistant。
+- 2026-10-24（Asia/Shanghai）用户要求先完成邮箱密码重置，再新增手动菜谱；最新要求系统优化“编辑标准”，腌肉等同环节物料集中一栏。账户阶段已部署Web1.7.22，证据见下方历史。当前允许推送部署，菜谱候选1.7.23，活动分支feat/life-recipe-creation，PR及head由GitHub查询。Windows、云电脑#128、美国代理与chen-cook保持原状；不读取/修改EXE/XLSM附件。
+- 当前源码：生活/菜谱库新增创建入口，manual菜谱纳入数量、搜索、分类、最近记录；原18模板及隐藏目录类历史保留。新建沿用原V1→编辑V2流程，原验证/CSRF/版本/打印保留。标准编辑按原group_name首次出现顺序归组，共享环节名称，紧凑物料/用量/单位，比例备注折叠，环节增删/上移下移、物料增删，删除含物料环节确认，保存栏压缩。空环节无物料时不保存，组名禁止重复。没有新schema或步骤外键，保持现有步骤全部字段。
+- 核心app/recipe_library.py、app/v12_tools_routes.py、recipe_edit_v10.html、recipe-editor.css/js、v10.js及创建模板；说明docs/RECIPE_CREATION.md。新增HTTP契约和真实浏览器验收，既有历史测试保留。已本地通过创建/可见性/版本/旧配方不变、v12、架构和v144契约及JS语法；真实浏览器、完整CI、稳定性、模块隔离及生产23尚未通过，不宣称已部署。
+- 唯一下一步：推送当前检查点，运行完整CI并核查桌面/手机分组编辑截图；修复后合并部署23并公网核验。默认main入口须同步指向此分支。目录/workspace/scratch/75165f63b510/chen-assistant。真实SMTP配置、所有者邮箱绑定/实际收信仍待所有者设置，不宣称已发信。
 
 ## 上一阶段快照（历史：账户邮箱找回Web1.7.22已部署）
 

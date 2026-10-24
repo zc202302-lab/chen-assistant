@@ -7,8 +7,8 @@ from .templating import Jinja2Templates
 from . import config
 from .db import db
 from .v10_routes import _ctx
-from .v101_recipe_template_data import TEMPLATE_IMPORT_MARKER
 from .v101_recipe_template_patch import ensure_v101_recipe_templates
+from .recipe_library import recipe_count as count_recipes, recipe_rows, recipe_categories
 
 router = APIRouter()
 templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
@@ -18,19 +18,8 @@ templates = Jinja2Templates(directory=config.ROOT / 'app' / 'templates')
 def life_home_v12(request: Request):
     with db() as conn:
         ensure_v101_recipe_templates(conn)
-        recipe_count = int(conn.execute(
-            '''SELECT COUNT(DISTINCT r.id) n
-               FROM recipes r JOIN recipe_versions rv ON rv.recipe_id=r.id
-               WHERE r.archived=0 AND rv.change_summary LIKE ?''',
-            (f'{TEMPLATE_IMPORT_MARKER}%',),
-        ).fetchone()['n'])
-        recent = conn.execute(
-            '''SELECT DISTINCT r.id,r.name,r.category,r.updated_at
-               FROM recipes r JOIN recipe_versions rv ON rv.recipe_id=r.id
-               WHERE r.archived=0 AND rv.change_summary LIKE ?
-               ORDER BY r.updated_at DESC,r.name LIMIT 8''',
-            (f'{TEMPLATE_IMPORT_MARKER}%',),
-        ).fetchall()
+        recipe_count = count_recipes(conn)
+        recent = recipe_rows(conn, recent=True)
     return templates.TemplateResponse(
         'life_home_v12.html', _ctx(request, recipe_count=recipe_count, recent=recent)
     )
@@ -40,25 +29,8 @@ def life_home_v12(request: Request):
 def recipe_list_v12(request: Request, q: str = '', category: str = ''):
     with db() as conn:
         ensure_v101_recipe_templates(conn)
-        sql = '''SELECT DISTINCT r.*, current.version_no
-                 FROM recipes r
-                 JOIN recipe_versions imported ON imported.recipe_id=r.id
-                 LEFT JOIN recipe_versions current ON current.id=r.current_version_id
-                 WHERE r.archived=0 AND imported.change_summary LIKE ?'''
-        args = [f'{TEMPLATE_IMPORT_MARKER}%']
-        if q.strip():
-            sql += ' AND r.name LIKE ?'; args.append(f'%{q.strip()}%')
-        if category.strip():
-            sql += ' AND r.category=?'; args.append(category.strip())
-        sql += ' ORDER BY r.category,r.name'
-        recipes = conn.execute(sql, args).fetchall()
-        categories = [row['category'] for row in conn.execute(
-            '''SELECT DISTINCT r.category
-               FROM recipes r JOIN recipe_versions rv ON rv.recipe_id=r.id
-               WHERE r.archived=0 AND rv.change_summary LIKE ? AND r.category<>''
-               ORDER BY r.category''',
-            (f'{TEMPLATE_IMPORT_MARKER}%',),
-        ).fetchall()]
+        recipes = recipe_rows(conn, q=q, category=category)
+        categories = recipe_categories(conn)
     return templates.TemplateResponse(
         'recipe_list_v12.html',
         _ctx(request, recipes=recipes, categories=categories, q=q, category=category),
