@@ -19,6 +19,12 @@
 .recipe-column-labels { font-size: 12px; color: #697689; padding: 10px 12px 0; }
 [data-grouped-recipe-editor] .recipe-material { display: block; margin: 0; padding: 10px 12px; border-bottom: 1px solid #edf0f4; }
 [data-grouped-recipe-editor] .recipe-material-main input { padding: 8px; border-radius: 7px; }
+[data-grouped-recipe-editor] .recipe-material-main input[type=number] { appearance: textfield; -moz-appearance: textfield; }
+[data-grouped-recipe-editor] .recipe-material-main input::-webkit-inner-spin-button,
+[data-grouped-recipe-editor] .recipe-material-main input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.recipe-metadata summary { cursor: pointer; font-size: 14px; font-weight: 650; }
+.recipe-metadata summary span { display: block; font-size: 12px; color: #697689; font-weight: 400; margin: 6px 0 0 16px; overflow-wrap: anywhere; }
+.recipe-metadata[open] summary { margin-bottom: 18px; }
 .recipe-material-options { margin-top: 6px; font-size: 12px; color: #697689; }
 .recipe-material-options summary { cursor: pointer; overflow-wrap: anywhere; }
 .recipe-option-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 10px; padding-top: 10px; }

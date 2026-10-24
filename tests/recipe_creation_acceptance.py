@@ -117,7 +117,7 @@ def main():
             print_page = context.new_page()
             print_page.on('pageerror', lambda e: errors.append(str(e)))
             print_page.goto(base + f'/life/recipes/{rid}/print', wait_until='networkidle')
-            expect(print_page.get_by_text('自建清汤鱼锅', exact=True).first).to_be_visible()
+            expect(print_page.get_by_role('article', name='自建清汤鱼锅 A4菜谱', exact=True)).to_be_visible()
             expect(print_page.get_by_text('记录自己的操作过程', exact=False).first).to_be_visible()
             assert not errors, errors
             browser.close()
