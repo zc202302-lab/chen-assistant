@@ -2,6 +2,8 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-24（Asia/Shanghai）最新用户反馈打印首行应是“主材”，并要求打印右侧备注列删除改为等宽物料格、下方原理独立列删除并与方法合并。活动分支fix/recipe-print-main-row-20261024，Draft PR #168 https://github.com/zc202302-lab/chen-assistant/pull/168，候选修复尚未合并、部署。打印逻辑无主材组时首行固定主材（空值不编造），腌肉保留于原分组；配方打印由原9标准列+1备注宽列变为10等宽列（左分类+9物料），方法列跨9格，原理文字并入方法格防遗漏，数据库和历史不变。新增tests/recipe_creation_contract.py打印结构测试。当前功能head29f695988b475795ccf70487639c4c82d083daf2；CI和线上验证待确认。其他项目和附件不动。唯一下一步：检查PR #168完整CI、稳定性和隔离结果，合格后合并，核对公网打印页面/资源，邀请用户手机核验。
+
 - 2026-10-24（Asia/Shanghai）用户要求继续开发 chen-assistant。当前任务为生活→菜谱库→编辑标准紧凑布局；已按既有推送部署授权将PR #167由Draft转Ready并squash合并至main，合并提交a8e5338f769a4d56c367722539690f428553b805；原开发分支style/recipe-editor-density提交86ab95ffb94e33c57cf86e8c51c46ccd0f2646c4。候选Web1.7.24；确认代码已合并，不代表生产已部署。此前有独立公网证据的版本仍为1.7.23。
 - 本轮：物料行比例/备注/所属环节移入同行⋯设置，保留跨组移动、完整字段；紧凑环节标题和卡片、缩短步骤文本区初始高度、保存栏高度目标≤58px；物料收起行高目标≤54px、输入16px/36px、按钮32×36px。范围仅配方编辑样式/模板、浏览器测试及Web版本/部署资源号，不改原JS数据逻辑或数据库。
 - 受检PR head86ab95ffb94e33c57cf86e8c51c46ccd0f2646c4：GitHub Actions validation 40087599981的validate120853604224与preflight120853604177 success；stability gate40087600006 success，assistant module isolation40087599964 success。真实浏览器配方创建/编辑及保存、回归等对应CI步骤通过。已合并PR https://github.com/zc202302-lab/chen-assistant/pull/167 。生产部署/健康检查/用户实机视觉反馈均待核查：本次会话容器外网DNS不可用，不能宣称线上1.7.24。main合并后CI/生产状态亦未直接取证。
