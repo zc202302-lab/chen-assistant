@@ -2,7 +2,7 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-25用户要求继续完成部署。活动PR #171 https://github.com/zc202302-lab/chen-assistant/pull/171，分支feat/recipe-raw-total-mobile-print，候选1.7.25，功能head0f89a3249b0689a721b3e29acc50e574cc15f9e8。已完成原料多项总重/单位归克、紧凑详情编辑、底部新增环节步骤；iOS桌面PWA改用鉴权PDF导出与系统文件分享，内嵌中文字体，保留下载路径及普通浏览器打印。尚未合并/部署，完整CI待验收。
+- 2026-10-25用户要求继续完成部署。活动PR #171 https://github.com/zc202302-lab/chen-assistant/pull/171，分支feat/recipe-raw-total-mobile-print，候选1.7.25，功能head90bbcc01dd02ed6789b20d16a9fe5060a59274a7。已完成原料多项总重/单位归克、紧凑详情编辑、底部新增环节步骤；iOS桌面PWA改用鉴权PDF导出与系统文件分享，内嵌中文字体，保留下载路径及普通浏览器打印。尚未合并/部署，完整CI待新head验收。新增用户要求已实现：删除菜谱版本号、历史入口/列表/恢复操作/改进说明，保存统一为保存菜谱；旧历史URL重定向，恢复POST返回410，内部旧记录不删除。首轮CI在部署脚本EXPECTED_VERSION仍1.7.24处失败，已同步1.7.25，未弱化检查。
 - 本地菜谱创建/PDF鉴权、单位求和与非法重量、架构/路由/稳定性/v12契约通过；中文PDF实际渲染已检查，字体子集嵌入。浏览器下载受本机网络限制，不宣称本地GUI通过；CI新增多原料保存/换算、独立模式分享/用户激活/取消/失败/下载用例。核心recipe_raw_materials.py、recipe_print_pdf.py、v10_routes.py、v101_recipe_template_patch.py、recipe-editor和recipe-print资源/模板。无新路由/schema；Windows/其他仓库/附件均不变。
 - 所有功能源码和字体已上传GitHub，不再仅本地。唯一下一步：核对#171完整validation/stability/isolation，修复真实失败后合并部署，核验公网1.7.25及精确资源，并更新此快照。用户iPhone系统打印菜单属于实机待反馈层级。
 
