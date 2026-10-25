@@ -2,6 +2,18 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-25用户确认打印应按详情页“配方换算”填写的本次原料总重量及对应材料用量，而非固定标准重量。PR #172 https://github.com/zc202302-lab/chen-assistant/pull/172 已squash合并，main功能提交fcde42d1a82a68c42b4971d079e52ffd58f994f4，Web1.7.26。已实际读取线上health1.7.26，v10.js及recipe-print-v101.js与受检源码精确一致；用户实机打印待反馈。
+- 详情打印链接随输入携带amount，初始服务器链接亦含当前值；HTML打印与PDF生成共用按本次重量计算的原料/其他物料payload，下载及系统分享链接保留amount。固定量与手工量保持原值；旧无参数链接默认标准重量。非法、非正、非有限参数返回400。只换算结构化配料数值，不修改步骤原文中的数字，也不修改数据库或标准配方。
+- 最终受检head44f148004ef0e3910829c38cf70665da348420c8：完整validation40168491874（validate121094325044、preflight121094325083）、stability40168491838、模块隔离40168491871全部success。浏览器改本次总重3000→实际点击打印→原料2000g/1000g及PDF amount参数通过，全部旧菜谱/业务/打印/A4/分享/取消/失败/重试/下载回归保留并通过。本地契约验证HTML输出和实际PDF生成service输入同为本次换算值、固定6g/手工0.3g不变、非法值在HTML/PDF均400，以及架构/v12/稳定性/部署版本一致性通过。无新依赖/路由/schema，其他项目/附件不动。
+- 合并后git diff受检分支与main的app/tests/scripts/deploy.sh/requirements.txt为空，受检功能源码一致。上线核查先仍1.7.25，随后自动同步1.7.26与精确JS通过；全站scripts/check_pwa_production.py已返回ONLINE VERIFIED v1.7.26，原PWA/工作/清单/账户/推送及打印精确资源、账户鉴权/公开找回表单、号码收集域名边界检查通过。未生产登录、读取或改写私有业务数据，不推断生产精确backend SHA或用户真实iPhone结果。
+- 核心v101_recipe_template_patch.py、v10.js、recipe_detail_v10.html、recipe_print_v101.html、相关tests，资源参数1728；deploy/config版本同步1.7.26。工作目录/workspace/scratch/1dc24d163d10/chen-assistant。活动功能PR已完成。唯一下一步：用户刷新后填写本次原料总重量，再进入打印或手机PDF菜单确认；若反馈涉及步骤原文内的数字，需另行讨论可靠替换规则，不直接批量改写方法文本。
+
+## 上一阶段（历史）
+
+# 晨的小助手 · AI 开发接力文档
+
+## 当前交接快照（唯一当前状态）
+
 - 2026-10-25用户确认打印按详情配方换算中本次原料总重量及对应材料用量，不再固定标准重量。活动PR #172 https://github.com/zc202302-lab/chen-assistant/pull/172，分支fix/recipe-print-current-amount，候选1.7.26，head44f148004ef0e3910829c38cf70665da348420c8，尚未合并/部署。
 - 已实现详情打印链接跟随输入传amount，HTML/PDF共用同一换算payload，PDF下载与分享保留amount；固定/手工量不变，旧无参数链接默认标准重量。非法/非正/非有限amount返回400。仅结构化配料数值换算，步骤原文不作数字替换；不改数据库与既有菜谱。
 - 本地创建/打印契约验证HTML和真实PDF生成服务输入换算值一致、固定/手工量、非法参数，架构/版本/稳定性/v12契约通过。新增真实浏览器改重量→点打印→多原料用量→PDF参数验收，原全部测试保留；完整CI待结果。唯一下一步：核对#172最新head完整validation/stability/isolation，成功后合并部署，核验公网1.7.26及v10.js与打印资源，更新交接。其他项目/附件不动。
