@@ -13,6 +13,7 @@
     const fallbackFactor = inputs.some(input => input.dataset.rawId) ? 1 : (factors[inputs[0]?.dataset.unit.trim().toLowerCase()] || 1);
     let revision = Date.now();
     const refresh = (save = false) => {
+      if (save) revision = Math.max(Date.now(), revision + 1);
       const valid = inputs.every(input => input.checkValidity() && Number.isFinite(Number(input.value)) && Number(input.value) > 0 && factors[input.dataset.unit.trim().toLowerCase()]);
       const target = inputs.reduce((sum, input) => sum + Number(input.value) * (factors[input.dataset.unit.trim().toLowerCase()] || 0), 0) / fallbackFactor;
       const ready = valid && Number.isFinite(target) && target > 0;
@@ -29,7 +30,6 @@
       });
       if (!ready) return;
       if (save) {
-        revision = Math.max(Date.now(), revision + 1);
         const currentRevision = revision;
         const body = new URLSearchParams({csrf:detail.dataset.csrf, version_id:detail.dataset.versionId, revision:String(revision), amount:String(target)});
         inputs.forEach(input => { if (input.dataset.rawId) body.append('raw', `${input.dataset.rawId}:${input.value}`); });
