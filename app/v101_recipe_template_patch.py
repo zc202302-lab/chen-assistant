@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from .templating import Jinja2Templates
 
@@ -86,8 +86,8 @@ def ensure_v101_recipe_templates(conn=None):
                 conn.execute('UPDATE recipes SET current_version_id=?,updated_at=? WHERE id=?', (version_id, now, recipe_id))
 
 
-def _print_amount(row, version):
-    amount = _scaled_amount(row, version, float(version['base_amount'] or 0))
+def _print_amount(row, version, target_amount=None):
+    amount = _scaled_amount(row, version, float(version['base_amount'] or 0) if target_amount is None else target_amount)
     unit = str(row['unit'] or '')
     return f'{amount}{unit}' if amount else unit
 
@@ -109,7 +109,7 @@ def _print_step_principle(step):
     return '\n'.join(part for part in parts if part)
 
 
-def _excel_print_layout(conn, version):
+def _excel_print_layout(conn, version, target_amount=None):
     ingredients, steps, grouped = _version_payload(conn, version['id'])
     ordered_groups = list(grouped.items())
     # An absent 主材 group must not promote the first cooking stage into the main row.
@@ -119,10 +119,10 @@ def _excel_print_layout(conn, version):
     main_slots = [''] * 9
     overflow_notes = []
     for idx, row in enumerate(main_rows):
-        item_text = f"{row['name']} {_print_amount(row, version)}".strip()
+        item_text = f"{row['name']} {_print_amount(row, version, target_amount)}".strip()
         if idx < 4:
             main_slots[idx * 2] = str(row['name'] or '')
-            main_slots[idx * 2 + 1] = _print_amount(row, version)
+            main_slots[idx * 2 + 1] = _print_amount(row, version, target_amount)
         elif item_text:
             main_slots[8] = '\n'.join(filter(None, [main_slots[8], item_text]))
 
@@ -133,7 +133,7 @@ def _excel_print_layout(conn, version):
             grid_groups.append({
                 'name': group_name if chunk_index == 0 else f'{group_name}（续）',
                 'items': [
-                    {'name': str(row['name'] or ''), 'amount': _print_amount(row, version)}
+                    {'name': str(row['name'] or ''), 'amount': _print_amount(row, version, target_amount)}
                     for row in chunk
                 ],
             })
@@ -191,11 +191,22 @@ def _excel_print_layout(conn, version):
 
 @router.get('/life/recipes/{recipe_id}/print', response_class=HTMLResponse)
 def recipe_print_v101(request: Request, recipe_id: int):
+    import math
+    raw_amount = request.query_params.get('amount')
+    target_amount = None
+    if raw_amount is not None:
+        try:
+            target_amount = float(raw_amount)
+        except (ValueError, TypeError):
+            raise HTTPException(400, '本次原料总重量必须是正数')
+        if not math.isfinite(target_amount) or target_amount <= 0:
+            raise HTTPException(400, '本次原料总重量必须是正数')
     with db() as conn:
         ensure_v101_recipe_templates(conn)
         recipe = _recipe_or_404(conn, recipe_id)
         version = _current_version(conn, recipe)
-        layout = _excel_print_layout(conn, version)
+        target_amount = float(version['base_amount'] or 0) if target_amount is None else target_amount
+        layout = _excel_print_layout(conn, version, target_amount)
     if request.query_params.get('format') == 'pdf':
         from urllib.parse import quote
         from .recipe_print_pdf import recipe_pdf
@@ -208,6 +219,7 @@ def recipe_print_v101(request: Request, recipe_id: int):
         request,
         recipe=recipe,
         version=version,
+        target_amount=target_amount,
         **layout,
     ))
 

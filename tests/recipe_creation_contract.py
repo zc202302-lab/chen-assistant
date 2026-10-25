@@ -80,6 +80,23 @@ def main():
     assert "filename*=UTF-8''" in pdf.headers['content-disposition']
     assert len(re.findall(rb'/Type\s*/Page(?!s)\b', pdf.content)) == 1
     assert client.get('/life/recipes/999999/print?format=pdf').status_code == 404
+    scaled_print = client.get(f'/life/recipes/{rid}/print?amount=2000')
+    assert scaled_print.status_code == 200 and '2000g' in scaled_print.text and '6g' in scaled_print.text
+    assert '0.3g' in scaled_print.text, 'manual quantities must not scale'
+    assert 'format=pdf&amp;amount=2000.0' in scaled_print.text
+    from unittest.mock import patch
+    from app.recipe_print_pdf import recipe_pdf
+    with patch('app.recipe_print_pdf.recipe_pdf', wraps=recipe_pdf) as export:
+        actual_pdf = client.get(f'/life/recipes/{rid}/print?format=pdf&amount=2000')
+        assert actual_pdf.status_code == 200 and actual_pdf.content.startswith(b'%PDF-')
+        items = export.call_args.args[1]['ingredient_groups']
+        assert items[0]['items'][0]['amount'] == '2000g'
+        assert items[0]['items'][1]['amount'] == '0.3g'
+        assert items[1]['items'][0]['amount'] == '6g'
+    for invalid in ['nan','inf','-1','0','abc','']:
+        for output in ['', '&format=pdf']:
+            assert client.get(f'/life/recipes/{rid}/print?amount={invalid}{output}').status_code == 400
+
     # Explicit raw materials define the denominator; spices do not. Units normalize to grams.
     from app.recipe_raw_materials import raw_material_total
     from starlette.datastructures import FormData
