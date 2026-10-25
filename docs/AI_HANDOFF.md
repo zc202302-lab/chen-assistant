@@ -2,9 +2,9 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-25（Asia/Shanghai）用户IMG_3140要求删除详情重复的原料总重量输入框，逐项原料重量可编辑，后台自动汇总；补充修改值须退出重开后保留。允许继续开发部署。活动本地分支fix/recipe-edit-raw-weights，基于main08f1150，候选Web1.7.28；尚未发布功能PR/合并/部署，线上基准仍1.7.27/PR173。
-- 已本地实现独立原料重量编辑、隐藏汇总联动配方及HTML/PDF按个别实用量打印。新增受鉴权/CSRF保护的POST /life/recipes/{recipe_id}/weights自动保存；用app_meta按菜谱存当前标准对应重量，后台校验全部原料/单位、计算总重，旧标准不覆盖。更新两份路由清单，无新表/依赖。并发保存采用revision防止旧请求覆盖新值，保存状态可见。功能验证进行中，勿声称完成上线。
-- 核心recipe_raw_materials.py、v10_routes.py、v101_recipe_template_patch.py、详情/打印模板、v10.js/css和相关tests。工作目录/workspace/scratch/1dc24d163d10/chen-assistant。唯一下一步：补齐持久化/多原料任意比例/非法请求/浏览器回归，发布PR并核对完整validation/stability/isolation，通过后合并部署、公网核验、更新交接；其他项目/Windows/附件不动。
+- 2026-10-25（Asia/Shanghai）用户IMG_3140要求删除详情重复的原料总重量输入框，逐项原料重量可编辑，后台自动汇总；补充修改值须退出重开后保留。允许继续开发部署。活动PR #174 https://github.com/zc202302-lab/chen-assistant/pull/174，分支fix/recipe-edit-raw-weights，head d68c14c6b698b4b848326d17c088799ac826ffe5，候选Web1.7.28；尚未合并/部署，线上基准仍1.7.27/PR173。
+- 已本地实现独立原料重量编辑、隐藏汇总联动配方及HTML/PDF按个别实用量打印。新增受鉴权/CSRF保护的POST /life/recipes/{recipe_id}/weights自动保存；用app_meta按菜谱存当前标准对应重量，后台校验全部原料/单位、计算总重，旧标准不覆盖。更新两份路由清单，无新表/依赖。并发保存采用revision防止旧请求覆盖新值，保存状态可见。本地创建/打印/持久化、架构/路由/版本/v12/稳定性/响应式契约均通过，完整CI及浏览器验收待结果，勿声称完成上线。
+- 核心recipe_raw_materials.py、v10_routes.py、v101_recipe_template_patch.py、详情/打印模板、v10.js/css和相关tests。工作目录/workspace/scratch/1dc24d163d10/chen-assistant。唯一下一步：核对#174最新head完整validation/stability/isolation与浏览器回归，通过后合并部署、公网核验、更新交接；其他项目/Windows/附件不动。
 
 ## 前序记录（历史）
 
