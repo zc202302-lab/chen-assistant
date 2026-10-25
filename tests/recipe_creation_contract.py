@@ -143,17 +143,20 @@ def main():
     with db() as conn:
         conn.execute("UPDATE recipe_ingredients SET group_name='原料',unit='kg',amount=1 WHERE version_id=? AND name='鲜鱼'", (versions[-1]['id'],))
         conn.execute("UPDATE recipe_ingredients SET group_name='原料',unit='g',amount=500 WHERE version_id=? AND name='白胡椒粉'", (versions[-1]['id'],))
+        conn.execute("UPDATE recipe_ingredients SET scale_mode='proportional' WHERE version_id=? AND name='盐'", (versions[-1]['id'],))
         raw_rows = conn.execute("SELECT id FROM recipe_ingredients WHERE version_id=? AND group_name='原料' ORDER BY sort_order,id", (versions[-1]['id'],)).fetchall()
         conn.execute("UPDATE recipe_versions SET base_amount=1500 WHERE id=?", (versions[-1]['id'],))
     first, second = [str(row['id']) for row in raw_rows]
     query = f'raw={first}:2.2&raw={second}:800&amount=1'
     response = client.get(f'/life/recipes/{rid}/print?{query}')
     assert response.status_code == 200 and '2.2kg' in response.text and '800g' in response.text
+    assert '12g' in response.text
     assert 'amount=3000.0' in response.text, 'backend must derive total, ignoring supplied aggregate'
     assert f'raw={first}%3A2.2' in response.text and f'raw={second}%3A800' in response.text
     with patch('app.recipe_print_pdf.recipe_pdf', wraps=recipe_pdf) as export:
         assert client.get(f'/life/recipes/{rid}/print?format=pdf&{query}').status_code == 200
         assert export.call_args.args[1]['main_slots'][:4] == ['鲜鱼','2.2kg','白胡椒粉','800g']
+        assert export.call_args.args[1]['ingredient_groups'][0]['items'][0]['amount'] == '12g'
     weights_url = f'/life/recipes/{rid}/weights'
     save = {'csrf':csrf, 'version_id':versions[-1]['id'], 'revision':'1000', 'raw':[f'{first}:2.2', f'{second}:800']}
     assert guest.post(weights_url, data=save, follow_redirects=False).status_code == 303
