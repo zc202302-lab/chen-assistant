@@ -51,32 +51,41 @@ def main():
             rid = int(page.url.split('/')[-2])
             expect(page.get_by_role('heading', name='编辑标准配方', exact=True)).to_be_visible()
             for group, materials in [('原料',[('鲜鱼','1000','proportional')]),('腌肉',[('盐','6','fixed'),('白胡椒粉','0.3','proportional')])]:
-                page.locator('[data-add-group]').click()
-                card = page.locator('[data-recipe-group]').last
-                card.get_by_label('环节名称', exact=True).fill(group)
+                if group != '原料':
+                    page.locator('[data-add-group]').click()
+                    card = page.locator('[data-recipe-group]').last
+                    card.get_by_label('环节名称', exact=True).fill(group)
+                else:
+                    card = page.locator('[data-raw-material-list]')
                 for name, amount, mode in materials:
-                    card.locator('[data-add-ingredient]').click()
+                    if group == '原料': page.locator('[data-add-raw]').click()
+                    else: card.locator('[data-add-ingredient]').click()
                     row = card.locator('.recipe-material').last
-                    row.get_by_label('物料名称', exact=True).fill(name)
+                    row.get_by_label('原料名称', exact=True).fill(name)
                     row.get_by_label('用量', exact=True).fill(amount)
                     row.locator('summary').click()
                     row.locator('[name=ingredient_mode]').select_option(mode)
                     row.get_by_label('备注', exact=True).fill('保留备注 ' + name)
-            # Move an existing material between groups without retyping its data.
-            card.locator('.recipe-material').last.get_by_label('所属环节', exact=True).select_option(label='原料')
+            card.evaluate("el => el.dataset.testStage = 'marinade'")
+            card = page.locator('[data-test-stage=marinade]')
+            # Move an existing material between independent lists without retyping.
+            card.locator('.recipe-material').last.get_by_label('所属列表', exact=True).select_option(label='原料列表')
             expect(card.locator('.recipe-material')).to_have_count(1)
-            moved = page.locator('[data-recipe-group]').first.locator('.recipe-material').last
+            moved = page.locator('[data-raw-material-list]').locator('.recipe-material').last
             expect(moved.get_by_label('备注', exact=True)).to_have_value('保留备注 白胡椒粉')
-            moved.get_by_label('所属环节', exact=True).select_option(label='腌肉')
+            moved.get_by_label('所属列表', exact=True).select_option(label='腌肉')
             expect(card.locator('.recipe-material')).to_have_count(2)
             # Rename and move an entire group without separating its materials.
             card.get_by_label('环节名称', exact=True).fill('腌制')
+            page.locator('[data-add-group]').click()
+            card.get_by_role('button', name='下移环节', exact=True).click()
             card.get_by_role('button', name='上移环节', exact=True).click()
+            page.locator('[data-recipe-group]').last.get_by_label('删除环节', exact=True).click()
             expect(page.locator('[data-recipe-group]').first.locator('.recipe-material')).to_have_count(2)
             page.locator('[data-add-group]').click()
             empty = page.locator('[data-recipe-group]').last
             empty.locator('[data-add-ingredient]').click()
-            empty.get_by_label('删除物料', exact=True).click()
+            empty.get_by_label('删除原料', exact=True).click()
             empty.get_by_label('删除环节', exact=True).click()
             page.locator('[data-add-step]').click()
             page.get_by_label('步骤标题', exact=True).fill('准备原料')
@@ -91,7 +100,8 @@ def main():
             expect(page.locator('.v10-ingredient').filter(has_text='盐').locator('[data-scaled]')).to_have_text('6')
             page.goto(base + f'/life/recipes/{rid}/edit', wait_until='networkidle')
             cards = page.locator('[data-recipe-group]')
-            expect(cards).to_have_count(2)
+            expect(cards).to_have_count(1)
+            expect(page.locator('[data-raw-material-list] .recipe-material')).to_have_count(1)
             expect(cards.first.get_by_label('环节名称', exact=True)).to_have_value('腌制')
             expect(cards.first.locator('.recipe-material')).to_have_count(2)
             expect(cards.first.locator('[name=ingredient_note]').first).to_have_value('保留备注 盐')
@@ -120,7 +130,7 @@ def main():
                         row = page.locator('.recipe-material').first
                         assert row.bounding_box()['height'] <= 54, row.bounding_box()
                         assert page.locator('.v10-sticky-save').bounding_box()['height'] <= 58
-                        assert row.get_by_label('物料名称', exact=True).evaluate('el => parseFloat(getComputedStyle(el).fontSize)') >= 16
+                        assert row.get_by_label('原料名称', exact=True).evaluate('el => parseFloat(getComputedStyle(el).fontSize)') >= 16
                         # The compact settings entry has its own hit target, next to delete.
                         summary = row.locator('summary')
                         assert summary.evaluate('el => {const r=el.getBoundingClientRect(); return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}')
@@ -140,10 +150,8 @@ def main():
             assert not errors, errors
             page.goto(base + f'/life/recipes/{rid}/edit', wait_until='networkidle')
             page.locator('[data-add-raw]').click()
-            raw_row = page.locator('[data-recipe-group]').filter(has=page.locator('[data-group-name][value="原料"]')).locator('.recipe-material').last
-            # Select by current group input value rather than persisted HTML attributes.
-            raw_row = page.locator('[data-recipe-group]').last.locator('.recipe-material').last
-            raw_row.get_by_label('物料名称', exact=True).fill('另一种鱼')
+            raw_row = page.locator('[data-raw-material-list] .recipe-material').last
+            raw_row.get_by_label('原料名称', exact=True).fill('另一种鱼')
             raw_row.get_by_label('用量', exact=True).fill('500')
             expect(page.locator('[name=base_amount]')).to_have_value('1500')
             page.get_by_role('button', name='保存菜谱', exact=True).click()
