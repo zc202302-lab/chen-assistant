@@ -515,7 +515,8 @@ def recipe_detail_v10(request: Request, recipe_id: int, amount: float | None = N
         recipe = _recipe_or_404(conn, recipe_id)
         version = _current_version(conn, recipe)
         ingredients, steps, grouped = _version_payload(conn, version['id'])
-        from .recipe_raw_materials import saved_raw_weights
+        from .recipe_raw_materials import saved_raw_weights, raw_weight_basis
+        version = raw_weight_basis(version, ingredients)
         raw_weights, saved_total = saved_raw_weights(conn, recipe_id, version, ingredients)
         target = float(amount) if amount and amount > 0 else saved_total or float(version['base_amount'] or 0)
         if amount is not None:

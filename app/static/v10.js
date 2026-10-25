@@ -10,10 +10,11 @@
     const inputs = [...detail.querySelectorAll('[data-raw-weight]')];
     const factors = {g:1, '克':1, kg:1000, '千克':1000, '公斤':1000, '斤':500, '两':50};
     const base = Number(detail.dataset.baseAmount || 0);
+    const fallbackFactor = inputs.some(input => input.dataset.rawId) ? 1 : (factors[inputs[0]?.dataset.unit.trim().toLowerCase()] || 1);
     let revision = Date.now();
     const refresh = (save = false) => {
-      const valid = inputs.every(input => input.checkValidity() && Number.isFinite(Number(input.value)) && Number(input.value) > 0 && factors[input.dataset.unit.toLowerCase()]);
-      const target = inputs.reduce((sum, input) => sum + Number(input.value) * (factors[input.dataset.unit.toLowerCase()] || 0), 0);
+      const valid = inputs.every(input => input.checkValidity() && Number.isFinite(Number(input.value)) && Number(input.value) > 0 && factors[input.dataset.unit.trim().toLowerCase()]);
+      const target = inputs.reduce((sum, input) => sum + Number(input.value) * (factors[input.dataset.unit.trim().toLowerCase()] || 0), 0) / fallbackFactor;
       const ready = valid && Number.isFinite(target) && target > 0;
       detail.querySelector('[data-raw-weight-error]').textContent = ready ? '' : '请填写有效的原料重量';
       detail.querySelectorAll('[data-recipe-print-link]').forEach(link => {

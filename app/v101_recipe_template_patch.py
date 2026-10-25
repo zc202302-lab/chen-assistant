@@ -111,6 +111,8 @@ def _print_step_principle(step):
 
 def _excel_print_layout(conn, version, target_amount=None, raw_weights=None):
     ingredients, steps, grouped = _version_payload(conn, version['id'])
+    from .recipe_raw_materials import raw_weight_basis
+    version = raw_weight_basis(version, ingredients)
     raw_weights = raw_weights or {}
     main_rows = [row for row in ingredients if row['group_name'] in {'主材', '原料'}]
     ordered_groups = [(name, rows) for name, rows in grouped.items() if name not in {'主材', '原料'}]
@@ -209,9 +211,10 @@ def recipe_print_v101(request: Request, recipe_id: int):
         ensure_v101_recipe_templates(conn)
         recipe = _recipe_or_404(conn, recipe_id)
         version = _current_version(conn, recipe)
-        target_amount = float(version['base_amount'] or 0) if target_amount is None else target_amount
-        from .recipe_raw_materials import print_raw_weights, saved_raw_weights
+        from .recipe_raw_materials import print_raw_weights, saved_raw_weights, raw_weight_basis
         ingredients, _, _ = _version_payload(conn, version['id'])
+        version = raw_weight_basis(version, ingredients)
+        target_amount = float(version['base_amount'] or 0) if target_amount is None else target_amount
         raw_weights, raw_total = print_raw_weights(request.query_params.getlist('raw'), ingredients)
         if raw_amount is None and not request.query_params.getlist('raw'):
             raw_weights, raw_total = saved_raw_weights(conn, recipe_id, version, ingredients)

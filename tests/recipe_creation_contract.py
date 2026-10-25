@@ -26,6 +26,13 @@ def main():
     assert 'data-recipe-group' not in raw_section and 'data-group-name' not in raw_section
     assert '物料' not in legacy_editor
     assert 'data-recipe-raw-info' in client.get(f'/life/recipes/{seed_id}').text
+    with db() as conn:
+        legacy_multi = conn.execute("SELECT id FROM recipes WHERE name='尖椒干豆腐'").fetchone()['id']
+    legacy_detail = client.get(f'/life/recipes/{legacy_multi}').text
+    assert 'data-base-amount="450.0"' in legacy_detail
+    assert 'aria-label="豆腐皮重量" value="250"' in legacy_detail
+    legacy_print = client.get(f'/life/recipes/{legacy_multi}/print').text
+    assert 'amount=450.0' in legacy_print
     for path in ['/life', '/life/recipes']:
         assert 'href="/life/recipes/new"' in client.get(path).text
     assert client.post('/life/recipes/new', data={'name':'not allowed','csrf':'wrong'}).status_code == 403
@@ -134,8 +141,8 @@ def main():
         assert [tuple(r) for r in conn.execute('SELECT * FROM recipe_versions WHERE recipe_id<>? ORDER BY id', (rid,))] == original_versions
     # Per-raw overrides must retain individual quantities and derive the denominator server-side.
     with db() as conn:
-        conn.execute("UPDATE recipe_ingredients SET group_name='原料',unit='kg' WHERE version_id=? AND name='鲜鱼'", (versions[-1]['id'],))
-        conn.execute("UPDATE recipe_ingredients SET group_name='原料',unit='g' WHERE version_id=? AND name='白胡椒粉'", (versions[-1]['id'],))
+        conn.execute("UPDATE recipe_ingredients SET group_name='原料',unit='kg',amount=1 WHERE version_id=? AND name='鲜鱼'", (versions[-1]['id'],))
+        conn.execute("UPDATE recipe_ingredients SET group_name='原料',unit='g',amount=500 WHERE version_id=? AND name='白胡椒粉'", (versions[-1]['id'],))
         raw_rows = conn.execute("SELECT id FROM recipe_ingredients WHERE version_id=? AND group_name='原料' ORDER BY sort_order,id", (versions[-1]['id'],)).fetchall()
         conn.execute("UPDATE recipe_versions SET base_amount=1500 WHERE id=?", (versions[-1]['id'],))
     first, second = [str(row['id']) for row in raw_rows]
@@ -166,7 +173,7 @@ def main():
     assert 'amount=3000.0' in remembered_print
     with db() as conn:
         assert conn.execute('SELECT base_amount FROM recipe_versions WHERE id=?', (versions[-1]['id'],)).fetchone()[0] == 1500
-        assert conn.execute('SELECT amount FROM recipe_ingredients WHERE id=?', (int(first),)).fetchone()[0] == 1000
+        assert conn.execute('SELECT amount FROM recipe_ingredients WHERE id=?', (int(first),)).fetchone()[0] == 1
     for query in [f'raw={first}:1', f'raw={first}:1&raw={first}:2', f'raw=999999:1', f'raw={first}:nan&raw={second}:1', f'raw={first}:0&raw={second}:1']:
         for suffix in ['', '&format=pdf']:
             assert client.get(f'/life/recipes/{rid}/print?{query}{suffix}').status_code == 400

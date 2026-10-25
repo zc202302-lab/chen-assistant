@@ -100,3 +100,15 @@ def save_raw_weights(conn, recipe_id, version, ingredients, form):
                     WHERE CAST(json_extract(app_meta.value,'$.revision') AS INTEGER) <= ?''',
                  (f'recipe-raw-weights:{recipe_id}', payload, revision))
     return total
+
+
+def raw_weight_basis(version, ingredients):
+    """Old imported recipes may store only the first raw's weight as their basis."""
+    rows = [row for row in ingredients if row['group_name'] in {'原料', '主材'}]
+    if rows:
+        try:
+            _, total = print_raw_weights([f"{row['id']}:{row['amount']}" for row in rows], rows)
+            return dict(version) | {'base_amount': total, 'base_unit': 'g'}
+        except HTTPException:
+            pass
+    return version
