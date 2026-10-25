@@ -29,3 +29,14 @@ html,body{margin:0;padding:0;background:#eef1f4;color:#000;font-family:"Microsof
   .recipe-print-canvas{padding:0;overflow:visible}
   .recipe-print-sheet{margin:0;box-shadow:none;break-after:avoid;page-break-after:avoid}
 }
+
+.recipe-pdf-panel[hidden],.recipe-pdf-panel [hidden]{display:none!important}
+.recipe-pdf-panel{max-width:680px;margin:12px auto;padding:16px;background:#fff;border:1px solid #cbd5e1;border-radius:12px}
+.recipe-pdf-panel h2{margin:0 0 8px;font-size:18px}
+.recipe-pdf-panel p{line-height:1.6;font-size:14px}
+.recipe-pdf-actions{display:flex;flex-wrap:wrap;gap:8px}
+.recipe-pdf-actions button,.recipe-pdf-actions a{font:inherit;font-size:14px;border:1px solid #cbd5e1;border-radius:8px;padding:10px 12px;min-height:44px;background:#fff;color:#1e293b;text-decoration:none;cursor:pointer}
+.recipe-pdf-actions [data-recipe-pdf-share]{background:#111827;color:#fff}
+.recipe-pdf-help{color:#475569}
+@media(max-width:700px){.recipe-pdf-panel{margin:8px}}
+@media print{.recipe-pdf-panel{display:none!important}}

@@ -44,14 +44,14 @@ def main():
             page.get_by_label('菜名', exact=True).fill('自建清汤鱼锅')
             page.get_by_label('分类', exact=True).fill('手写鱼类')
             page.get_by_label('标签', exact=True).fill('个人试做')
-            page.get_by_label('标准主材重量', exact=True).fill('1000')
+            page.get_by_label('标准原料总重量', exact=True).fill('1000')
             page.get_by_label('说明', exact=True).fill('自己的准备事项')
             page.get_by_role('button', name='创建并编辑配方', exact=True).click()
             expect(page).to_have_url(re.compile(r'/life/recipes/\d+/edit$'))
             rid = int(page.url.split('/')[-2])
             expect(page.get_by_role('heading', name='编辑标准配方', exact=True)).to_be_visible()
             page.get_by_label('改进说明', exact=True).fill('首次填写配方')
-            for group, materials in [('主材',[('鲜鱼','1000','proportional')]),('腌肉',[('盐','6','fixed'),('白胡椒粉','0.3','proportional')])]:
+            for group, materials in [('原料',[('鲜鱼','1000','proportional')]),('腌肉',[('盐','6','fixed'),('白胡椒粉','0.3','proportional')])]:
                 page.locator('[data-add-group]').click()
                 card = page.locator('[data-recipe-group]').last
                 card.get_by_label('环节名称', exact=True).fill(group)
@@ -64,7 +64,7 @@ def main():
                     row.locator('[name=ingredient_mode]').select_option(mode)
                     row.get_by_label('备注', exact=True).fill('保留备注 ' + name)
             # Move an existing material between groups without retyping its data.
-            card.locator('.recipe-material').last.get_by_label('所属环节', exact=True).select_option(label='主材')
+            card.locator('.recipe-material').last.get_by_label('所属环节', exact=True).select_option(label='原料')
             expect(card.locator('.recipe-material')).to_have_count(1)
             moved = page.locator('[data-recipe-group]').first.locator('.recipe-material').last
             expect(moved.get_by_label('备注', exact=True)).to_have_value('保留备注 白胡椒粉')
@@ -138,6 +138,20 @@ def main():
             expect(print_page.get_by_role('article', name='自建清汤鱼锅 A4菜谱', exact=True)).to_be_visible()
             expect(print_page.get_by_text('记录自己的操作过程', exact=False).first).to_be_visible()
             assert not errors, errors
+            page.goto(base + f'/life/recipes/{rid}/edit', wait_until='networkidle')
+            page.get_by_label('改进说明', exact=True).fill('两种原料总重换算')
+            page.locator('[data-add-raw]').click()
+            raw_row = page.locator('[data-recipe-group]').filter(has=page.locator('[data-group-name][value="原料"]')).locator('.recipe-material').last
+            # Select by current group input value rather than persisted HTML attributes.
+            raw_row = page.locator('[data-recipe-group]').last.locator('.recipe-material').last
+            raw_row.get_by_label('物料名称', exact=True).fill('另一种鱼')
+            raw_row.get_by_label('用量', exact=True).fill('500')
+            expect(page.locator('[name=base_amount]')).to_have_value('1500')
+            page.get_by_role('button', name='保存为 V3', exact=True).click()
+            expect(page.locator('[data-v10-recipe-detail]')).to_have_attribute('data-base-amount','1500.0')
+            page.locator('#v10TargetAmount').fill('3000')
+            expect(page.locator('.v10-ingredient').filter(has_text='另一种鱼').locator('[data-scaled]')).to_have_text('1000')
+            expect(page.locator('.v10-ingredient').filter(has_text='盐').locator('[data-scaled]')).to_have_text('6')
             browser.close()
     finally:
         server.terminate()

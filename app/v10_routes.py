@@ -519,7 +519,7 @@ def recipe_detail_v10(request: Request, recipe_id: int, amount: float | None = N
         display_groups = []
         for group_name, rows in grouped.items():
             display_groups.append({
-                'name': group_name,
+                'name': '原料' if group_name == '主材' else group_name,
                 'items': [dict(row) | {'scaled_amount': _scaled_amount(row, version, target)} for row in rows],
             })
         cook_stats = conn.execute(
@@ -575,6 +575,9 @@ async def recipe_edit_v10(request: Request, recipe_id: int):
         raise HTTPException(400, '标准主材重量必须是数字')
     if base_amount <= 0:
         raise HTTPException(400, '标准主材重量必须大于0')
+
+    from .recipe_raw_materials import raw_material_total
+    base_amount, base_unit = raw_material_total(form, base_amount)
 
     groups = list(form.getlist('ingredient_group'))
     ing_names = list(form.getlist('ingredient_name'))
