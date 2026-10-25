@@ -50,7 +50,6 @@ def main():
             expect(page).to_have_url(re.compile(r'/life/recipes/\d+/edit$'))
             rid = int(page.url.split('/')[-2])
             expect(page.get_by_role('heading', name='编辑标准配方', exact=True)).to_be_visible()
-            page.get_by_label('改进说明', exact=True).fill('首次填写配方')
             for group, materials in [('原料',[('鲜鱼','1000','proportional')]),('腌肉',[('盐','6','fixed'),('白胡椒粉','0.3','proportional')])]:
                 page.locator('[data-add-group]').click()
                 card = page.locator('[data-recipe-group]').last
@@ -83,7 +82,7 @@ def main():
             page.get_by_label('步骤标题', exact=True).fill('准备原料')
             page.get_by_label('方法原文', exact=True).fill('核对食材\n记录自己的操作过程')
             page.get_by_label('原理 / 备注原文', exact=True).fill('记录完成状态')
-            page.get_by_role('button', name='保存为 V2', exact=True).click()
+            page.get_by_role('button', name='保存菜谱', exact=True).click()
             expect(page).to_have_url(base + f'/life/recipes/{rid}')
             expect(page.get_by_role('heading', name='自建清汤鱼锅', exact=True)).to_be_visible()
             expect(page.locator('.v10-step-action').first).to_contain_text('记录自己的操作过程')
@@ -131,7 +130,8 @@ def main():
                         summary.click()
                     page.screenshot(path=str(directory / f'{label}-{width}.png'), full_page=True)
             page.goto(base + f'/life/recipes/{rid}/versions', wait_until='networkidle')
-            expect(page.get_by_text('首次填写配方', exact=True)).to_be_visible()
+            expect(page).to_have_url(base + f'/life/recipes/{rid}')
+            expect(page.get_by_text('历史版本', exact=True)).to_have_count(0)
             print_page = context.new_page()
             print_page.on('pageerror', lambda e: errors.append(str(e)))
             print_page.goto(base + f'/life/recipes/{rid}/print', wait_until='networkidle')
@@ -139,7 +139,6 @@ def main():
             expect(print_page.get_by_text('记录自己的操作过程', exact=False).first).to_be_visible()
             assert not errors, errors
             page.goto(base + f'/life/recipes/{rid}/edit', wait_until='networkidle')
-            page.get_by_label('改进说明', exact=True).fill('两种原料总重换算')
             page.locator('[data-add-raw]').click()
             raw_row = page.locator('[data-recipe-group]').filter(has=page.locator('[data-group-name][value="原料"]')).locator('.recipe-material').last
             # Select by current group input value rather than persisted HTML attributes.
@@ -147,7 +146,7 @@ def main():
             raw_row.get_by_label('物料名称', exact=True).fill('另一种鱼')
             raw_row.get_by_label('用量', exact=True).fill('500')
             expect(page.locator('[name=base_amount]')).to_have_value('1500')
-            page.get_by_role('button', name='保存为 V3', exact=True).click()
+            page.get_by_role('button', name='保存菜谱', exact=True).click()
             expect(page.locator('[data-v10-recipe-detail]')).to_have_attribute('data-base-amount','1500.0')
             page.locator('#v10TargetAmount').fill('3000')
             expect(page.locator('.v10-ingredient').filter(has_text='另一种鱼').locator('[data-scaled]')).to_have_text('1000')

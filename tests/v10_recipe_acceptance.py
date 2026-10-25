@@ -122,7 +122,7 @@ def main():
             page.locator('input[name="change_summary"]').fill('白醋由15g验证到18g')
             vinegar_row = page.locator('.v10-edit-row').filter(has=page.locator('input[name="ingredient_name"][value="6度白醋"]')).first
             vinegar_row.locator('input[name="ingredient_amount"]').fill('18')
-            page.get_by_role('button', name=re.compile(fr'保存为 V{next_no}')).click()
+            page.get_by_role('button', name='保存菜谱').click()
             page.wait_for_url(f'**/life/recipes/{sugar_id}')
             expect(page.get_by_text(f'当前标准 V{next_no}')).to_be_visible()
             expect(page.get_by_text('开始做饭', exact=True)).to_have_count(0)

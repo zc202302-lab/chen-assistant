@@ -664,33 +664,14 @@ async def recipe_edit_v10(request: Request, recipe_id: int):
 
 @router.get('/life/recipes/{recipe_id}/versions', response_class=HTMLResponse)
 def recipe_versions_v10(request: Request, recipe_id: int):
-    with db() as conn:
-        ensure_v10_schema(conn)
-        recipe = _recipe_or_404(conn, recipe_id)
-        versions = conn.execute(
-            '''SELECT rv.*,
-                      (SELECT COUNT(*) FROM recipe_ingredients ri WHERE ri.version_id=rv.id) ingredient_count,
-                      (SELECT COUNT(*) FROM recipe_steps rs WHERE rs.version_id=rv.id) step_count
-               FROM recipe_versions rv WHERE rv.recipe_id=? ORDER BY rv.version_no DESC''',
-            (recipe_id,),
-        ).fetchall()
-    return templates.TemplateResponse('recipe_versions_v10.html', _ctx(
-        request, recipe=recipe, versions=versions
-    ))
+    return RedirectResponse(f'/life/recipes/{recipe_id}', status_code=303)
 
 
 @router.post('/life/recipes/{recipe_id}/versions/{version_id}/restore')
 async def recipe_restore_v10(request: Request, recipe_id: int, version_id: int):
     form = await request.form()
     _csrf(request, str(form.get('csrf', '')))
-    with db() as conn:
-        ensure_v10_schema(conn)
-        _recipe_or_404(conn, recipe_id)
-        source = _version_or_404(conn, version_id)
-        if int(source['recipe_id']) != recipe_id:
-            raise HTTPException(400, '版本不属于当前菜谱')
-        _clone_version(conn, recipe_id, version_id, f"基于 V{source['version_no']} 恢复并创建新标准")
-    return RedirectResponse(f'/life/recipes/{recipe_id}', status_code=303)
+    raise HTTPException(410, '菜谱历史恢复功能已移除')
 
 
 @router.post('/life/recipes/{recipe_id}/cook/start')

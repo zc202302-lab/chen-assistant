@@ -96,7 +96,10 @@ def main():
             assert error.status_code == 400
         else:
             raise AssertionError('invalid raw weight accepted')
-    assert client.get(f'/life/recipes/{rid}/versions').status_code == 200
+    assert client.get(f'/life/recipes/{rid}/versions', follow_redirects=False).status_code == 303
+    assert '历史版本' not in detail.text and '当前标准 V' not in detail.text
+    assert 'change_summary' not in client.get(edit_url).text
+    assert client.post(f'/life/recipes/{rid}/versions/1/restore', data={'csrf':csrf}).status_code == 410
     with db() as conn:
         versions = conn.execute('SELECT * FROM recipe_versions WHERE recipe_id=? ORDER BY version_no', (rid,)).fetchall()
         assert [v['version_no'] for v in versions] == [1, 2]
