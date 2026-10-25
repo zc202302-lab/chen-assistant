@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{{ recipe.name }} · A4打印</title>
-  <link rel="stylesheet" href="/static/recipe-print-v101.css?v=1725">
+  <link rel="stylesheet" href="/static/recipe-print-v101.css?v=1727">
 </head>
 <body>
   <div class="print-toolbar">
@@ -12,6 +12,17 @@
     <strong>{{ recipe.name }} · Excel版式</strong>
     <button type="button" data-recipe-print>打印</button>
   </div>
+  <section class="recipe-pdf-panel" data-recipe-pdf-panel hidden aria-label="手机打印">
+    <h2>手机打印</h2>
+    <p data-recipe-pdf-status role="status" aria-live="polite">先生成 PDF，再打开手机系统菜单打印。</p>
+    <div class="recipe-pdf-actions">
+      <button type="button" data-recipe-pdf-prepare>生成 PDF</button>
+      <button type="button" data-recipe-pdf-share hidden>打开打印菜单</button>
+      <a href="/life/recipes/{{ recipe.id }}/print?format=pdf" data-recipe-pdf-download download>保存 PDF</a>
+      <button type="button" data-recipe-pdf-close>关闭</button>
+    </div>
+    <p class="recipe-pdf-help">在系统菜单中向下滑动选择“打印”。没有打印选项时，先“存储到文件”，再从“文件”打开 PDF，点分享 → 打印。</p>
+  </section>
   <main class="recipe-print-canvas">
     <article class="recipe-print-sheet" aria-label="{{ recipe.name }} A4菜谱">
       <table class="excel-recipe-grid">
@@ -49,6 +60,6 @@
       </table>
     </article>
   </main>
-  <script src="/static/recipe-print-v101.js?v=1726" defer></script>
+  <script src="/static/recipe-print-v101.js?v=1727" defer></script>
 </body>
 </html>

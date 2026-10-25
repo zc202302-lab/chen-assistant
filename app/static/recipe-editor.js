@@ -25,9 +25,27 @@
       card.querySelector('[data-group-down]').disabled = index === cards.length - 1;
     });
     editor.querySelector('[data-empty-groups]').hidden = cards.length > 0;
+    const rawRows = cards.filter(card => ['原料','主材'].includes(card.querySelector('[data-group-name]').value.trim()))
+      .flatMap(card => [...card.querySelectorAll('.recipe-material')]);
+    if (rawRows.length) {
+      const factors = {g:1, '克':1, kg:1000, '千克':1000, '公斤':1000, '斤':500, '两':50};
+      let total = 0;
+      let valid = true;
+      rawRows.forEach(row => {
+        if (!row.querySelector('[name=ingredient_name]').value.trim()) return;
+        const amount = Number(row.querySelector('[name=ingredient_amount]').value);
+        const factor = factors[row.querySelector('[name=ingredient_unit]').value.trim().toLowerCase()];
+        if (!(amount > 0) || !Number.isFinite(amount) || !factor) valid = false;
+        else total += amount * factor;
+      });
+      if (valid && total > 0) {
+        editor.querySelector('[name=base_amount]').value = String(Math.round(total * 100) / 100);
+        editor.querySelector('[name=base_unit]').value = 'g';
+      }
+    }
   };
   editor.addEventListener('input', event => {
-    if (event.target.matches('[data-group-name]')) sync();
+    if (event.target.matches('[data-group-name], [name=ingredient_amount], [name=ingredient_unit], [name=ingredient_name]')) sync();
   });
   editor.addEventListener('change', event => {
     if (event.target.matches('[data-material-group]')) {
@@ -44,7 +62,17 @@
     const button = event.target.closest('button');
     if (!button) return;
     let card = button.closest('[data-recipe-group]');
-    if (button.matches('[data-add-group]')) {
+    if (button.matches('[data-add-raw]')) {
+      let raw = groups().find(group => ['主材', '原料'].includes(group.querySelector('[data-group-name]').value.trim()));
+      if (!raw) {
+        list.append(editor.querySelector('#recipeGroupTemplate').content.cloneNode(true));
+        raw = list.lastElementChild;
+        raw.querySelector('[data-group-name]').value = '原料';
+      }
+      const materials = raw.querySelector('[data-group-materials]');
+      materials.append(editor.querySelector('#v10IngredientTemplate').content.cloneNode(true));
+      materials.lastElementChild.querySelector('[name=ingredient_name]').focus();
+    } else if (button.matches('[data-add-group]')) {
       list.append(editor.querySelector('#recipeGroupTemplate').content.cloneNode(true));
       card = list.lastElementChild;
       let number = groups().length;

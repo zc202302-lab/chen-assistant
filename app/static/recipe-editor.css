@@ -49,3 +49,10 @@
   [data-grouped-recipe-editor] .v10-sticky-save { bottom: calc(6px + env(safe-area-inset-bottom, 0px)); padding: 6px 10px; }
   [data-grouped-recipe-editor] .v10-sticky-save span { max-width: 45%; line-height: 1.5; }
 }
+
+[data-grouped-recipe-editor] .v10-form-card{padding:10px;margin-bottom:8px}
+[data-grouped-recipe-editor] .v10-page-head{margin-bottom:8px}
+[data-grouped-recipe-editor] .v10-step-edit{padding:10px;margin:6px 0}
+[data-grouped-recipe-editor] .v10-step-edit label{margin:4px 0}
+[data-grouped-recipe-editor] textarea{min-height:52px}
+.recipe-bottom-add{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from .templating import Jinja2Templates
 
 from . import config
@@ -113,8 +113,8 @@ def _excel_print_layout(conn, version):
     ingredients, steps, grouped = _version_payload(conn, version['id'])
     ordered_groups = list(grouped.items())
     # An absent 主材 group must not promote the first cooking stage into the main row.
-    main_index = next((idx for idx, (name, _) in enumerate(ordered_groups) if name == '主材'), None)
-    main_name, main_rows = ordered_groups.pop(main_index) if main_index is not None else ('主材', [])
+    main_index = next((idx for idx, (name, _) in enumerate(ordered_groups) if name in {'主材', '原料'}), None)
+    main_name, main_rows = ordered_groups.pop(main_index) if main_index is not None else ('原料', [])
 
     main_slots = [''] * 9
     overflow_notes = []
@@ -124,7 +124,7 @@ def _excel_print_layout(conn, version):
             main_slots[idx * 2] = str(row['name'] or '')
             main_slots[idx * 2 + 1] = _print_amount(row, version)
         elif item_text:
-            overflow_notes.append(f'主材：{item_text}')
+            main_slots[8] = '\n'.join(filter(None, [main_slots[8], item_text]))
 
     grid_groups = []
     for group_name, rows in ordered_groups:
@@ -181,7 +181,7 @@ def _excel_print_layout(conn, version):
         print_steps.append({'title': '', 'method': '', 'principle': ''})
 
     return {
-        'main_label': main_name or '主材',
+        'main_label': '原料',
         'main_slots': main_slots,
         'ingredient_groups': grid_groups,
         'ingredient_notes': '\n'.join(ingredient_notes),
@@ -196,6 +196,14 @@ def recipe_print_v101(request: Request, recipe_id: int):
         recipe = _recipe_or_404(conn, recipe_id)
         version = _current_version(conn, recipe)
         layout = _excel_print_layout(conn, version)
+    if request.query_params.get('format') == 'pdf':
+        from urllib.parse import quote
+        from .recipe_print_pdf import recipe_pdf
+        filename = quote(str(recipe['name']) + '.pdf', safe='')
+        return Response(recipe_pdf(recipe['name'], layout), media_type='application/pdf', headers={
+            'Content-Disposition': f"attachment; filename=recipe.pdf; filename*=UTF-8''{filename}",
+            'Cache-Control': 'no-store',
+        })
     return templates.TemplateResponse('recipe_print_v101.html', _ctx(
         request,
         recipe=recipe,

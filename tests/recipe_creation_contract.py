@@ -65,14 +65,41 @@ def main():
     assert '准备原料' in printed.text
     import re
     print_rows = re.findall(r'<tr class="excel-ingredient-row">(.*?)</tr>', printed.text, re.S)
-    assert print_rows and '<th scope="row">主材</th>' in print_rows[0]
+    assert print_rows and '<th scope="row">原料</th>' in print_rows[0]
     assert '<th scope="row" rowspan="2">腌肉</th>' in print_rows[1]
     assert '鲜鱼' in print_rows[1] and '白胡椒粉' in print_rows[1]
     assert '<th>备注</th>' not in printed.text
     assert '<th rowspan="2">原理</th>' not in printed.text
     assert '<th colspan="9" rowspan="2">方法</th>' in printed.text
     assert 'class="excel-step-method" colspan="9"' in printed.text
-    assert client.get(f'/life/recipes/{rid}/versions').status_code == 200
+    assert guest.get(f'/life/recipes/{rid}/print?format=pdf', follow_redirects=False).status_code == 303
+    pdf = client.get(f'/life/recipes/{rid}/print?format=pdf')
+    assert pdf.status_code == 200 and pdf.content.startswith(b'%PDF-')
+    assert pdf.headers['content-type'] == 'application/pdf'
+    assert pdf.headers['cache-control'] == 'no-store'
+    assert "filename*=UTF-8''" in pdf.headers['content-disposition']
+    assert len(re.findall(rb'/Type\s*/Page(?!s)\b', pdf.content)) == 1
+    assert client.get('/life/recipes/999999/print?format=pdf').status_code == 404
+    # Explicit raw materials define the denominator; spices do not. Units normalize to grams.
+    from app.recipe_raw_materials import raw_material_total
+    from starlette.datastructures import FormData
+    raw_form = FormData([('ingredient_name','面粉'),('ingredient_name','玉米粉'),('ingredient_name','盐'),
+                        ('ingredient_group','原料'),('ingredient_group','原料'),('ingredient_group','调味'),
+                        ('ingredient_amount','1'),('ingredient_amount','500'),('ingredient_amount','12'),
+                        ('ingredient_unit','kg'),('ingredient_unit','g'),('ingredient_unit','g')])
+    assert raw_material_total(raw_form, 99) == (1500, 'g')
+    for invalid in ['nan','inf','-1','0','']:
+        bad = FormData([('ingredient_name','面粉'),('ingredient_group','原料'),('ingredient_amount',invalid)])
+        try:
+            raw_material_total(bad, 99)
+        except Exception as error:
+            assert error.status_code == 400
+        else:
+            raise AssertionError('invalid raw weight accepted')
+    assert client.get(f'/life/recipes/{rid}/versions', follow_redirects=False).status_code == 303
+    assert '历史版本' not in detail.text and '当前标准 V' not in detail.text
+    assert 'change_summary' not in client.get(edit_url).text
+    assert client.post(f'/life/recipes/{rid}/versions/1/restore', data={'csrf':csrf}).status_code == 410
     with db() as conn:
         versions = conn.execute('SELECT * FROM recipe_versions WHERE recipe_id=? ORDER BY version_no', (rid,)).fetchall()
         assert [v['version_no'] for v in versions] == [1, 2]

@@ -94,7 +94,7 @@ def main():
             assert page.locator('.excel-section-header-row').count() == 2
             assert page.locator('.excel-step-row').count() == 4
             expect(page.locator('.recipe-print-head')).to_have_count(0)
-            expect(page.locator('.excel-ingredient-row').first.locator('th')).to_have_text(['主材'])
+            expect(page.locator('.excel-ingredient-row').first.locator('th')).to_have_text(['原料'])
             assert page.locator('.excel-recipe-grid col.excel-standard-column').count() == 10
             expect(page.locator('.excel-ingredient-row').first.locator('td')).to_have_count(9)
             expect(page.locator('.excel-section-header-row').first.locator('th').nth(1)).to_have_attribute('colspan', '9')
@@ -112,6 +112,53 @@ def main():
             pdf = page.pdf(print_background=True, prefer_css_page_size=True)
             pages = len(re.findall(rb'/Type\s*/Page(?!s)\b', pdf))
             assert pages == 1, pages
+            page.emulate_media(media='screen')
+            page.evaluate('''() => {
+                Object.defineProperty(navigator, 'standalone', {value: true, configurable: true});
+                Object.defineProperty(navigator, 'userAgent', {value: 'iPhone', configurable: true});
+                navigator.canShare = data => data.files[0].type === 'application/pdf';
+                navigator.share = data => {
+                    window.__sharedPdf = {type: data.files[0].type, size: data.files[0].size,
+                        active: navigator.userActivation.isActive};
+                    return Promise.resolve();
+                };
+            }''')
+            page.locator('[data-recipe-print]').click()
+            expect(page.locator('[data-recipe-pdf-panel]')).to_be_visible()
+            expect(page.locator('[data-recipe-pdf-share]')).to_be_visible()
+            assert page.evaluate('window.__printCalls') == [True], 'standalone must not rely on print()'
+            page.locator('[data-recipe-pdf-share]').click()
+            shared = page.evaluate('window.__sharedPdf')
+            assert shared['type'] == 'application/pdf' and shared['size'] > 1000 and shared['active']
+            page.evaluate("() => { navigator.share = () => Promise.reject(Object.assign(new Error(), {name:'AbortError'})); }")
+            page.locator('[data-recipe-pdf-share]').click()
+            expect(page.locator('[data-recipe-pdf-status]')).to_contain_text('已取消')
+            page.evaluate("() => { navigator.share = () => Promise.reject(Object.assign(new Error(), {name:'NotAllowedError'})); }")
+            page.locator('[data-recipe-pdf-share]').click()
+            expect(page.locator('[data-recipe-pdf-status]')).to_contain_text('保存 PDF')
+            # A new page must recover from network/login failure, then retry;
+            # devices without file sharing retain a usable PDF download.
+            await_url = f'http://127.0.0.1:8142/life/recipes/{rid}/print'
+            page.goto(await_url, wait_until='networkidle')
+            page.evaluate('''() => {
+                Object.defineProperty(navigator, 'standalone', {value:true});
+                Object.defineProperty(navigator, 'userAgent', {value:'iPhone'});
+                navigator.canShare = () => false;
+            }''')
+            page.route('**/print?format=pdf', lambda route: route.fulfill(status=503, body='offline'))
+            page.locator('[data-recipe-print]').click()
+            expect(page.locator('[data-recipe-pdf-status]')).to_contain_text('生成失败')
+            page.unroute('**/print?format=pdf')
+            page.locator('[data-recipe-pdf-prepare]').click()
+            expect(page.locator('[data-recipe-pdf-status]')).to_contain_text('PDF 已准备好')
+            expect(page.locator('[data-recipe-pdf-share]')).to_be_hidden()
+            with page.expect_download() as download:
+                page.locator('[data-recipe-pdf-download]').click()
+            assert download.value.failure() is None
+            for width in (390, 1440):
+                page.set_viewport_size({'width': width, 'height': 850})
+                assert page.locator('[data-recipe-pdf-panel]').bounding_box()['width'] <= width
+            page.screenshot(path='/tmp/recipe-mobile-print-panel.png', full_page=True)
             browser.close()
         print('recipe tools browser acceptance passed: Excel-grid recipe print + original text + formula tools + one-page A4')
     finally:
