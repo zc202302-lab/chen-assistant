@@ -49,7 +49,7 @@
         out.textContent = format(value);
       });
     };
-    inputs.forEach(input => input.addEventListener('input', () => refresh(true)));
+    inputs.forEach(input => { input.addEventListener('input', () => refresh(true)); input.disabled = false; });
     detail.querySelectorAll('[data-recipe-print-link]').forEach(link => link.addEventListener('click', event => {
       if (link.getAttribute('aria-disabled') === 'true') { event.preventDefault(); inputs.find(input => !input.checkValidity() || Number(input.value) <= 0)?.reportValidity(); }
     }));
