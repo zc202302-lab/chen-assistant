@@ -10,3 +10,5 @@
 [data-v10-recipe-detail] .v10-ingredient{padding:7px 0}
 [data-v10-recipe-detail] .v10-amount-panel{gap:8px}
 [data-v10-recipe-detail] .v10-step-card{padding:10px;margin:6px 0}
+
+[data-v10-recipe-detail] .v10-raw-weight{display:flex;align-items:center;gap:6px;min-width:0}[data-v10-recipe-detail] [data-raw-weight]{width:112px;max-width:38vw;padding:7px 10px;text-align:right;border:1px solid #d9e1ec;border-radius:10px;font:inherit;font-weight:700}[data-raw-weight-error]{color:#a55700}

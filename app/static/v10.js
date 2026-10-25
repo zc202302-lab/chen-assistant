@@ -7,29 +7,51 @@
 
   const detail = document.querySelector('[data-v10-recipe-detail]');
   if (detail) {
-    const input = document.getElementById('v10TargetAmount');
-    const cookAmount = document.getElementById('v10CookAmount');
+    const inputs = [...detail.querySelectorAll('[data-raw-weight]')];
+    const factors = {g:1, '克':1, kg:1000, '千克':1000, '公斤':1000, '斤':500, '两':50};
     const base = Number(detail.dataset.baseAmount || 0);
-    const refresh = () => {
-      const target = Number(input?.value || base);
+    let revision = Date.now();
+    const refresh = (save = false) => {
+      const valid = inputs.every(input => input.checkValidity() && Number.isFinite(Number(input.value)) && Number(input.value) > 0 && factors[input.dataset.unit.toLowerCase()]);
+      const target = inputs.reduce((sum, input) => sum + Number(input.value) * (factors[input.dataset.unit.toLowerCase()] || 0), 0);
+      const ready = valid && Number.isFinite(target) && target > 0;
+      detail.querySelector('[data-raw-weight-error]').textContent = ready ? '' : '请填写有效的原料重量';
       detail.querySelectorAll('[data-recipe-print-link]').forEach(link => {
+        link.setAttribute('aria-disabled', String(!ready));
         const url = new URL(link.href, window.location.href);
-        url.searchParams.set('amount', String(target > 0 && Number.isFinite(target) ? target : base));
+        url.searchParams.delete('raw');
+        if (ready) {
+          url.searchParams.set('amount', String(target));
+          inputs.forEach(input => { if (input.dataset.rawId) url.searchParams.append('raw', `${input.dataset.rawId}:${input.value}`); });
+        }
         link.href = url.href;
       });
-      if (cookAmount) cookAmount.value = target > 0 ? target : base;
+      if (!ready) return;
+      if (save) {
+        revision = Math.max(Date.now(), revision + 1);
+        const currentRevision = revision;
+        const body = new URLSearchParams({csrf:detail.dataset.csrf, version_id:detail.dataset.versionId, revision:String(revision), amount:String(target)});
+        inputs.forEach(input => { if (input.dataset.rawId) body.append('raw', `${input.dataset.rawId}:${input.value}`); });
+        const status = detail.querySelector('[data-raw-weight-error]');
+        status.textContent = '正在保存…';
+        fetch(detail.dataset.saveUrl, {method:'POST', body, credentials:'same-origin', keepalive:true, headers:{Accept:'application/json'}})
+          .then(response => { if (!response.ok || response.redirected) throw new Error('save'); return response.json(); })
+          .then(result => { if (!result.ok) throw new Error('save'); if (revision === currentRevision) status.textContent = '已保存'; })
+          .catch(() => { if (revision === currentRevision) status.textContent = '保存失败，请重新修改重量后重试'; });
+      }
       detail.querySelectorAll('.v10-ingredient[data-ingredient-amount]').forEach(row => {
         const raw = row.dataset.ingredientAmount;
         const amount = Number(raw);
         const out = row.querySelector('[data-scaled]');
         if (!out || raw === '' || !Number.isFinite(amount)) return;
-        const mode = row.dataset.scaleMode;
-        let value = amount;
-        if (mode === 'proportional' && base > 0 && target > 0) value = amount * target / base;
+        const value = row.dataset.scaleMode === 'proportional' && base > 0 ? amount * target / base : amount;
         out.textContent = format(value);
       });
     };
-    input?.addEventListener('input', refresh);
+    inputs.forEach(input => input.addEventListener('input', () => refresh(true)));
+    detail.querySelectorAll('[data-recipe-print-link]').forEach(link => link.addEventListener('click', event => {
+      if (link.getAttribute('aria-disabled') === 'true') { event.preventDefault(); inputs.find(input => !input.checkValidity() || Number(input.value) <= 0)?.reportValidity(); }
+    }));
     refresh();
   }
 

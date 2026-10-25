@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-APP_DIR="/opt/chen-assistant"; SERVICE="chen-assistant"; APP_HTTP="http://172.19.0.1:8010"; HEALTH_URL="$APP_HTTP/health"; BACKUP_DIR="$APP_DIR/backups"; EXPECTED_VERSION="1.7.27"
+APP_DIR="/opt/chen-assistant"; SERVICE="chen-assistant"; APP_HTTP="http://172.19.0.1:8010"; HEALTH_URL="$APP_HTTP/health"; BACKUP_DIR="$APP_DIR/backups"; EXPECTED_VERSION="1.7.28"
 cd "$APP_DIR"
 echo "===== 晨的助手 v${EXPECTED_VERSION} 一键更新 ====="
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then echo "✗ 检测到服务器受 Git 管理文件有本地修改，已停止更新。"; git status --short; exit 1; fi
