@@ -2,6 +2,21 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-25（Asia/Shanghai）用户要求本轮一并部署：多原料与原料总重量换算、标准配方列明原料且环节用量对应总重、详情/编辑紧凑布局、底部新增环节/步骤、删除菜谱全部版本界面/操作，以及此前iPhone桌面PWA打印修复。PR #171 https://github.com/zc202302-lab/chen-assistant/pull/171 已squash合并至main，功能提交5823f27971b45da3e3882913d3f4534137d0f201，Web1.7.25。已确认线上health1.7.25，recipe-editor.js/css、v10.css、recipe-print-v101.js/css与受检源码精确一致。私有菜谱和用户实际iPhone系统菜单待用户反馈，不推断生产精确backend SHA。
+- 原料组可多项，旧主材编辑显示原料；前后端重量统一为g，支持g/克、kg/千克/公斤、斤、两，正有限数校验。显式原料组总重量作为配方比例基准，其他环节不计入，固定量/手工量保留；无原料组的历史菜谱保留原基准。标准配方展示原料组名称/用量和标准总重。新入口“添加原料”，新增环节/步骤在各自列表底部；详情卡片/行距与编辑空白收紧。
+- 菜谱列表、详情、编辑、相关制作记录/旧模板不显示菜谱版本；无历史入口/列表/恢复操作或强制改进说明，按钮为“保存菜谱”。旧历史GET跳转详情，恢复POST在CSRF后410；原数据库关系与历史记录安全保留，保存仍内部形成快照，用户不接触版本管理。未删除用户业务数据。
+- iOS独立模式打印使用鉴权原print URL的?format=pdf，服务端ReportLab5.1.0内存生成PDF，内嵌OFL中文字体子集，无运行时外部字体请求。生成完成后再次点击“打开打印菜单”，同步navigator.share文件保持用户激活；含取消/失败提示、保存PDF备用入口。普通浏览器保留同步window.print。单页10等宽列模板保留，密集文本PDF扩展以免裁切。无新URL/schema，路由清单检查通过。
+- 最终受检headb94904f0d5f402b9bc01cf534f833d76f7db184e：完整validation40165070708（validate121084341983、preflight121084341868）、stability40165070704、模块隔离40165070694全部success。真实浏览器多原料保存重开、1500→3000换算及固定量、无版本界面、PDF生成/分享用户激活/取消/系统拒绝/失败重试/下载、原单页A4与全部旧业务回归通过。本地创建/导出鉴权、单位求和和非法重量、架构/路由/v12/稳定性及pip-audit无已知漏洞通过；PDF中文实际渲染与嵌字检查通过。CI旧head手机截图已查看，runner无中文字体显示方框，几何检查通过；不冒称本机Chromium或真实iPhone验证。
+- 首轮0f89a32在部署脚本EXPECTED_VERSION旧值失败，已同步1.7.25；第二轮90bbcc0在取消分享模拟设置时Playwright自动调用返回函数而失败，改为设置函数返回undefined，保留全部取消/失败断言。两项修复后最终完整CI通过。合并后git diff受检分支与main的app/tests/scripts/deploy.sh/requirements.txt为空，确认受检功能源码一致。
+- 公网核验记录：首次仍1.7.24，随后自动同步1.7.25与五项精确资源通过；全站scripts/check_pwa_production.py已完成并返回ONLINE VERIFIED v1.7.25，包含原工作/清单/账户/推送/PWA精确资源、鉴权、公开找回表单及号码收集域名边界；新增v10.css和打印JS/CSS精确对比通过。未在生产登录、改写或读取私有业务数据。Windows/云电脑#128/美国代理/chen-cook和EXE/XLSM附件均未改。
+- 核心recipe_raw_materials.py、recipe_print_pdf.py、v10_routes.py、v101_recipe_template_patch.py、相关recipe模板/JS/CSS、deploy.sh及tests。工作目录/workspace/scratch/1dc24d163d10/chen-assistant。活动功能PR已完成。唯一下一步：用户关闭旧页面重开，确认原料组/保存/换算与桌面PWA的PDF系统打印菜单；收到实机反馈后按最新需求继续。
+
+## 前序排障与开发记录（历史）
+
+# 晨的小助手 · AI 开发接力文档
+
+## 当前交接快照（唯一当前状态）
+
 - 2026-10-25用户要求继续完成部署。活动PR #171 https://github.com/zc202302-lab/chen-assistant/pull/171，分支feat/recipe-raw-total-mobile-print，候选1.7.25，功能headb94904f0d5f402b9bc01cf534f833d76f7db184e。已完成原料多项总重/单位归克、紧凑详情编辑、底部新增环节步骤；iOS桌面PWA改用鉴权PDF导出与系统文件分享，内嵌中文字体，保留下载路径及普通浏览器打印。尚未合并/部署，完整CI待新head验收。第二轮PDF真实生成/分享用户激活通过，但取消分享模拟设置因Playwright将返回函数自动调用而中断；测试设置改为返回undefined，取消/失败断言保留，功能代码未改。用户补充标准配方须含原料信息和对应总重，本轮原料组/合计基准与相关换算测试覆盖此要求。新增用户要求已实现：删除菜谱版本号、历史入口/列表/恢复操作/改进说明，保存统一为保存菜谱；旧历史URL重定向，恢复POST返回410，内部旧记录不删除。首轮CI在部署脚本EXPECTED_VERSION仍1.7.24处失败，已同步1.7.25，未弱化检查。
 - 本地菜谱创建/PDF鉴权、单位求和与非法重量、架构/路由/稳定性/v12契约通过；中文PDF实际渲染已检查，字体子集嵌入。浏览器下载受本机网络限制，不宣称本地GUI通过；CI新增多原料保存/换算、独立模式分享/用户激活/取消/失败/下载用例。核心recipe_raw_materials.py、recipe_print_pdf.py、v10_routes.py、v101_recipe_template_patch.py、recipe-editor和recipe-print资源/模板。无新路由/schema；Windows/其他仓库/附件均不变。
 - 所有功能源码和字体已上传GitHub，不再仅本地。唯一下一步：核对#171完整validation/stability/isolation，修复真实失败后合并部署，核验公网1.7.25及精确资源，并更新此快照。用户iPhone系统打印菜单属于实机待反馈层级。
