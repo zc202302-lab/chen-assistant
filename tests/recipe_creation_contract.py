@@ -17,6 +17,15 @@ def main():
     token, csrf, _ = create_session()
     client = TestClient(app)
     client.cookies.set('session_token', token)
+    import re
+    with db() as conn:
+        seed_id = conn.execute("SELECT id FROM recipes WHERE name='糖醋排骨'").fetchone()['id']
+    legacy_editor = client.get(f'/life/recipes/{seed_id}/edit').text
+    raw_section = re.search(r'<section class="v10-form-card recipe-raw-section".*?</section>', legacy_editor, re.S)[0]
+    assert '排骨' in raw_section and 'data-raw-material-list' in raw_section
+    assert 'data-recipe-group' not in raw_section and 'data-group-name' not in raw_section
+    assert '物料' not in legacy_editor
+    assert 'data-recipe-raw-info' in client.get(f'/life/recipes/{seed_id}').text
     for path in ['/life', '/life/recipes']:
         assert 'href="/life/recipes/new"' in client.get(path).text
     assert client.post('/life/recipes/new', data={'name':'not allowed','csrf':'wrong'}).status_code == 403

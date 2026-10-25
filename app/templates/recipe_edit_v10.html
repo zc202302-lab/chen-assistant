@@ -4,15 +4,15 @@
 <div class="v10-edit-row recipe-material">
   <input type="hidden" name="ingredient_group" value="{{ ing.group_name if ing else '配料' }}">
   <div class="recipe-material-main">
-    <input aria-label="物料名称" name="ingredient_name" value="{{ ing.name if ing else '' }}" placeholder="物料名称" required>
+    <input aria-label="原料名称" name="ingredient_name" value="{{ ing.name if ing else '' }}" placeholder="原料名称" required>
     <input aria-label="用量" name="ingredient_amount" type="number" inputmode="decimal" step="0.01" value="{{ ing.amount if ing and ing.amount is not none else '' }}" placeholder="用量">
-    <input aria-label="物料单位" name="ingredient_unit" value="{{ ing.unit if ing else 'g' }}" placeholder="单位">
-    <button type="button" class="recipe-icon" data-remove-material aria-label="删除物料">×</button>
+    <input aria-label="原料单位" name="ingredient_unit" value="{{ ing.unit if ing else 'g' }}" placeholder="单位">
+    <button type="button" class="recipe-icon" data-remove-material aria-label="删除原料">×</button>
   </div>
   <details class="recipe-material-options">
-    <summary aria-label="物料设置：比例、备注、所属环节" title="比例、备注、所属环节"><span aria-hidden="true">⋯</span><span class="recipe-option-description">比例与备注 · <span data-mode-label>{{ '固定量' if ing and ing.scale_mode == 'fixed' else ('手工决定' if ing and ing.scale_mode == 'manual' else '按原料总重比例') }}</span>{% if ing and ing.note %} · {{ ing.note }}{% endif %}</span></summary>
+    <summary aria-label="原料设置：比例、备注、所属列表" title="比例、备注、所属列表"><span aria-hidden="true">⋯</span><span class="recipe-option-description">比例与备注 · <span data-mode-label>{{ '固定量' if ing and ing.scale_mode == 'fixed' else ('手工决定' if ing and ing.scale_mode == 'manual' else '按原料总重比例') }}</span>{% if ing and ing.note %} · {{ ing.note }}{% endif %}</span></summary>
     <div class="recipe-option-fields">
-      <label>所属环节<select data-material-group aria-label="所属环节"></select></label>
+      <label>所属列表<select data-material-group aria-label="所属列表"></select></label>
       <label>用量方式<select name="ingredient_mode"><option value="proportional">按原料总重比例</option><option value="fixed" {% if ing and ing.scale_mode == 'fixed' %}selected{% endif %}>固定量</option><option value="manual" {% if ing and ing.scale_mode == 'manual' %}selected{% endif %}>手工决定</option></select></label>
       <label>备注<input name="ingredient_note" value="{{ ing.note if ing else '' }}" placeholder="例如：分两次加入"></label>
     </div>
@@ -29,28 +29,34 @@
       <button type="button" class="recipe-icon" data-delete-group aria-label="删除环节">×</button>
     </div>
   </header>
-  <div class="recipe-column-labels" aria-hidden="true"><span>物料</span><span>用量</span><span>单位</span><span></span></div>
+  <div class="recipe-column-labels" aria-hidden="true"><span>原料</span><span>用量</span><span>单位</span><span></span></div>
   <div data-group-materials>{% for ing in items %}{{ material(ing) }}{% endfor %}</div>
-  <button type="button" class="recipe-add-material" data-add-ingredient>＋ 添加物料</button>
+  <button type="button" class="recipe-add-material" data-add-ingredient>＋ 添加原料</button>
 </article>
 {% endmacro %}
 {% block content %}
-<link rel="stylesheet" href="/static/recipe-editor.css?v=1727">
-<script src="/static/recipe-editor.js?v=1727" defer></script>
+<link rel="stylesheet" href="/static/recipe-editor.css?v=1729">
+<script src="/static/recipe-editor.js?v=1729" defer></script>
 <section class="v10-shell v10-editor" data-v10-recipe-editor data-grouped-recipe-editor><a class="v10-back" href="/life/recipes/{{ recipe.id }}">← 返回 {{ recipe.name }}</a><div class="v10-page-head"><div><h1>编辑标准配方</h1></div></div><form method="post" class="v10-editor-form"><input type="hidden" name="csrf" value="{{ csrf }}"><section class="v10-form-card"><details class="recipe-metadata"><summary>菜谱信息 <span>{{ recipe.name }} · {{ version.base_amount }} {{ version.base_unit }}</span></summary><div class="v10-form-grid"><label>菜名<input name="name" value="{{ recipe.name }}" required></label><label>分类<input name="category" value="{{ recipe.category }}"></label><label>标签<input name="tags" value="{{ recipe.tags }}"></label><label>标准原料总重量<input name="base_amount" type="number" step="0.01" value="{{ version.base_amount }}" required></label><label>单位<input name="base_unit" value="{{ version.base_unit }}"></label></div><label>菜谱说明<textarea name="description" rows="3">{{ recipe.description }}</textarea></label></details></section>
+<section class="v10-form-card recipe-raw-section" aria-label="原料列表">
+  <div class="v10-section-head"><h2>原料</h2><strong data-raw-total>原料总重量</strong></div>
+  <div class="recipe-column-labels" aria-hidden="true"><span>原料</span><span>重量</span><span>单位</span></div>
+  <div data-raw-material-list>{% for ing in ingredients %}{% if ing.group_name in ['原料','主材'] %}{{ material(ing) }}{% endif %}{% endfor %}</div>
+  <div class="recipe-bottom-add"><button type="button" class="v10-secondary" data-add-raw>＋ 添加原料</button></div>
+</section>
 <section class="v10-form-card recipe-ingredients">
-  <div class="v10-section-head"><div><h2>环节与物料</h2><p>同一环节集中填写物料；用量方式与备注可展开编辑。</p></div></div>
+  <div class="v10-section-head"><div><h2>制作环节</h2><p>同一环节集中填写原料；用量方式与备注可展开编辑。</p></div></div>
   <div data-ingredient-list>
     {% set seen = namespace(names=[]) %}
     {% for ing in ingredients %}
-      {% if ing.group_name not in seen.names %}
+      {% if ing.group_name not in ['原料','主材'] and ing.group_name not in seen.names %}
         {% set seen.names = seen.names + [ing.group_name] %}
         {{ group(ing.group_name, ingredients|selectattr('group_name', 'equalto', ing.group_name)|list) }}
       {% endif %}
     {% endfor %}
   </div>
-  <p class="recipe-empty" data-empty-groups {% if ingredients %}hidden{% endif %}>先添加一个环节，例如“腌肉”，再在其中添加所需物料。</p>
-  <div class="recipe-bottom-add"><button type="button" class="v10-secondary" data-add-raw>＋ 添加原料</button><button type="button" class="v10-secondary" data-add-group>＋ 添加环节</button></div>
+  <p class="recipe-empty" data-empty-groups {% if ingredients %}hidden{% endif %}>先添加一个环节，例如“腌肉”，再在其中添加所需原料。</p>
+  <div class="recipe-bottom-add"><button type="button" class="v10-secondary" data-add-group>＋ 添加环节</button></div>
   <template id="recipeGroupTemplate">{{ group() }}</template>
   <template id="v10IngredientTemplate">{{ material() }}</template>
 </section>

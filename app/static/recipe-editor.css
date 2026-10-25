@@ -56,3 +56,6 @@
 [data-grouped-recipe-editor] .v10-step-edit label{margin:4px 0}
 [data-grouped-recipe-editor] textarea{min-height:52px}
 .recipe-bottom-add{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+.recipe-raw-section [data-raw-total]{font-size:13px;color:#475569}
+.recipe-raw-section [data-raw-material-list]{border:1px solid #e3e8ef;border-radius:8px;overflow:hidden}
