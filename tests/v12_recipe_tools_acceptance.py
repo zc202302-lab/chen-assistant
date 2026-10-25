@@ -130,10 +130,10 @@ def main():
             page.locator('[data-recipe-pdf-share]').click()
             shared = page.evaluate('window.__sharedPdf')
             assert shared['type'] == 'application/pdf' and shared['size'] > 1000 and shared['active']
-            page.evaluate("navigator.share = () => Promise.reject(Object.assign(new Error(), {name:'AbortError'}))")
+            page.evaluate("() => { navigator.share = () => Promise.reject(Object.assign(new Error(), {name:'AbortError'})); }")
             page.locator('[data-recipe-pdf-share]').click()
             expect(page.locator('[data-recipe-pdf-status]')).to_contain_text('已取消')
-            page.evaluate("navigator.share = () => Promise.reject(Object.assign(new Error(), {name:'NotAllowedError'}))")
+            page.evaluate("() => { navigator.share = () => Promise.reject(Object.assign(new Error(), {name:'NotAllowedError'})); }")
             page.locator('[data-recipe-pdf-share]').click()
             expect(page.locator('[data-recipe-pdf-status]')).to_contain_text('保存 PDF')
             # A new page must recover from network/login failure, then retry;
