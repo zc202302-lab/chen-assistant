@@ -2,6 +2,16 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-25（Asia/Shanghai）最新用户要求：主材改为原料，支持多项原料，换算基准用原料总重量；详情/编辑页面收紧留白；新增环节/步骤入口移到各自列表下方，便于连续添加。按“原料”组成员合计理解，调料等其他环节不自动计入基准。此轮需求尚未实现或部署。
+- 上一轮手机桌面PWA打印修复仍在本地分支fix/standalone-recipe-print，尚未创建PR/部署。已有PDF导出service、原print路径?format=pdf、iOS standalone文件分享面板、取消/失败/下载浏览器用例、内嵌中文字体和reportlab5.1.0，候选1.7.25。Node/鉴权导出/架构/路由/安全审计通过，中文PDF渲染检查通过；本机Chromium下载失败，浏览器完整CI未跑。字体blob已上传GitHub对象25fdf6e2c52b3e90c389e451c747ecd67e2c30bb，但功能源码仍仅本地，不能称已持久交付。
+- 工作目录/workspace/scratch/1dc24d163d10/chen-assistant。本地未提交文件请保留，不覆盖。唯一下一步：在保留打印WIP的基础上实现原料合计/紧凑布局/底部新增，补充换算与浏览器验收，再创建PR、完整CI、合并及公网核验。历史生产基准仍为PR170、1.7.24。
+
+## 上一阶段记录（历史）
+
+# 晨的小助手 · AI 开发接力文档
+
+## 当前交接快照（唯一当前状态）
+
 - 2026-10-24（Asia/Shanghai）用户反馈“点击打印无反应”。按钮修复PR #170 https://github.com/zc202302-lab/chen-assistant/pull/170 已合并，main功能提交bf7fb13ec5344852d26f651de297bc83db87e5d0，活动分支fix/recipe-print-button已完成。版本沿用1.7.24，脚本缓存1726。其他项目/Windows/上传附件未改。
 - 原打印按钮setTimeout延时60ms调用window.print，可能丢失移动浏览器用户手势；已改为点击事件内同步调用，保留fit、版式和数据。自动化仅能证明修复调用时机，不能声称已复现用户设备根因。实际用户设备打印面板仍待反馈。
 - 受检head35e2fc2b29f8926564e6174fb75376184ca6d0f0完整validation40095951178（validate120878136292、preflight120878136344）、stability40095951143、模块隔离40095951156全部success。新增真实浏览器点击按钮验证同一click执行print、userActivation有效，原版式及单页A4和全部旧回归保留通过。本地Node语法/同步点击模拟和架构治理通过。
