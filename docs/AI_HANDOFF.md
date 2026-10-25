@@ -2,6 +2,19 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-25（Asia/Shanghai）用户IMG_3140要求删除详情重复原料总重量框、直接修改每项原料重量、后台求和；补充退出重开须保留修改值。PR #174 https://github.com/zc202302-lab/chen-assistant/pull/174 已squash合并，main功能提交e767d5dae8c59671cf06051ffddf043bcdd9a559，Web1.7.28。已实际读取公网health1.7.28、v10.js/css与受检源码精确一致；全站检查返回ONLINE VERIFIED v1.7.28。无活动功能WIP。
+- 详情仅保留独立原料卡片，每项重量可编辑。有效修改自动保存至服务器现有app_meta，按菜谱及当前标准关联，退出重开恢复；后台验证全部原料/单位并求和，配方与HTML/PDF按汇总总重换算，打印原料保留各项实际输入（如2200g/800g），固定/手工配料不变。标准原料/用量不覆盖。标准另行编辑形成新快照后，旧快照的本次重量不套入新标准，避免旧ID错配。新增POST /life/recipes/{recipe_id}/weights，鉴权/CSRF、旧请求revision防覆盖及保存失败反馈；两份路由清单已同步，无新表/依赖。旧导入多原料仅以第一项作基准时，运行时改按全部标准原料计算分母，不修改存量数据。
+- 最终受检head e3a7c1d6f04037fea407e393ebf2b14970d583d9：完整validation40197197509（validate121180489714、preflight121180489941）、stability40197197360、isolation40197197367全部success。浏览器修改重量/自动保存/失败重试/退出重开恢复/非法输入/多原料任意比例换算与打印、桌面1440/手机390几何、原A4/PDF分享及全部历史业务回归均通过。本地混合单位求和、HTML/PDF一致、后台忽略伪造合计、持久化/过期请求/非法请求/标准不覆盖、架构/路由/版本/v12/稳定性等通过。已查看本head手机详情截图，重复总重卡片消失、重量在原料行右侧；当前runner中文呈方框，只确认几何与源码文案，不冒称字体视觉/真实iPhone验收。
+- 前一dbb8dcc浏览器发现脚本尚未加载就能修改，导致漏保存；修为初始disabled、自动保存绑定后启用。保留全部断言后最终head通过。合并后受检分支与main的app/tests/scripts/deploy.sh/requirements.txt差异为空；本地已回到main，已发布改动安全stash留存，勿重复应用。
+- 公网核验先仍1.7.27，随后切换1.7.28且v10.js/css精确一致；完整scripts/check_pwa_production.py已退出0并返回ONLINE VERIFIED v1.7.28，PWA、工作/清单/账户/推送/菜谱打印资源、账户鉴权/公开找回表单和号码域名边界检查通过。未登录生产/读写私有业务；不推断生产精确backend SHA或真实iPhone系统菜单结果。Windows/云电脑#128/美国代理/chen-cook/附件不动。
+- 核心recipe_raw_materials.py、v10_routes.py、v101_recipe_template_patch.py、recipe_detail_v10.html、recipe_print_v101.html、v10.js/css及相关tests；缓存1730，config/deploy1.7.28。目录/workspace/scratch/1dc24d163d10/chen-assistant。唯一下一步：用户刷新后修改原料重量，看到已保存，再退出重开及打印确认；按后续实机反馈继续。
+
+## 前序记录（历史）
+
+# 晨的小助手 · AI 开发接力文档
+
+## 历史快照（仅供追溯）
+
 - 2026-10-25（Asia/Shanghai）用户IMG_3140要求删除详情重复的原料总重量输入框，逐项原料重量可编辑，后台自动汇总；补充修改值须退出重开后保留。允许继续开发部署。活动PR #174 https://github.com/zc202302-lab/chen-assistant/pull/174，分支fix/recipe-edit-raw-weights，head e3a7c1d6f04037fea407e393ebf2b14970d583d9，PR已squash合并，main功能提交e767d5dae8c59671cf06051ffddf043bcdd9a559，Web1.7.28；生产同步/公网核验进行中，勿声称线上已完成。
 - 已实现独立原料重量编辑、隐藏汇总联动配方及HTML/PDF按个别实用量打印。新增受鉴权/CSRF保护的POST /life/recipes/{recipe_id}/weights自动保存；用app_meta按菜谱存当前标准对应重量，后台校验全部原料/单位、计算总重，旧标准不覆盖。更新两份路由清单，无新表/依赖。并发保存采用revision防止旧请求覆盖新值，保存状态可见。本地创建/打印/持久化、架构/路由/版本/v12/稳定性/响应式契约均通过。受检head完整validation40197197509（validate121180489714、preflight121180489941）、stability40197197360、isolation40197197367全部success，含所有旧业务/打印回归。真实浏览器修改/失败重试/重开恢复/多原料任意比例打印已通过，手机390与桌面1440截图几何检查通过且已查看手机详情截图，当前runner中文字呈方框，不冒称字体视觉验收。勿声称完成上线。
 - 前一受检dbb8dcc在首次详情输入时未保存：脚本尚未加载，input已能修改。修复为服务端重量框初始disabled，绑定自动保存后启用；保留原全部断言，当前head浏览器已通过。旧导入多原料基准只记第一项的情况，运行时改按全部标准原料求和，避免默认打开误放大其他配料，不改存储数据。
