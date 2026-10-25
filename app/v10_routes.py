@@ -515,12 +515,17 @@ def recipe_detail_v10(request: Request, recipe_id: int, amount: float | None = N
         recipe = _recipe_or_404(conn, recipe_id)
         version = _current_version(conn, recipe)
         ingredients, steps, grouped = _version_payload(conn, version['id'])
-        target = float(amount) if amount and amount > 0 else float(version['base_amount'] or 0)
+        from .recipe_raw_materials import saved_raw_weights, raw_weight_basis
+        version = raw_weight_basis(version, ingredients)
+        raw_weights, saved_total = saved_raw_weights(conn, recipe_id, version, ingredients)
+        target = float(amount) if amount and amount > 0 else saved_total or float(version['base_amount'] or 0)
+        if amount is not None:
+            raw_weights = {}
         display_groups = []
         for group_name, rows in grouped.items():
             display_groups.append({
                 'name': '原料' if group_name == '主材' else group_name,
-                'items': [dict(row) | {'scaled_amount': _scaled_amount(row, version, target)} for row in rows],
+                'items': [dict(row) | {'scaled_amount': raw_weights.get(str(row['id']), _scaled_amount(row, version, target))} for row in rows],
             })
         cook_stats = conn.execute(
             '''SELECT COUNT(*) n,ROUND(AVG(rating),1) avg_rating,MAX(cooked_at) last_cooked
@@ -543,6 +548,20 @@ def recipe_detail_v10(request: Request, recipe_id: int, amount: float | None = N
         cook_stats=cook_stats,
         recent_records=recent_records,
     ))
+
+
+@router.post('/life/recipes/{recipe_id}/weights')
+async def recipe_save_weights(request: Request, recipe_id: int):
+    form = await request.form()
+    _csrf(request, str(form.get('csrf', '')))
+    from .recipe_raw_materials import save_raw_weights
+    with db() as conn:
+        ensure_v10_schema(conn)
+        recipe = _recipe_or_404(conn, recipe_id)
+        version = _current_version(conn, recipe)
+        ingredients, _, _ = _version_payload(conn, version['id'])
+        total = save_raw_weights(conn, recipe_id, version, ingredients, form)
+    return {'ok': True, 'amount': total}
 
 
 @router.get('/life/recipes/{recipe_id}/edit', response_class=HTMLResponse)

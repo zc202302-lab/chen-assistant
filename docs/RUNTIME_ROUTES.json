@@ -832,6 +832,14 @@
     "name": "recipe_detail_v10"
   },
   {
+    "path": "/life/recipes/{recipe_id}/weights",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.v10_routes",
+    "name": "recipe_save_weights"
+  },
+  {
     "path": "/life/recipes/{recipe_id}/edit",
     "methods": [
       "GET"

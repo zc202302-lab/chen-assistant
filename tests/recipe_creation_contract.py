@@ -26,6 +26,13 @@ def main():
     assert 'data-recipe-group' not in raw_section and 'data-group-name' not in raw_section
     assert '物料' not in legacy_editor
     assert 'data-recipe-raw-info' in client.get(f'/life/recipes/{seed_id}').text
+    with db() as conn:
+        legacy_multi = conn.execute("SELECT id FROM recipes WHERE name='尖椒干豆腐'").fetchone()['id']
+    legacy_detail = client.get(f'/life/recipes/{legacy_multi}').text
+    assert 'data-base-amount="450.0"' in legacy_detail
+    assert 'aria-label="豆腐皮重量" value="250"' in legacy_detail
+    legacy_print = client.get(f'/life/recipes/{legacy_multi}/print').text
+    assert 'amount=450.0' in legacy_print
     for path in ['/life', '/life/recipes']:
         assert 'href="/life/recipes/new"' in client.get(path).text
     assert client.post('/life/recipes/new', data={'name':'not allowed','csrf':'wrong'}).status_code == 403
@@ -132,6 +139,48 @@ def main():
         assert not any(v['change_summary'].startswith(TEMPLATE_IMPORT_MARKER) for v in versions)
         assert [tuple(r) for r in conn.execute('SELECT * FROM recipes WHERE id<>? ORDER BY id', (rid,))] == original
         assert [tuple(r) for r in conn.execute('SELECT * FROM recipe_versions WHERE recipe_id<>? ORDER BY id', (rid,))] == original_versions
+    # Per-raw overrides must retain individual quantities and derive the denominator server-side.
+    with db() as conn:
+        conn.execute("UPDATE recipe_ingredients SET group_name='原料',unit='kg',amount=1 WHERE version_id=? AND name='鲜鱼'", (versions[-1]['id'],))
+        conn.execute("UPDATE recipe_ingredients SET group_name='原料',unit='g',amount=500 WHERE version_id=? AND name='白胡椒粉'", (versions[-1]['id'],))
+        conn.execute("UPDATE recipe_ingredients SET scale_mode='proportional' WHERE version_id=? AND name='盐'", (versions[-1]['id'],))
+        raw_rows = conn.execute("SELECT id FROM recipe_ingredients WHERE version_id=? AND group_name='原料' ORDER BY sort_order,id", (versions[-1]['id'],)).fetchall()
+        conn.execute("UPDATE recipe_versions SET base_amount=1500 WHERE id=?", (versions[-1]['id'],))
+    first, second = [str(row['id']) for row in raw_rows]
+    query = f'raw={first}:2.2&raw={second}:800&amount=1'
+    response = client.get(f'/life/recipes/{rid}/print?{query}')
+    assert response.status_code == 200 and '2.2kg' in response.text and '800g' in response.text
+    assert '12g' in response.text
+    assert 'amount=3000.0' in response.text, 'backend must derive total, ignoring supplied aggregate'
+    assert f'raw={first}%3A2.2' in response.text and f'raw={second}%3A800' in response.text
+    with patch('app.recipe_print_pdf.recipe_pdf', wraps=recipe_pdf) as export:
+        assert client.get(f'/life/recipes/{rid}/print?format=pdf&{query}').status_code == 200
+        assert export.call_args.args[1]['main_slots'][:4] == ['鲜鱼','2.2kg','白胡椒粉','800g']
+        assert export.call_args.args[1]['ingredient_groups'][0]['items'][0]['amount'] == '12g'
+    weights_url = f'/life/recipes/{rid}/weights'
+    save = {'csrf':csrf, 'version_id':versions[-1]['id'], 'revision':'1000', 'raw':[f'{first}:2.2', f'{second}:800']}
+    assert guest.post(weights_url, data=save, follow_redirects=False).status_code == 303
+    assert client.post(weights_url, data={**save,'csrf':'wrong'}).status_code == 403
+    assert client.post(weights_url, data={**save,'version_id':'-1'}).status_code == 409
+    assert client.post(weights_url, data={**save,'raw':[f'{first}:0',f'{second}:800']}).status_code == 400
+    saved = client.post(weights_url, data=save)
+    assert saved.status_code == 200 and saved.json()['amount'] == 3000
+    # Slower old requests cannot replace newer saved weights.
+    assert client.post(weights_url, data={**save,'revision':'999','raw':[f'{first}:1',f'{second}:500']}).status_code == 200
+    reopened = client.get(f'/life/recipes/{rid}').text
+    assert 'v10TargetAmount' not in reopened
+    assert re.search(r'aria-label="鲜鱼重量" value="2.2"', reopened)
+    assert re.search(r'aria-label="白胡椒粉重量" value="800.0"', reopened)
+    remembered_print = client.get(f'/life/recipes/{rid}/print').text
+    assert '2.2kg' in remembered_print and '800g' in remembered_print
+    assert 'amount=3000.0' in remembered_print
+    with db() as conn:
+        assert conn.execute('SELECT base_amount FROM recipe_versions WHERE id=?', (versions[-1]['id'],)).fetchone()[0] == 1500
+        assert conn.execute('SELECT amount FROM recipe_ingredients WHERE id=?', (int(first),)).fetchone()[0] == 1
+    for query in [f'raw={first}:1', f'raw={first}:1&raw={first}:2', f'raw=999999:1', f'raw={first}:nan&raw={second}:1', f'raw={first}:0&raw={second}:1']:
+        for suffix in ['', '&format=pdf']:
+            assert client.get(f'/life/recipes/{rid}/print?{query}{suffix}').status_code == 400
+    with db() as conn:
         conn.execute('UPDATE recipes SET archived=1 WHERE id=?', (rid,))
         assert recipe_count(conn) == 18
         assert not recipe_rows(conn, q='手写鱼锅泡饼')

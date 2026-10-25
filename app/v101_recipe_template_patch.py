@@ -109,20 +109,26 @@ def _print_step_principle(step):
     return '\n'.join(part for part in parts if part)
 
 
-def _excel_print_layout(conn, version, target_amount=None):
+def _excel_print_layout(conn, version, target_amount=None, raw_weights=None):
     ingredients, steps, grouped = _version_payload(conn, version['id'])
-    ordered_groups = list(grouped.items())
-    # An absent 主材 group must not promote the first cooking stage into the main row.
-    main_index = next((idx for idx, (name, _) in enumerate(ordered_groups) if name in {'主材', '原料'}), None)
-    main_name, main_rows = ordered_groups.pop(main_index) if main_index is not None else ('原料', [])
+    from .recipe_raw_materials import raw_weight_basis
+    version = raw_weight_basis(version, ingredients)
+    raw_weights = raw_weights or {}
+    main_rows = [row for row in ingredients if row['group_name'] in {'主材', '原料'}]
+    ordered_groups = [(name, rows) for name, rows in grouped.items() if name not in {'主材', '原料'}]
+    def raw_print_amount(row):
+        value = raw_weights.get(str(row['id']))
+        if value is None:
+            return _print_amount(row, version, target_amount)
+        return f"{int(value) if value.is_integer() else value}{row['unit'] or 'g'}"
 
     main_slots = [''] * 9
     overflow_notes = []
     for idx, row in enumerate(main_rows):
-        item_text = f"{row['name']} {_print_amount(row, version, target_amount)}".strip()
+        item_text = f"{row['name']} {raw_print_amount(row)}".strip()
         if idx < 4:
             main_slots[idx * 2] = str(row['name'] or '')
-            main_slots[idx * 2 + 1] = _print_amount(row, version, target_amount)
+            main_slots[idx * 2 + 1] = raw_print_amount(row)
         elif item_text:
             main_slots[8] = '\n'.join(filter(None, [main_slots[8], item_text]))
 
@@ -205,8 +211,18 @@ def recipe_print_v101(request: Request, recipe_id: int):
         ensure_v101_recipe_templates(conn)
         recipe = _recipe_or_404(conn, recipe_id)
         version = _current_version(conn, recipe)
+        from .recipe_raw_materials import print_raw_weights, saved_raw_weights, raw_weight_basis
+        ingredients, _, _ = _version_payload(conn, version['id'])
+        version = raw_weight_basis(version, ingredients)
         target_amount = float(version['base_amount'] or 0) if target_amount is None else target_amount
-        layout = _excel_print_layout(conn, version, target_amount)
+        raw_weights, raw_total = print_raw_weights(request.query_params.getlist('raw'), ingredients)
+        if raw_amount is None and not request.query_params.getlist('raw'):
+            raw_weights, raw_total = saved_raw_weights(conn, recipe_id, version, ingredients)
+        if raw_total is not None:
+            target_amount = raw_total
+        layout = _excel_print_layout(conn, version, target_amount, raw_weights)
+        from urllib.parse import urlencode
+        pdf_query = urlencode([('format', 'pdf'), ('amount', target_amount)] + [('raw', f'{key}:{int(value) if value.is_integer() else value}') for key, value in raw_weights.items()])
     if request.query_params.get('format') == 'pdf':
         from urllib.parse import quote
         from .recipe_print_pdf import recipe_pdf
@@ -220,6 +236,7 @@ def recipe_print_v101(request: Request, recipe_id: int):
         recipe=recipe,
         version=version,
         target_amount=target_amount,
+        pdf_query=pdf_query,
         **layout,
     ))
 
