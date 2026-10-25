@@ -9,7 +9,7 @@
 <body>
   <div class="print-toolbar">
     <a href="/life/recipes/{{ recipe.id }}">← 返回菜谱</a>
-    <strong>{{ recipe.name }} · Excel版式</strong>
+    <strong>{{ recipe.name }} · 本次原料 {{ target_amount }}{{ version.base_unit }}</strong>
     <button type="button" data-recipe-print>打印</button>
   </div>
   <section class="recipe-pdf-panel" data-recipe-pdf-panel hidden aria-label="手机打印">
@@ -18,7 +18,7 @@
     <div class="recipe-pdf-actions">
       <button type="button" data-recipe-pdf-prepare>生成 PDF</button>
       <button type="button" data-recipe-pdf-share hidden>打开打印菜单</button>
-      <a href="/life/recipes/{{ recipe.id }}/print?format=pdf" data-recipe-pdf-download download>保存 PDF</a>
+      <a href="/life/recipes/{{ recipe.id }}/print?format=pdf&amp;amount={{ target_amount }}" data-recipe-pdf-download download>保存 PDF</a>
       <button type="button" data-recipe-pdf-close>关闭</button>
     </div>
     <p class="recipe-pdf-help">在系统菜单中向下滑动选择“打印”。没有打印选项时，先“存储到文件”，再从“文件”打开 PDF，点分享 → 打印。</p>
@@ -60,6 +60,6 @@
       </table>
     </article>
   </main>
-  <script src="/static/recipe-print-v101.js?v=1727" defer></script>
+  <script src="/static/recipe-print-v101.js?v=1728" defer></script>
 </body>
 </html>

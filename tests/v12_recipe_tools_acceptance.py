@@ -145,10 +145,10 @@ def main():
                 Object.defineProperty(navigator, 'userAgent', {value:'iPhone'});
                 navigator.canShare = () => false;
             }''')
-            page.route('**/print?format=pdf', lambda route: route.fulfill(status=503, body='offline'))
+            page.route('**/print?format=pdf*', lambda route: route.fulfill(status=503, body='offline'))
             page.locator('[data-recipe-print]').click()
             expect(page.locator('[data-recipe-pdf-status]')).to_contain_text('生成失败')
-            page.unroute('**/print?format=pdf')
+            page.unroute('**/print?format=pdf*')
             page.locator('[data-recipe-pdf-prepare]').click()
             expect(page.locator('[data-recipe-pdf-status]')).to_contain_text('PDF 已准备好')
             expect(page.locator('[data-recipe-pdf-share]')).to_be_hidden()

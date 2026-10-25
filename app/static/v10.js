@@ -12,6 +12,11 @@
     const base = Number(detail.dataset.baseAmount || 0);
     const refresh = () => {
       const target = Number(input?.value || base);
+      detail.querySelectorAll('[data-recipe-print-link]').forEach(link => {
+        const url = new URL(link.href, window.location.href);
+        url.searchParams.set('amount', String(target > 0 && Number.isFinite(target) ? target : base));
+        link.href = url.href;
+      });
       if (cookAmount) cookAmount.value = target > 0 ? target : base;
       detail.querySelectorAll('.v10-ingredient[data-ingredient-amount]').forEach(row => {
         const raw = row.dataset.ingredientAmount;
