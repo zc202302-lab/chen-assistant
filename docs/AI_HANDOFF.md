@@ -2,9 +2,10 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-25（Asia/Shanghai）用户IMG_3140要求删除详情重复的原料总重量输入框，逐项原料重量可编辑，后台自动汇总；补充修改值须退出重开后保留。允许继续开发部署。活动PR #174 https://github.com/zc202302-lab/chen-assistant/pull/174，分支fix/recipe-edit-raw-weights，head e3a7c1d6f04037fea407e393ebf2b14970d583d9，候选Web1.7.28；尚未合并/部署，线上基准仍1.7.27/PR173。
-- 已本地实现独立原料重量编辑、隐藏汇总联动配方及HTML/PDF按个别实用量打印。新增受鉴权/CSRF保护的POST /life/recipes/{recipe_id}/weights自动保存；用app_meta按菜谱存当前标准对应重量，后台校验全部原料/单位、计算总重，旧标准不覆盖。更新两份路由清单，无新表/依赖。并发保存采用revision防止旧请求覆盖新值，保存状态可见。本地创建/打印/持久化、架构/路由/版本/v12/稳定性/响应式契约均通过。当前head完整validation40197197509（validate121180489714）进行中；stability40197197360与isolation40197197367已success。真实浏览器修改/失败重试/重开恢复/多原料任意比例打印已通过，手机390与桌面1440截图几何检查通过且已查看手机详情截图，当前runner中文字呈方框，不冒称字体视觉验收。勿声称完成上线。
-- 前一受检dbb8dcc在首次详情输入时未保存：脚本尚未加载，input已能修改。修复为服务端重量框初始disabled，绑定自动保存后启用；保留原全部断言，当前head浏览器已通过。旧导入多原料基准只记第一项的情况，运行时改按全部标准原料求和，避免默认打开误放大其他配料，不改存储数据。\n- 核心recipe_raw_materials.py、v10_routes.py、v101_recipe_template_patch.py、详情/打印模板、v10.js/css和相关tests。工作目录/workspace/scratch/1dc24d163d10/chen-assistant。唯一下一步：核对#174最新head完整validation/stability/isolation与浏览器回归，通过后合并部署、公网核验、更新交接；其他项目/Windows/附件不动。
+- 2026-10-25（Asia/Shanghai）用户IMG_3140要求删除详情重复的原料总重量输入框，逐项原料重量可编辑，后台自动汇总；补充修改值须退出重开后保留。允许继续开发部署。活动PR #174 https://github.com/zc202302-lab/chen-assistant/pull/174，分支fix/recipe-edit-raw-weights，head e3a7c1d6f04037fea407e393ebf2b14970d583d9，PR已squash合并，main功能提交e767d5dae8c59671cf06051ffddf043bcdd9a559，Web1.7.28；生产同步/公网核验进行中，勿声称线上已完成。
+- 已实现独立原料重量编辑、隐藏汇总联动配方及HTML/PDF按个别实用量打印。新增受鉴权/CSRF保护的POST /life/recipes/{recipe_id}/weights自动保存；用app_meta按菜谱存当前标准对应重量，后台校验全部原料/单位、计算总重，旧标准不覆盖。更新两份路由清单，无新表/依赖。并发保存采用revision防止旧请求覆盖新值，保存状态可见。本地创建/打印/持久化、架构/路由/版本/v12/稳定性/响应式契约均通过。受检head完整validation40197197509（validate121180489714、preflight121180489941）、stability40197197360、isolation40197197367全部success，含所有旧业务/打印回归。真实浏览器修改/失败重试/重开恢复/多原料任意比例打印已通过，手机390与桌面1440截图几何检查通过且已查看手机详情截图，当前runner中文字呈方框，不冒称字体视觉验收。勿声称完成上线。
+- 前一受检dbb8dcc在首次详情输入时未保存：脚本尚未加载，input已能修改。修复为服务端重量框初始disabled，绑定自动保存后启用；保留原全部断言，当前head浏览器已通过。旧导入多原料基准只记第一项的情况，运行时改按全部标准原料求和，避免默认打开误放大其他配料，不改存储数据。
+- 核心recipe_raw_materials.py、v10_routes.py、v101_recipe_template_patch.py、详情/打印模板、v10.js/css和相关tests。工作目录/workspace/scratch/1dc24d163d10/chen-assistant。唯一下一步：核验生产1.7.28及v10.js/css精确源码，完成全站PWA公网检查后更新交接；其他项目/Windows/附件不动。
 
 ## 前序记录（历史）
 
