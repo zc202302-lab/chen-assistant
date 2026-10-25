@@ -2,6 +2,16 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-25用户要求继续完成部署。活动PR #171 https://github.com/zc202302-lab/chen-assistant/pull/171，分支feat/recipe-raw-total-mobile-print，候选1.7.25，功能head0f89a3249b0689a721b3e29acc50e574cc15f9e8。已完成原料多项总重/单位归克、紧凑详情编辑、底部新增环节步骤；iOS桌面PWA改用鉴权PDF导出与系统文件分享，内嵌中文字体，保留下载路径及普通浏览器打印。尚未合并/部署，完整CI待验收。
+- 本地菜谱创建/PDF鉴权、单位求和与非法重量、架构/路由/稳定性/v12契约通过；中文PDF实际渲染已检查，字体子集嵌入。浏览器下载受本机网络限制，不宣称本地GUI通过；CI新增多原料保存/换算、独立模式分享/用户激活/取消/失败/下载用例。核心recipe_raw_materials.py、recipe_print_pdf.py、v10_routes.py、v101_recipe_template_patch.py、recipe-editor和recipe-print资源/模板。无新路由/schema；Windows/其他仓库/附件均不变。
+- 所有功能源码和字体已上传GitHub，不再仅本地。唯一下一步：核对#171完整validation/stability/isolation，修复真实失败后合并部署，核验公网1.7.25及精确资源，并更新此快照。用户iPhone系统打印菜单属于实机待反馈层级。
+
+## 前序记录（历史）
+
+# 晨的小助手 · AI 开发接力文档
+
+## 当前交接快照（唯一当前状态）
+
 - 2026-10-25（Asia/Shanghai）最新用户要求：主材改为原料，支持多项原料，换算基准用原料总重量；详情/编辑页面收紧留白；新增环节/步骤入口移到各自列表下方，便于连续添加。按“原料”组成员合计理解，调料等其他环节不自动计入基准。此轮需求尚未实现或部署。
 - 上一轮手机桌面PWA打印修复仍在本地分支fix/standalone-recipe-print，尚未创建PR/部署。已有PDF导出service、原print路径?format=pdf、iOS standalone文件分享面板、取消/失败/下载浏览器用例、内嵌中文字体和reportlab5.1.0，候选1.7.25。Node/鉴权导出/架构/路由/安全审计通过，中文PDF渲染检查通过；本机Chromium下载失败，浏览器完整CI未跑。字体blob已上传GitHub对象25fdf6e2c52b3e90c389e451c747ecd67e2c30bb，但功能源码仍仅本地，不能称已持久交付。
 - 工作目录/workspace/scratch/1dc24d163d10/chen-assistant。本地未提交文件请保留，不覆盖。唯一下一步：在保留打印WIP的基础上实现原料合计/紧凑布局/底部新增，补充换算与浏览器验收，再创建PR、完整CI、合并及公网核验。历史生产基准仍为PR170、1.7.24。
