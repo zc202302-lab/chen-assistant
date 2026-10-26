@@ -167,7 +167,7 @@ def desktop_work_todos(request: Request):
 
 @router.post('/api/work-todos')
 @router.post('/api/work-todos/{item_id}')
-async def desktop_update_work_todo(request: Request, item_id: int = 0):
+async def desktop_update_work_todo(request: Request, item_id: int | None = None):
     # Authenticate before reading the body; no cookie-based desktop mutations.
     with db() as conn:
         authorize(conn, request)
@@ -185,7 +185,7 @@ async def desktop_update_work_todo(request: Request, item_id: int = 0):
         raise HTTPException(400, '待办数据格式错误')
     with db(immediate=True) as conn:
         authorize(conn, request)
-        if item_id:
+        if item_id is not None:
             change(conn, item_id, payload)
         else:
             title = text(payload.get('title'), '标题', 200, True)

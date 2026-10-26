@@ -45,6 +45,7 @@ with TestClient(app) as client:
     assert update('edit',4,title='changed',note='note',remind_at='').json()['items'][0]['remind_at'] == ''
     assert update('edit',5,title='<script>alert(1)</script>',note='',remind_at='').status_code == 200
     assert '<script>alert(1)</script>' not in client.get('/work/todos').text
+    assert client.post('/api/work-todos/0',headers=headers,json={'title':'wrong target'}).status_code == 404
     assert client.post('/api/work-todos',headers=headers,json={'title':'desktop new','remind_at':'','note':'x'}).status_code == 200
     assert client.post('/api/work-todos',headers=headers,content=b'x'*17000).status_code == 413
     assert update('delete',6).status_code == 200

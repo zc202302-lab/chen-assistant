@@ -228,6 +228,15 @@ jobs:
           path: artifacts/number-inbox-batch
           if-no-files-found: error
 
+      - name: Upload independent todo previews
+        uses: actions/upload-artifact@v4
+        if: steps.scope.outputs.mode == 'full'
+        with:
+          name: work-todos-ui-preview
+          retention-days: 1
+          path: artifacts/work-todos
+          if-no-files-found: error
+
       - name: Security audit
         if: steps.scope.outputs.mode == 'full'
         run: |
