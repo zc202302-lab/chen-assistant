@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block title %}待办事项 · 晨的助手{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="/static/work-lists.css?v=1711">
-<section class="wl-shell">
-  <div class="wl-head"><div><a href="/work">工作空间</a><h1>待办事项</h1><p>独立工作待办 · 提醒时间使用北京时间</p></div></div>
-  <nav class="wl-section-nav" aria-label="待办功能分类">
-    {% for key,label in [('pending','未结办'),('done','已结办'),('all','全部'),('new','新增待办'),('settings','客户端连接')] %}<a href="/work/todos?view={{ key }}"{% if view == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+<link rel="stylesheet" href="/static/work-lists.css?v=1712">
+<section class="wl-shell wt-shell">
+  <header class="wl-head wt-head"><div><a href="/work">工作空间</a><h1>待办事项</h1><p>独立工作待办 · 提醒时间使用北京时间</p></div><a class="wt-new" href="/work/todos?view=new">＋ 新增待办</a></header>
+  <nav class="wl-section-nav wt-nav" aria-label="待办功能分类">
+    {% for key,label in [('pending','未结办'),('all','全部'),('settings','客户端连接')] %}<a href="/work/todos?view={{ key }}"{% if view == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
   </nav>
   {% if view == 'settings' %}
   <section class="wl-panel"><h2>连接 Windows 助手</h2><p>在客户端的待办事项模块设置中填写网站地址与以下专用连接码。</p>
@@ -14,23 +14,32 @@
     <form method="post" action="/work/todos/connection"><input type="hidden" name="csrf" value="{{ csrf }}"><button>更换连接码</button></form>
   </section>
   {% elif view == 'new' %}
-  <section class="wl-panel"><form class="wl-form" method="post" action="/work/todos">
+  <section class="wl-panel wt-editor"><h2>新增一项待办</h2><form class="wl-form" method="post" action="/work/todos">
     <input type="hidden" name="csrf" value="{{ csrf }}">
-    <label>待办标题<input name="title" required maxlength="200"></label>
-    <label>提醒时间<input name="remind_at" type="datetime-local"></label>
-    <label>备注<textarea name="note" rows="3" maxlength="4000"></textarea></label><button>创建待办</button>
+    <label>待办标题<input name="title" required maxlength="200" placeholder="写下要处理的事项"></label>
+    <label>首次提醒时间<input name="remind_at" type="datetime-local"></label>
+    <fieldset class="wt-repeat"><legend>循环提醒</legend><label>频率<select name="repeat_kind" data-repeat-kind><option value="none">不重复</option><option value="daily">每天</option><option value="weekly">每周</option><option value="monthly">每月</option></select></label><label data-repeat-weekday hidden>星期<select name="repeat_weekday">{% for n,label in [(0,'周一'),(1,'周二'),(2,'周三'),(3,'周四'),(4,'周五'),(5,'周六'),(6,'周日')] %}<option value="{{ n }}">{{ label }}</option>{% endfor %}</select></label><label data-repeat-monthday hidden>每月日期<select name="repeat_monthday">{% for n in range(1,32) %}<option value="{{ n }}">{{ n }} 日</option>{% endfor %}</select></label><p>每次提醒按设定的北京时间继续循环；延期只调整当前一次提醒。</p></fieldset>
+    <label>备注<textarea name="note" rows="3" maxlength="4000" placeholder="可选"></textarea></label><button class="wt-submit">创建待办</button>
   </form></section>
   {% else %}
-  <form class="wl-toolbar" method="get"><input type="hidden" name="view" value="{{ view }}"><input name="q" value="{{ q }}" placeholder="搜索待办" aria-label="搜索待办"><button>搜索</button></form>
-  <div class="wl-grid">
-  {% for item in items %}<article class="wl-card" data-todo-id="{{ item.id }}">
-    <h2>{{ item.title }}</h2><p>{{ '已结办' if item.done else ('已到期' if item.due else '待处理') }}{% if item.remind_at %} · {{ item.remind_at|replace('T',' ') }}{% endif %}</p>
-    {% if item.note %}<p>{{ item.note }}</p>{% endif %}
-    <form method="post" action="/work/todos/{{ item.id }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ item.revision }}"><button name="action" value="{{ 'reopen' if item.done else 'done' }}">{{ '重新打开' if item.done else '结办' }}</button></form>
-    {% if not item.done %}<details><summary>延期</summary><form class="wl-form" method="post" action="/work/todos/{{ item.id }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ item.revision }}"><input type="hidden" name="action" value="postpone"><label>延期至<input type="datetime-local" name="remind_at" required></label><button>确认延期</button></form></details>{% endif %}
-    <details><summary>编辑</summary><form class="wl-form" method="post" action="/work/todos/{{ item.id }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ item.revision }}"><input type="hidden" name="action" value="edit"><label>标题<input name="title" value="{{ item.title }}" required maxlength="200"></label><label>提醒时间<input type="datetime-local" name="remind_at" value="{{ item.remind_at }}"></label><label>备注<textarea name="note" maxlength="4000">{{ item.note }}</textarea></label><button>保存</button></form></details>
-    <details><summary>删除</summary><p>删除后无法恢复。</p><form method="post" action="/work/todos/{{ item.id }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ item.revision }}"><button name="action" value="delete">确认删除</button></form></details>
-  </article>{% else %}<p class="wl-empty">暂无待办事项。</p>{% endfor %}
+  <form class="wl-toolbar wt-search" method="get"><input type="hidden" name="view" value="{{ view }}"><input name="q" value="{{ q }}" placeholder="搜索待办" aria-label="搜索待办"><button>搜索</button></form>
+  <div class="wl-grid wt-grid">
+  {% for item in items %}<article class="wl-card wt-card{% if item.done %} is-done{% elif item.due %} is-due{% endif %}" data-todo-id="{{ item.id }}">
+    <div class="wt-card-top"><span class="wt-status">{{ '已结办' if item.done else ('已到期' if item.due else '待处理') }}</span>{% if item.repeat_label and not item.done %}<span class="wt-repeat-badge">↻ {{ item.repeat_label }}</span>{% endif %}</div>
+    <h2>{{ item.title }}</h2>
+    {% if item.remind_at %}<p class="wt-reminder"><span>提醒时间</span><time>{{ item.remind_at|replace('T',' ') }}</time></p>{% else %}<p class="wt-reminder wt-no-reminder">未设置提醒时间</p>{% endif %}
+    {% if item.note %}<p class="wt-note">{{ item.note }}</p>{% endif %}
+    <div class="wt-actions">
+      <form method="post" action="/work/todos/{{ item.id }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ item.revision }}"><button class="wt-primary" name="action" value="{{ 'reopen' if item.done else 'done' }}">{{ '重新打开' if item.done else ('完成本次' if item.repeat_label else '结办') }}</button></form>
+      {% if not item.done %}<details class="wt-action"><summary>延期</summary><form class="wl-form" method="post" action="/work/todos/{{ item.id }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ item.revision }}"><input type="hidden" name="action" value="postpone"><label>延期至<input type="datetime-local" name="remind_at" required></label><button>确认延期</button></form></details>{% endif %}
+      <details class="wt-action"><summary>编辑</summary><form class="wl-form" method="post" action="/work/todos/{{ item.id }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ item.revision }}"><input type="hidden" name="action" value="edit"><label>标题<input name="title" value="{{ item.title }}" required maxlength="200"></label><label>提醒时间<input type="datetime-local" name="remind_at" value="{{ item.remind_at }}"></label><fieldset class="wt-repeat"><legend>循环提醒</legend><label>频率<select name="repeat_kind" data-repeat-kind><option value="none"{% if item.repeat_kind == 'none' %} selected{% endif %}>不重复</option><option value="daily"{% if item.repeat_kind == 'daily' %} selected{% endif %}>每天</option><option value="weekly"{% if item.repeat_kind == 'weekly' %} selected{% endif %}>每周</option><option value="monthly"{% if item.repeat_kind == 'monthly' %} selected{% endif %}>每月</option></select></label><label data-repeat-weekday{% if item.repeat_kind != 'weekly' %} hidden{% endif %}>星期<select name="repeat_weekday">{% for n,label in [(0,'周一'),(1,'周二'),(2,'周三'),(3,'周四'),(4,'周五'),(5,'周六'),(6,'周日')] %}<option value="{{ n }}"{% if item.repeat_weekday == n %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><label data-repeat-monthday{% if item.repeat_kind != 'monthly' %} hidden{% endif %}>每月日期<select name="repeat_monthday">{% for n in range(1,32) %}<option value="{{ n }}"{% if item.repeat_monthday == n %} selected{% endif %}>{{ n }} 日</option>{% endfor %}</select></label><p>延期只调整当前一次提醒。</p></fieldset><label>备注<textarea name="note" maxlength="4000">{{ item.note }}</textarea></label><button>保存</button></form></details>
+      {% if item.repeat_label and not item.done %}<form method="post" action="/work/todos/{{ item.id }}" onsubmit="return confirm('停止后续提醒并结办此事项？')"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ item.revision }}"><button class="wt-stop" name="action" value="stop_repeat">停止重复</button></form>{% endif %}
+      <details class="wt-action wt-delete"><summary>删除</summary><form method="post" action="/work/todos/{{ item.id }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="revision" value="{{ item.revision }}"><button name="action" value="delete">确认删除</button></form></details>
+    </div>
+  </article>{% else %}<p class="wl-empty">暂无待办事项。点击“新增待办”创建第一项。</p>{% endfor %}
   </div>{% endif %}
 </section>
+<script>
+document.querySelectorAll('[data-repeat-kind]').forEach(function(select){function sync(){var form=select.closest('form');var weekly=form.querySelector('[data-repeat-weekday]');var monthly=form.querySelector('[data-repeat-monthday]');var reminder=form.querySelector('input[name="remind_at"]');if(weekly)weekly.hidden=select.value!=='weekly';if(monthly)monthly.hidden=select.value!=='monthly';if(reminder)reminder.required=select.value!=='none'}select.addEventListener('change',sync);sync()});
+</script>
 {% endblock %}
