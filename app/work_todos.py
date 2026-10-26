@@ -145,7 +145,8 @@ def next_occurrence(rule, repeat_time, now_value=None):
         year, month = now.year, now.month
         while True:
             actual_day = min(day, monthrange(year, month)[1])
-            candidate = now.replace(day=actual_day, hour=hour, minute=minute, second=0, microsecond=0)
+            candidate = now.replace(year=year, month=month, day=actual_day,
+                                    hour=hour, minute=minute, second=0, microsecond=0)
             if candidate > now:
                 break
             month += 1
