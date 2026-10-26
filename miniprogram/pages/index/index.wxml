@@ -29,9 +29,9 @@
 
   <view class="consent-row">
     <checkbox-group bindchange="consentChanged"><label><checkbox value="agree" checked="{{consent}}" color="#128b83" disabled="{{submitting}}" /><text>我已阅读并同意</text></label></checkbox-group>
-    <text class="link" bindtap="openPrivacy">《号码收集说明》</text>
+    <text class="link" bindtap="openPrivacy">《号码收集说明》</text><text class="link platform-privacy" bindtap="openPlatformPrivacy">微信隐私指引</text>
   </view>
   <view class="error" wx:if="{{error}}" role="alert">{{error}}</view>
-  <button class="primary" bindtap="submit" loading="{{submitting}}" disabled="{{submitting}}">{{submitting ? '正在提交' : '提交号码'}}</button>
+  <button class="primary" bindtap="submit" loading="{{submitting || privacyChecking}}" disabled="{{submitting || privacyChecking}}">{{submitting ? '正在提交' : (privacyChecking ? '正在确认授权' : '提交号码')}}</button>
   <view class="footer-note">请确认已获得号码持有人的授权。</view>
 </view>

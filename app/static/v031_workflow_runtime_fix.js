@@ -259,11 +259,18 @@
         item.textContent = `另有 ${state.payment_review_pending - titles.length} 项缴费审核事项`;
         list.appendChild(item);
       }
-      const button = document.createElement('button');
-      button.type = 'button'; button.textContent = '已确认';
-      button.addEventListener('click', () => dialog.close('confirmed'));
+      const actions = document.createElement('div');
+      actions.className = 'payment-review-dialog-actions';
+      const cancel = document.createElement('button');
+      cancel.type = 'button'; cancel.className = 'payment-review-dialog-cancel'; cancel.textContent = '取消';
+      cancel.addEventListener('click', () => dialog.close('cancelled'));
+      const confirm = document.createElement('button');
+      confirm.type = 'button'; confirm.className = 'payment-review-dialog-confirm'; confirm.textContent = '确认';
+      confirm.addEventListener('click', () => dialog.close('confirmed'));
+      dialog.addEventListener('cancel', event => { event.preventDefault(); dialog.close('cancelled'); });
       dialog.addEventListener('close', () => { resolve(dialog.returnValue === 'confirmed'); dialog.remove(); }, {once: true});
-      dialog.append(heading, description, list, button);
+      actions.append(cancel, confirm);
+      dialog.append(heading, description, list, actions);
       document.body.appendChild(dialog);
       dialog.showModal();
     });

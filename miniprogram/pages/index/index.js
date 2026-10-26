@@ -5,7 +5,7 @@ let rowId = 0;
 const emptyRow = () => ({id: ++rowId, value: ''});
 Page({
   data: {rows: [], entryText: '', entryReady: false, entryExpanded: true,
-    consent: false, submitting: false, error: ''},
+    consent: false, privacyChecking: false, submitting: false, error: ''},
   onLoad(options) {
     const shared = inviteFromOptions(options || {});
     let saved = '';
@@ -52,12 +52,26 @@ Page({
   },
   consentChanged(e) { this.setData({consent: e.detail.value.includes('agree')}); },
   openPrivacy() { wx.navigateTo({url: '/pages/privacy/privacy'}); },
+  openPlatformPrivacy() {
+    if (typeof wx.openPrivacyContract !== 'function') return this.setData({error: '请升级微信后查看平台隐私保护指引'});
+    wx.openPrivacyContract({fail: () => this.setData({error: '暂时无法打开微信隐私保护指引'})});
+  },
+  requirePlatformPrivacy() {
+    if (typeof wx.requirePrivacyAuthorize !== 'function') return Promise.resolve(true);
+    return new Promise(resolve => wx.requirePrivacyAuthorize({success: () => resolve(true), fail: () => resolve(false)}));
+  },
   async submit() {
     if (this.data.submitting) return;
     if (!this.invite) return this.setData({entryExpanded: true, error: '请先设置收集入口'});
     if (!this.data.consent) return this.setData({error: '请先阅读并同意号码收集说明'});
     const numbers = this.data.rows.map(row => row.value.trim()).filter(Boolean);
     if (!numbers.length) return this.setData({error: '请至少填写一个号码'});
+    if (this.data.privacyChecking) return;
+    this.setData({privacyChecking: true, error: ''});
+    const privacyAllowed = await this.requirePlatformPrivacy();
+    this.setData({privacyChecking: false});
+    if (!privacyAllowed) return this.setData({error: '你已取消隐私授权，号码未提交；填写内容仍保留'});
+    if (this.data.submitting) return;
     this.setData({submitting: true, error: ''});
     try {
       const result = await submitNumbers(this.invite, numbers);

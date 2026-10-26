@@ -2,6 +2,14 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-26（Asia/Shanghai）当前任务：缴费审核弹窗增加“确认/取消”，并补齐号码收集微信小程序提审前代码。活动分支`feat/miniprogram-review-ready-payment-dialog-cancel`，PR [#179](https://github.com/zc202302-lab/chen-assistant/pull/179)，基线main `f9e68b10482880c0fbefb142b3a2dc420389d9ae`（Web 1.7.31）。候选Web 1.7.32，尚未合并、部署或发布小程序。
+- 缴费审核弹窗改为“取消/确认”双按钮；取消或Esc只关闭弹窗，当前流程状态不变、不会调用后续动作；确认才解除当前环节限制并进入原有动作。通知客户及其确认、发起缴费仍分别独立触发。
+- 小程序原生代码已具备批量号码填写（最多100条）、邀请参数解析/持久化/分享、Bearer提交、结果页及隐私页；本轮补充微信平台隐私授权`wx.requirePrivacyAuthorize`、隐私协议`wx.openPrivacyContract`入口、拒绝授权不发请求且保留输入、提交中防重复、`sitemap.json`及提审说明。后端继续使用既有`POST /number-submit/mini/submit`，无号码读取接口。
+- PR首个head `c2d33c3039bee74952601e409bd078ccdf022fd4`的stability与module isolation通过；完整validation因测试未等待隐私授权Promise即读取请求而失败，业务实现未被该失败否定。修复提交`238939c93b87d4a373074a09fcaedcf7f544b9a8`已加入`setImmediate`等待，但同一轮Actions实际检出旧合并引用，仍复现旧断言。当前文档提交用于触发基于最新head的新一轮完整CI，不得用旧失败或旧成功冒充最终结论。
+- 唯一下一步：等待PR #179最新head的validation、stability、module isolation全部成功后，squash合并并核验生产PWA显示1.7.32及精确资源。小程序代码完成标准为可在微信开发者工具导入、预览、上传；微信后台隐私声明、备案、真机测试、上传审核和发布仍需管理员登录及平台流程，未完成前不得声称小程序已上线。
+
+### 上一阶段（历史：待办与循环提醒）
+
 - 2026-10-26（Asia/Shanghai）当前模式：继续部署用户要求的待办界面优化及循环提醒。活动分支`feat/work-todos-repeat-polish`，PR [#177](https://github.com/zc202302-lab/chen-assistant/pull/177)，基线main `128618b41aa151cb0e0d9e927dbe03fa2a316511`。首个PR head的源代码验证、模块隔离、Foxmail检查通过；Windows原生导航验收失败，发现客户端“显示已结办”筛选被误移除，现已恢复，待新head重新跑完整CI。未合并、未部署、未发布；本地仅`py_compile`和`git diff --check`通过。唯一下一步：等PR新head的完整验证、稳定性、模块隔离、Windows跨构建/更新验收全部通过后，再合并并核验Web与Windows部署；不得以旧head CI代替。云电脑#128保持暂停，客户待办和上传附件未改。
 - 本轮实现：待办导航隐藏“已结办”（已结办仍在“全部”中），新增按钮突出显示，卡片视觉/动作布局重做；服务端repeat_rule/repeat_time幂等扩列迁移，daily/weekly:weekday/monthly:day，北京时间重复，短月份月底夹取；完成循环项安排下一次（以当前实例提醒时间和当前时刻较晚者为锚点），延期不改固定循环时间；停止重复会结办。Windows端加循环编辑、重复列、停止重复并结办。兼容旧客户端未携带循环字段的编辑。候选Web 1.7.30、Windows 0.5.19。
 - 上一项已部署基线：PR [#176](https://github.com/zc202302-lab/chen-assistant/pull/176) squash合并，main提交8b2beb9c3403ab8c239371d5fd247f98a037e486；Web1.7.29、Windows0.5.18。既有待办提醒、缴费和Windows固定TXT下载逻辑保持在基线内。

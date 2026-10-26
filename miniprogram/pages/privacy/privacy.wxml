@@ -1,6 +1,6 @@
 <view class="screen">
   <view class="title">号码收集说明</view>
-  <view class="subtitle">版本：2026-10-16</view>
+  <view class="subtitle">版本：2026-10-26</view>
   <view class="card">
     <view class="section-title">收集哪些信息</view>
     <view class="paragraph">你主动填写的号码将发送给收集入口的管理员，用于集团成员添加及后续录入处理。请仅提交本人号码或已获得持有人授权的号码。</view>
@@ -11,5 +11,6 @@
     <view class="section-title">联系与删除</view>
     <view class="paragraph">如需更正、撤回或删除号码，请联系向你提供收集入口的管理员。小程序不读取通讯录，不自动获取微信绑定手机号。</view>
     <view class="muted">发布前，运营者还需在微信公众平台如实填写用户隐私保护指引及有效联系方式。</view>
+    <button class="secondary" bindtap="openPlatformPrivacy">查看微信平台隐私保护指引</button>
   </view>
 </view>

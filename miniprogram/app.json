@@ -1,5 +1,9 @@
 {
-  "pages": ["pages/index/index", "pages/result/result", "pages/privacy/privacy"],
+  "pages": [
+    "pages/index/index",
+    "pages/result/result",
+    "pages/privacy/privacy"
+  ],
   "window": {
     "navigationBarTitleText": "小助手收集",
     "navigationBarBackgroundColor": "#f4f7fb",
@@ -7,5 +11,6 @@
     "backgroundColor": "#f4f7fb"
   },
   "style": "v2",
-  "lazyCodeLoading": "requiredComponents"
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json"
 }

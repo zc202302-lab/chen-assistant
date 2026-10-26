@@ -2,6 +2,10 @@
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const root = path.join(__dirname, '..', 'miniprogram');
+const appConfig = require(path.join(root, 'app.json'));
+const sitemap = require(path.join(root, 'sitemap.json'));
+assert.equal(appConfig.sitemapLocation, 'sitemap.json');
+assert.equal(sitemap.rules[0].action, 'allow');
 const {parseInvite, inviteFromOptions} = require(path.join(root, 'utils/entry'));
 const invite = 'test_invitation_for_contract_only_123';
 assert.equal(parseInvite(`https://jituan.zbassistant.site/number-submit/${invite}`), invite);
@@ -9,13 +13,15 @@ assert.equal(parseInvite('https://evil.example/number-submit/' + invite), '');
 assert.equal(parseInvite('admin'), '');
 assert.equal(inviteFromOptions({scene: encodeURIComponent('invite=' + invite)}), invite);
 assert.equal(inviteFromOptions({scene: '%'}), '');
-let calls = [], navigation = [], saved = {}, requests = [];
+let calls = [], navigation = [], saved = {}, requests = [], privacyMode = 'allow', privacyContracts = 0;
 const app = {globalData: {lastResult: null}};
 global.getApp = () => app;
 global.wx = {
   getStorageSync: key => saved[key], setStorageSync: (key, value) => { saved[key] = value; },
   removeStorageSync: key => { delete saved[key]; },
   navigateTo: value => navigation.push(value.url),
+  requirePrivacyAuthorize: options => privacyMode === 'allow' ? options.success() : options.fail(),
+  openPrivacyContract: options => { privacyContracts += 1; options?.success?.(); },
   request: request => { calls.push(request); requests.push(request); }
 };
 let definition;
@@ -36,6 +42,7 @@ async function main() {
   p.consentChanged({detail: {value: ['agree']}});
   const sending = p.submit();
   await p.submit();
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(calls.length, 1, 'double tap must not double submit');
   const request = requests.shift();
   assert.equal(request.url, 'https://jituan.zbassistant.site/number-submit/mini/submit');
@@ -46,6 +53,7 @@ async function main() {
   assert.equal(p.data.rows[0].value, '13800000101', 'network failure retains input');
   assert.equal(p.data.submitting, false);
   const retry = p.submit();
+  await new Promise(resolve => setImmediate(resolve));
   requests.shift().success({statusCode: 200, data: {ok: true, received: 1, added: 1, duplicates: 0}});
   await retry;
   assert.equal(app.globalData.lastResult.added, 1);
@@ -61,10 +69,23 @@ async function main() {
   p.clearEntry();
   assert.equal(saved['collection-invite'], undefined);
   assert.equal(p.onShareAppMessage().path, '/pages/index/index');
+  p.openPlatformPrivacy();
+  assert.equal(privacyContracts, 1);
+  const denied = page();
+  denied.changeNumber(event(denied.data.rows[0].id, '13800000102'));
+  denied.consentChanged({detail: {value: ['agree']}});
+  privacyMode = 'deny';
+  const callsBeforeDenial = calls.length;
+  await denied.submit();
+  assert.equal(calls.length, callsBeforeDenial, 'privacy cancellation must not submit');
+  assert.equal(denied.data.rows[0].value, '13800000102', 'privacy cancellation retains input');
+  assert.match(denied.data.error, /取消隐私授权/);
+  privacyMode = 'allow';
   const {submitNumbers} = require(path.join(root, 'utils/api'));
   const malformed = submitNumbers(invite, ['13800000101']);
+  await new Promise(resolve => setImmediate(resolve));
   requests.shift().success({statusCode: 200, data: {ok: true, received: 1, added: 3, duplicates: 0}});
   await assert.rejects(malformed);
-  console.log('native mini program passed: entry parsing, consent, payload, double tap, failure retention, results, row identity and cleared sharing');
+  console.log('native mini program passed: entry parsing, platform privacy, consent, payload, cancellation retention, double tap, failure retention, results, row identity and cleared sharing');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
