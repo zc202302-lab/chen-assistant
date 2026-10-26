@@ -23,12 +23,13 @@ class TodoPanel:
         ttk.Button(toolbar, text='新增', command=lambda: self.edit()).pack(side='left')
         ttk.Button(toolbar, text='编辑', command=self.edit_selected).pack(side='left')
         ttk.Button(toolbar, text='结办 / 重新打开', command=self.complete).pack(side='left')
+        ttk.Button(toolbar, text='停止重复并结办', command=self.stop_repeat).pack(side='left')
         ttk.Button(toolbar, text='延期', command=self.postpone).pack(side='left')
         ttk.Button(toolbar, text='刷新', command=app.todo_receiver.refresh).pack(side='left')
         ttk.Checkbutton(toolbar, text='显示已结办', variable=self.show_done, command=self.render).pack(side='right')
-        columns = ('title','remind','status')
+        columns = ('title','remind','repeat','status')
         self.tree = ttk.Treeview(page, columns=columns, show='headings', height=8, selectmode='browse')
-        for col,label,width in [('title','待办事项',300),('remind','提醒（北京时间）',160),('status','状态',80)]:
+        for col,label,width in [('title','待办事项',280),('remind','提醒（北京时间）',150),('repeat','循环',135),('status','状态',80)]:
             self.tree.heading(col,text=label)
             self.tree.column(col,width=width,minwidth=60)
         self.tree.pack(fill='both',expand=True,pady=8)
@@ -50,7 +51,7 @@ class TodoPanel:
         for item in self.items.values():
             if item['done'] and not self.show_done.get():
                 continue
-            self.tree.insert('', 'end', iid=str(item['id']),values=(item['title'],item['remind_at'].replace('T',' '),'已结办' if item['done'] else ('已到期' if item['due'] else '待处理')))
+            self.tree.insert('', 'end', iid=str(item['id']),values=(item['title'],item['remind_at'].replace('T',' '),item.get('repeat_label',''),'已结办' if item['done'] else ('已到期' if item['due'] else '待处理')))
         if selected and self.tree.exists(selected[0]):
             self.tree.selection_set(selected[0])
 
@@ -149,16 +150,28 @@ class TodoPanel:
         dialog.geometry('480x360')
         title = tk.StringVar(value=item['title'] if item else '')
         remind = tk.StringVar(value=item['remind_at'].replace('T',' ') if item else '')
+        repeat_kind = tk.StringVar(value=item.get('repeat_kind','none') if item else 'none')
+        repeat_weekday = tk.StringVar(value=str(item.get('repeat_weekday',0)) if item else '0')
+        repeat_monthday = tk.StringVar(value=str(item.get('repeat_monthday',1)) if item else '1')
         ttk.Label(dialog,text='标题').pack(anchor='w',padx=16)
         ttk.Entry(dialog,textvariable=title).pack(fill='x',padx=16)
         ttk.Label(dialog,text='提醒时间（北京时间 YYYY-MM-DD HH:MM，可留空）').pack(anchor='w',padx=16,pady=(12,0))
         ttk.Entry(dialog,textvariable=remind).pack(fill='x',padx=16)
+        repeat_frame = ttk.LabelFrame(dialog,text='循环提醒')
+        repeat_frame.pack(fill='x',padx=16,pady=(10,0))
+        ttk.Label(repeat_frame,text='频率').grid(row=0,column=0,padx=6,pady=6,sticky='w')
+        frequency = ttk.Combobox(repeat_frame,textvariable=repeat_kind,values=('none','daily','weekly','monthly'),state='readonly',width=12)
+        frequency.grid(row=0,column=1,padx=6,pady=6,sticky='w')
+        ttk.Label(repeat_frame,text='星期（周一为首日）').grid(row=1,column=0,padx=6,pady=6,sticky='w')
+        ttk.Combobox(repeat_frame,textvariable=repeat_weekday,values=tuple(str(i) for i in range(7)),state='readonly',width=12).grid(row=1,column=1,padx=6,pady=6,sticky='w')
+        ttk.Label(repeat_frame,text='每月日期').grid(row=2,column=0,padx=6,pady=6,sticky='w')
+        ttk.Combobox(repeat_frame,textvariable=repeat_monthday,values=tuple(str(i) for i in range(1,32)),state='readonly',width=12).grid(row=2,column=1,padx=6,pady=6,sticky='w')
         ttk.Label(dialog,text='备注').pack(anchor='w',padx=16,pady=(12,0))
         note = tk.Text(dialog,height=5)
         note.pack(fill='both',expand=True,padx=16)
         note.insert('1.0',item['note'] if item else '')
         def save():
-            self.send(item,{'action':'edit','revision':item['revision'] if item else 0,'title':title.get(),'remind_at':remind.get().strip().replace(' ','T'),'note':note.get('1.0','end-1c')},dialog)
+            self.send(item,{'action':'edit','revision':item['revision'] if item else 0,'title':title.get(),'remind_at':remind.get().strip().replace(' ','T'),'note':note.get('1.0','end-1c'),'repeat_kind':repeat_kind.get(),'repeat_weekday':repeat_weekday.get(),'repeat_monthday':repeat_monthday.get()},dialog)
         ttk.Button(dialog,text='保存',command=save).pack(pady=8)
         if item:
             def delete():
@@ -170,6 +183,11 @@ class TodoPanel:
         item = self.selected()
         if item:
             self.send(item,{'action':'reopen' if item['done'] else 'done','revision':item['revision']})
+
+    def stop_repeat(self):
+        item = self.selected()
+        if item and item.get('repeat_label') and messagebox.askyesno('停止循环提醒','停止后续提醒并结办此事项？'):
+            self.send(item,{'action':'stop_repeat','revision':item['revision']})
 
     def postpone(self):
         item = self.selected()
