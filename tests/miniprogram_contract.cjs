@@ -42,6 +42,7 @@ async function main() {
   p.consentChanged({detail: {value: ['agree']}});
   const sending = p.submit();
   await p.submit();
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(calls.length, 1, 'double tap must not double submit');
   const request = requests.shift();
   assert.equal(request.url, 'https://jituan.zbassistant.site/number-submit/mini/submit');
