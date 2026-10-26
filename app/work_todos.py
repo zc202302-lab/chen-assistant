@@ -22,6 +22,10 @@ SCHEMA = '''CREATE TABLE IF NOT EXISTS work_todos (
 CREATE INDEX IF NOT EXISTS idx_work_todos_due ON work_todos(done,remind_at,id);'''
 
 
+def desktop_token_authenticated(endpoint):
+    endpoint.__desktop_token_authenticated__ = True
+    return endpoint
+
 def ensure_work_todos_schema():
     with db() as conn:
         execute_schema(conn, SCHEMA)
@@ -106,7 +110,7 @@ def change(conn, item_id, payload):
         (title, note, remind_at, done, (row['completed_at'] or now_iso()) if done else '', now_iso(), item_id))
 
 
-def csrf(request, value):
+def _csrf(request, value):
     try:
         require_csrf(request.state.session, str(value or ''))
     except ValueError:
@@ -133,7 +137,7 @@ def work_todos_page(request: Request, view: str = 'pending', q: str = ''):
 @router.post('/work/todos')
 async def create_work_todo(request: Request):
     form = await request.form()
-    csrf(request, form.get('csrf'))
+    _csrf(request, form.get('csrf'))
     title, note, at = text(form.get('title'), '标题', 200, True), text(form.get('note'), '备注', 4000), reminder(form.get('remind_at'))
     with db() as conn:
         conn.execute('INSERT INTO work_todos(title,note,remind_at,created_at,updated_at) VALUES(?,?,?,?,?)', (title,note,at,now_iso(),now_iso()))
@@ -143,7 +147,7 @@ async def create_work_todo(request: Request):
 @router.post('/work/todos/connection')
 async def rotate_work_todo_connection(request: Request):
     form = await request.form()
-    csrf(request, form.get('csrf'))
+    _csrf(request, form.get('csrf'))
     with db() as conn:
         conn.execute('INSERT INTO app_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', (TOKEN_KEY,secrets.token_urlsafe(32)))
     return RedirectResponse('/work/todos?view=settings', 303)
@@ -152,7 +156,7 @@ async def rotate_work_todo_connection(request: Request):
 @router.post('/work/todos/{item_id}')
 async def update_work_todo(request: Request, item_id: int):
     form = await request.form()
-    csrf(request, form.get('csrf'))
+    _csrf(request, form.get('csrf'))
     with db(immediate=True) as conn:
         change(conn, item_id, form)
     return RedirectResponse('/work/todos', 303)
@@ -167,6 +171,7 @@ def desktop_work_todos(request: Request):
 
 @router.post('/api/work-todos')
 @router.post('/api/work-todos/{item_id}')
+@desktop_token_authenticated
 async def desktop_update_work_todo(request: Request, item_id: int | None = None):
     # Authenticate before reading the body; no cookie-based desktop mutations.
     with db() as conn:
