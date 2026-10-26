@@ -211,6 +211,7 @@ jobs:
         run: |
           python tests/number_inbox_archive_contract.py
           python tests/work_todos_contract.py
+          python tests/work_todos_acceptance.py
           python tests/work_entry_layout_contract.py
           python tests/work_entry_layout_acceptance.py
           python -m unittest discover -s tests -p test_home_shortcuts_contract.py -v

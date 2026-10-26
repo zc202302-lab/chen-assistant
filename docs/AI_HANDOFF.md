@@ -2,7 +2,7 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-26（Asia/Shanghai）用户授权三项开发：缴费金额单击全选不稳定；发起缴费前清空专用固定目录旧TXT并继续生成/剪切；工作空间新增独立待办，并在win-assistants同步提醒、延期及结办。工作模式开发中，基于main543e98e，活动分支feat/work-todos-payment-polish（PR待创建）。云电脑#128保持暂停，客户待办及附件不动。
+- 2026-10-26（Asia/Shanghai）用户授权三项开发：缴费金额单击全选不稳定；发起缴费前清空专用固定目录旧TXT并继续生成/剪切；工作空间新增独立待办，并在win-assistants同步提醒、延期及结办。工作模式开发中，基于main543e98e，活动分支feat/work-todos-payment-polish，Draft PR #175 https://github.com/zc202302-lab/chen-assistant/pull/175，首轮受检head b0831c6e550067ba4884ff809bcd820db2172dee。云电脑#128保持暂停，客户待办及附件不动。
 - 实现中：全选鼠标位移容差4px；Windows固定APPDATA/win-assistants/PaymentTXT目录，仅清理该目录顶层TXT，校验内容后写入、串行准备，CF_HDROP及Preferred DropEffect剪切语义；取消旧临时子目录和30分钟清理计时器。Web候选1.7.29，Windows候选0.5.18，未发布。
 - 新增work_todos独立表与职责模块，工作空间独立入口，网页新增/编辑/搜索/结办/重开/延期/删除，单独客户端连接码及更换。桌面模块支持同源HTTPS专用Bearer同步，15秒轮询、到期弹窗/托盘提醒、新增编辑及延期结办重开；网络错误不写本地伪成功，服务端revision防跨端覆盖。北京时间，保留客户tasks及原缴费审核规则。
 - app/work_todos.py、work_todos.html、schema/routing/legacy_main/work_architecture、Windows work_todos.py/todo_panel.py/app/config/modules/foxmail及测试。两份路由清单已更新。架构治理/路由契约本地通过，完整业务/浏览器/Windows GUI与冻结EXE回归进行中；本机浏览器下载受限，完整CI待提交触发。未合并、部署、发布、安装或真实业务验收。

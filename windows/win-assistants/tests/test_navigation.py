@@ -18,6 +18,7 @@ class NavigationTests(unittest.TestCase):
         self.app.root = self.root
         from win_assistants.work_todos import TodoReceiver
         self.app.todo_receiver = TodoReceiver()
+        self.app.tray_icon = None
         self.app.status_vars = {m.key: tk.StringVar(value="运行中") for m in MODULES}
         self.app.enabled_vars = {m.key: tk.BooleanVar(value=True) for m in MODULES}
         self.app.sms_code_var = tk.StringVar(value="123456")
@@ -79,6 +80,33 @@ class NavigationTests(unittest.TestCase):
         self.assertFalse(any(p.winfo_ismapped() for p in self.app.module_pages.values()))
         self.assertEqual(sum(isinstance(w, ttk.Button) and w.cget("text") == "检查更新"
                              for w in self.descendants(self.app.settings_page)), 1)
+
+    def test_todo_due_popup_and_cross_client_completion(self):
+        panel = self.app.todo_panel
+        item = {'id': 1, 'title': '独立待办', 'note': '备注', 'remind_at': '2020-01-01T09:00',
+                'done': 0, 'revision': 1, 'due': True}
+        panel.apply({'items': [item]})
+        self.root.update()
+        self.assertTrue(panel.popup.winfo_exists())
+        self.assertEqual(panel.popup_text.get(), '独立待办')
+        panel.tree.selection_set('1')
+        from unittest.mock import patch
+        with patch.object(panel, 'send') as send:
+            panel.complete()
+            self.assertEqual(send.call_args.args[1], {'action': 'done', 'revision': 1})
+        panel.apply({'items': [dict(item, done=1, revision=2, due=False)]})
+        self.root.update()
+        self.assertIsNone(panel.popup)
+        self.assertEqual(panel.tree.get_children(), ())
+        panel.show_done.set(True)
+        panel.render()
+        self.assertTrue(panel.tree.exists('1'))
+        panel.tree.selection_set('1')
+        with patch.object(panel, 'send') as send:
+            panel.complete()
+            self.assertEqual(send.call_args.args[1], {'action': 'reopen', 'revision': 2})
+        panel.apply({'items': [dict(item, revision=3, remind_at='2099-01-01T09:00', due=False)]})
+        self.assertEqual(panel.notified, set())
 
     def test_batch_result_remains_visible_when_connection_status_changes(self):
         page = self.app.module_pages["number_inbox"]

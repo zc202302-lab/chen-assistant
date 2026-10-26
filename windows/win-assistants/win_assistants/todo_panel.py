@@ -159,7 +159,12 @@ class TodoPanel:
         note.insert('1.0',item['note'] if item else '')
         def save():
             self.send(item,{'action':'edit','revision':item['revision'] if item else 0,'title':title.get(),'remind_at':remind.get().strip().replace(' ','T'),'note':note.get('1.0','end-1c')},dialog)
-        ttk.Button(dialog,text='保存',command=save).pack(pady=12)
+        ttk.Button(dialog,text='保存',command=save).pack(pady=8)
+        if item:
+            def delete():
+                if messagebox.askyesno('删除待办', '确认删除此待办？', parent=dialog):
+                    self.send(item, {'action':'delete','revision':item['revision']}, dialog)
+            ttk.Button(dialog,text='删除待办',command=delete).pack(pady=4)
 
     def complete(self):
         item = self.selected()
