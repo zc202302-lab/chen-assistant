@@ -38,7 +38,7 @@ def main():
             page.locator('a[href="/work/todos"]').click()
             page.locator('a[href="/work/todos?view=new"]').click()
             page.get_by_label('待办标题').fill('独立工作测试')
-            page.get_by_label('提醒时间',exact=True).fill('2020-01-01T09:00')
+            page.get_by_label('首次提醒时间',exact=True).fill('2020-01-01T09:00')
             page.get_by_label('备注',exact=True).fill('与集团客户待办分开')
             page.get_by_role('button',name='创建待办',exact=True).click()
             card=page.locator('[data-todo-id]').first
