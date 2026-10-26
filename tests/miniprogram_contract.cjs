@@ -53,6 +53,7 @@ async function main() {
   assert.equal(p.data.rows[0].value, '13800000101', 'network failure retains input');
   assert.equal(p.data.submitting, false);
   const retry = p.submit();
+  await new Promise(resolve => setImmediate(resolve));
   requests.shift().success({statusCode: 200, data: {ok: true, received: 1, added: 1, duplicates: 0}});
   await retry;
   assert.equal(app.globalData.lastResult.added, 1);
@@ -82,6 +83,7 @@ async function main() {
   privacyMode = 'allow';
   const {submitNumbers} = require(path.join(root, 'utils/api'));
   const malformed = submitNumbers(invite, ['13800000101']);
+  await new Promise(resolve => setImmediate(resolve));
   requests.shift().success({statusCode: 200, data: {ok: true, received: 1, added: 3, duplicates: 0}});
   await assert.rejects(malformed);
   console.log('native mini program passed: entry parsing, platform privacy, consent, payload, cancellation retention, double tap, failure retention, results, row identity and cleared sharing');
