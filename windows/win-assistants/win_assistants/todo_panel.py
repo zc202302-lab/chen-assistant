@@ -17,6 +17,7 @@ class TodoPanel:
         self.actions = queue.Queue()
         self.busy = False
         self.popup = None
+        self.show_done = tk.BooleanVar(value=False)
         toolbar = ttk.Frame(page)
         toolbar.pack(fill='x')
         ttk.Button(toolbar, text='新增', command=lambda: self.edit()).pack(side='left')
@@ -25,6 +26,7 @@ class TodoPanel:
         ttk.Button(toolbar, text='停止重复并结办', command=self.stop_repeat).pack(side='left')
         ttk.Button(toolbar, text='延期', command=self.postpone).pack(side='left')
         ttk.Button(toolbar, text='刷新', command=app.todo_receiver.refresh).pack(side='left')
+        ttk.Checkbutton(toolbar, text='显示已结办', variable=self.show_done, command=self.render).pack(side='right')
         columns = ('title','remind','repeat','status')
         self.tree = ttk.Treeview(page, columns=columns, show='headings', height=8, selectmode='browse')
         for col,label,width in [('title','待办事项',280),('remind','提醒（北京时间）',150),('repeat','循环',135),('status','状态',80)]:
@@ -47,6 +49,8 @@ class TodoPanel:
         selected = self.tree.selection()
         self.tree.delete(*self.tree.get_children())
         for item in self.items.values():
+            if item['done'] and not self.show_done.get():
+                continue
             self.tree.insert('', 'end', iid=str(item['id']),values=(item['title'],item['remind_at'].replace('T',' '),item.get('repeat_label',''),'已结办' if item['done'] else ('已到期' if item['due'] else '待处理')))
         if selected and self.tree.exists(selected[0]):
             self.tree.selection_set(selected[0])
