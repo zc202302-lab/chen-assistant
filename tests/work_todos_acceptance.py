@@ -36,7 +36,7 @@ def main():
             page.on('pageerror',lambda error:errors.append(str(error)))
             page.goto(base+'/work',wait_until='networkidle')
             page.locator('a[href="/work/todos"]').click()
-            page.get_by_role('link',name='新增待办',exact=True).click()
+            page.locator('a[href="/work/todos?view=new"]').click()
             page.get_by_label('待办标题').fill('独立工作测试')
             page.get_by_label('提醒时间',exact=True).fill('2020-01-01T09:00')
             page.get_by_label('备注',exact=True).fill('与集团客户待办分开')
