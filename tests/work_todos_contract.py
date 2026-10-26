@@ -10,9 +10,12 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.db import db
 from app.security import get_session
-from app.work_todos import ensure_work_todos_schema
+from app.work_todos import ensure_work_todos_schema, next_occurrence
 
 cid, ids, token = seed()
+assert next_occurrence('daily','09:30','2026-10-26T09:30') == '2026-10-27T09:30'
+assert next_occurrence('weekly:0','09:30','2026-10-26T09:31') == '2026-11-02T09:30'
+assert next_occurrence('monthly:31','09:30','2026-02-28T10:00') == '2026-03-31T09:30'
 csrf = get_session(token)['csrf_token']
 with TestClient(app) as client:
     assert client.get('/work/todos', follow_redirects=False).status_code == 303
