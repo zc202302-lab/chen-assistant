@@ -96,6 +96,16 @@ def main():
         else:
             raise AssertionError('pending payment-review task did not block initiate')
 
+        # The browser's centered acknowledgement explicitly unlocks only the
+        # current initiate action; it does not silently complete or delete the task.
+        _set_initiated(
+            conn,
+            customer_id,
+            '2026-10',
+            {'id': 999, 'initiated': False, 'paid': False, 'notified': True},
+            review_confirmed=True,
+        )
+
     toggled = client.post(
         f'/tasks/{task_id}/toggle',
         data={'csrf': csrf},
@@ -106,11 +116,34 @@ def main():
         row = conn.execute('SELECT done FROM tasks WHERE id=?', (task_id,)).fetchone()
         assert int(row['done']) == 1
 
+    second = client.post(
+        f'/customers/{customer_id}/tasks',
+        data={'csrf': csrf, 'title': '右上角直接办结测试'},
+        follow_redirects=False,
+    )
+    assert second.status_code == 303
+    with db() as conn:
+        finish_id = int(conn.execute(
+            'SELECT id FROM tasks WHERE customer_id=? AND title=?',
+            (customer_id, '右上角直接办结测试'),
+        ).fetchone()['id'])
+    finished = client.post(
+        f'/tasks/{finish_id}/toggle',
+        data={'csrf': csrf, 'finish_delete': '1'},
+        follow_redirects=False,
+    )
+    assert finished.status_code == 303
+    with db() as conn:
+        assert conn.execute('SELECT 1 FROM tasks WHERE id=?', (finish_id,)).fetchone() is None
+
     page = client.get(f'/customers/{customer_id}?tab=tasks')
     assert page.status_code == 200
     assert '缴费审核' in page.text
     assert '确认已审核' not in page.text  # completed tasks switch to restore
     assert '提醒时间' in page.text
+    template = (ROOT / 'app/templates/customer_workspace_v029.html').read_text(encoding='utf-8')
+    assert 'name="finish_delete" value="1"' in template
+    assert '>办结<' in template
 
     print('v1.6.4 task review contract passed')
 
