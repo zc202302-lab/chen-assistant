@@ -44,6 +44,7 @@
     const fd = new FormData();
     fd.append('csrf', csrf);
     fd.append('action', action);
+    if (action === 'initiate') fd.append('review_confirmed', '1');
     return fetchJson(`/customers/${customerId}/payment-workflow-v031`, {method: 'POST', body: fd});
   };
 
@@ -237,6 +238,37 @@
     }
   };
 
+  // Every requested step has its own acknowledgement; leaving the dialog keeps the step locked.
+  const confirmPaymentReview = async stage => {
+    const current = await fetchJson(`/customers/${customerId}/payment-workflow-v031`);
+    state = current.run || state;
+    render();
+    const titles = state.payment_review_titles || [];
+    if (!Number(state.payment_review_pending || 0)) return true;
+    return new Promise(resolve => {
+      const dialog = document.createElement('dialog');
+      dialog.className = 'payment-review-dialog';
+      const heading = document.createElement('h2');
+      heading.textContent = '缴费审核提醒';
+      const description = document.createElement('p');
+      description.textContent = `进入“${stage}”前，请确认以下缴费审核事项：`;
+      const list = document.createElement('ul');
+      titles.forEach(title => { const item = document.createElement('li'); item.textContent = title; list.appendChild(item); });
+      if (state.payment_review_pending > titles.length) {
+        const item = document.createElement('li');
+        item.textContent = `另有 ${state.payment_review_pending - titles.length} 项缴费审核事项`;
+        list.appendChild(item);
+      }
+      const button = document.createElement('button');
+      button.type = 'button'; button.textContent = '已确认';
+      button.addEventListener('click', () => dialog.close('confirmed'));
+      dialog.addEventListener('close', () => { resolve(dialog.returnValue === 'confirmed'); dialog.remove(); }, {once: true});
+      dialog.append(heading, description, list, button);
+      document.body.appendChild(dialog);
+      dialog.showModal();
+    });
+  };
+
   // Capture phase owns the four-stage workflow before older listeners can act.
   flow.addEventListener('click', async event => {
     const btn = event.target.closest('[data-v031-flow-action]');
@@ -254,9 +286,11 @@
     try {
       if (action === 'notify' && !state.notified) {
         if (!notifyPrepared) {
+          if (!await confirmPaymentReview('通知客户')) return;
           await prepareNotify();
           return;
         }
+        if (!await confirmPaymentReview('通知客户确认')) return;
         if (!confirm('确认缴费图片已经通过微信发送给客户？\n\n点击“确定”后，第2步才会标记为完成。')) return;
         await saveAction('notify');
         return;
@@ -264,9 +298,11 @@
 
       if (action === 'initiate' && !state.initiated) {
         if (!initiatePrepared) {
+          if (!await confirmPaymentReview('发起缴费')) return;
           await prepareInitiate();
           return;
         }
+        if (!await confirmPaymentReview('发起缴费确认')) return;
         if (!confirm('确认缴费邮件已经在Foxmail中发送给同事？\n\n点击“确定”后，第3步才会标记为完成。')) return;
         await saveAction('initiate');
         return;
