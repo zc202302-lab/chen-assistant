@@ -18,6 +18,8 @@ from .modules import MODULES, ModuleManager, default_module_configs, internal_se
 from .number_inbox import NumberInboxEvent, NumberInboxReceiver
 from .number_batch_bridge import NumberBatchBridge
 from .single_instance import SingleInstance
+from .work_todos import TodoReceiver
+from .todo_panel import TodoPanel
 from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
 from .sedentary import read_status as read_sedentary_status, send_command as send_sedentary_command, status_text as sedentary_status_text
 from .startup import is_startup_enabled, set_startup, stop_legacy_foxmail_processes, take_over_legacy_startup
@@ -46,6 +48,7 @@ class WinAssistantsApp:
         self.sms_receiver = SmsReceiver()
         self.foxmail_bridge = FoxmailBridge()
         self.number_inbox_receiver = NumberInboxReceiver()
+        self.todo_receiver = TodoReceiver()
         self.number_batch_bridge = NumberBatchBridge(
             lambda: unprotect_secret(self.config.number_inbox.protected_token),
             lambda: self.config.number_inbox.batch_target,
@@ -155,7 +158,7 @@ class WinAssistantsApp:
         self.module_pages = {}
         self.module_settings_panels = {}
         self.module_settings_buttons = {}
-        labels = {"sms": "短信", "sedentary": "久坐", "chen_helper": "缴费连接", "number_inbox": "号码提醒"}
+        labels = {"sms": "短信", "sedentary": "久坐", "chen_helper": "缴费连接", "number_inbox": "号码提醒", "work_todos": "待办事项"}
         for item in MODULES:
             page = ttk.Frame(self.navigation, padding=(20, 20), style="Card.TFrame")
             self.module_pages[item.key] = page
@@ -171,7 +174,9 @@ class WinAssistantsApp:
             ttk.Label(status_card, text="当前状态", style="Status.TLabel").pack(anchor="w", pady=(0, 5))
             ttk.Label(status_card, textvariable=self.status_vars[item.key], style="Status.TLabel",
                       foreground=TEXT, wraplength=580).pack(anchor="w")
-            if item.key == "sms":
+            if item.key == "work_todos":
+                self.todo_panel = TodoPanel(self, page)
+            elif item.key == "sms":
                 ttk.Label(page, text="最新验证码", style="Detail.TLabel").pack(anchor="w")
                 tk.Label(page, textvariable=self.sms_code_var, bg=CARD, fg=GREEN,
                          font=("Microsoft YaHei UI", 34, "bold"), wraplength=620).pack(anchor="w", pady=(8, 24))
@@ -186,10 +191,11 @@ class WinAssistantsApp:
                 ttk.Label(page, textvariable=self.batch_status_var, style="Detail.TLabel",
                           wraplength=620).pack(anchor="w", pady=(16, 0))
             else:
-                ttk.Label(page, text="从网页版发起缴费后，在 Foxmail 中粘贴附件并人工发送。",
+                ttk.Label(page, text="从网页版发起缴费后，在 Foxmail 中粘贴附件并人工发送。\nTXT 固定目录：%APPDATA%\\win-assistants\\PaymentTXT；每次准备前清理其中的旧 TXT。",
                           style="Detail.TLabel", wraplength=620).pack(anchor="w")
 
         settings_actions = {
+            "work_todos": ("待办连接设置", self.todo_panel.settings),
             "sms": ("短信连接", self._show_sms_settings),
             "sedentary": ("久坐设置", lambda: self._sedentary_command("show_settings")),
             "number_inbox": ("号码提醒设置", self._show_number_inbox_settings),
@@ -219,7 +225,7 @@ class WinAssistantsApp:
             button = tk.Button(slot, text=label, command=lambda page=page: self.navigation.select(page),
                                font=("Microsoft YaHei UI", 10), bg=BG, fg=MUTED,
                                activebackground=SOFT, activeforeground=GREEN, relief="flat",
-                               borderwidth=0, padx=20, pady=10, cursor="hand2", takefocus=True,
+                               borderwidth=0, padx=14, pady=10, cursor="hand2", takefocus=True,
                                highlightthickness=1, highlightbackground=BG, highlightcolor=GREEN)
             button.pack(fill="x")
             button.bind("<Control-Tab>", lambda _event: self._navigate_module(1))
@@ -312,7 +318,7 @@ class WinAssistantsApp:
         for item in MODULES:
             cfg = self.config.modules[item.key]
             cfg.enabled = bool(self.enabled_vars[item.key].get())
-            if item.key in ("sms", "chen_helper", "number_inbox"):
+            if item.key in ("sms", "chen_helper", "number_inbox", "work_todos"):
                 cfg.command = []
                 continue
             if item.key == "sedentary":
@@ -351,7 +357,9 @@ class WinAssistantsApp:
         if self.enabled_vars[key].get():
             self._start_one(key)
         else:
-            if key == "sms":
+            if key == "work_todos":
+                self.todo_receiver.stop()
+            elif key == "sms":
                 self.sms_receiver.stop()
             elif key == "chen_helper":
                 self.foxmail_bridge.stop()
@@ -364,6 +372,16 @@ class WinAssistantsApp:
 
     def _start_one(self, key: str) -> None:
         self._save_ui()
+        if key == "work_todos":
+            try:
+                token = unprotect_secret(self.config.work_todos.protected_token)
+                if not token:
+                    raise ValueError("请先完成待办连接设置")
+                self.todo_receiver.start(self.config.work_todos.server_url, token)
+                self.status_vars[key].set("正在同步")
+            except Exception as exc:
+                self.status_vars[key].set(str(exc))
+            return
         if key == "sms":
             try:
                 token = unprotect_secret(self.config.sms.protected_token)
@@ -477,6 +495,19 @@ class WinAssistantsApp:
             elif inbox_event.kind == "new":
                 # Keep new items pending; the popup is exclusively schedule-driven.
                 self.number_reminder_items[inbox_event.item_id] = inbox_event
+        while True:
+            try:
+                kind, payload = self.todo_receiver.events.get_nowait()
+            except queue.Empty:
+                break
+            if not self.enabled_vars["work_todos"].get():
+                continue
+            if kind == "snapshot":
+                self.todo_panel.apply(payload)
+                self.status_vars["work_todos"].set("已同步 · 每15秒刷新")
+            else:
+                self.status_vars["work_todos"].set(payload)
+        self.todo_panel.poll()
         self._maybe_show_scheduled_number_reminder()
         self.root.after(1500, self._poll)
 
@@ -1041,6 +1072,7 @@ class WinAssistantsApp:
         self.sms_receiver.stop()
         self.foxmail_bridge.stop()
         self.number_inbox_receiver.stop()
+        self.todo_receiver.stop()
         self.number_batch_bridge.stop()
         self.manager.stop_all()
         if self.tray_icon is not None:

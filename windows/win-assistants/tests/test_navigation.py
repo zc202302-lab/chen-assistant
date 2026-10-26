@@ -16,6 +16,8 @@ class NavigationTests(unittest.TestCase):
         self.root = tk.Tk()
         self.app = WinAssistantsApp.__new__(WinAssistantsApp)
         self.app.root = self.root
+        from win_assistants.work_todos import TodoReceiver
+        self.app.todo_receiver = TodoReceiver()
         self.app.status_vars = {m.key: tk.StringVar(value="运行中") for m in MODULES}
         self.app.enabled_vars = {m.key: tk.BooleanVar(value=True) for m in MODULES}
         self.app.sms_code_var = tk.StringVar(value="123456")
@@ -42,7 +44,7 @@ class NavigationTests(unittest.TestCase):
     def test_navigation_hides_other_tasks_and_keeps_live_values(self):
         nav = self.app.navigation
         self.assertEqual([nav.tab(t, "text") for t in nav.tabs()],
-                         ["短信", "久坐", "缴费连接", "号码提醒", "设置"])
+                         ["短信", "久坐", "缴费连接", "号码提醒", "待办事项", "设置"])
         self.assertEqual(nav.select(), str(self.app.module_pages["sms"]))
         for key, page in self.app.module_pages.items():
             self.app.nav_buttons[str(page)].invoke()
@@ -53,7 +55,7 @@ class NavigationTests(unittest.TestCase):
             self.assertFalse(self.app.settings_page.winfo_ismapped())
             panel = self.app.module_settings_panels[key]
             self.assertFalse(panel.winfo_ismapped())
-            self.assertEqual(sum(isinstance(w, ttk.Checkbutton) for w in self.descendants(page)), 1)
+            self.assertEqual(sum(isinstance(w, ttk.Checkbutton) for w in self.descendants(page)), 2 if key == "work_todos" else 1)
             self.app.module_settings_buttons[key].invoke()
             self.root.update()
             self.assertTrue(panel.winfo_ismapped())

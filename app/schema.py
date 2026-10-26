@@ -17,6 +17,7 @@ SCHEMA_STAGES = {
         ('v10_routes', 'ensure_v10_schema'),
         ('v160_information_center', 'ensure_v160_schema'),
         ('work_lists', 'ensure_work_lists_schema'),
+        ('work_todos', 'ensure_work_todos_schema'),
         ('work_list_import', 'ensure_work_list_import_schema'),
     ),
 }

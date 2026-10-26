@@ -1,5 +1,61 @@
 [
   {
+    "path": "/work/todos",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.work_todos",
+    "name": "work_todos_page"
+  },
+  {
+    "path": "/work/todos",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.work_todos",
+    "name": "create_work_todo"
+  },
+  {
+    "path": "/work/todos/connection",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.work_todos",
+    "name": "rotate_work_todo_connection"
+  },
+  {
+    "path": "/work/todos/{item_id}",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.work_todos",
+    "name": "update_work_todo"
+  },
+  {
+    "path": "/api/work-todos",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.work_todos",
+    "name": "desktop_work_todos"
+  },
+  {
+    "path": "/api/work-todos/{item_id}",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.work_todos",
+    "name": "desktop_update_work_todo"
+  },
+  {
+    "path": "/api/work-todos",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.work_todos",
+    "name": "desktop_update_work_todo"
+  },
+  {
     "path": "/account/security",
     "methods": [
       "GET"

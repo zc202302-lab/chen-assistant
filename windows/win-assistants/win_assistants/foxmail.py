@@ -235,6 +235,21 @@ def _set_file_drop_clipboard(path: Path) -> bool:
             if not user32.SetClipboardData(15, handle):
                 continue
             handle = None  # Clipboard owns the allocation after SetClipboardData succeeds.
+            # Explorer-compatible Cut semantics; CF_HDROP remains the file payload.
+            user32.RegisterClipboardFormatW.argtypes = (wintypes.LPCWSTR,)
+            user32.RegisterClipboardFormatW.restype = wintypes.UINT
+            effect_format = user32.RegisterClipboardFormatW("Preferred DropEffect")
+            handle = kernel32.GlobalAlloc(0x0002, 4)
+            if not effect_format or not handle:
+                continue
+            pointer = kernel32.GlobalLock(handle)
+            if not pointer:
+                continue
+            ctypes.memmove(pointer, struct.pack("<I", 2), 4)
+            kernel32.GlobalUnlock(handle)
+            if not user32.SetClipboardData(effect_format, handle):
+                continue
+            handle = None
             clipboard_handle = user32.GetClipboardData(15)
             shell32.DragQueryFileW.argtypes = (wintypes.HANDLE, wintypes.UINT, wintypes.LPWSTR, wintypes.UINT)
             shell32.DragQueryFileW.restype = wintypes.UINT
@@ -253,32 +268,65 @@ def _set_file_drop_clipboard(path: Path) -> bool:
     return False
 
 
+_compose_lock = threading.Lock()
+
+
+def payment_attachment_directory() -> Path:
+    from .config import app_data_dir
+    root = app_data_dir() / "PaymentTXT"
+    root.mkdir(parents=True, exist_ok=True)
+    if root.is_symlink():
+        raise RuntimeError("TXT directory must not be a symbolic link")
+    return root
+
+
+def prepare_payment_attachment(filename: str, content: bytes, expected_hash: str) -> Path:
+    if Path(filename).suffix.lower() != ".txt" or safe_attachment_name(filename) != filename:
+        raise ValueError("TXT attachment filename invalid")
+    if hashlib.sha256(content).hexdigest() != expected_hash:
+        raise ValueError("TXT attachment SHA256 mismatch")
+    root = payment_attachment_directory()
+    # Only this dedicated directory is managed; unrelated downloads are untouched.
+    descriptor, staged_name = tempfile.mkstemp(prefix=".payment-", suffix=".next", dir=root)
+    staged = Path(staged_name)
+    with os.fdopen(descriptor, "wb") as stream:
+        stream.write(content)
+    try:
+        if hashlib.sha256(staged.read_bytes()).hexdigest() != expected_hash:
+            raise RuntimeError("TXT attachment file SHA256 mismatch after write")
+        for previous in root.iterdir():
+            if previous.suffix.lower() == ".txt" and (previous.is_file() or previous.is_symlink()):
+                previous.unlink()
+        attachment = root / filename
+        staged.replace(attachment)
+        return attachment
+    finally:
+        staged.unlink(missing_ok=True)
+
+
 def compose_foxmail_draft(payload: object) -> dict[str, object]:
+    if not _compose_lock.acquire(blocking=False):
+        raise RuntimeError("TXT preparation already in progress; retry shortly")
+    try:
+        return _compose_foxmail_draft(payload)
+    finally:
+        _compose_lock.release()
+
+
+def _compose_foxmail_draft(payload: object) -> dict[str, object]:
     if sys.platform != "win32":
         raise RuntimeError("Foxmail bridge only supports Windows")
     recipient, subject, body, filename, content, expected_hash = validate_compose_payload(payload)
     foxmail = _find_foxmail_exe()
     if foxmail is None:
         raise RuntimeError("Foxmail.exe was not found")
-    root = Path(tempfile.gettempdir()) / "ChenAssistantPaymentClipboard"
-    root.mkdir(parents=True, exist_ok=True)
-    compose_dir = Path(tempfile.mkdtemp(prefix=time.strftime("%Y%m%d-%H%M%S-"), dir=root))
-    attachment = compose_dir / filename
-    attachment.write_bytes(content)
-    if hashlib.sha256(attachment.read_bytes()).hexdigest() != expected_hash:
-        shutil.rmtree(compose_dir, ignore_errors=True)
-        raise RuntimeError("TXT attachment file SHA256 mismatch after write")
+    attachment = prepare_payment_attachment(filename, content, expected_hash)
     before = set(_foxmail_windows())
     subprocess.Popen([str(foxmail), build_mailto_uri(recipient, subject, body)], close_fds=True)
     if not _wait_for_compose_window(before, subject):
-        shutil.rmtree(compose_dir, ignore_errors=True)
         raise RuntimeError("Foxmail compose window did not appear after direct Foxmail.exe mailto launch")
     if not _set_file_drop_clipboard(attachment):
-        shutil.rmtree(compose_dir, ignore_errors=True)
         raise RuntimeError("TXT file clipboard verification failed")
-    timer = threading.Timer(1800, shutil.rmtree, args=(compose_dir,), kwargs={"ignore_errors": True})
-    timer.daemon = True
-    timer.start()
     return {
         "ok": True,
         "version": HELPER_COMPAT_VERSION,
