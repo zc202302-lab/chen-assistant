@@ -28,7 +28,7 @@
       </div>
       <aside class="v023-task-card">
         <div class="v023-task-head"><b>待办</b><button type="button" class="tab-text-link" data-tab-open="tasks">全部 {{ open_tasks|length }}</button></div>
-        {% for t in open_tasks[:2] %}<div class="v023-task-line"><span>{{ t.title }}</span><small>{{ (t.remind_date or '无日期')|replace('-','/') }}</small></div>{% else %}<span class="v023-task-empty">暂无未完成待办</span>{% endfor %}
+        {% for t in open_tasks[:2] %}<div class="v023-task-line"><span>{{ t.title }}</span><small>{{ (t.remind_date or '无日期')|replace('-','/') }}</small><form method="post" action="/tasks/{{ t.id }}/toggle"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="finish_delete" value="1"><button type="submit" class="v023-task-finish">办结</button></form></div>{% else %}<span class="v023-task-empty">暂无未完成待办</span>{% endfor %}
         <button type="button" class="v023-add-task" data-tab-open="tasks">＋ 新增待办</button>
       </aside>
     </section>

@@ -41,3 +41,6 @@
   .task-item-v164{flex-direction:column}
   .task-item-actions-v164{width:100%;justify-content:flex-end}
 }
+
+.v023-task-line form{margin-left:auto;flex:0 0 auto}.v023-task-line .v023-task-finish{border:1px solid #c7d9ed;border-radius:7px;background:#eef5fc;color:#245782;font:inherit;font-size:12px;font-weight:700;padding:4px 9px;cursor:pointer}
+.payment-review-dialog{border:0;border-radius:16px;box-shadow:0 22px 70px #17253c55;width:min(460px,calc(100vw - 40px));padding:25px;color:#243247}.payment-review-dialog::backdrop{background:#18283b91}.payment-review-dialog h2{margin:0 0 12px;font-size:20px}.payment-review-dialog p{line-height:1.6}.payment-review-dialog ul{max-height:35vh;overflow:auto;padding-left:22px}.payment-review-dialog button{width:100%;border:0;border-radius:10px;background:#2463c5;color:white;padding:12px;font:inherit;font-weight:700;cursor:pointer}

@@ -224,7 +224,7 @@ def _set_initiate_prepared(conn, customer_id: int, period: str, run):
     )
 
 
-def _set_initiated(conn, customer_id: int, period: str, run):
+def _set_initiated(conn, customer_id: int, period: str, run, review_confirmed: bool = False):
     now = now_iso()
     run_id = int(run['id'])
     if run['initiated']:
@@ -238,7 +238,7 @@ def _set_initiated(conn, customer_id: int, period: str, run):
     if not run['notified']:
         raise HTTPException(400, '请先完成“通知客户”')
     pending_reviews = _pending_payment_review_tasks(conn, customer_id)
-    if pending_reviews:
+    if pending_reviews and not review_confirmed:
         names = '、'.join(task['title'] for task in pending_reviews[:3])
         suffix = f" 等 {len(pending_reviews)} 项" if len(pending_reviews) > 3 else ''
         raise HTTPException(409, f'请先确认缴费审核待办已完成：{names}{suffix}')
@@ -388,6 +388,7 @@ def update_payment_workflow_v031(
     customer_id: int,
     csrf: str = Form(...),
     action: str = Form(...),
+    review_confirmed: str = Form('0'),
 ):
     check_csrf(request, csrf)
     period = current_period()
@@ -435,7 +436,7 @@ def update_payment_workflow_v031(
         elif action == 'prepare_initiate':
             _set_initiate_prepared(conn, customer_id, period, run)
         elif action == 'initiate':
-            _set_initiated(conn, customer_id, period, run)
+            _set_initiated(conn, customer_id, period, run, review_confirmed == '1')
         elif action == 'invalidate':
             _invalidate_after_amount_change(conn, customer_id, period, run)
         else:
@@ -453,11 +454,6 @@ def payment_mail_compose_v031(customer_id: int):
         run, _ = _run_v031(conn, customer_id, period)
         if not run['notified']:
             raise HTTPException(400, '请先完成“通知客户”，再调用Foxmail')
-        pending_reviews = _pending_payment_review_tasks(conn, customer_id)
-        if pending_reviews:
-            names = '、'.join(task['title'] for task in pending_reviews[:3])
-            suffix = f" 等 {len(pending_reviews)} 项" if len(pending_reviews) > 3 else ''
-            raise HTTPException(409, f'请先确认缴费审核待办已完成：{names}{suffix}')
         template = _get_template(conn, customer_id)
         recipient = _recipient(conn)
 

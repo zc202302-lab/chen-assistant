@@ -564,14 +564,19 @@ def task_edit_v164(
 
 
 @router.post('/tasks/{task_id}/toggle')
-def task_toggle_v021(request: Request, task_id: int, csrf: str = Form(...)):
+def task_toggle_v021(request: Request, task_id: int, csrf: str = Form(...), finish_delete: str = Form('0')):
     check_csrf(request, csrf)
     with db() as conn:
         row = conn.execute('SELECT customer_id,done FROM tasks WHERE id=?', (task_id,)).fetchone()
         if not row:
             raise HTTPException(404)
         now = now_iso()
-        conn.execute('UPDATE tasks SET done=?,updated_at=? WHERE id=?', (0 if row['done'] else 1, now, task_id))
+        if finish_delete == '1':
+            if row['done']:
+                raise HTTPException(409, '待办已办结')
+            conn.execute('DELETE FROM tasks WHERE id=? AND done=0', (task_id,))
+        else:
+            conn.execute('UPDATE tasks SET done=?,updated_at=? WHERE id=?', (0 if row['done'] else 1, now, task_id))
         if row['customer_id']:
             conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now, row['customer_id']))
     return RedirectResponse(f"/customers/{row['customer_id']}?tab=tasks" if row['customer_id'] else '/', 303)
