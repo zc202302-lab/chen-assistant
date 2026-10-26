@@ -56,7 +56,8 @@ def main():
         'prepareNotify', 'prepareInitiate', 'event.stopImmediatePropagation()',
         '确认缴费图片已经通过微信发送给客户', '确认缴费邮件已经在Foxmail中发送给同事',
         'confirmPaymentReview', "confirmPaymentReview('通知客户')", "confirmPaymentReview('通知客户确认')",
-        "confirmPaymentReview('发起缴费')", "confirmPaymentReview('发起缴费确认')", 'payment-review-dialog',
+        "confirmPaymentReview('发起缴费')", "confirmPaymentReview('发起缴费确认')", 'payment-review-dialog', 'payment-review-dialog-cancel', 'payment-review-dialog-confirm',
+        "cancel.textContent = '取消'", "confirm.textContent = '确认'", "dialog.close('cancelled')",
         "fd.append('review_confirmed', '1')",
         "root.querySelectorAll('[data-v031-payment-image],[data-v03-foxmail-draft]')",
         '金额刚刚修改，请重新确认这一条', 'row?.dataset.confirmed',
@@ -152,7 +153,7 @@ def main():
     base = (ROOT / 'app' / 'templates' / 'base.html').read_text(encoding='utf-8')
     assert 'v{{ request.app.version }}' in base
     assert '/static/v031_workflow_actions.js?v=1590' in base
-    assert '/static/v031_workflow_runtime_fix.js?v=1641' in base
+    assert '/static/v031_workflow_runtime_fix.js?v=1642' in base
     assert '/static/v031_workflow_dom_guard.js?v=0315' in base
     assert '/static/v033_payment_flow_patch.js?v=1591' in base
     assert '/static/v031_payment_workflow.css?v=0314' in base
