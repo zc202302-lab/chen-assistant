@@ -2,7 +2,7 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-26（Asia/Shanghai）当前模式：继续部署用户要求的待办界面优化及循环提醒。活动分支`feat/work-todos-repeat-polish`，本地功能候选提交35327b7（含循环完成锚点修正仍待并入提交）；基线远端main `128618b41aa151cb0e0d9e927dbe03fa2a316511`。尚无可推送Git凭据，Git push返回“could not read Username”；尚无本轮PR、CI、Windows构建或生产部署。唯一下一步：通过GitHub集成将功能提交发布到同名分支，创建Draft PR并按完整CI/Windows构建及部署检查推进；不得把本地提交记为已发布或已部署。检查仅有py_compile与git diff --check通过，尚未跑项目测试。云电脑#128保持暂停，客户待办和上传附件未改。
+- 2026-10-26（Asia/Shanghai）当前模式：继续部署用户要求的待办界面优化及循环提醒。活动分支`feat/work-todos-repeat-polish`，PR [#177](https://github.com/zc202302-lab/chen-assistant/pull/177)，基线main `128618b41aa151cb0e0d9e927dbe03fa2a316511`。首个PR head的源代码验证、模块隔离、Foxmail检查通过；Windows原生导航验收失败，发现客户端“显示已结办”筛选被误移除，现已恢复，待新head重新跑完整CI。未合并、未部署、未发布；本地仅`py_compile`和`git diff --check`通过。唯一下一步：等PR新head的完整验证、稳定性、模块隔离、Windows跨构建/更新验收全部通过后，再合并并核验Web与Windows部署；不得以旧head CI代替。云电脑#128保持暂停，客户待办和上传附件未改。
 - 本轮实现：待办导航隐藏“已结办”（已结办仍在“全部”中），新增按钮突出显示，卡片视觉/动作布局重做；服务端repeat_rule/repeat_time幂等扩列迁移，daily/weekly:weekday/monthly:day，北京时间重复，短月份月底夹取；完成循环项安排下一次（以当前实例提醒时间和当前时刻较晚者为锚点），延期不改固定循环时间；停止重复会结办。Windows端加循环编辑、重复列、停止重复并结办。兼容旧客户端未携带循环字段的编辑。候选Web 1.7.30、Windows 0.5.19。
 - 上一项已部署基线：PR [#176](https://github.com/zc202302-lab/chen-assistant/pull/176) squash合并，main提交8b2beb9c3403ab8c239371d5fd247f98a037e486；Web1.7.29、Windows0.5.18。既有待办提醒、缴费和Windows固定TXT下载逻辑保持在基线内。
 - Web 1.7.29：缴费金额点击容差调整，避免轻微指针抖动取消全选；发起缴费先清除专用固定APPDATA\win-assistants\PaymentTXT目录内旧TXT，再校验并生成本次TXT并以剪切语义放入剪贴板。此逻辑仅管理专用目录顶层TXT，不触及其他文件。
@@ -10,7 +10,7 @@
 - PR最终受检head de5fdcfa9abcb381e7355a6147d6b864d19dc9e0。完整验证40262560733、stability40262560702、module isolation40262560707、Windows跨构建/真实更新验收40262560843、Foxmail helper40262560818全部success。验收曾发现并修正工作空间入口定位器、CSRF/Bearer静态审计识别、入口卡片数由10变11三项问题；没有移除既有断言。
 - main完整回归40263810960 success；稳定性40263811046、Windows helper40263810911、工作空间语法40263810889均success。生产PWA检查40263810903返回ONLINE VERIFIED v1.7.29；首次仍读取1.7.28，自动同步后版本和精确资源通过。
 - Windows 0.5.18构建、真实更新验收与release发布均在40263810905成功。公网完整EXE核验40264513143返回ONLINE VERIFIED v0.5.18：71,694,725字节，SHA-256 72b7a0c85a978aa257539c407a46f36902b47e26382e09bac4863669cbd08542，与release update.json一致。用户端尚未实际启动升级或业务验收。
-- 核心文件`app/work_todos.py`、`app/templates/work_todos.html`、`app/static/work-lists.css`、`windows/win-assistants/win_assistants/todo_panel.py`、待办契约/浏览器验收。当前工作目录`/workspace/scratch/2925a264f23f/chen-assistant`。远端PR/CI/生产状态未知或未产生；本地浏览器与业务验收未执行。用户端安装与循环提醒业务结果待部署后确认。
+- 核心文件`app/work_todos.py`、`app/templates/work_todos.html`、`app/static/work-lists.css`、`windows/win-assistants/win_assistants/todo_panel.py`、待办契约/浏览器验收。当前工作目录`/workspace/scratch/2925a264f23f/chen-assistant`。PR #177最新head与CI状态以GitHub实时数据为准；生产状态仍为未部署。用户端安装与循环提醒业务结果待部署后确认。
 
 ## 前序记录（历史）
 
