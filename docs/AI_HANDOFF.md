@@ -2,6 +2,16 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-26（Asia/Shanghai）用户授权三项开发：缴费金额单击全选不稳定；发起缴费前清空专用固定目录旧TXT并继续生成/剪切；工作空间新增独立待办，并在win-assistants同步提醒、延期及结办。工作模式开发中，基于main543e98e，活动分支feat/work-todos-payment-polish，Draft PR #175 https://github.com/zc202302-lab/chen-assistant/pull/175，首轮受检head b0831c6e550067ba4884ff809bcd820db2172dee。云电脑#128保持暂停，客户待办及附件不动。
+- 实现中：全选鼠标位移容差4px；Windows固定APPDATA/win-assistants/PaymentTXT目录，仅清理该目录顶层TXT，校验内容后写入、串行准备，CF_HDROP及Preferred DropEffect剪切语义；取消旧临时子目录和30分钟清理计时器。Web候选1.7.29，Windows候选0.5.18，未发布。
+- 新增work_todos独立表与职责模块，工作空间独立入口，网页新增/编辑/搜索/结办/重开/延期/删除，单独客户端连接码及更换。桌面模块支持同源HTTPS专用Bearer同步，15秒轮询、到期弹窗/托盘提醒、新增编辑及延期结办重开；网络错误不写本地伪成功，服务端revision防跨端覆盖。北京时间，保留客户tasks及原缴费审核规则。
+- app/work_todos.py、work_todos.html、schema/routing/legacy_main/work_architecture、Windows work_todos.py/todo_panel.py/app/config/modules/foxmail及测试。两份路由清单已更新。架构治理/路由契约本地通过，完整业务/浏览器/Windows GUI与冻结EXE回归进行中；本机浏览器下载受限，完整CI待提交触发。未合并、部署、发布、安装或真实业务验收。
+- 唯一下一步：完成本地与完整CI，修复失败后核对受检源码、合并发布Web和Windows，并分别实际核验公网版本与Windows整包，再更新此快照。
+
+## 前序记录（历史）
+
+## 上一阶段（历史：1.7.28已部署）
+
 - 2026-10-25（Asia/Shanghai）用户IMG_3140要求删除详情重复原料总重量框、直接修改每项原料重量、后台求和；补充退出重开须保留修改值。PR #174 https://github.com/zc202302-lab/chen-assistant/pull/174 已squash合并，main功能提交e767d5dae8c59671cf06051ffddf043bcdd9a559，Web1.7.28。已实际读取公网health1.7.28、v10.js/css与受检源码精确一致；全站检查返回ONLINE VERIFIED v1.7.28。无活动功能WIP。
 - 详情仅保留独立原料卡片，每项重量可编辑。有效修改自动保存至服务器现有app_meta，按菜谱及当前标准关联，退出重开恢复；后台验证全部原料/单位并求和，配方与HTML/PDF按汇总总重换算，打印原料保留各项实际输入（如2200g/800g），固定/手工配料不变。标准原料/用量不覆盖。标准另行编辑形成新快照后，旧快照的本次重量不套入新标准，避免旧ID错配。新增POST /life/recipes/{recipe_id}/weights，鉴权/CSRF、旧请求revision防覆盖及保存失败反馈；两份路由清单已同步，无新表/依赖。旧导入多原料仅以第一项作基准时，运行时改按全部标准原料计算分母，不修改存量数据。
 - 最终受检head e3a7c1d6f04037fea407e393ebf2b14970d583d9：完整validation40197197509（validate121180489714、preflight121180489941）、stability40197197360、isolation40197197367全部success。浏览器修改重量/自动保存/失败重试/退出重开恢复/非法输入/多原料任意比例换算与打印、桌面1440/手机390几何、原A4/PDF分享及全部历史业务回归均通过。本地混合单位求和、HTML/PDF一致、后台忽略伪造合计、持久化/过期请求/非法请求/标准不覆盖、架构/路由/版本/v12/稳定性等通过。已查看本head手机详情截图，重复总重卡片消失、重量在原料行右侧；当前runner中文呈方框，只确认几何与源码文案，不冒称字体视觉/真实iPhone验收。
@@ -9,7 +19,7 @@
 - 公网核验先仍1.7.27，随后切换1.7.28且v10.js/css精确一致；完整scripts/check_pwa_production.py已退出0并返回ONLINE VERIFIED v1.7.28，PWA、工作/清单/账户/推送/菜谱打印资源、账户鉴权/公开找回表单和号码域名边界检查通过。未登录生产/读写私有业务；不推断生产精确backend SHA或真实iPhone系统菜单结果。Windows/云电脑#128/美国代理/chen-cook/附件不动。
 - 核心recipe_raw_materials.py、v10_routes.py、v101_recipe_template_patch.py、recipe_detail_v10.html、recipe_print_v101.html、v10.js/css及相关tests；缓存1730，config/deploy1.7.28。目录/workspace/scratch/1dc24d163d10/chen-assistant。唯一下一步：用户刷新后修改原料重量，看到已保存，再退出重开及打印确认；按后续实机反馈继续。
 
-## 前序记录（历史）
+
 
 # 晨的小助手 · AI 开发接力文档
 
