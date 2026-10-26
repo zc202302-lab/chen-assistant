@@ -21,7 +21,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.db import db, init_db, now_iso  # noqa: E402
 from app.main import app  # noqa: E402
 from app.security import create_session  # noqa: E402
-from app.v031_payment_workflow_routes import _set_initiated  # noqa: E402
+from app.v031_payment_workflow_routes import _set_initiated, ensure_v031  # noqa: E402
 
 
 def main():
@@ -95,6 +95,8 @@ def main():
             assert '审核并确认本月缴费名单' in str(exc.detail)
         else:
             raise AssertionError('pending payment-review task did not block initiate')
+
+        ensure_v031(conn)
 
         # The browser's centered acknowledgement explicitly unlocks only the
         # current initiate action; it does not silently complete or delete the task.
