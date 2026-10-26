@@ -174,6 +174,13 @@ def audit_csrf_first_winners():
         if getattr(endpoint, '__desktop_token_authenticated__', False):
             if path.startswith('/api/number-inbox/') and 'if not _desktop_token_matches(conn, request):' in source:
                 continue
+            if path.startswith('/api/work-todos') and module == 'app.work_todos':
+                from app import work_todos
+                guard = inspect.getsource(work_todos.authorize)
+                assert "request.headers.get('authorization', '')" in guard
+                assert "scheme.lower() != 'bearer'" in guard
+                assert source.index('authorize(conn, request)') < source.index('request.stream()')
+                continue
             uncovered.append((path, module, name, 'invalid desktop Bearer-authenticated POST guard'))
             continue
         if not any(marker in source for marker in markers):

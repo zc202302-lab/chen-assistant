@@ -15,7 +15,7 @@ def main():
     for invalid in ({}, {'common':['customers'],'auxiliary':[]}, {'common':[1],'auxiliary':[]},
                     {'common':DEFAULT_ENTRY_LAYOUT['common']*2,'auxiliary':DEFAULT_ENTRY_LAYOUT['auxiliary']}):
         assert client.post('/work/entry-layout',data={'csrf':csrf,'layout':json.dumps(invalid)}).status_code == 400
-    layout = {'common':['numbers', 'lists', 'processes'], 'auxiliary':['search','products','library','customers','all_customers','payment','promos']}
+    layout = {'common':['numbers', 'lists', 'processes', 'todos'], 'auxiliary':['search','products','library','customers','all_customers','payment','promos']}
     result = client.post('/work/entry-layout', data={'csrf':csrf,'layout':json.dumps(layout)})
     assert result.json()['ok']
     fresh = TestClient(app);fresh.cookies.set('session_token',token)

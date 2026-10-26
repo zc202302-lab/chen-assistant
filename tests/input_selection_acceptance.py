@@ -86,6 +86,15 @@ def exercise(page, editor, value='1234567890'):
     editor.click(position={'x':coords['left'] + coords['char'] * 4, 'y':coords['top']})
     settled(page)
     assert selected(editor) == [0, len(value)], selected(editor)
+    # Small hand motion must still be a single click, not mistaken for a drag.
+    editor.evaluate('el => el.blur()')
+    box = editor.bounding_box()
+    page.mouse.move(box['x'] + coords['left'] + coords['char'] * 4, box['y'] + coords['top'])
+    page.mouse.down()
+    page.mouse.move(box['x'] + coords['left'] + coords['char'] * 4 + 2, box['y'] + coords['top'] + 1)
+    page.mouse.up()
+    settled(page)
+    assert selected(editor) == [0, len(value)], selected(editor)
     # Second AND third clicks set the caret rather than cycling back to select-all.
     for offset in (4, 6, 3):
         editor.click(position={'x':coords['left'] + coords['char'] * offset, 'y':coords['top']})
