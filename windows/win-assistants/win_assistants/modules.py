@@ -26,6 +26,7 @@ MODULES = (
     ModuleDefinition("sedentary", "久坐助手", "摄像头人体检测与强制休息", 5),
     ModuleDefinition("chen_helper", "小助手连接", "Foxmail 与本机能力桥接", 2),
     ModuleDefinition("number_inbox", "号码提醒", "提醒同事新提交的待录入号码", 3),
+    ModuleDefinition("work_todos", "待办事项", "独立待办同步、提醒、延期与结办", 3),
 )
 
 
@@ -53,6 +54,7 @@ def internal_sedentary_command() -> list[str]:
 def default_module_configs() -> dict[str, ModuleConfig]:
     commands = {
         "sms": [],
+        "work_todos": [],
         "sedentary": internal_sedentary_command(),
         "chen_helper": [],
         "number_inbox": [],

@@ -111,11 +111,24 @@ class NumberInboxConfig:
 
 
 @dataclass
+class WorkTodosConfig:
+    server_url: str = "https://ziboxiaozhushou.cn"
+    protected_token: str = ""
+
+    @classmethod
+    def from_dict(cls, raw):
+        if not isinstance(raw, dict):
+            return cls()
+        return cls(str(raw.get("server_url") or cls.server_url), str(raw.get("protected_token") or ""))
+
+
+@dataclass
 class AppConfig:
     start_minimized: bool = False
     modules: dict[str, ModuleConfig] = field(default_factory=dict)
     sms: SmsConfig = field(default_factory=SmsConfig)
     number_inbox: NumberInboxConfig = field(default_factory=NumberInboxConfig)
+    work_todos: WorkTodosConfig = field(default_factory=WorkTodosConfig)
 
     @classmethod
     def load(cls, defaults: dict[str, ModuleConfig] | None = None) -> "AppConfig":
@@ -127,7 +140,7 @@ class AppConfig:
             raw = json.loads(path.read_text(encoding="utf-8"))
             for key, value in raw.get("modules", {}).items():
                 base[key] = ModuleConfig.from_dict(value)
-            return cls(bool(raw.get("start_minimized", False)), base, SmsConfig.from_dict(raw.get("sms")), NumberInboxConfig.from_dict(raw.get("number_inbox")))
+            return cls(bool(raw.get("start_minimized", False)), base, SmsConfig.from_dict(raw.get("sms")), NumberInboxConfig.from_dict(raw.get("number_inbox")), WorkTodosConfig.from_dict(raw.get("work_todos")))
         except (OSError, ValueError, TypeError):
             return cls(modules=base)
 

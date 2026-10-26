@@ -96,7 +96,7 @@ def ctx(request: Request, **extra):
 @app.middleware('http')
 async def auth_and_headers(request: Request, call_next):
     path = request.url.path
-    public = path == '/login' or path in {'/account/forgot', '/account/reset'} or path.startswith('/static/') or path.startswith('/number-submit/') or path in {'/api/number-inbox/pending', '/api/number-inbox/batch-complete'} or (path.startswith('/api/number-inbox/') and path.endswith('/done')) or path in {'/manifest.webmanifest','/sw.js','/health'}
+    public = (path == '/api/work-todos' or (path.startswith('/api/work-todos/') and path[len('/api/work-todos/'):].isdigit())) or path == '/login' or path in {'/account/forgot', '/account/reset'} or path.startswith('/static/') or path.startswith('/number-submit/') or path in {'/api/number-inbox/pending', '/api/number-inbox/batch-complete'} or (path.startswith('/api/number-inbox/') and path.endswith('/done')) or path in {'/manifest.webmanifest','/sw.js','/health'}
     if not public:
         session = get_session(request.cookies.get('session_token'))
         if not session:

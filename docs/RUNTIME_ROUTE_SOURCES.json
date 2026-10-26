@@ -1,5 +1,61 @@
 [
   {
+    "path": "/work/todos",
+    "methods": [
+      "GET"
+    ],
+    "source": "work_todos.py",
+    "qualname": "work_todos_page"
+  },
+  {
+    "path": "/work/todos",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_todos.py",
+    "qualname": "create_work_todo"
+  },
+  {
+    "path": "/work/todos/connection",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_todos.py",
+    "qualname": "rotate_work_todo_connection"
+  },
+  {
+    "path": "/work/todos/{item_id}",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_todos.py",
+    "qualname": "update_work_todo"
+  },
+  {
+    "path": "/api/work-todos",
+    "methods": [
+      "GET"
+    ],
+    "source": "work_todos.py",
+    "qualname": "desktop_work_todos"
+  },
+  {
+    "path": "/api/work-todos/{item_id}",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_todos.py",
+    "qualname": "desktop_update_work_todo"
+  },
+  {
+    "path": "/api/work-todos",
+    "methods": [
+      "POST"
+    ],
+    "source": "work_todos.py",
+    "qualname": "desktop_update_work_todo"
+  },
+  {
     "path": "/account/security",
     "methods": [
       "GET"

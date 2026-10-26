@@ -68,7 +68,7 @@
   }, true);
   document.addEventListener('pointermove', (e) => {
     if (pointerGesture?.id === e.pointerId &&
-        (Math.abs(e.clientX - pointerGesture.x) > 0 || Math.abs(e.clientY - pointerGesture.y) > 0)) {
+        (Math.abs(e.clientX - pointerGesture.x) > 4 || Math.abs(e.clientY - pointerGesture.y) > 4)) {
       pointerGesture.moved = true;
     }
   }, true);
