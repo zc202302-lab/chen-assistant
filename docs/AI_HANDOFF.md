@@ -2,11 +2,13 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-26（Asia/Shanghai）用户授权三项开发：缴费金额单击全选不稳定；发起缴费前清空专用固定目录旧TXT并继续生成/剪切；工作空间新增独立待办，并在win-assistants同步提醒、延期及结办。工作模式开发中，基于main543e98e，活动分支feat/work-todos-payment-deploy，Draft PR #176 https://github.com/zc202302-lab/chen-assistant/pull/176，首轮受检head b0831c6e550067ba4884ff809bcd820db2172dee。云电脑#128保持暂停，客户待办及附件不动。
-- 实现中：全选鼠标位移容差4px；Windows固定APPDATA/win-assistants/PaymentTXT目录，仅清理该目录顶层TXT，校验内容后写入、串行准备，CF_HDROP及Preferred DropEffect剪切语义；取消旧临时子目录和30分钟清理计时器。Web候选1.7.29，Windows候选0.5.18，未发布。
-- 新增work_todos独立表与职责模块，工作空间独立入口，网页新增/编辑/搜索/结办/重开/延期/删除，单独客户端连接码及更换。桌面模块支持同源HTTPS专用Bearer同步，15秒轮询、到期弹窗/托盘提醒、新增编辑及延期结办重开；网络错误不写本地伪成功，服务端revision防跨端覆盖。北京时间，保留客户tasks及原缴费审核规则。
-- app/work_todos.py、work_todos.html、schema/routing/legacy_main/work_architecture、Windows work_todos.py/todo_panel.py/app/config/modules/foxmail及测试。两份路由清单已更新。架构治理/路由契约本地通过，完整业务/浏览器/Windows GUI与冻结EXE回归进行中；本机浏览器下载受限，完整CI待提交触发。未合并、部署、发布、安装或真实业务验收。
-- 唯一下一步：完成本地与完整CI，修复失败后核对受检源码、合并发布Web和Windows，并分别实际核验公网版本与Windows整包，再更新此快照。
+- 2026-10-26（Asia/Shanghai）用户授权的缴费金额选中、发起缴费固定TXT目录、独立工作待办与Windows同步提醒均已完成部署。PR [#176](https://github.com/zc202302-lab/chen-assistant/pull/176) squash合并，main提交8b2beb9c3403ab8c239371d5fd247f98a037e486；活动功能WIP无待合并项。云电脑#128保持暂停，客户待办、上传附件和其他项目未改。
+- Web 1.7.29：缴费金额点击容差调整，避免轻微指针抖动取消全选；发起缴费先清除专用固定APPDATA\win-assistants\PaymentTXT目录内旧TXT，再校验并生成本次TXT并以剪切语义放入剪贴板。此逻辑仅管理专用目录顶层TXT，不触及其他文件。
+- 工作空间加入独立待办表与入口，和客户页tasks保持分离。支持创建、编辑、搜索、提醒、延期、结办、重开、删除；Windows助手新增独立待办模块，专用Bearer连接码、15秒同步、到期托盘/弹窗提醒及跨端操作，带修订冲突保护。提醒按北京时间处理。
+- PR最终受检head de5fdcfa9abcb381e7355a6147d6b864d19dc9e0。完整验证40262560733、stability40262560702、module isolation40262560707、Windows跨构建/真实更新验收40262560843、Foxmail helper40262560818全部success。验收曾发现并修正工作空间入口定位器、CSRF/Bearer静态审计识别、入口卡片数由10变11三项问题；没有移除既有断言。
+- main完整回归40263810960 success；稳定性40263811046、Windows helper40263810911、工作空间语法40263810889均success。生产PWA检查40263810903返回ONLINE VERIFIED v1.7.29；首次仍读取1.7.28，自动同步后版本和精确资源通过。
+- Windows 0.5.18构建、真实更新验收与release发布均在40263810905成功。公网完整EXE核验40264513143返回ONLINE VERIFIED v0.5.18：71,694,725字节，SHA-256 72b7a0c85a978aa257539c407a46f36902b47e26382e09bac4863669cbd08542，与release update.json一致。用户端尚未实际启动升级或业务验收。
+- 核心代码app/work_todos.py、work_todos.html、缴费表单交互、Windows work_todos/todo_panel/固定TXT剪贴板及其契约/浏览器/Windows测试。唯一下一步：用户刷新网页确认缴费选择与工作待办；Windows客户端从“设置→检查更新”升级至0.5.18后确认待办配置、提醒和跨端结办；根据实际反馈继续。
 
 ## 前序记录（历史）
 
