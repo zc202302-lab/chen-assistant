@@ -56,7 +56,7 @@ function boot(storageThrows) {
     if (instance.onLoad) instance.onLoad({});
     if (pagePath === appConfig.pages[0]) {
       assert.equal(instance.data.rows.length, 1);
-      assert.equal(instance.data.entryExpanded, true);
+      assert.match(instance.data.error, /分享.*二维码/);
       assert.equal(instance.data.entryReady, false);
       assert.equal(instance.data.submitting, false);
     }
@@ -78,10 +78,10 @@ global.wx = {
 let definition;
 global.Page = value => { definition = value; };
 require(path.join(root, 'pages/index/index.js'));
-function page() {
+function page(options = {invite}) {
   const instance = {...definition, data: JSON.parse(JSON.stringify(definition.data)),
     setData(update) { Object.assign(this.data, update); }};
-  instance.onLoad({invite});
+  instance.onLoad(options);
   return instance;
 }
 const event = (id, value) => ({currentTarget: {dataset: {id}}, detail: {value}});
@@ -117,9 +117,31 @@ async function main() {
   assert.equal(p.data.rows.some(row => row.id === removed), false);
   assert.notEqual(p.data.rows[7].id, p.data.rows[8].id);
   assert(p.onShareAppMessage().path.includes('?invite='));
-  p.clearEntry();
+  assert.equal(page({}).invite, invite, 'ordinary reopen remembers the valid invitation');
+  const replacement = 'replacement_invitation_for_contract_456';
+  assert.equal(page({invite: replacement}).invite, replacement);
+  assert.equal(saved['collection-invite'], replacement);
+  const badEntry = page({invite: 'invalid'});
+  assert.equal(badEntry.invite, '', 'invalid explicit invitation must not submit to cached recipient');
   assert.equal(saved['collection-invite'], undefined);
-  assert.equal(p.onShareAppMessage().path, '/pages/index/index');
+  assert.equal(badEntry.onShareAppMessage().path, '/pages/index/index');
+  assert.equal(badEntry.data.entryReady, false);
+  const beforeMissing = calls.length;
+  await badEntry.submit();
+  assert.equal(calls.length, beforeMissing);
+  assert.match(badEntry.data.error, /分享.*二维码/);
+  assert.equal(page({scene: encodeURIComponent(invite)}).invite, invite);
+  const sharedPage = page({invite});
+  const shareQuery = sharedPage.onShareAppMessage().path.split('?')[1];
+  const recipient = page(Object.fromEntries(new URLSearchParams(shareQuery)));
+  assert.equal(recipient.invite, invite, 'share recipient needs no manual setup');
+  wx.getEnterOptionsSync = () => ({path: 'pages/index/index', query: {invite: replacement}});
+  recipient.onShow();
+  assert.equal(recipient.invite, replacement, 'warm entry follows the new invitation');
+  assert.equal(recipient.data.rows[0].value, '');
+  delete wx.getEnterOptionsSync;
+  const markup = fs.readFileSync(path.join(root, 'pages/index/index.wxml'), 'utf8');
+  assert(!/entry-input|saveEntry|入口码|设置收集入口/.test(markup), 'no manual invitation configuration on recipient page');
   p.openPlatformPrivacy();
   assert.equal(privacyContracts, 1);
   const denied = page();

@@ -6,22 +6,15 @@
       <view class="number-inputs">
         <view class="number-input-row" wx:for="{{rows}}" wx:key="id">
           <view class="number-label">号码 {{index + 1}}</view>
-          <input class="number-input" type="text" value="{{item.value}}" data-id="{{item.id}}" bindinput="changeNumber" disabled="{{submitting || privacyChecking}}" maxlength="64" placeholder="请输入号码" placeholder-class="number-placeholder" />
+          <input class="number-input" type="text" value="{{item.value}}" data-id="{{item.id}}" bindinput="changeNumber" disabled="{{!entryReady || submitting || privacyChecking}}" maxlength="64" placeholder="请输入号码" placeholder-class="number-placeholder" />
         </view>
       </view>
-      <button class="number-add-button" bindtap="addRow" disabled="{{submitting || privacyChecking || rows.length >= 100}}" aria-label="增加下一条号码">＋</button>
-      <button class="number-submit-button" bindtap="submit" loading="{{submitting || privacyChecking}}" disabled="{{submitting || privacyChecking}}">{{submitting ? '正在提交' : (privacyChecking ? '正在确认授权' : '提交号码')}}</button>
+      <button class="number-add-button" bindtap="addRow" disabled="{{!entryReady || submitting || privacyChecking || rows.length >= 100}}" aria-label="增加下一条号码">＋</button>
+      <button class="number-submit-button" bindtap="submit" loading="{{submitting || privacyChecking}}" disabled="{{!entryReady || submitting || privacyChecking}}">{{submitting ? '正在提交' : (privacyChecking ? '正在确认授权' : '提交号码')}}</button>
     </view>
     <view class="mini-options">
-      <view class="entry-toggle" bindtap="toggleEntry">{{entryReady ? '修改收集入口' : '设置收集入口'}}</view>
-      <view class="entry-settings" wx:if="{{entryExpanded}}">
-        <view class="settings-hint">粘贴提供者发给你的收集链接或入口码。</view>
-        <input class="entry-input" value="{{entryText}}" bindinput="changeEntryText" maxlength="512" disabled="{{submitting || privacyChecking}}" placeholder="粘贴链接或入口码" password="{{true}}" />
-        <button class="entry-save" bindtap="saveEntry" disabled="{{submitting || privacyChecking}}">使用此入口</button>
-        <view class="entry-clear" wx:if="{{entryReady}}" bindtap="clearEntry">清除此设备保存的入口</view>
-      </view>
       <view class="consent-row">
-        <checkbox-group bindchange="consentChanged"><label><checkbox value="agree" checked="{{consent}}" color="#111827" disabled="{{submitting || privacyChecking}}" /><text>我已阅读并同意</text></label></checkbox-group>
+        <checkbox-group bindchange="consentChanged"><label><checkbox value="agree" checked="{{consent}}" color="#111827" disabled="{{!entryReady || submitting || privacyChecking}}" /><text>我已阅读并同意</text></label></checkbox-group>
         <text class="privacy-link" bindtap="openPrivacy">《号码收集说明》</text>
       </view>
       <text class="platform-link" bindtap="openPlatformPrivacy">微信隐私保护指引</text>

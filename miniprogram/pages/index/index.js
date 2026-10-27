@@ -3,37 +3,43 @@ const {parseInvite, inviteFromOptions} = require('../../utils/entry');
 const {submitNumbers} = require('../../utils/api');
 let rowId = 0;
 const emptyRow = () => ({id: ++rowId, value: ''});
+const missingEntryMessage = '请从收集人分享的小程序卡片或二维码进入';
 Page({
-  data: {rows: [emptyRow()], entryText: '', entryReady: false, entryExpanded: true,
+  data: {rows: [emptyRow()], entryReady: false,
     consent: false, privacyChecking: false, submitting: false, error: ''},
   onLoad(options) {
-    const shared = inviteFromOptions(options || {});
+    this.applyEntry(options || {}, true);
+  },
+  onShow() {
+    // WeChat can reuse this page when another invitation brings the app forward.
+    if (typeof wx.getEnterOptionsSync !== 'function') return;
+    const entry = wx.getEnterOptionsSync();
+    if (entry && entry.path === 'pages/index/index' && entry.query &&
+        (Object.prototype.hasOwnProperty.call(entry.query, 'invite') ||
+         Object.prototype.hasOwnProperty.call(entry.query, 'scene'))) {
+      this.applyEntry(entry.query, false);
+    }
+  },
+  applyEntry(options, initial) {
+    if (this.data.submitting || this.data.privacyChecking) return;
+    const explicit = Object.prototype.hasOwnProperty.call(options, 'invite') ||
+      Object.prototype.hasOwnProperty.call(options, 'scene');
+    const shared = inviteFromOptions(options);
     let saved = '';
-    try { saved = parseInvite(wx.getStorageSync('collection-invite')); } catch (_) {}
-    this.invite = shared || saved;
-    this.setData({rows: [emptyRow()], entryReady: !!this.invite, entryExpanded: !this.invite});
-    if (shared) this.rememberInvite(shared);
-  },
-  rememberInvite(invite) {
-    try { wx.setStorageSync('collection-invite', invite); } catch (_) {}
-  },
-  changeEntryText(e) { this.setData({entryText: e.detail.value}); },
-  toggleEntry() {
-    if (!this.data.submitting) this.setData({entryExpanded: !this.data.entryExpanded});
-  },
-  saveEntry() {
-    if (this.data.submitting) return;
-    const invite = parseInvite(this.data.entryText);
-    if (!invite) return this.setData({error: '请填写入口提供者发给你的完整收集链接或入口码'});
-    this.invite = invite;
-    this.rememberInvite(invite);
-    this.setData({entryReady: true, entryExpanded: false, entryText: '', error: ''});
-  },
-  clearEntry() {
-    if (this.data.submitting) return;
-    this.invite = '';
-    try { wx.removeStorageSync('collection-invite'); } catch (_) {}
-    this.setData({entryReady: false, entryExpanded: true, entryText: '', error: ''});
+    if (!explicit) {
+      try { saved = parseInvite(wx.getStorageSync('collection-invite')); } catch (_) {}
+    }
+    const next = shared || saved;
+    if (!initial && next === this.invite) return;
+    this.invite = next;
+    this.setData({rows: [emptyRow()], consent: false, entryReady: !!next,
+      error: next ? '' : missingEntryMessage});
+    try {
+      if (next) wx.setStorageSync('collection-invite', next);
+      else wx.removeStorageSync('collection-invite');
+    } catch (_) {}
+    if (next && typeof wx.showShareMenu === 'function') wx.showShareMenu({menus: ['shareAppMessage']});
+    if (!next && typeof wx.hideShareMenu === 'function') wx.hideShareMenu();
   },
   changeNumber(e) {
     if (this.data.submitting) return;
@@ -62,7 +68,7 @@ Page({
   },
   submit() {
     if (this.data.submitting) return;
-    if (!this.invite) return this.setData({entryExpanded: true, error: '请先设置收集入口'});
+    if (!this.invite) return this.setData({error: missingEntryMessage});
     if (!this.data.consent) return this.setData({error: '请先阅读并同意号码收集说明'});
     const numbers = this.data.rows.map(row => row.value.trim()).filter(Boolean);
     if (!numbers.length) return this.setData({error: '请至少填写一个号码'});
