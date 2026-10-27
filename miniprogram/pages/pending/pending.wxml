@@ -1,0 +1,21 @@
+<view class="number-submit-shell">
+  <view class="number-submit-card number-pending-card">
+    <view class="number-submit-head"><view class="form-title">未加号码（{{items.length}}）</view></view>
+    <view class="number-submit-success" wx:if="{{result === 'success'}}">提交成功</view>
+    <view class="number-submit-success" wx:elif="{{result === 'duplicate'}}">这个号码已经在未加号码列表中</view>
+    <view class="number-public-actions">
+      <view class="number-public-link" bindtap="continueCollecting">继续填写号码</view>
+      <view class="number-public-link" bindtap="refresh">刷新列表</view>
+    </view>
+    <view class="error" wx:if="{{error}}" role="alert">{{error}}</view>
+    <view class="number-pending-table" wx:if="{{items.length}}">
+      <view class="table-row table-head"><view class="type-cell">类型</view><view class="number-cell">号码</view><view class="time-cell">提交时间</view></view>
+      <view class="table-row" wx:for="{{items}}" wx:key="number">
+        <view class="type-cell"><text class="number-type {{item.is_new ? 'number-type-new' : 'number-type-previous'}}">{{item.is_new ? '新增' : '之前'}}</text></view>
+        <view class="number-cell number-value">{{item.number}}</view>
+        <view class="time-cell">{{item.submitted_display}}</view>
+      </view>
+    </view>
+    <view class="number-pending-empty" wx:elif="{{!loading && !error}}">目前没有未加号码</view>
+  </view>
+</view>

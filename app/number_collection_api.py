@@ -1,7 +1,8 @@
-"""Submission-only JSON adapter for the native WeChat mini program.
+"""Native adapter for the existing single public collection and pending page.
 
-Uses the existing public collection invitation, never admin/desktop credentials.
-No list/read endpoint is exposed: responses contain counts, not other submissions.
+Direct mini-program entry uses the same public collection as the web invitation.
+Pending responses expose only the fields already shown by the public web page;
+admin/desktop credentials, notes and completed records remain private.
 """
 import json
 
@@ -9,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 from .db import db
 from .number_collection import collect_numbers, normalize_number
-from .v162_number_inbox import _token_matches
+from .v162_number_inbox import _token_matches, ensure_number_inbox_schema, _pending_items
 
 router = APIRouter()
 MAX_BODY_BYTES = 32768
@@ -34,7 +35,30 @@ def save_submission(invite, numbers):
             raise HTTPException(401, '收集入口码已更换，请联系入口提供者')
         result = collect_numbers(conn, normalized)
     return {'ok': True, 'received': result['received'], 'added': result['added'],
-            'duplicates': result['duplicates']}
+            'duplicates': result['duplicates'], 'batch': result['batch']}
+
+
+@router.get('/number-submit/mini/entry')
+def mini_program_entry():
+    # This product has one public inbox. Resolve its current invitation server-side
+    # so opening the mini program needs no per-device setup or embedded secret.
+    with db() as conn:
+        invite = ensure_number_inbox_schema(conn)
+    return {'ok': True, 'invite': invite}
+
+
+@router.get('/number-submit/mini/pending')
+def mini_program_pending(request: Request, batch: str = ''):
+    scheme, _, invite = request.headers.get('authorization', '').partition(' ')
+    authorize(invite if scheme.lower() == 'bearer' else '')
+    if len(batch) > 128 or (batch and not all(c.isascii() and (c.isalnum() or c in '_-') for c in batch)):
+        raise HTTPException(400, '提交批次格式错误')
+    with db() as conn:
+        if not _token_matches(conn, invite):
+            raise HTTPException(401, '收集入口码已更换，请重新打开小程序')
+        items = [{'number': row['number'], 'submitted_display': row['submitted_display'],
+                  'is_new': row['is_new']} for row in _pending_items(conn, batch)]
+    return {'ok': True, 'items': items}
 
 
 @router.post('/number-submit/mini/submit')

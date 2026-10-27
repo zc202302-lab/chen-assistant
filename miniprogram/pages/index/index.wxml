@@ -6,18 +6,12 @@
       <view class="number-inputs">
         <view class="number-input-row" wx:for="{{rows}}" wx:key="id">
           <view class="number-label">号码 {{index + 1}}</view>
-          <input class="number-input" type="text" value="{{item.value}}" data-id="{{item.id}}" bindinput="changeNumber" disabled="{{!entryReady || submitting || privacyChecking}}" maxlength="64" placeholder="请输入号码" placeholder-class="number-placeholder" />
+          <input class="number-input" type="text" value="{{item.value}}" data-id="{{item.id}}" bindinput="changeNumber" disabled="{{submitting}}" maxlength="64" placeholder="请输入号码" placeholder-class="number-placeholder" />
         </view>
       </view>
-      <button class="number-add-button" bindtap="addRow" disabled="{{!entryReady || submitting || privacyChecking || rows.length >= 100}}" aria-label="增加下一条号码">＋</button>
-      <button class="number-submit-button" bindtap="submit" loading="{{submitting || privacyChecking}}" disabled="{{!entryReady || submitting || privacyChecking}}">{{submitting ? '正在提交' : (privacyChecking ? '正在确认授权' : '提交号码')}}</button>
+      <button class="number-add-button" bindtap="addRow" disabled="{{submitting || rows.length >= 100}}" aria-label="增加下一条号码">＋</button>
+      <button class="number-submit-button" bindtap="submit" loading="{{submitting}}" disabled="{{submitting}}">{{submitting ? '正在提交' : '提交号码'}}</button>
     </view>
-    <view class="mini-options">
-      <view class="consent-row">
-        <checkbox-group bindchange="consentChanged"><label><checkbox value="agree" checked="{{consent}}" color="#111827" disabled="{{!entryReady || submitting || privacyChecking}}" /><text>我已阅读并同意</text></label></checkbox-group>
-        <text class="privacy-link" bindtap="openPrivacy">《号码收集说明》</text>
-      </view>
-      <text class="platform-link" bindtap="openPlatformPrivacy">微信隐私保护指引</text>
-    </view>
+    <view class="number-public-link" bindtap="viewPending">查看未加号码</view>
   </view>
 </view>
