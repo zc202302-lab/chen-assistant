@@ -240,6 +240,22 @@
     "name": "process_image"
   },
   {
+    "path": "/number-submit/mini/entry",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.number_collection_api",
+    "name": "mini_program_entry"
+  },
+  {
+    "path": "/number-submit/mini/pending",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.number_collection_api",
+    "name": "mini_program_pending"
+  },
+  {
     "path": "/number-submit/mini/submit",
     "methods": [
       "POST"

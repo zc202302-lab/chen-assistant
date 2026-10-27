@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/pending/pending",
     "pages/result/result",
     "pages/privacy/privacy"
   ],

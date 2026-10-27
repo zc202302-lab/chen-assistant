@@ -240,6 +240,22 @@
     "qualname": "process_image"
   },
   {
+    "path": "/number-submit/mini/entry",
+    "methods": [
+      "GET"
+    ],
+    "source": "number_collection_api.py",
+    "qualname": "mini_program_entry"
+  },
+  {
+    "path": "/number-submit/mini/pending",
+    "methods": [
+      "GET"
+    ],
+    "source": "number_collection_api.py",
+    "qualname": "mini_program_pending"
+  },
+  {
     "path": "/number-submit/mini/submit",
     "methods": [
       "POST"

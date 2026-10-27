@@ -1,37 +1,17 @@
-<view class="screen">
-  <view class="eyebrow">小助手收集</view>
-  <view class="title">把号码交给小助手</view>
-  <view class="subtitle">填写需要添加的集团成员号码，一次提交即可。</view>
-
-  <view class="entry-summary" bindtap="toggleEntry">
-    <text class="status-dot {{entryReady ? 'ready' : ''}}"></text>
-    <text>{{entryReady ? '收集入口已设置' : '首次使用，请设置收集入口'}}</text>
-    <text class="entry-edit">{{entryExpanded ? '收起' : '修改'}}</text>
-  </view>
-  <view class="card entry-card" wx:if="{{entryExpanded}}">
-    <view class="section-title">收集入口</view>
-    <view class="muted">填写提供者发给你的收集链接或入口码。</view>
-    <input class="entry-input" value="{{entryText}}" bindinput="changeEntryText" maxlength="512" disabled="{{submitting}}" placeholder="粘贴链接或入口码" password="{{true}}" />
-    <button class="secondary" bindtap="saveEntry" disabled="{{submitting}}">使用此入口</button>
-    <button class="clear-entry" wx:if="{{entryReady}}" bindtap="clearEntry" disabled="{{submitting}}">清除此设备保存的入口</button>
-  </view>
-
-  <view class="card">
-    <view class="section-head"><text class="section-title">待添加号码</text><text class="muted">{{rows.length}} / 100</text></view>
-    <view class="number-row" wx:for="{{rows}}" wx:key="id">
-      <text class="row-index">{{index + 1}}</text>
-      <input class="number-input" type="text" value="{{item.value}}" data-id="{{item.id}}" bindinput="changeNumber" disabled="{{submitting}}" maxlength="64" placeholder="请输入号码" />
-      <button class="remove-row" data-id="{{item.id}}" bindtap="removeRow" disabled="{{submitting}}" aria-label="删除此行">×</button>
+<view class="number-submit-shell">
+  <view class="number-submit-card">
+    <view class="number-submit-head"><view class="form-title">请填写加集团号码</view></view>
+    <view class="number-submit-form">
+      <view class="error" wx:if="{{error}}" role="alert">{{error}}</view>
+      <view class="number-inputs">
+        <view class="number-input-row" wx:for="{{rows}}" wx:key="id">
+          <view class="number-label">号码 {{index + 1}}</view>
+          <input class="number-input" type="text" focus="{{focusedRow === item.id}}" value="{{item.value}}" data-id="{{item.id}}" bindinput="changeNumber" disabled="{{submitting}}" maxlength="64" placeholder="请输入号码" placeholder-class="number-placeholder" />
+        </view>
+      </view>
+      <button class="number-add-button" bindtap="addRow" disabled="{{submitting || rows.length >= 100}}" aria-label="增加下一条号码">＋</button>
+      <button class="number-submit-button" bindtap="submit" loading="{{submitting}}" disabled="{{submitting}}">{{submitting ? '正在提交' : '提交号码'}}</button>
     </view>
-    <button class="secondary" bindtap="addRow" disabled="{{submitting || rows.length >= 100}}">＋ 增加一条号码</button>
-    <view class="hint">已在待录列表中的号码会自动去重。</view>
+    <view class="number-public-link" bindtap="viewPending">查看未加号码</view>
   </view>
-
-  <view class="consent-row">
-    <checkbox-group bindchange="consentChanged"><label><checkbox value="agree" checked="{{consent}}" color="#128b83" disabled="{{submitting}}" /><text>我已阅读并同意</text></label></checkbox-group>
-    <text class="link" bindtap="openPrivacy">《号码收集说明》</text><text class="link platform-privacy" bindtap="openPlatformPrivacy">微信隐私指引</text>
-  </view>
-  <view class="error" wx:if="{{error}}" role="alert">{{error}}</view>
-  <button class="primary" bindtap="submit" loading="{{submitting || privacyChecking}}" disabled="{{submitting || privacyChecking}}">{{submitting ? '正在提交' : (privacyChecking ? '正在确认授权' : '提交号码')}}</button>
-  <view class="footer-note">请确认已获得号码持有人的授权。</view>
 </view>

@@ -1,89 +1,91 @@
 'use strict';
-const {parseInvite, inviteFromOptions} = require('../../utils/entry');
-const {submitNumbers} = require('../../utils/api');
+const {inviteFromOptions} = require('../../utils/entry');
+const {submitNumbers, resolveEntry} = require('../../utils/api');
 let rowId = 0;
 const emptyRow = () => ({id: ++rowId, value: ''});
+const missingEntryMessage = '收集入口已失效，请重新打开小程序';
 Page({
-  data: {rows: [], entryText: '', entryReady: false, entryExpanded: true,
-    consent: false, privacyChecking: false, submitting: false, error: ''},
+  data: {rows: [emptyRow()], focusedRow: null, submitting: false, error: ''},
   onLoad(options) {
-    const shared = inviteFromOptions(options || {});
-    let saved = '';
-    try { saved = parseInvite(wx.getStorageSync('collection-invite')); } catch (_) {}
-    this.invite = shared || saved;
-    this.setData({rows: [emptyRow()], entryReady: !!this.invite, entryExpanded: !this.invite});
-    if (shared) this.rememberInvite(shared);
+    this.applyEntry(options || {}, true);
   },
-  rememberInvite(invite) {
-    try { wx.setStorageSync('collection-invite', invite); } catch (_) {}
+  onShow() {
+    // WeChat can reuse this page when another invitation brings the app forward.
+    if (typeof wx.getEnterOptionsSync !== 'function') return;
+    const entry = wx.getEnterOptionsSync();
+    if (entry && entry.path === 'pages/index/index' && entry.query &&
+        (Object.prototype.hasOwnProperty.call(entry.query, 'invite') ||
+         Object.prototype.hasOwnProperty.call(entry.query, 'scene'))) {
+      this.applyEntry(entry.query, false);
+    }
   },
-  changeEntryText(e) { this.setData({entryText: e.detail.value}); },
-  toggleEntry() {
-    if (!this.data.submitting) this.setData({entryExpanded: !this.data.entryExpanded});
-  },
-  saveEntry() {
+  applyEntry(options, initial) {
     if (this.data.submitting) return;
-    const invite = parseInvite(this.data.entryText);
-    if (!invite) return this.setData({error: '请填写入口提供者发给你的完整收集链接或入口码'});
-    this.invite = invite;
-    this.rememberInvite(invite);
-    this.setData({entryReady: true, entryExpanded: false, entryText: '', error: ''});
+    const explicit = Object.prototype.hasOwnProperty.call(options, 'invite') ||
+      Object.prototype.hasOwnProperty.call(options, 'scene');
+    const next = inviteFromOptions(options);
+    if (!initial && explicit && next === this.invite) return;
+    this.invite = next;
+    this.explicitEntry = explicit;
+    this.entryPromise = null;
+    this.resetForm();
   },
-  clearEntry() {
+  resetForm() { this.setData({rows: [emptyRow()], focusedRow: null, error: ''}); },
+  ensureEntry() {
+    if (this.invite) return Promise.resolve(this.invite);
+    if (this.explicitEntry) return Promise.reject(new Error(missingEntryMessage));
+    if (!this.entryPromise) {
+      this.entryPromise = resolveEntry().then(invite => {
+        this.invite = invite;
+        return invite;
+      }).catch(error => { this.entryPromise = null; throw error; });
+    }
+    return this.entryPromise;
+  },
+  viewPending() {
     if (this.data.submitting) return;
-    this.invite = '';
-    try { wx.removeStorageSync('collection-invite'); } catch (_) {}
-    this.setData({entryReady: false, entryExpanded: true, entryText: '', error: ''});
+    this.ensureEntry().then(invite => {
+      getApp().globalData.collectionInvite = invite;
+      wx.navigateTo({url: '/pages/pending/pending'});
+    }).catch(error => this.setData({error: error.message}));
   },
   changeNumber(e) {
     if (this.data.submitting) return;
     const rows = this.data.rows.map(row => row.id === Number(e.currentTarget.dataset.id)
-      ? {...row, value: e.detail.value} : row);
+      ? Object.assign({}, row, {value: e.detail.value}) : row);
     this.setData({rows, error: ''});
   },
   addRow() {
-    if (!this.data.submitting && this.data.rows.length < 100)
-      this.setData({rows: [...this.data.rows, emptyRow()]});
+    if (!this.data.submitting && this.data.rows.length < 100) {
+      const row = emptyRow();
+      this.setData({rows: this.data.rows.concat([row]), focusedRow: row.id});
+    }
   },
   removeRow(e) {
     if (this.data.submitting) return;
     const rows = this.data.rows.filter(row => row.id !== Number(e.currentTarget.dataset.id));
     this.setData({rows: rows.length ? rows : [emptyRow()]});
   },
-  consentChanged(e) { this.setData({consent: e.detail.value.includes('agree')}); },
-  openPrivacy() { wx.navigateTo({url: '/pages/privacy/privacy'}); },
-  openPlatformPrivacy() {
-    if (typeof wx.openPrivacyContract !== 'function') return this.setData({error: '请升级微信后查看平台隐私保护指引'});
-    wx.openPrivacyContract({fail: () => this.setData({error: '暂时无法打开微信隐私保护指引'})});
-  },
-  requirePlatformPrivacy() {
-    if (typeof wx.requirePrivacyAuthorize !== 'function') return Promise.resolve(true);
-    return new Promise(resolve => wx.requirePrivacyAuthorize({success: () => resolve(true), fail: () => resolve(false)}));
-  },
-  async submit() {
+  submit() {
     if (this.data.submitting) return;
-    if (!this.invite) return this.setData({entryExpanded: true, error: '请先设置收集入口'});
-    if (!this.data.consent) return this.setData({error: '请先阅读并同意号码收集说明'});
     const numbers = this.data.rows.map(row => row.value.trim()).filter(Boolean);
     if (!numbers.length) return this.setData({error: '请至少填写一个号码'});
-    if (this.data.privacyChecking) return;
-    this.setData({privacyChecking: true, error: ''});
-    const privacyAllowed = await this.requirePlatformPrivacy();
-    this.setData({privacyChecking: false});
-    if (!privacyAllowed) return this.setData({error: '你已取消隐私授权，号码未提交；填写内容仍保留'});
-    if (this.data.submitting) return;
+    if (!this.data.rows[0].value.trim()) return this.setData({error: '请填写号码 1'});
     this.setData({submitting: true, error: ''});
-    try {
-      const result = await submitNumbers(this.invite, numbers);
-      getApp().globalData.lastResult = result;
-      this.setData({rows: [emptyRow()]});
-      wx.navigateTo({url: '/pages/result/result'});
-    } catch (error) {
+    return this.ensureEntry().then(invite => submitNumbers(invite, numbers)).then(result => {
+        getApp().globalData.lastResult = result;
+        getApp().globalData.collectionInvite = this.invite;
+        getApp().globalData.lastBatch = {invite: this.invite, batch: result.batch || ''};
+        this.setData({rows: [emptyRow()]});
+        wx.navigateTo({url: '/pages/pending/pending?result=' + (result.added > 0 ? 'success' : 'duplicate')});
+      }).catch(error => {
       this.setData({error: error.message || '提交失败，请重试'});
-    } finally { this.setData({submitting: false}); }
+    }).then(() => {
+      this.setData({submitting: false});
+    });
   },
   onShareAppMessage() {
-    return {title: '请填写待添加的集团成员号码',
+    return {title: '请填写加集团号码',
       path: '/pages/index/index' + (this.invite ? '?invite=' + encodeURIComponent(this.invite) : '')};
   }
 });

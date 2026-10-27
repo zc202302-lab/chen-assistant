@@ -40,7 +40,8 @@ def main():
 
     first = client.post(url, headers=headers, json=valid)
     assert first.status_code == 200, first.text
-    assert first.json() == {'ok': True, 'received': 3, 'added': 2, 'duplicates': 1}
+    assert {k:v for k,v in first.json().items() if k != 'batch'} == {'ok': True, 'received': 3, 'added': 2, 'duplicates': 1}
+    assert len(first.json()['batch']) >= 24
     assert first.headers['cache-control'] == 'no-store'
     assert invite not in first.text and '13800000101' not in first.text
     assert count() == 2
@@ -53,6 +54,25 @@ def main():
     assert client.post(url, headers=headers, json={'consent': True, 'numbers': ['13800000103']}).json()['duplicates'] == 1
     many = [f'1390000{i:04d}' for i in range(100)]
     assert client.post(url, headers=headers, json={'consent': True, 'numbers': many}).json()['added'] == 100
+    # Native list mirrors the public web list, including new/previous and ordering.
+    entry = client.get('/number-submit/mini/entry')
+    assert entry.json() == {'ok': True, 'invite': invite}
+    assert entry.headers['cache-control'] == 'no-store'
+    pending_url = '/number-submit/mini/pending'
+    for auth in [{}, {'Authorization': 'Basic ' + invite}, {'Authorization': 'Bearer wrong'}]:
+        assert client.get(pending_url, headers=auth).status_code == 401
+    pending = client.get(pending_url, headers=headers, params={'batch': first.json()['batch']})
+    assert pending.status_code == 200 and pending.headers['cache-control'] == 'no-store'
+    items = pending.json()['items']
+    assert len(items) == count()
+    assert all(set(item) == {'number', 'submitted_display', 'is_new'} for item in items)
+    assert {item['number'] for item in items if item['is_new']} == {'13800000101', '13800000102'}
+    assert 'submit_batch' not in pending.text and 'submitter' not in pending.text
+    assert all(not item['is_new'] for item in client.get(pending_url, headers=headers).json()['items'])
+    assert client.get(pending_url, headers=headers, params={'batch': 'x' * 129}).status_code == 400
+    with db() as conn:
+        conn.execute("UPDATE number_inbox SET status='done' WHERE number='13800000101'")
+    assert '13800000101' not in client.get(pending_url, headers=headers).text
     # No anonymous list or admin/desktop access is gained by the adapter.
     assert client.get('/api/number-inbox/pending', headers=headers).status_code == 401
     assert client.get('/work/number-inbox', headers=headers, follow_redirects=False).status_code == 303
@@ -68,6 +88,8 @@ def main():
     assert count() == before
     with db() as conn:
         conn.execute('UPDATE app_meta SET value=? WHERE key=?', ('r' * 32, TOKEN_META_KEY))
+    assert client.get(pending_url, headers=headers).status_code == 401
+    assert client.get('/number-submit/mini/entry').json()['invite'] == 'r' * 32
     assert client.post(url, headers=headers, json=valid).status_code == 401
     assert client.post(url, headers={'Authorization': 'Bearer ' + 'r' * 32}, json=valid).status_code == 200
     assert client.get(f'/number-submit/{invite}').status_code == 404
