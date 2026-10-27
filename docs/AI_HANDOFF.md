@@ -2,6 +2,15 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-27（Asia/Shanghai）工作模式：用户授权继续修复号码收集小程序白屏。已核对 main 为 PR #179 合并提交 `3b534522b4581bcfc38fbebae3f9798d34373dcd`（代码 Web 1.7.32）；旧快照的“#179未合并”已过时。生产版本本轮未核验。
+- 用户证据：开发者工具 2.02.2609240 Stable 曾在编译 privacy.js 时卡住并整个退出；随后已生成19KB预览二维码，模拟器标题“小助手收集”可见但正文空白，手机扫码也白屏。不能归咎于模拟器，也不能以 Node/mock 测试通过排除程序缺陷。
+- 活动分支 `fix/miniprogram-startup-compatibility`，基线为上述 main。本轮移除首页 async/await 与对象展开语法，使用 Promise 链和 Object.assign/concat，避免普通 ES6 编译下对额外运行时/语法转换的依赖；补齐三个页面 JSON（含 usingComponents），首页静态 data 初始化一条输入行。未更改后端、Web、Windows、AppID或域名；未确认白屏唯一根因，属于兼容性修复候选。
+- 验证：现有提交/隐私取消/去重点击/失败保留测试通过；新增隔离 VM 加载真实 App、所有页面与相对依赖，在无 regeneratorRuntime、无邀请、存储异常和禁止启动网络的环境验证首页初始数据。它不是微信编译器或真机渲染验收；本地架构治理检查已在隔离环境安装仓库依赖后通过，git diff --check通过。本地功能提交 d529a24，2026-10-27用户已明确允许推送及建立PR。Shell推送缺少凭据，改用已连接GitHub；远端功能提交以PR实际head为准。CI及手机结果待验证。
+- 核心文件：miniprogram/pages/index/index.js、三个页面 JSON、tests/miniprogram_contract.cjs。唯一下一步：将修复推送至 zc202302-lab/chen-assistant 并建立PR、同步main交接入口；完成CI后交付精确候选供微信预览。未经真机显示不能声称白屏已修复。
+
+### 上一阶段（历史：PR #179 已合并，以下为合并前记录）
+
+
 - 2026-10-26（Asia/Shanghai）当前任务：缴费审核弹窗增加“确认/取消”，并补齐号码收集微信小程序提审前代码。活动分支`feat/miniprogram-review-ready-payment-dialog-cancel`，PR [#179](https://github.com/zc202302-lab/chen-assistant/pull/179)，基线main `f9e68b10482880c0fbefb142b3a2dc420389d9ae`（Web 1.7.31）。候选Web 1.7.32，尚未合并、部署或发布小程序。
 - 缴费审核弹窗改为“取消/确认”双按钮；取消或Esc只关闭弹窗，当前流程状态不变、不会调用后续动作；确认才解除当前环节限制并进入原有动作。通知客户及其确认、发起缴费仍分别独立触发。
 - 小程序原生代码已具备批量号码填写（最多100条）、邀请参数解析/持久化/分享、Bearer提交、结果页及隐私页；本轮补充微信平台隐私授权`wx.requirePrivacyAuthorize`、隐私协议`wx.openPrivacyContract`入口、拒绝授权不发请求且保留输入、提交中防重复、`sitemap.json`及提审说明。后端继续使用既有`POST /number-submit/mini/submit`，无号码读取接口。

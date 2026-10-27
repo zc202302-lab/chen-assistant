@@ -4,7 +4,7 @@ const {submitNumbers} = require('../../utils/api');
 let rowId = 0;
 const emptyRow = () => ({id: ++rowId, value: ''});
 Page({
-  data: {rows: [], entryText: '', entryReady: false, entryExpanded: true,
+  data: {rows: [emptyRow()], entryText: '', entryReady: false, entryExpanded: true,
     consent: false, privacyChecking: false, submitting: false, error: ''},
   onLoad(options) {
     const shared = inviteFromOptions(options || {});
@@ -38,12 +38,12 @@ Page({
   changeNumber(e) {
     if (this.data.submitting) return;
     const rows = this.data.rows.map(row => row.id === Number(e.currentTarget.dataset.id)
-      ? {...row, value: e.detail.value} : row);
+      ? Object.assign({}, row, {value: e.detail.value}) : row);
     this.setData({rows, error: ''});
   },
   addRow() {
     if (!this.data.submitting && this.data.rows.length < 100)
-      this.setData({rows: [...this.data.rows, emptyRow()]});
+      this.setData({rows: this.data.rows.concat([emptyRow()])});
   },
   removeRow(e) {
     if (this.data.submitting) return;
@@ -60,7 +60,7 @@ Page({
     if (typeof wx.requirePrivacyAuthorize !== 'function') return Promise.resolve(true);
     return new Promise(resolve => wx.requirePrivacyAuthorize({success: () => resolve(true), fail: () => resolve(false)}));
   },
-  async submit() {
+  submit() {
     if (this.data.submitting) return;
     if (!this.invite) return this.setData({entryExpanded: true, error: '请先设置收集入口'});
     if (!this.data.consent) return this.setData({error: '请先阅读并同意号码收集说明'});
@@ -68,19 +68,24 @@ Page({
     if (!numbers.length) return this.setData({error: '请至少填写一个号码'});
     if (this.data.privacyChecking) return;
     this.setData({privacyChecking: true, error: ''});
-    const privacyAllowed = await this.requirePlatformPrivacy();
-    this.setData({privacyChecking: false});
-    if (!privacyAllowed) return this.setData({error: '你已取消隐私授权，号码未提交；填写内容仍保留'});
-    if (this.data.submitting) return;
-    this.setData({submitting: true, error: ''});
-    try {
-      const result = await submitNumbers(this.invite, numbers);
-      getApp().globalData.lastResult = result;
-      this.setData({rows: [emptyRow()]});
-      wx.navigateTo({url: '/pages/result/result'});
-    } catch (error) {
+    return this.requirePlatformPrivacy().then(privacyAllowed => {
+      this.setData({privacyChecking: false});
+      if (!privacyAllowed) {
+        this.setData({error: '你已取消隐私授权，号码未提交；填写内容仍保留'});
+        return;
+      }
+      if (this.data.submitting) return;
+      this.setData({submitting: true, error: ''});
+      return submitNumbers(this.invite, numbers).then(result => {
+        getApp().globalData.lastResult = result;
+        this.setData({rows: [emptyRow()]});
+        wx.navigateTo({url: '/pages/result/result'});
+      });
+    }).catch(error => {
       this.setData({error: error.message || '提交失败，请重试'});
-    } finally { this.setData({submitting: false}); }
+    }).then(() => {
+      this.setData({privacyChecking: false, submitting: false});
+    });
   },
   onShareAppMessage() {
     return {title: '请填写待添加的集团成员号码',

@@ -1,6 +1,8 @@
 /* Exercise actual page controllers and wx.request with a minimal native API fake. */
 const assert = require('node:assert/strict');
 const path = require('node:path');
+const fs = require('node:fs');
+const vm = require('node:vm');
 const root = path.join(__dirname, '..', 'miniprogram');
 const appConfig = require(path.join(root, 'app.json'));
 const sitemap = require(path.join(root, 'sitemap.json'));
@@ -13,6 +15,55 @@ assert.equal(parseInvite('https://evil.example/number-submit/' + invite), '');
 assert.equal(parseInvite('admin'), '');
 assert.equal(inviteFromOptions({scene: encodeURIComponent('invite=' + invite)}), invite);
 assert.equal(inviteFromOptions({scene: '%'}), '');
+// Boot actual app and every declared page with isolated CommonJS modules.
+// This catches missing files/imports and startup dependence on network or Babel globals;
+// it does not replace WeChat's own WXML compiler or device rendering.
+for (const pagePath of appConfig.pages) {
+  for (const extension of ['js', 'json', 'wxml', 'wxss'])
+    assert(fs.existsSync(path.join(root, pagePath + '.' + extension)), pagePath + '.' + extension);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, pagePath + '.json'))).usingComponents, {});
+}
+function boot(storageThrows) {
+  let appInstance, pageDefinition;
+  const cache = new Map();
+  const context = vm.createContext({
+    App(value) { appInstance = value; },
+    Page(value) { pageDefinition = value; },
+    getApp() { return appInstance; },
+    wx: {
+      getStorageSync() { if (storageThrows) throw new Error('storage unavailable'); return ''; },
+      request() { throw new Error('startup must not need a network request'); }
+    }
+  });
+  function load(filename) {
+    if (cache.has(filename)) return cache.get(filename).exports;
+    const module = {exports: {}};
+    cache.set(filename, module);
+    const source = fs.readFileSync(filename, 'utf8');
+    // No regenerator runtime is shipped in this native project.
+    assert(!/\basync\s+|\bawait\s+|regeneratorRuntime/.test(source), filename);
+    const factory = vm.runInContext('(function(require,module,exports){' + source + '\n})', context);
+    factory(request => load(path.resolve(path.dirname(filename), request + '.js')), module, module.exports);
+    return module.exports;
+  }
+  load(path.join(root, 'app.js'));
+  for (const pagePath of appConfig.pages) {
+    load(path.join(root, pagePath + '.js'));
+    const instance = Object.assign({}, pageDefinition, {
+      data: JSON.parse(JSON.stringify(pageDefinition.data || {})),
+      setData(value) { Object.assign(this.data, value); }
+    });
+    if (instance.onLoad) instance.onLoad({});
+    if (pagePath === appConfig.pages[0]) {
+      assert.equal(instance.data.rows.length, 1);
+      assert.equal(instance.data.entryExpanded, true);
+      assert.equal(instance.data.entryReady, false);
+      assert.equal(instance.data.submitting, false);
+    }
+  }
+}
+boot(false);
+boot(true);
 let calls = [], navigation = [], saved = {}, requests = [], privacyMode = 'allow', privacyContracts = 0;
 const app = {globalData: {lastResult: null}};
 global.getApp = () => app;
