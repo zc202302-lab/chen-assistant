@@ -5,7 +5,7 @@ let rowId = 0;
 const emptyRow = () => ({id: ++rowId, value: ''});
 const missingEntryMessage = '收集入口已失效，请重新打开小程序';
 Page({
-  data: {rows: [emptyRow()], submitting: false, error: ''},
+  data: {rows: [emptyRow()], focusedRow: null, submitting: false, error: ''},
   onLoad(options) {
     this.applyEntry(options || {}, true);
   },
@@ -28,8 +28,9 @@ Page({
     this.invite = next;
     this.explicitEntry = explicit;
     this.entryPromise = null;
-    this.setData({rows: [emptyRow()], error: ''});
+    this.resetForm();
   },
+  resetForm() { this.setData({rows: [emptyRow()], focusedRow: null, error: ''}); },
   ensureEntry() {
     if (this.invite) return Promise.resolve(this.invite);
     if (this.explicitEntry) return Promise.reject(new Error(missingEntryMessage));
@@ -55,8 +56,10 @@ Page({
     this.setData({rows, error: ''});
   },
   addRow() {
-    if (!this.data.submitting && this.data.rows.length < 100)
-      this.setData({rows: this.data.rows.concat([emptyRow()])});
+    if (!this.data.submitting && this.data.rows.length < 100) {
+      const row = emptyRow();
+      this.setData({rows: this.data.rows.concat([row]), focusedRow: row.id});
+    }
   },
   removeRow(e) {
     if (this.data.submitting) return;
@@ -67,6 +70,7 @@ Page({
     if (this.data.submitting) return;
     const numbers = this.data.rows.map(row => row.value.trim()).filter(Boolean);
     if (!numbers.length) return this.setData({error: '请至少填写一个号码'});
+    if (!this.data.rows[0].value.trim()) return this.setData({error: '请填写号码 1'});
     this.setData({submitting: true, error: ''});
     return this.ensureEntry().then(invite => submitNumbers(invite, numbers)).then(result => {
         getApp().globalData.lastResult = result;

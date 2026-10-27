@@ -3,8 +3,9 @@ const {pendingNumbers, resolveEntry} = require('../../utils/api');
 Page({
   data: {items: [], loading: true, error: '', result: ''},
   onLoad(options) { this.setData({result: options && options.result || ''}); },
-  onShow() { return this.refresh(); },
-  refresh() {
+  onShow() { return this.loadPending(); },
+  refresh() { this.setData({result: ''}); return this.loadPending(); },
+  loadPending() {
     if (this.refreshing) return;
     this.refreshing = true;
     this.setData({loading: true, error: ''});
@@ -19,6 +20,11 @@ Page({
       .then(() => { this.refreshing = false; this.setData({loading: false}); });
   },
   continueCollecting() {
+    if (typeof getCurrentPages === 'function') {
+      const pages = getCurrentPages();
+      const previous = pages[pages.length - 2];
+      if (previous && previous.route === 'pages/index/index' && typeof previous.resetForm === 'function') previous.resetForm();
+    }
     wx.navigateBack({delta: 1, fail: () => wx.redirectTo({url: '/pages/index/index'})});
   }
 });

@@ -110,6 +110,7 @@ async function main() {
   assert.equal(app.globalData.lastBatch.batch, 'batch_for_contract');
   for (let i = 0; i < 120; i++) p.addRow();
   assert.equal(p.data.rows.length, 100);
+  assert.equal(p.data.focusedRow, p.data.rows[99].id, 'adding a row focuses the new input');
   const removed = p.data.rows[8].id; p.removeRow(event(removed));
   assert.equal(p.data.rows.some(row => row.id === removed), false);
   assert.notEqual(p.data.rows[7].id, p.data.rows[8].id);
@@ -153,10 +154,16 @@ async function main() {
   const items = [{number: '13800000103', submitted_display: '10-27 15:00', is_new: false}];
   list.success({statusCode: 200, data: {ok: true, items}}); await loading;
   assert.deepEqual(pending.data.items, items);
-  const failed = pending.refresh(); await tick(); requests.shift().fail(); await failed;
+  const failed = pending.refresh();
+  assert.equal(pending.data.result, '', 'manual refresh clears the submit banner like the web link');
+  await tick(); requests.shift().fail(); await failed;
   assert.deepEqual(pending.data.items, items, 'refresh failure retains visible list');
   assert.match(pending.data.error, /网络/);
+  global.getCurrentPages = () => [Object.assign(direct, {route: 'pages/index/index'}), pending];
+  direct.changeNumber(event(direct.data.rows[0].id, '13800000999'));
   pending.continueCollecting(); assert.equal(navigation.at(-1), 'back');
+  assert.equal(direct.data.rows.length, 1); assert.equal(direct.data.rows[0].value, '');
+  delete global.getCurrentPages;
   const {submitNumbers} = require(path.join(root, 'utils/api'));
   const malformed = submitNumbers(invite, ['13800000101']); await tick();
   requests.shift().success({statusCode: 200, data: {ok: true, received: 1, added: 3, duplicates: 0}});
