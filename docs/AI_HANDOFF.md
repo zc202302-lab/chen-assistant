@@ -2,6 +2,16 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-28（Asia/Shanghai）工作模式：继续开发及按此前授权完成合并部署。活动分支 `feat/reminder-center-release`，PR [#183](https://github.com/zc202302-lab/chen-assistant/pull/183)，基线main `c2ed8223eab03dfb30ad37187675c150649f1b0e`；最后功能提交 `3b813e6c13a3cf25a7716b12233ebfca61a2fc0d`，候选Web1.7.34。尚未合并、部署，微信正式发布状态未知。旧#182已被本集成候选替代，勿重复合并。
+- 最新需求：提醒中心待处理/设置分栏，删除最近提醒；只要有任一未处理号码就保留号码提醒，全部处理后清除，不按批次清除，也不需手动已读；保留即时提醒，新增手机每日最多12个北京时间固定提醒时间点，可增删，仅有待处理事项才定时推送。
+- 接管发现并修正：新增schedule接口登记两份路由清单；点击号码通知或已读接口不再隐藏未处理号码，前端隐藏号码已读按钮；现存active号码提醒的旧read_at在核对pending时清除。更新JS/CSS资源参数1734，config/deploy候选1.7.34。iOS已送达系统通知仅在平台支持且页面刷新时尝试关闭，不能保证远程撤回。
+- 本地通过：reminders_push_contract（含读后保留、跨批次/全部处理、时间校验/CSRF、即时关闭不入队但定时可入队及去重）、architecture_governance_contract、dead_route_source_inventory、stability_contract、v12_contract、reminders_service_worker_contract、JS语法和diff检查。未改生产业务数据。Playwright Chromium下载返回损坏归档，浏览器布局/交互与iPhone后台推送尚未验收。
+- CI阻塞：前head f21d1e0ec1400a2aa60eaa77e68a7c7ff28ed78e 的validation40615110711、stability40615110795、isolation40615110729均queued；validation jobs122575652694/122575653169的runner_name为空，要求self-hosted/linux/x64/chen-assistant。可确认尚未分配执行器，不能据此断言机器离线。新head CI须实时核对，不绕过检查或改workflow降低门槛。
+- 当前目录 `/workspace/scratch/6ecb72ebd96b/chen-assistant`，临时依赖 `/tmp/chen-reminder-venv`；核心app/reminders.py、reminders.js/css/html、两份路由清单、tests/reminders_push_contract.py。唯一下一步：让现有匹配执行器领取#183最新head并完成完整CI与浏览器回归，通过后squash合并、等待生产发布链并实际核验1.7.34及提醒资源，最后手机业务验收。未拥有执行器管理/服务器登录手段，暂未执行重启或部署。
+
+## 历史快照（以下不覆盖当前状态）
+
+
 - 2026-10-28（Asia/Shanghai）用户要求继续开发微信号码收集小程序，重点是iPhone连续输入与扫码后网络错误。活动PR #181已于本轮 squash 合并main，合并提交 `4aaad90a1433d678f38bbb6f1a9897b541e0de2d`；受检head `230736a354e2e40da2f50ea1027315eb67989c3f`。
 - 候选实现：输入时只更新 `rows[index].value`，以focus/blur同步焦点，保护延迟blur；网络错误区分request合法域名、TLS、超时、离线，展示脱敏的ERR与数值错误码。保留原网页形式、无入口码/多余授权项、查看未加号码及提交后列表；不关闭微信域名校验。
 - 本轮已核验该head的完整validation/production preflight、stability、assistant-isolation均success；deploy production和promote在PR上skipped属预期。合并结果由GitHub直接返回merged:true。仅小程序代码，不涉及Web后端变更；既有生产Web 1.7.33在线核验不能证明微信真机网络成功。

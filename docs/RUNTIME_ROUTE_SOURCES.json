@@ -288,6 +288,14 @@
     "qualname": "save_preferences"
   },
   {
+    "path": "/api/reminders/schedule",
+    "methods": [
+      "POST"
+    ],
+    "source": "reminders.py",
+    "qualname": "save_schedule"
+  },
+  {
     "path": "/api/reminders/subscriptions",
     "methods": [
       "POST"
