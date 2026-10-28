@@ -18,6 +18,12 @@
       <p class="reminder-help">iPhone：在 Safari 中打开主站，选择“分享 → 添加到主屏幕”，再从主屏幕打开并开启提醒。</p>
       <p id="reminder-feedback" role="status" aria-live="polite"></p>
     </section>
+    <section class="reminder-card"><h2>定时提醒</h2>
+      <p class="reminder-help">每天按北京时间提醒。仅在存在未处理事项时推送；可以同时保留即时提醒。</p>
+      <div id="reminder-schedule-list" class="reminder-schedule-list"></div>
+      <div class="reminder-schedule-add"><input type="time" id="reminder-schedule-time" value="09:00" aria-label="新增提醒时间"><button type="button" id="reminder-schedule-add">添加时间</button></div>
+      <p id="reminder-schedule-feedback" role="status" aria-live="polite"></p>
+    </section>
     <section class="reminder-card"><h2>通知类别</h2><div id="reminder-preferences" class="reminder-preferences"></div></section>
     <section class="reminder-card"><h2>手机与浏览器设备</h2><div id="reminder-devices"></div></section>
   </div>
