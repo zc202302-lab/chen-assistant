@@ -121,6 +121,30 @@ def due_timestamp(value):
         return None
 
 
+
+def reconcile_number_reminders(conn, now=None):
+    """Resolve a number-batch notification when its own pending rows are gone.
+
+    Do not wait until the entire inbox is empty: independent submissions can
+    be completed independently, including via desktop batch receipts.
+    """
+    now = time.time() if now is None else now
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='number_inbox'").fetchone():
+        return
+    rows = conn.execute("""SELECT id,event_key FROM reminders
+        WHERE kind='number_inbox' AND resolved_at IS NULL
+        AND event_key LIKE 'number-batch:%'""").fetchall()
+    for row in rows:
+        batch = row['event_key'][len('number-batch:'):]
+        # A one-item legacy batch uses its own row ID as the event key.
+        if not conn.execute("""SELECT 1 FROM number_inbox
+            WHERE status='pending' AND (submit_batch=? OR (submit_batch='' AND CAST(id AS TEXT)=?))
+            LIMIT 1""", (batch,batch)).fetchone():
+            conn.execute('UPDATE reminders SET resolved_at=? WHERE id=? AND resolved_at IS NULL', (now,row['id']))
+            conn.execute("UPDATE push_outbox SET state='skipped' WHERE reminder_id=? AND state='pending'", (row['id'],))
+
+
+
 def collect_due(now=None):
     now = time.time() if now is None else now
     with db(immediate=True) as conn:
@@ -153,8 +177,7 @@ def collect_due(now=None):
                     event_key=f'number-batch:{key}')
             if rows:
                 conn.execute("UPDATE app_meta SET value=? WHERE key='push_number_baseline'", (str(rows[-1]['id']),))
-            if not conn.execute("SELECT 1 FROM number_inbox WHERE status='pending'").fetchone():
-                conn.execute("UPDATE reminders SET resolved_at=? WHERE kind='number_inbox' AND resolved_at IS NULL", (now,))
+            reconcile_number_reminders(conn, now)
 
 
 def validate_subscription(subscription):
@@ -238,6 +261,11 @@ def deliver_one(now=None, sender=None):
             ORDER BY o.reminder_id LIMIT 1''', (now,now)).fetchone()
         if not row:
             return False
+        # A number may be marked done after the last worker scan but before
+        # this delivery; check it again before handing off to the push service.
+        if row['kind'] == 'number_inbox':
+            reconcile_number_reminders(conn, now)
+            row = conn.execute('SELECT o.*,r.kind,r.title,r.body,r.url,r.read_at,r.resolved_at,d.subscription,d.enabled FROM push_outbox o JOIN reminders r ON r.id=o.reminder_id JOIN push_devices d ON d.id=o.device_id WHERE o.reminder_id=? AND o.device_id=?',(row['reminder_id'],row['device_id'])).fetchone()
         prefs = preferences(conn)
         if not row['enabled'] or not prefs.get('all',True) or not prefs.get(row['kind'],True) or row['read_at'] or row['resolved_at']:
             conn.execute("UPDATE push_outbox SET state='skipped' WHERE reminder_id=? AND device_id=?", (row['reminder_id'],row['device_id']))
@@ -309,6 +337,7 @@ def require_ready(request):
 def reminder_state(request: Request):
     require_ready(request)
     with db() as conn:
+        reconcile_number_reminders(conn)
         heartbeat = conn.execute("SELECT value FROM app_meta WHERE key='push_worker_heartbeat'").fetchone()
         return {'types':TYPES, 'preferences':preferences(conn), 'unread_count':unread_count(conn),
             'worker_healthy': bool(heartbeat and time.time()-float(heartbeat[0]) < 360),
@@ -317,7 +346,8 @@ def reminder_state(request: Request):
                 WHERE r.event_key LIKE 'test:%' ORDER BY r.id DESC LIMIT 30''')],
             'public_key':conn.execute("SELECT value FROM app_meta WHERE key='push_vapid_public'").fetchone()[0],
             'devices':[dict(r) for r in conn.execute('SELECT id,name,enabled,created_at,updated_at,last_sent,error FROM push_devices ORDER BY created_at DESC')],
-            'items':[dict(r) for r in conn.execute('SELECT * FROM reminders ORDER BY id DESC LIMIT 100')],
+            'items':[dict(r) for r in conn.execute('SELECT * FROM reminders WHERE resolved_at IS NULL AND read_at IS NULL ORDER BY id DESC LIMIT 100')],
+            'active_notification_ids':[r['id'] for r in conn.execute('SELECT id FROM reminders WHERE resolved_at IS NULL AND read_at IS NULL')],
             'delivery':{r['state']:r['n'] for r in conn.execute('SELECT state,COUNT(*) n FROM push_outbox GROUP BY state')}}
 
 
