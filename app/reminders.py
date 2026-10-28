@@ -8,6 +8,7 @@ import base64
 import json
 import logging
 import os
+import re
 import secrets
 import time
 from datetime import datetime, timezone
@@ -28,6 +29,9 @@ log = logging.getLogger(__name__)
 TYPES = {'customer': '客户管理', 'number_inbox': '未加号码', 'work_list': '清单',
          'task': '待办', 'windows': 'Windows Assistant', 'system': '系统提醒'}
 SCHEMA = '''
+CREATE TABLE IF NOT EXISTS reminder_schedule (
+ slot TEXT PRIMARY KEY,
+ created_at REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS reminder_preferences (
  kind TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS push_devices (
@@ -64,7 +68,7 @@ def b64(raw):
 def ensure_reminder_schema():
     with db(immediate=True) as conn:
         execute_schema(conn, SCHEMA)
-        for kind in ['all', *TYPES]:
+        for kind in ['all', 'instant', *TYPES]:
             conn.execute('INSERT OR IGNORE INTO reminder_preferences(kind) VALUES(?)', (kind,))
         # Encrypted in the existing backed-up database, so deploys/restarts keep
         # the same application-server key. No private key is committed to Git.
@@ -101,7 +105,7 @@ def publish_reminder(conn, *, kind, title, body='', url='/', event_key):
     rid = conn.execute('SELECT id FROM reminders WHERE event_key=?', (event_key,)).fetchone()[0]
     if created:
         prefs = preferences(conn)
-        if prefs.get('all', True) and prefs.get(kind, True):
+        if prefs.get('all', True) and prefs.get(kind, True) and (prefs.get('instant', True) or event_key.startswith(('scheduled:', 'test:'))):
             conn.execute('''INSERT OR IGNORE INTO push_outbox(reminder_id,device_id)
                 SELECT ?,id FROM push_devices WHERE enabled=1''', (rid,))
     return rid
@@ -168,6 +172,42 @@ def collect_due(now=None):
             if rows:
                 conn.execute("UPDATE app_meta SET value=? WHERE key='push_number_baseline'", (str(rows[-1]['id']),))
             reconcile_number_reminders(conn, now)
+
+
+def schedule_slots(conn):
+    return [r['slot'] for r in conn.execute("SELECT slot FROM reminder_schedule ORDER BY slot")]
+
+
+def collect_scheduled(now=None):
+    """Daily Asia/Shanghai digest of outstanding work, once per configured slot.
+
+    Missing the narrow delivery window skips the slot rather than waking users
+    with an unexpected late-night catch-up notification.
+    """
+    now = time.time() if now is None else now
+    local = datetime.fromtimestamp(now, ZoneInfo('Asia/Shanghai'))
+    minute = local.strftime('%H:%M')
+    with db(immediate=True) as conn:
+        if not conn.execute("SELECT 1 FROM reminder_schedule WHERE slot=?", (minute,)).fetchone():
+            return
+        prefs = preferences(conn)
+        if not prefs.get('all', True):
+            return
+        reconcile_number_reminders(conn, now)
+        waiting = conn.execute("""SELECT kind,COUNT(*) n FROM reminders
+            WHERE resolved_at IS NULL AND kind!='system'
+            AND kind NOT IN ('number_inbox') GROUP BY kind""").fetchall()
+        count = sum(r['n'] for r in waiting if prefs.get(r['kind'], True))
+        if prefs.get('number_inbox', True) and conn.execute(
+            "SELECT 1 FROM number_inbox WHERE status='pending' LIMIT 1"
+        ).fetchone():
+            count += 1
+        if count == 0:
+            return
+        key = f"scheduled:{local.date().isoformat()}:{minute}"
+        publish_reminder(conn, kind='system', title='待处理事项定时提醒',
+            body=f'目前有 {count} 类或项待处理提醒，点击查看。',
+            url='/reminders', event_key=key)
 
 
 def validate_subscription(subscription):
@@ -298,6 +338,7 @@ async def worker(stop):
             with db() as conn:
                 conn.execute("INSERT OR REPLACE INTO app_meta(key,value) VALUES('push_worker_heartbeat',?)", (str(time.time()),))
             await asyncio.to_thread(collect_due)
+            await asyncio.to_thread(collect_scheduled)
             for _ in range(20):
                 if stop.is_set() or not await asyncio.to_thread(deliver_one):
                     break
@@ -329,7 +370,7 @@ def reminder_state(request: Request):
     with db() as conn:
         reconcile_number_reminders(conn)
         heartbeat = conn.execute("SELECT value FROM app_meta WHERE key='push_worker_heartbeat'").fetchone()
-        return {'types':TYPES, 'preferences':preferences(conn), 'unread_count':unread_count(conn),
+        return {'types':TYPES, 'preferences':preferences(conn), 'schedule_slots':schedule_slots(conn), 'unread_count':unread_count(conn),
             'worker_healthy': bool(heartbeat and time.time()-float(heartbeat[0]) < 360),
             'test_deliveries':[dict(r) for r in conn.execute('''SELECT o.reminder_id,o.device_id,o.state,o.attempts,o.next_at,o.error,r.created_at
                 FROM push_outbox o JOIN reminders r ON r.id=o.reminder_id
@@ -358,7 +399,7 @@ async def check_csrf(request):
 @router.post('/api/reminders/preferences')
 async def save_preferences(request: Request):
     payload = await check_csrf(request)
-    if not payload or any(k not in ['all',*TYPES] or type(v) is not bool for k,v in payload.items()):
+    if not payload or any(k not in ['all','instant',*TYPES] or type(v) is not bool for k,v in payload.items()):
         raise HTTPException(400,'提醒类型无效')
     with db() as conn:
         for k,v in payload.items():
@@ -369,6 +410,22 @@ async def save_preferences(request: Request):
              reminder_id IN (SELECT id FROM reminders WHERE kind IN
                 (SELECT kind FROM reminder_preferences WHERE enabled=0)))''')
     return {'ok':True}
+
+
+@router.post('/api/reminders/schedule')
+async def save_schedule(request: Request):
+    payload = await check_csrf(request)
+    slots = payload.get('slots')
+    if not isinstance(slots, list) or len(slots) > 12 or any(
+        not isinstance(slot, str) or re.fullmatch(r'(?:[01][0-9]|2[0-3]):[0-5][0-9]', slot) is None
+        for slot in slots
+    ) or len(set(slots)) != len(slots):
+        raise HTTPException(400, '最多设置12个不重复的北京时间提醒点，格式为 HH:MM')
+    with db(immediate=True) as conn:
+        conn.execute('DELETE FROM reminder_schedule')
+        conn.executemany('INSERT INTO reminder_schedule(slot,created_at) VALUES(?,?)',
+                         [(slot, time.time()) for slot in slots])
+    return {'ok': True, 'slots': sorted(slots)}
 
 
 @router.post('/api/reminders/subscriptions')
