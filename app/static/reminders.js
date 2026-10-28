@@ -48,10 +48,20 @@
     if(!center)return;
     $('reminder-count').textContent=`${state.unread_count} 条未读`;
     const prefs=$('reminder-preferences'); prefs.replaceChildren();
-    for(const [kind,label] of Object.entries({all:'手机通知总开关',...state.types})) {
+    for(const [kind,label] of Object.entries({all:'手机通知总开关',instant:'有新事项即时提醒',...state.types})) {
       const wrap=el('label'), input=el('input'); input.type='checkbox'; input.checked=!!state.preferences[kind];
       input.addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{[kind]:input.checked})));
       wrap.append(input,el('span',label)); prefs.append(wrap);
+    }
+    const schedule=$('reminder-schedule-list');schedule.replaceChildren();
+    const times=state.schedule_slots||[];
+    if(!times.length)schedule.append(el('p','尚未设置定时提醒。','reminder-empty'));
+    for(const time of times){
+      const row=el('div',undefined,'reminder-schedule-row');
+      row.append(el('strong',time));
+      const remove=el('button','删除');remove.type='button';
+      remove.addEventListener('click',()=>action(()=>request('/api/reminders/schedule',{slots:times.filter(t=>t!==time)})));
+      row.append(remove);schedule.append(row);
     }
     const devices=$('reminder-devices'); devices.replaceChildren();
     if(!state.devices.length)devices.append(el('p','尚未订阅任何设备。'));
@@ -113,6 +123,15 @@
     for (const tab of center.querySelectorAll('[data-reminder-tab]'))
       tab.addEventListener('click',()=>selectTab(tab.dataset.reminderTab));
     selectTab('inbox');
+    $('reminder-schedule-add').addEventListener('click',()=>action(async()=>{
+      const time=$('reminder-schedule-time').value;
+      if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(time))throw new Error('请选择有效的提醒时间');
+      const slots=state.schedule_slots||[];
+      if(slots.includes(time))throw new Error('这个时间点已经存在');
+      if(slots.length>=12)throw new Error('最多设置12个时间点');
+      await request('/api/reminders/schedule',{slots:slots.concat(time)});
+      $('reminder-schedule-feedback').textContent='已保存：每天 '+time+'（北京时间）';
+    }));
     $('push-enable').addEventListener('click',()=>{
       // Permission must be requested directly in this click, before any await,
       // otherwise iPhone loses the required user-activation gesture.
