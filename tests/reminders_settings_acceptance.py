@@ -34,9 +34,9 @@ def main():
     stub='''(() => {
       const subscription=SUBSCRIPTION;
       window.uiPush={sub:null,permissions:[],tests:[]};
-      const makeSub=()=>({options:{},toJSON:()=>subscription,unsubscribe:async()=>{window.uiPush.sub=null;localStorage.removeItem('ui-sub');return true;}});
+      const makeSub=()=>({endpoint:subscription.endpoint,options:{},toJSON:()=>subscription,unsubscribe:async()=>{window.uiPush.sub=null;localStorage.removeItem('ui-sub');return true;}});
       if(localStorage.getItem('ui-sub'))window.uiPush.sub=makeSub();
-      const reg={getNotifications:async()=>[],addEventListener:()=>{},pushManager:{
+      const reg={update:async()=>{},getNotifications:async()=>[],addEventListener:()=>{},pushManager:{
         getSubscription:async()=>window.uiPush.sub,subscribe:async()=>{window.uiPush.sub=makeSub();localStorage.setItem('ui-sub','1');return window.uiPush.sub;}}};
       Object.defineProperty(navigator,'standalone',{value:true});
       Object.defineProperty(navigator,'serviceWorker',{value:{register:async()=>reg,ready:Promise.resolve(reg),controller:null,addEventListener:()=>{}}});
