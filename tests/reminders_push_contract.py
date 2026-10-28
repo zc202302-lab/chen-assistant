@@ -97,6 +97,20 @@ def main():
     assert len([r for r in state['items'] if r['event_key'].startswith('task:')])==1
     assert len([r for r in state['items'] if r['kind']=='number_inbox'])==1
     assert '2 个号码' in next(r['body'] for r in state['items'] if r['kind']=='number_inbox')
+    # One batch is resolved even when another batch still has pending numbers.
+    with db() as conn:
+        conn.execute("UPDATE number_inbox SET status='done',completed_at=? WHERE submit_batch='batch-test'",(now_iso(),))
+        conn.execute("INSERT INTO number_inbox(number,normalized_number,submitted_at,submit_batch) VALUES('13800138002','13800138002',?,'batch-next')",(now_iso(),))
+    collect_due()
+    refreshed=client.get('/api/reminders').json()
+    assert not any(r['event_key']=='number-batch:batch-test' for r in refreshed['items'])
+    with db() as conn:
+        original=conn.execute("SELECT resolved_at FROM reminders WHERE event_key='number-batch:batch-test'").fetchone()
+        assert original['resolved_at'] is not None
+        queued=conn.execute("SELECT COUNT(*) FROM push_outbox o JOIN reminders r ON r.id=o.reminder_id WHERE r.event_key='number-batch:batch-test' AND o.state='pending'").fetchone()[0]
+        assert queued == 0
+    assert any(r['event_key']=='number-batch:batch-next' for r in refreshed['items'])
+    assert all(r['id'] in refreshed['active_notification_ids'] for r in refreshed['items'])
     assert due_timestamp('2026-10-02')==due_timestamp('2026-10-02T09:00:00+08:00')
     with db() as conn: conn.execute('UPDATE tasks SET done=1 WHERE id=?',(tid,))
     collect_due()
