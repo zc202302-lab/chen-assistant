@@ -2,12 +2,13 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-28（Asia/Shanghai）工作模式：继续开发及按此前授权完成合并部署。活动分支 `feat/reminder-center-release`，PR [#183](https://github.com/zc202302-lab/chen-assistant/pull/183)，基线main `c2ed8223eab03dfb30ad37187675c150649f1b0e`；最后功能提交 `3b813e6c13a3cf25a7716b12233ebfca61a2fc0d`，候选Web1.7.34。尚未合并、部署，微信正式发布状态未知。旧#182已被本集成候选替代，勿重复合并。
-- 最新需求：提醒中心待处理/设置分栏，删除最近提醒；只要有任一未处理号码就保留号码提醒，全部处理后清除，不按批次清除，也不需手动已读；保留即时提醒，新增手机每日最多12个北京时间固定提醒时间点，可增删，仅有待处理事项才定时推送。
-- 接管发现并修正：新增schedule接口登记两份路由清单；点击号码通知或已读接口不再隐藏未处理号码，前端隐藏号码已读按钮；现存active号码提醒的旧read_at在核对pending时清除。更新JS/CSS资源参数1734，config/deploy候选1.7.34。iOS已送达系统通知仅在平台支持且页面刷新时尝试关闭，不能保证远程撤回。
-- 本地通过：reminders_push_contract（含读后保留、跨批次/全部处理、时间校验/CSRF、即时关闭不入队但定时可入队及去重）、architecture_governance_contract、dead_route_source_inventory、stability_contract、v12_contract、reminders_service_worker_contract、JS语法和diff检查。未改生产业务数据。Playwright Chromium下载返回损坏归档，浏览器布局/交互与iPhone后台推送尚未验收。
-- CI阻塞：前head f21d1e0ec1400a2aa60eaa77e68a7c7ff28ed78e 的validation40615110711、stability40615110795、isolation40615110729均queued；validation jobs122575652694/122575653169的runner_name为空，要求self-hosted/linux/x64/chen-assistant。可确认尚未分配执行器，不能据此断言机器离线。新head CI须实时核对，不绕过检查或改workflow降低门槛。
-- 当前目录 `/workspace/scratch/6ecb72ebd96b/chen-assistant`，临时依赖 `/tmp/chen-reminder-venv`；核心app/reminders.py、reminders.js/css/html、两份路由清单、tests/reminders_push_contract.py。唯一下一步：让现有匹配执行器领取#183最新head并完成完整CI与浏览器回归，通过后squash合并、等待生产发布链并实际核验1.7.34及提醒资源，最后手机业务验收。未拥有执行器管理/服务器登录手段，暂未执行重启或部署。
+- 2026-10-28（Asia/Shanghai）本轮提醒功能已合并并上线Web1.7.34。用户已明确授权向zc202302-lab/chen-assistant推送代码/交接并在检查通过后合并部署。PR #183已squash合并，main功能提交e08d9ba0703b1eb2e5e62ceb7f1d0a2259680110；受检候选f36627a3e48bb008beb72979a95f0be06157fde5。旧PR #182已关闭，勿重复合并。
+- 已实现：提醒中心待处理/设置分栏，删除最近提醒；有任一未处理号码就保留号码提醒，不区分批次，不因点击/已读隐藏，全部处理完成后清除。保留即时提醒，新增每日最多12个可增删北京时间固定时间点，仅有待处理事项时推送，同一日期/时间点去重。两份路由清单已登记，JS/CSS参数1734，config/deploy版本1.7.34。
+- PR最终head完整validation40617929067（validate122584689040、production preflight122584689322）、stability40617928909、isolation40617929025全部success，包含浏览器回归。main完整发布链40619369938全部success：validate122589364134、production stability122593956087、deploy122594093216；main独立stability40619369923及workspace语法40619370024均success。功能源码与受检候选完全一致，最终交接为仅文档提交。
+- 部署证据须区分：deploy job成功退出但实际日志明确因本机无生产访问/SSH配置不全而交由生产chen-assistant-auto-deploy.timer，并非CI直接SSH发布。实际公网PWA workflow40619370022/job122589364413成功；本地scripts/check_pwa_production.py亦退出0并返回ONLINE VERIFIED v1.7.34，验证版本、精确工作/清单/账户/推送资源、账户鉴权、公开找回及号码域名边界。由此确认1.7.34实际上线，不推断生产精确backend SHA。
+- 本地提醒契约（跨批次全局未处理规则、点击后保留、全部处理清除、定时配置CSRF/非法时间、关闭即时但允许定时入队与去重）、架构治理/路由、稳定性、v12、Service Worker、JS语法及diff检查均通过。没有向生产提交测试号码或发送测试推送。
+- 手机真实后台推送/多个时间点尚未由用户验收；平台支持且页面刷新时尝试关闭过期系统通知，不能保证iOS已送达通知远程撤回。用户已在对话确认号码收集小程序审核通过且成功发布；本轮发布为主站PWA提醒功能，不冒称重新上传发布小程序。
+- 工作目录/workspace/scratch/6ecb72ebd96b/chen-assistant，临时依赖/tmp/chen-reminder-venv。命令行git push无登录凭据，已通过连接的GitHub Git Data工具上传并核对tree d0f9c38091f531fc7e086584dec943b5470c7266。唯一下一步：用户刷新主站提醒中心，在提醒设置添加需要的北京时间点，保留或关闭即时提醒，按手机实际到达与号码处理反馈继续；无未合并功能WIP。
 
 ## 历史快照（以下不覆盖当前状态）
 
