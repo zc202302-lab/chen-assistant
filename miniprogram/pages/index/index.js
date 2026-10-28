@@ -49,11 +49,31 @@ Page({
       wx.navigateTo({url: '/pages/pending/pending'});
     }).catch(error => this.setData({error: error.message}));
   },
+  numberIndex(e) {
+    return this.data.rows.findIndex(row => row.id === Number(e.currentTarget.dataset.id));
+  },
+  focusNumber(e) {
+    const index = this.numberIndex(e);
+    if (index >= 0 && this.data.focusedRow !== this.data.rows[index].id)
+      this.setData({focusedRow: this.data.rows[index].id});
+  },
+  blurNumber(e) {
+    const index = this.numberIndex(e);
+    if (index < 0) return;
+    const patch = {};
+    if (e.detail && typeof e.detail.value === 'string') patch['rows[' + index + '].value'] = e.detail.value;
+    if (this.data.focusedRow === this.data.rows[index].id) patch.focusedRow = null;
+    if (Object.keys(patch).length) this.setData(patch);
+  },
   changeNumber(e) {
     if (this.data.submitting) return;
-    const rows = this.data.rows.map(row => row.id === Number(e.currentTarget.dataset.id)
-      ? Object.assign({}, row, {value: e.detail.value}) : row);
-    this.setData({rows, error: ''});
+    const index = this.numberIndex(e);
+    if (index < 0) return;
+    // Keep the native input instance and its current focus/cursor intact on iOS.
+    const patch = {};
+    patch['rows[' + index + '].value'] = e.detail.value;
+    if (this.data.error) patch.error = '';
+    this.setData(patch);
   },
   addRow() {
     if (!this.data.submitting && this.data.rows.length < 100) {
