@@ -35,7 +35,7 @@
   async function clearStaleNotifications() {
     if (!reg || !state || typeof reg.getNotifications !== 'function') return;
     try {
-      const active = new Set((state.items || []).filter(item => !item.resolved_at && !item.read_at).map(item => String(item.id)));
+      const active = new Set((state.active_notification_ids || []).map(id => String(id)));
       const notifications = await reg.getNotifications();
       for (const notification of notifications) {
         const match = /^chen-reminder-(\\d+)$/.exec(notification.tag || '');
