@@ -76,15 +76,47 @@ global.wx = {
 let definition;
 global.Page = value => { definition = value; };
 require(path.join(root, 'pages/index/index.js'));
+function applyData(instance, update) {
+  instance.patches = instance.patches || [];
+  instance.patches.push(update);
+  for (const [key, value] of Object.entries(update)) {
+    const parts = key.replace(/\[(\d+)\]/g, '.$1').split('.');
+    let target = instance.data;
+    for (const part of parts.slice(0, -1)) target = target[part];
+    target[parts.at(-1)] = value;
+  }
+}
 function page(options = {invite}) {
   const instance = {...definition, data: JSON.parse(JSON.stringify(definition.data)),
-    setData(update) { Object.assign(this.data, update); }};
+    setData(update) { applyData(this, update); }};
   instance.onLoad(options);
   return instance;
 }
 const event = (id, value) => ({currentTarget: {dataset: {id}}, detail: {value}});
 const tick = () => new Promise(resolve => setImmediate(resolve));
 async function main() {
+  const typing = page();
+  const firstId = typing.data.rows[0].id;
+  typing.focusNumber(event(firstId, ''));
+  typing.patches = [];
+  const fullNumber = '13800000101';
+  for (let i = 1; i <= fullNumber.length; i++) {
+    typing.changeNumber(event(firstId, fullNumber.slice(0, i)));
+    assert.equal(typing.data.focusedRow, firstId, 'input patch must not reset user focus');
+  }
+  assert.equal(typing.data.rows[0].value, fullNumber);
+  assert(typing.patches.every(patch => !Object.hasOwn(patch, 'rows') && !Object.hasOwn(patch, 'focusedRow')),
+    'typing must patch only the current value, never replace input list or reset focus');
+  typing.addRow();
+  const secondId = typing.data.rows[1].id;
+  typing.blurNumber(event(firstId, fullNumber));
+  assert.equal(typing.data.focusedRow, secondId, 'late blur of old row must not blur a newly added row');
+  typing.focusNumber(event(secondId, ''));
+  typing.changeNumber(event(secondId, '13900000102'));
+  assert.equal(typing.data.rows[0].value, fullNumber);
+  assert.equal(typing.data.rows[1].value, '13900000102');
+  const bound = fs.readFileSync(path.join(root, 'pages/index/index.wxml'), 'utf8');
+  assert(bound.includes('bindfocus="focusNumber"') && bound.includes('bindblur="blurNumber"'));
   const p = page();
   await p.submit();
   assert.equal(calls.length, 0, 'empty input must not write');
@@ -168,6 +200,17 @@ async function main() {
   const malformed = submitNumbers(invite, ['13800000101']); await tick();
   requests.shift().success({statusCode: 200, data: {ok: true, received: 1, added: 3, duplicates: 0}});
   await assert.rejects(malformed);
+  const {resolveEntry} = require(path.join(root, 'utils/api'));
+  for (const [reason, expected] of [
+    [{errMsg: 'request:fail url not in domain list', errno: 600002}, /request 合法域名.*600002/],
+    [{errMsg: 'request:fail ssl hand shake error'}, /HTTPS 证书/],
+    [{errMsg: 'request:fail timeout'}, /超时/],
+    [{errMsg: 'request:fail net::ERR_CONNECTION_RESET'}, /ERR_CONNECTION_RESET/],
+    [{errMsg: 'request:fail net::ERR_INTERNET_DISCONNECTED'}, /网络不可用/]
+  ]) {
+    const failure = resolveEntry(); await tick(); requests.shift().fail(reason);
+    await assert.rejects(failure, expected);
+  }
   console.log('native mini program passed: direct entry, invitation isolation, submission, dedupe, double tap, failures, shared entry, pending list, batch, refresh and back');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

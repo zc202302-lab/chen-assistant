@@ -6,7 +6,7 @@
       <view class="number-inputs">
         <view class="number-input-row" wx:for="{{rows}}" wx:key="id">
           <view class="number-label">号码 {{index + 1}}</view>
-          <input class="number-input" type="text" focus="{{focusedRow === item.id}}" value="{{item.value}}" data-id="{{item.id}}" bindinput="changeNumber" disabled="{{submitting}}" maxlength="64" placeholder="请输入号码" placeholder-class="number-placeholder" />
+          <input class="number-input" type="text" focus="{{focusedRow === item.id}}" value="{{item.value}}" data-id="{{item.id}}" bindinput="changeNumber" bindfocus="focusNumber" bindblur="blurNumber" disabled="{{submitting}}" maxlength="64" placeholder="请输入号码" placeholder-class="number-placeholder" />
         </view>
       </view>
       <button class="number-add-button" bindtap="addRow" disabled="{{submitting || rows.length >= 100}}" aria-label="增加下一条号码">＋</button>

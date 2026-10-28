@@ -1,5 +1,24 @@
 'use strict';
 const BASE_URL = 'https://jituan.zbassistant.site';
+function networkError(reason, retainsInput) {
+  const message = reason && typeof reason.errMsg === 'string' ? reason.errMsg : '';
+  let text = '网络连接失败，请稍后重试';
+  if (/not in domain list|domain.*not.*(?:allowed|valid)|合法域名/i.test(message))
+    text = '微信未允许连接收集服务器，请管理员配置 request 合法域名：jituan.zbassistant.site';
+  else if (/ssl|certificate|cert_|tls/i.test(message))
+    text = '微信与收集服务器的 HTTPS 证书连接失败，请联系管理员检查';
+  else if (/timeout|timed out/i.test(message))
+    text = '连接收集服务器超时，请稍后重试';
+  else if (/network.*(?:unavailable|offline)|internet.*disconnected|not connected/i.test(message))
+    text = '当前网络不可用，请检查手机网络后重试';
+  const nativeCode = message.match(/\bERR_[A-Z0-9_]{1,60}\b/);
+  if (nativeCode) text += '（' + nativeCode[0] + '）';
+  // Keep bounded diagnostic codes, never headers, credentials or response bodies.
+  const code = reason && (reason.errno || reason.errCode);
+  if (typeof code === 'number' && Number.isFinite(code)) text += '（微信错误码 ' + code + '）';
+  if (retainsInput) text += '；已填写的号码会保留';
+  return new Error(text);
+}
 function submitNumbers(invite, numbers) {
   return new Promise((resolve, reject) => {
     wx.request({
@@ -18,7 +37,7 @@ function submitNumbers(invite, numbers) {
           reject(new Error(message));
         }
       },
-      fail() { reject(new Error('网络连接失败，请稍后重试；已填写的号码会保留')); }
+      fail(reason) { reject(networkError(reason, true)); }
     });
   });
 }
@@ -33,7 +52,7 @@ function getJSON(path, invite) {
       if (response.statusCode === 200 && data.ok === true) resolve(data);
       else reject(new Error(typeof data.detail === 'string' ? data.detail : '加载失败，请稍后重试'));
     },
-    fail() { reject(new Error('网络连接失败，请稍后重试')); }
+    fail(reason) { reject(networkError(reason, false)); }
   }));
 }
 function resolveEntry() {
