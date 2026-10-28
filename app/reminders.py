@@ -123,25 +123,15 @@ def due_timestamp(value):
 
 
 def reconcile_number_reminders(conn, now=None):
-    """Resolve a number-batch notification when its own pending rows are gone.
-
-    Do not wait until the entire inbox is empty: independent submissions can
-    be completed independently, including via desktop batch receipts.
-    """
+    """Keep number reminders active while any number remains pending."""
     now = time.time() if now is None else now
     if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='number_inbox'").fetchone():
         return
-    rows = conn.execute("""SELECT id,event_key FROM reminders
-        WHERE kind='number_inbox' AND resolved_at IS NULL
-        AND event_key LIKE 'number-batch:%'""").fetchall()
-    for row in rows:
-        batch = row['event_key'][len('number-batch:'):]
-        # A one-item legacy batch uses its own row ID as the event key.
-        if not conn.execute("""SELECT 1 FROM number_inbox
-            WHERE status='pending' AND (submit_batch=? OR (submit_batch='' AND CAST(id AS TEXT)=?))
-            LIMIT 1""", (batch,batch)).fetchone():
-            conn.execute('UPDATE reminders SET resolved_at=? WHERE id=? AND resolved_at IS NULL', (now,row['id']))
-            conn.execute("UPDATE push_outbox SET state='skipped' WHERE reminder_id=? AND state='pending'", (row['id'],))
+    if conn.execute("SELECT 1 FROM number_inbox WHERE status='pending' LIMIT 1").fetchone():
+        return
+    conn.execute("UPDATE reminders SET resolved_at=? WHERE kind='number_inbox' AND resolved_at IS NULL", (now,))
+    conn.execute("""UPDATE push_outbox SET state='skipped' WHERE state='pending'
+        AND reminder_id IN (SELECT id FROM reminders WHERE kind='number_inbox' AND resolved_at IS NOT NULL)""")
 
 
 
