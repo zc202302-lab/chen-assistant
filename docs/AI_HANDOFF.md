@@ -2,6 +2,8 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-10-28 用户新增提醒中心优化：设置独立一栏、删除最近提醒、已处理号码不再留作待处理手机提醒。活动PR [#182](https://github.com/zc202302-lab/chen-assistant/pull/182)，分支 `feat/reminder-settings-and-resolution`，最新功能提交 `564ddcbc047495af9d269e5b9cd71b3cb3f2c38a`；仅PR未部署。已实现「待处理提醒／提醒设置」两栏，去掉「最近提醒」，按提交批次核对pending，resolved后取消未发送推送，并在app打开时尽力关闭支持管理的已处理通知。已发送到iOS通知中心的通知不能承诺在关闭网页时远程撤回。CI尚在运行，移动端待验收。唯一下一步：检查PR #182最新head的完整CI，修复失败后再合并部署并实机验证。
+
 - 2026-10-28（Asia/Shanghai）用户要求继续开发微信号码收集小程序，重点是iPhone连续输入与扫码后网络错误。活动PR #181已于本轮 squash 合并main，合并提交 `4aaad90a1433d678f38bbb6f1a9897b541e0de2d`；受检head `230736a354e2e40da2f50ea1027315eb67989c3f`。
 - 候选实现：输入时只更新 `rows[index].value`，以focus/blur同步焦点，保护延迟blur；网络错误区分request合法域名、TLS、超时、离线，展示脱敏的ERR与数值错误码。保留原网页形式、无入口码/多余授权项、查看未加号码及提交后列表；不关闭微信域名校验。
 - 本轮已核验该head的完整validation/production preflight、stability、assistant-isolation均success；deploy production和promote在PR上skipped属预期。合并结果由GitHub直接返回merged:true。仅小程序代码，不涉及Web后端变更；既有生产Web 1.7.33在线核验不能证明微信真机网络成功。
