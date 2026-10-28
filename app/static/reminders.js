@@ -23,6 +23,26 @@
     if (badge) { badge.textContent=count ? String(count) : ''; badge.hidden=!count; }
     if ('setAppBadge' in navigator) { (count ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(()=>{}); }
   }
+  function selectTab(tab) {
+    if (!center) return;
+    for (const name of ['inbox','settings']) {
+      center.querySelector('[data-reminder-panel="'+name+'"]').hidden = tab !== name;
+      const button = center.querySelector('[data-reminder-tab="'+name+'"]');
+      button.classList.toggle('active', tab === name);
+      button.setAttribute('aria-pressed', String(tab === name));
+    }
+  }
+  async function clearStaleNotifications() {
+    if (!reg || !state || typeof reg.getNotifications !== 'function') return;
+    try {
+      const active = new Set((state.items || []).filter(item => !item.resolved_at && !item.read_at).map(item => String(item.id)));
+      const notifications = await reg.getNotifications();
+      for (const notification of notifications) {
+        const match = /^chen-reminder-(\\d+)$/.exec(notification.tag || '');
+        if (match && !active.has(match[1])) notification.close();
+      }
+    } catch (_) { /* Platforms may not expose delivered notification management. */ }
+  }
   function render() {
     updateBadge(state.unread_count);
     if(!center)return;
@@ -50,8 +70,9 @@
       row.append(copy,actions);devices.append(row);
     }
     const items=$('reminder-items');items.replaceChildren();
-    if(!state.items.length)items.append(el('p','暂无提醒。'));
-    for(const item of state.items) {
+    const activeItems=state.items.filter(item=>!item.resolved_at && !item.read_at);
+    if(!activeItems.length)items.append(el('p','目前没有待处理提醒。','reminder-empty'));
+    for(const item of activeItems) {
       const row=el('div',undefined,'reminder-row'+(item.read_at||item.resolved_at?' read':'')),copy=el('div',undefined,'reminder-copy');
       const link=el('a',item.title);link.href=item.url;
       link.addEventListener('click',async e=>{e.preventDefault();try{await request(`/api/reminders/${item.id}/read`,{});}catch{} location.assign(item.url);});
@@ -85,10 +106,13 @@
     $('push-test-lock').disabled=$('push-test').disabled;
     $('push-disable').disabled=busy||!deviceId;
   }
-  async function refresh() {state=await request('/api/reminders');render();}
+  async function refresh() {state=await request('/api/reminders');render();await clearStaleNotifications();}
   async function action(fn) {if(busy)return;busy=true;status();try{await fn();await refresh();}catch(e){feedback(e.message);await refresh().catch(()=>{});}finally{busy=false;status();}}
   function keyBytes(value) {const raw=atob(value.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-value.length%4)%4));return Uint8Array.from(raw,c=>c.charCodeAt(0));}
   if(center) {
+    for (const tab of center.querySelectorAll('[data-reminder-tab]'))
+      tab.addEventListener('click',()=>selectTab(tab.dataset.reminderTab));
+    selectTab('inbox');
     $('push-enable').addEventListener('click',()=>{
       // Permission must be requested directly in this click, before any await,
       // otherwise iPhone loses the required user-activation gesture.
@@ -120,7 +144,7 @@
         if(sub) {
           const data=await request('/api/reminders/subscription-state',{endpoint:sub.endpoint});deviceId=data.device_id;
         }
-        render();
+        render();await clearStaleNotifications();
       }
     }catch(e){feedback(e.message);}
   })();
