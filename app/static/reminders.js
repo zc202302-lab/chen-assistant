@@ -38,7 +38,7 @@
       const active = new Set((state.active_notification_ids || []).map(id => String(id)));
       const notifications = await reg.getNotifications();
       for (const notification of notifications) {
-        const match = /^chen-reminder-(\\d+)$/.exec(notification.tag || '');
+        const match = /^chen-reminder-(\d+)$/.exec(notification.tag || '');
         if (match && !active.has(match[1])) notification.close();
       }
     } catch (_) { /* Platforms may not expose delivered notification management. */ }
@@ -125,7 +125,7 @@
     selectTab('inbox');
     $('reminder-schedule-add').addEventListener('click',()=>action(async()=>{
       const time=$('reminder-schedule-time').value;
-      if(!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(time))throw new Error('请选择有效的提醒时间');
+      if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))throw new Error('请选择有效的提醒时间');
       const slots=state.schedule_slots||[];
       if(slots.includes(time))throw new Error('这个时间点已经存在');
       if(slots.length>=12)throw new Error('最多设置12个时间点');
