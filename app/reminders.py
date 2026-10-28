@@ -134,6 +134,7 @@ def reconcile_number_reminders(conn, now=None):
     if conn.execute("SELECT 1 FROM number_inbox WHERE status='pending' LIMIT 1").fetchone():
         return
     conn.execute("UPDATE reminders SET resolved_at=? WHERE kind='number_inbox' AND resolved_at IS NULL", (now,))
+    conn.execute("UPDATE reminders SET resolved_at=? WHERE event_key LIKE 'scheduled:%' AND resolved_at IS NULL AND NOT EXISTS (SELECT 1 FROM reminders WHERE kind NOT IN ('number_inbox','system') AND resolved_at IS NULL)", (now,))
     conn.execute("""UPDATE push_outbox SET state='skipped' WHERE state='pending'
         AND reminder_id IN (SELECT id FROM reminders WHERE kind='number_inbox' AND resolved_at IS NOT NULL)""")
 
@@ -204,6 +205,8 @@ def collect_scheduled(now=None):
             count += 1
         if count == 0:
             return
+        # The digest represents outstanding work, not an action requiring a
+        # separate manual acknowledgement after the underlying work is done.
         key = f"scheduled:{local.date().isoformat()}:{minute}"
         publish_reminder(conn, kind='system', title='待处理事项定时提醒',
             body=f'目前有 {count} 类或项待处理提醒，点击查看。',
