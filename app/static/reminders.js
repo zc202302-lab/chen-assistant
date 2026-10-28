@@ -48,30 +48,30 @@
     if(!center)return;
     $('reminder-count').textContent=`${state.unread_count} 条未读`;
     const prefs=$('reminder-preferences'); prefs.replaceChildren();
-    for(const [kind,label] of Object.entries({all:'手机通知总开关',instant:'有新事项即时提醒',...state.types})) {
-      const wrap=el('label'), input=el('input'); input.type='checkbox'; input.checked=!!state.preferences[kind];
+    for(const [kind,label] of Object.entries({all:'手机通知',instant:'即时提醒',...state.types})) {
+      const wrap=el('label'), input=el('input'); input.type='checkbox'; input.className='reminder-switch'; input.setAttribute('role','switch'); input.checked=!!state.preferences[kind];
       input.addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{[kind]:input.checked})));
-      wrap.append(input,el('span',label)); prefs.append(wrap);
+      wrap.append(el('span',label),input); prefs.append(wrap);
     }
     const schedule=$('reminder-schedule-list');schedule.replaceChildren();
     const times=state.schedule_slots||[];
-    if(!times.length)schedule.append(el('p','尚未设置定时提醒。','reminder-empty'));
+    if(!times.length)schedule.append(el('p','暂无时间','reminder-empty'));
     for(const time of times){
       const row=el('div',undefined,'reminder-schedule-row');
       row.append(el('strong',time));
-      const remove=el('button','删除');remove.type='button';
+      const remove=el('button','×','reminder-remove');remove.type='button';remove.setAttribute('aria-label','删除 '+time);
       remove.addEventListener('click',()=>action(()=>request('/api/reminders/schedule',{slots:times.filter(t=>t!==time)})));
       row.append(remove);schedule.append(row);
     }
     const devices=$('reminder-devices'); devices.replaceChildren();
-    if(!state.devices.length)devices.append(el('p','尚未订阅任何设备。'));
+    if(!state.devices.length)devices.append(el('p','暂无设备'));
     for(const d of state.devices) {
       const row=el('div',undefined,'reminder-row'), copy=el('div',undefined,'reminder-copy');
-      copy.append(el('strong',d.name+(d.id===deviceId?'（本机）':'')),el('small',`${d.enabled?'已开启':'已关闭'} · 最近发送：${date(d.last_sent)}`));
+      copy.append(el('strong',d.name+(d.id===deviceId?'（本机）':'')),el('small',d.enabled?'已开启':'已关闭'));
       if(d.error)copy.append(el('small',d.error,'reminder-error'));
       const actions=el('div',undefined,'reminder-device-actions');
       for(const [label,body] of [[d.enabled?'关闭':'开启',{enabled:!d.enabled}],['移除',{delete:true}]]) {
-        const button=el('button',label); button.type='button';
+        const button=el('button',body.delete?'×':undefined,body.delete?'reminder-remove':'reminder-switch'); button.type='button';button.setAttribute('aria-label',d.name+(body.delete?'：移除':'：通知'));if(!body.delete){button.setAttribute('role','switch');button.setAttribute('aria-checked',String(!!d.enabled));}
         button.addEventListener('click',()=>action(async()=>{
           await request(`/api/reminders/devices/${encodeURIComponent(d.id)}`,body);
           if(body.delete && d.id===deviceId) { const sub=await reg?.pushManager.getSubscription(); if(sub)await sub.unsubscribe(); deviceId=null; }
@@ -92,32 +92,33 @@
       items.append(row);
     }
     status();
-    const latest=(state.test_deliveries||[]).find(d=>d.device_id===deviceId);
-    let delivery='尚未测试后台推送。';
+    const latest=(state.test_deliveries||[]).find(d=>d.device_id===deviceId && Date.now()/1000-d.created_at<300);
+    let delivery='';
     if(latest) {
-      if(latest.state==='sent')delivery='推送服务已接受测试通知。若手机仍未显示，请检查系统通知、锁屏显示和专注模式；这不代表手机已确认收到。';
-      else if(latest.error)delivery=`发送未成功：${latest.error}（已尝试 ${latest.attempts} 次）`;
-      else if(latest.state==='pending')delivery=latest.next_at>Date.now()/1000?'测试已安排，请返回主屏幕并锁屏等候。':'等待后台发送。';
-      else if(latest.state==='skipped')delivery='测试被跳过：提醒已读、已处理，或通知开关已关闭。';
-      else delivery='订阅已失效，请重新开启手机提醒。';
+      if(latest.state==='sent')delivery='测试已提交推送';
+      else if(latest.error)delivery=`发送失败：${latest.error}`;
+      else if(latest.state==='pending')delivery=latest.next_at>Date.now()/1000?'测试已安排 · 20秒':'等待发送';
+      else if(latest.state==='skipped')delivery='测试已跳过';
+      else delivery='订阅失效，请重新开启';
     }
-    if(state.worker_healthy===false)delivery+=' 后台发送程序尚未运行或运行异常。';
+    if(state.worker_healthy===false)delivery='推送服务异常';
     $('push-delivery').textContent=delivery;
   }
   function status() {
-    let message='点击开启手机提醒，允许接收通知。';
-    if(ios&&!standalone)message='请先添加到主屏幕，再从主屏幕打开晨的助手。';
-    else if(!supported)message='当前环境不支持推送，请使用 HTTPS 和支持通知的浏览器。';
-    else if(Notification.permission==='denied')message='通知权限已关闭，请在系统设置中允许晨的助手通知。';
-    else if(deviceId)message=state.devices.find(d=>d.id===deviceId)?.enabled?'本机已订阅。点击锁屏测试，然后返回主屏幕并锁屏。':'本机提醒已关闭，点击开启手机提醒可恢复。';
+    const enabled=!!state?.devices.find(d=>d.id===deviceId)?.enabled;
+    let message=enabled?'已开启':'未开启';
+    if(ios&&!standalone)message='请从主屏幕打开';
+    else if(!supported)message='当前浏览器不支持通知';
+    else if(Notification.permission==='denied')message='请在系统设置中允许通知';
     $('push-status').textContent=message;
-    $('push-enable').disabled=busy||!state||!supported||(ios&&!standalone)||Notification.permission==='denied';
-    $('push-test').disabled=busy||!deviceId||!state.devices.find(d=>d.id===deviceId)?.enabled||!state.preferences.all||!state.preferences.system;
+    $('push-enable').setAttribute('aria-checked',String(enabled));
+    $('push-enable').disabled=busy||!state||(!enabled&&(!supported||(ios&&!standalone)||Notification.permission==='denied'));
+    $('push-test').disabled=busy||!enabled||!state.preferences.all||!state.preferences.system;
     $('push-test-lock').disabled=$('push-test').disabled;
-    $('push-disable').disabled=busy||!deviceId;
+    for(const control of center.querySelectorAll('#reminder-preferences input, #reminder-devices button, #reminder-schedule-list button, #reminder-schedule-add'))control.disabled=busy;
   }
   async function refresh() {state=await request('/api/reminders');render();await clearStaleNotifications();}
-  async function action(fn) {if(busy)return;busy=true;status();try{await fn();await refresh();}catch(e){feedback(e.message);await refresh().catch(()=>{});}finally{busy=false;status();}}
+  async function action(fn) {if(busy)return;busy=true;feedback('');$('reminder-schedule-feedback').textContent='';status();try{await fn();await refresh();}catch(e){feedback(e.message);await refresh().catch(()=>{});}finally{busy=false;status();}}
   function keyBytes(value) {const raw=atob(value.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-value.length%4)%4));return Uint8Array.from(raw,c=>c.charCodeAt(0));}
   if(center) {
     for (const tab of center.querySelectorAll('[data-reminder-tab]'))
@@ -130,9 +131,13 @@
       if(slots.includes(time))throw new Error('这个时间点已经存在');
       if(slots.length>=12)throw new Error('最多设置12个时间点');
       await request('/api/reminders/schedule',{slots:slots.concat(time)});
-      $('reminder-schedule-feedback').textContent='已保存：每天 '+time+'（北京时间）';
+      $('reminder-schedule-feedback').textContent='已添加';
     }));
     $('push-enable').addEventListener('click',()=>{
+      if(state?.devices.find(d=>d.id===deviceId)?.enabled){
+        action(async()=>{await request(`/api/reminders/devices/${encodeURIComponent(deviceId)}`,{delete:true});const sub=await reg?.pushManager.getSubscription();if(sub)await sub.unsubscribe();deviceId=null;});
+        return;
+      }
       // Permission must be requested directly in this click, before any await,
       // otherwise iPhone loses the required user-activation gesture.
       const permission=Notification.requestPermission();
@@ -144,12 +149,11 @@
         if(sub && sub.options.applicationServerKey && !equalKey(new Uint8Array(sub.options.applicationServerKey),keyBytes(state.public_key))) {await sub.unsubscribe();sub=null;}
         sub=sub||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:keyBytes(state.public_key)});
         const result=await request('/api/reminders/subscriptions',{subscription:sub.toJSON(),name:ios?'iPhone 主屏幕':(/Android/.test(navigator.userAgent)?'Android 手机':'桌面浏览器')});
-        deviceId=result.device_id;feedback('手机提醒已开启。请发送测试提醒确认。');
+        deviceId=result.device_id;
       });
     });
-    $('push-test').addEventListener('click',()=>action(async()=>{const r=await request('/api/reminders/test',{device_id:deviceId});feedback(r.message);}));
-    $('push-test-lock').addEventListener('click',()=>action(async()=>{const r=await request('/api/reminders/test',{device_id:deviceId,delay:20});feedback(r.message);}));
-    $('push-disable').addEventListener('click',()=>action(async()=>{await request(`/api/reminders/devices/${encodeURIComponent(deviceId)}`,{delete:true});const sub=await reg?.pushManager.getSubscription();if(sub)await sub.unsubscribe();deviceId=null;feedback('本机提醒已关闭。');}));
+    $('push-test').addEventListener('click',()=>action(async()=>{await request('/api/reminders/test',{device_id:deviceId});}));
+    $('push-test-lock').addEventListener('click',()=>action(async()=>{await request('/api/reminders/test',{device_id:deviceId,delay:20});}));
   }
   function equalKey(a,b){return a.length===b.length&&a.every((v,i)=>v===b[i]);}
   (async()=>{

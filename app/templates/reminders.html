@@ -11,21 +11,21 @@
     <section class="reminder-card"><h2>待处理提醒</h2><div id="reminder-items"></div></section>
   </div>
   <div data-reminder-panel="settings" hidden>
-    <section class="reminder-card"><h2>手机提醒</h2>
-      <p id="push-status" role="status">正在检查设备…</p>
-      <div class="reminder-actions"><button type="button" id="push-enable" disabled>开启手机提醒</button><button type="button" id="push-test" disabled>发送测试提醒</button><button type="button" id="push-test-lock" disabled>20 秒后锁屏测试</button><button type="button" id="push-disable" disabled>关闭本机提醒</button></div>
-      <p id="push-delivery" role="status" aria-live="polite">正在读取后台发送结果…</p>
-      <p class="reminder-help">iPhone：在 Safari 中打开主站，选择“分享 → 添加到主屏幕”，再从主屏幕打开并开启提醒。</p>
-      <p id="reminder-feedback" role="status" aria-live="polite"></p>
+    <section class="reminder-card">
+      <div class="reminder-section-heading"><h2>手机提醒</h2><button type="button" id="push-enable" class="reminder-switch" role="switch" aria-label="本机通知" aria-checked="false" disabled></button></div>
+      <p id="push-status" class="reminder-status" role="status">检查中</p>
+      <div class="reminder-actions"><button type="button" id="push-test" disabled>测试提醒</button><button type="button" id="push-test-lock" disabled>锁屏测试 · 20秒</button></div>
+      <p id="push-delivery" class="reminder-status" role="status" aria-live="polite"></p>
+      <p id="reminder-feedback" class="reminder-status" role="status" aria-live="polite"></p>
     </section>
-    <section class="reminder-card"><h2>定时提醒</h2>
-      <p class="reminder-help">每天按北京时间提醒。仅在存在未处理事项时推送；可以同时保留即时提醒。</p>
+    <section class="reminder-card">
+      <div class="reminder-section-heading"><h2>定时提醒</h2><span class="reminder-caption">北京时间</span></div>
       <div id="reminder-schedule-list" class="reminder-schedule-list"></div>
-      <div class="reminder-schedule-add"><input type="time" id="reminder-schedule-time" value="09:00" aria-label="新增提醒时间"><button type="button" id="reminder-schedule-add">添加时间</button></div>
-      <p id="reminder-schedule-feedback" role="status" aria-live="polite"></p>
+      <div class="reminder-schedule-add"><input type="time" id="reminder-schedule-time" value="09:00" aria-label="新增提醒时间"><button type="button" id="reminder-schedule-add">添加</button></div>
+      <p id="reminder-schedule-feedback" class="reminder-status" role="status" aria-live="polite"></p>
     </section>
     <section class="reminder-card"><h2>通知类别</h2><div id="reminder-preferences" class="reminder-preferences"></div></section>
-    <section class="reminder-card"><h2>手机与浏览器设备</h2><div id="reminder-devices"></div></section>
+    <section class="reminder-card"><h2>已连接设备</h2><div id="reminder-devices"></div></section>
   </div>
 </div>
 {% endblock %}
