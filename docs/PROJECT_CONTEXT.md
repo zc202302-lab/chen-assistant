@@ -2,6 +2,9 @@
 
 ## 当前活动工作（2026-10-28，Asia/Shanghai）
 
+- 新活动工作（2026-10-28）：提醒中心设置独立分栏、移除「最近提醒」、号码按提交批次处理完成后清除待处理通知。功能在分支 `feat/reminder-settings-and-resolution`、[PR #182](https://github.com/zc202302-lab/chen-assistant/pull/182)，未合并、未部署。CI和手机端验收待核对；iOS系统已接收的通知不能保证远程撤回。唯一下一步：核验PR #182最新head CI，再决定合并部署及真机业务测试。
+
+
 - 用户要求继续修复微信号码收集小程序；PR [#181](https://github.com/zc202302-lab/chen-assistant/pull/181) 已通过完整验证、稳定性、模块隔离并 squash 合并 main，合并提交 `4aaad90a1433d678f38bbb6f1a9897b541e0de2d`，受检功能head `230736a354e2e40da2f50ea1027315eb67989c3f`。
 - 候选修复 iPhone 连续输入焦点：改局部 setData 并同步 focus/blur；候选诊断微信 wx.request 失败类型（合法域名/TLS/超时/离线/错误码），保持原网页一致的表单与未加号码流程，不关闭URL校验。Node与CI通过，真机输入和网络仍待复核。
 - 后端 Web 1.7.33 已有在线核验，PR181仅修改小程序源代码与测试及文档，不需要后端部署。微信开发者工具须从更新后的main重新导入/更新，编译预览；没有证据证明用户本机已载入新版，也未确认微信后台request合法域名的配置。
