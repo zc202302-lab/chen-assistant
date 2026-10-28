@@ -23,15 +23,45 @@
     if (badge) { badge.textContent=count ? String(count) : ''; badge.hidden=!count; }
     if ('setAppBadge' in navigator) { (count ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(()=>{}); }
   }
+  function selectTab(tab) {
+    if (!center) return;
+    for (const name of ['inbox','settings']) {
+      center.querySelector('[data-reminder-panel="'+name+'"]').hidden = tab !== name;
+      const button = center.querySelector('[data-reminder-tab="'+name+'"]');
+      button.classList.toggle('active', tab === name);
+      button.setAttribute('aria-pressed', String(tab === name));
+    }
+  }
+  async function clearStaleNotifications() {
+    if (!reg || !state || typeof reg.getNotifications !== 'function') return;
+    try {
+      const active = new Set((state.active_notification_ids || []).map(id => String(id)));
+      const notifications = await reg.getNotifications();
+      for (const notification of notifications) {
+        const match = /^chen-reminder-(\d+)$/.exec(notification.tag || '');
+        if (match && !active.has(match[1])) notification.close();
+      }
+    } catch (_) { /* Platforms may not expose delivered notification management. */ }
+  }
   function render() {
     updateBadge(state.unread_count);
     if(!center)return;
     $('reminder-count').textContent=`${state.unread_count} 条未读`;
     const prefs=$('reminder-preferences'); prefs.replaceChildren();
-    for(const [kind,label] of Object.entries({all:'手机通知总开关',...state.types})) {
+    for(const [kind,label] of Object.entries({all:'手机通知总开关',instant:'有新事项即时提醒',...state.types})) {
       const wrap=el('label'), input=el('input'); input.type='checkbox'; input.checked=!!state.preferences[kind];
       input.addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{[kind]:input.checked})));
       wrap.append(input,el('span',label)); prefs.append(wrap);
+    }
+    const schedule=$('reminder-schedule-list');schedule.replaceChildren();
+    const times=state.schedule_slots||[];
+    if(!times.length)schedule.append(el('p','尚未设置定时提醒。','reminder-empty'));
+    for(const time of times){
+      const row=el('div',undefined,'reminder-schedule-row');
+      row.append(el('strong',time));
+      const remove=el('button','删除');remove.type='button';
+      remove.addEventListener('click',()=>action(()=>request('/api/reminders/schedule',{slots:times.filter(t=>t!==time)})));
+      row.append(remove);schedule.append(row);
     }
     const devices=$('reminder-devices'); devices.replaceChildren();
     if(!state.devices.length)devices.append(el('p','尚未订阅任何设备。'));
@@ -50,8 +80,9 @@
       row.append(copy,actions);devices.append(row);
     }
     const items=$('reminder-items');items.replaceChildren();
-    if(!state.items.length)items.append(el('p','暂无提醒。'));
-    for(const item of state.items) {
+    const activeItems=state.items.filter(item=>!item.resolved_at && !item.read_at);
+    if(!activeItems.length)items.append(el('p','目前没有待处理提醒。','reminder-empty'));
+    for(const item of activeItems) {
       const row=el('div',undefined,'reminder-row'+(item.read_at||item.resolved_at?' read':'')),copy=el('div',undefined,'reminder-copy');
       const link=el('a',item.title);link.href=item.url;
       link.addEventListener('click',async e=>{e.preventDefault();try{await request(`/api/reminders/${item.id}/read`,{});}catch{} location.assign(item.url);});
@@ -85,10 +116,22 @@
     $('push-test-lock').disabled=$('push-test').disabled;
     $('push-disable').disabled=busy||!deviceId;
   }
-  async function refresh() {state=await request('/api/reminders');render();}
+  async function refresh() {state=await request('/api/reminders');render();await clearStaleNotifications();}
   async function action(fn) {if(busy)return;busy=true;status();try{await fn();await refresh();}catch(e){feedback(e.message);await refresh().catch(()=>{});}finally{busy=false;status();}}
   function keyBytes(value) {const raw=atob(value.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-value.length%4)%4));return Uint8Array.from(raw,c=>c.charCodeAt(0));}
   if(center) {
+    for (const tab of center.querySelectorAll('[data-reminder-tab]'))
+      tab.addEventListener('click',()=>selectTab(tab.dataset.reminderTab));
+    selectTab('inbox');
+    $('reminder-schedule-add').addEventListener('click',()=>action(async()=>{
+      const time=$('reminder-schedule-time').value;
+      if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))throw new Error('请选择有效的提醒时间');
+      const slots=state.schedule_slots||[];
+      if(slots.includes(time))throw new Error('这个时间点已经存在');
+      if(slots.length>=12)throw new Error('最多设置12个时间点');
+      await request('/api/reminders/schedule',{slots:slots.concat(time)});
+      $('reminder-schedule-feedback').textContent='已保存：每天 '+time+'（北京时间）';
+    }));
     $('push-enable').addEventListener('click',()=>{
       // Permission must be requested directly in this click, before any await,
       // otherwise iPhone loses the required user-activation gesture.
@@ -120,7 +163,7 @@
         if(sub) {
           const data=await request('/api/reminders/subscription-state',{endpoint:sub.endpoint});deviceId=data.device_id;
         }
-        render();
+        render();await clearStaleNotifications();
       }
     }catch(e){feedback(e.message);}
   })();
