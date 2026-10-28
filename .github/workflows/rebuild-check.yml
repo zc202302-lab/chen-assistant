@@ -139,6 +139,19 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: python -m compileall -q app storage_node tests
 
+      - name: Reminder settings browser acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/reminders_settings_acceptance.py
+
+      - name: Upload reminder settings previews
+        if: always() && steps.scope.outputs.mode == 'full'
+        uses: actions/upload-artifact@v4
+        with:
+          name: reminders-settings-preview
+          retention-days: 1
+          path: artifacts/reminders-settings
+          if-no-files-found: ignore
+
       - name: Business display settings regression
         if: steps.scope.outputs.mode == 'full'
         run: |
@@ -253,16 +266,6 @@ jobs:
           python tests/reminders_push_contract.py
           node tests/reminders_service_worker_contract.cjs
           python tests/pwa_experience_acceptance.py
-          python tests/reminders_settings_acceptance.py
-
-      - name: Upload reminder settings previews
-        if: always() && steps.scope.outputs.mode == 'full'
-        uses: actions/upload-artifact@v4
-        with:
-          name: reminders-settings-preview
-          retention-days: 1
-          path: artifacts/reminders-settings
-          if-no-files-found: ignore
 
       - name: Input selection browser acceptance
         if: steps.scope.outputs.mode == 'full'
