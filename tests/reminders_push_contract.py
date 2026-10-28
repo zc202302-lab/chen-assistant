@@ -99,6 +99,10 @@ def main():
     assert len([r for r in state['items'] if r['event_key'].startswith('task:')])==1
     assert len([r for r in state['items'] if r['kind']=='number_inbox'])==1
     assert '2 个号码' in next(r['body'] for r in state['items'] if r['kind']=='number_inbox')
+    number_id=next(r['id'] for r in state['items'] if r['kind']=='number_inbox')
+    assert client.post(f'/api/reminders/{number_id}/read',headers=headers,json={}).status_code==200
+    assert client.get(f'/reminders/open/{number_id}',follow_redirects=False).status_code==303
+    assert any(r['id']==number_id for r in client.get('/api/reminders').json()['items'])
     # Keep notifications active across batches until the entire inbox is done.
     with db() as conn:
         conn.execute("UPDATE number_inbox SET status='done',completed_at=? WHERE submit_batch='batch-test'",(now_iso(),))
@@ -119,16 +123,22 @@ def main():
     # Scheduled reminders are configurable, deduplicated, and independent of instant pushes.
     assert client.post('/api/reminders/schedule',headers=headers,json={'slots':['09:00','18:30']}).status_code==200
     assert client.get('/api/reminders').json()['schedule_slots']==['09:00','18:30']
-    for invalid in [['09:00','09:00'],['25:10'],['09:00']*13]:
+    assert client.post('/api/reminders/schedule',json={'slots':['09:00']}).status_code==400
+    for invalid in [['09:00','09:00'],['25:10'],['09:00']*13, None, [True], ['9:00']]:
         assert client.post('/api/reminders/schedule',headers=headers,json={'slots':invalid}).status_code==400
     assert client.post('/api/reminders/preferences',headers=headers,json={'instant':False}).status_code==200
     scheduled_time=datetime(2026,10,28,9,0,tzinfo=ZoneInfo('Asia/Shanghai')).timestamp()
     with db() as conn:
         conn.execute("INSERT INTO number_inbox(number,normalized_number,submitted_at,submit_batch) VALUES('13900139000','13900139000',?,'schedule-case')",(now_iso(),))
+    with db() as conn:
+        instant_id=publish_reminder(conn,kind='task',title='关闭即时提醒测试',event_key='instant-disabled-test')
+        assert conn.execute('SELECT COUNT(*) FROM push_outbox WHERE reminder_id=?',(instant_id,)).fetchone()[0]==0
+        conn.execute('UPDATE reminders SET resolved_at=? WHERE id=?',(time.time(),instant_id))
     collect_scheduled(now=scheduled_time)
     collect_scheduled(now=scheduled_time+20)
     with db() as conn:
         assert conn.execute("SELECT COUNT(*) FROM reminders WHERE event_key='scheduled:2026-10-28:09:00'").fetchone()[0]==1
+        assert conn.execute("SELECT COUNT(*) FROM push_outbox o JOIN reminders r ON r.id=o.reminder_id WHERE r.event_key='scheduled:2026-10-28:09:00'").fetchone()[0]==1
     assert client.post('/api/reminders/preferences',headers=headers,json={'instant':True}).status_code==200
     assert client.post('/api/reminders/schedule',headers=headers,json={'slots':[]}).status_code==200
     assert due_timestamp('2026-10-02')==due_timestamp('2026-10-02T09:00:00+08:00')

@@ -88,7 +88,7 @@
       link.addEventListener('click',async e=>{e.preventDefault();try{await request(`/api/reminders/${item.id}/read`,{});}catch{} location.assign(item.url);});
       copy.append(link,el('div',item.body),el('small',`${state.types[item.kind]} · ${date(item.created_at)}${item.resolved_at?' · 已处理':''}`));
       row.append(copy);
-      if(!item.read_at && !item.resolved_at) {const read=el('button','已读');read.type='button';read.addEventListener('click',()=>action(()=>request(`/api/reminders/${item.id}/read`,{})));row.append(read);}
+      if(item.kind !== 'number_inbox' && !item.read_at && !item.resolved_at) {const read=el('button','已读');read.type='button';read.addEventListener('click',()=>action(()=>request(`/api/reminders/${item.id}/read`,{})));row.append(read);}
       items.append(row);
     }
     status();

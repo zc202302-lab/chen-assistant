@@ -132,6 +132,7 @@ def reconcile_number_reminders(conn, now=None):
     if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='number_inbox'").fetchone():
         return
     if conn.execute("SELECT 1 FROM number_inbox WHERE status='pending' LIMIT 1").fetchone():
+        conn.execute("UPDATE reminders SET read_at=NULL WHERE kind='number_inbox' AND resolved_at IS NULL")
         return
     conn.execute("UPDATE reminders SET resolved_at=? WHERE kind='number_inbox' AND resolved_at IS NULL", (now,))
     conn.execute("UPDATE reminders SET resolved_at=? WHERE event_key LIKE 'scheduled:%' AND resolved_at IS NULL AND NOT EXISTS (SELECT 1 FROM reminders WHERE kind NOT IN ('number_inbox','system') AND resolved_at IS NULL)", (now,))
@@ -491,7 +492,7 @@ async def test_push(request: Request):
 async def mark_read(request: Request,reminder_id: int):
     await check_csrf(request)
     with db() as conn:
-        conn.execute('UPDATE reminders SET read_at=? WHERE id=?',(time.time(),reminder_id))
+        conn.execute("UPDATE reminders SET read_at=? WHERE id=? AND kind!='number_inbox'",(time.time(),reminder_id))
     return {'ok':True}
 
 
@@ -521,7 +522,7 @@ def open_reminder(reminder_id: int):
         row=conn.execute('SELECT url FROM reminders WHERE id=?',(reminder_id,)).fetchone()
         if not row:
             raise HTTPException(404,'提醒不存在')
-        conn.execute('UPDATE reminders SET read_at=? WHERE id=?',(time.time(),reminder_id))
+        conn.execute("UPDATE reminders SET read_at=? WHERE id=? AND kind!='number_inbox'",(time.time(),reminder_id))
         target=safe_url(row['url'])
     return RedirectResponse(target,status_code=303)
 

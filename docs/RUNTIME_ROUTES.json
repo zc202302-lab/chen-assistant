@@ -288,6 +288,14 @@
     "name": "save_preferences"
   },
   {
+    "path": "/api/reminders/schedule",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.reminders",
+    "name": "save_schedule"
+  },
+  {
     "path": "/api/reminders/subscriptions",
     "methods": [
       "POST"
