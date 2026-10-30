@@ -65,7 +65,7 @@ def verify():
     manifest = json.loads(raw)
     if any(manifest.get(k) != v for k,v in {'id':'/','scope':'/','display':'standalone'}.items()):
         raise RuntimeError('PWA manifest is not current')
-    for path in ['app/static/v03.js', 'app/static/v0211.js', 'app/static/business-sync.js',
+    for path in ['app/static/workspace-row-numbers.css', 'app/static/v03.js', 'app/static/v0211.js', 'app/static/business-sync.js',
                  'app/static/live-refresh-v15.js', 'app/static/high-frequency-v152.js',
                  'app/static/v143_customer_resources.js']:
         _, _, raw = fetch('/' + path.removeprefix('app/'))

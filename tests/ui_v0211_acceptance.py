@@ -144,13 +144,40 @@ def main():
             page = context.new_page()
             page.goto(f'http://127.0.0.1:8128/customers/{cid}', wait_until='networkidle')
 
-            # 缴费不再只有“两个默认属性”，而是任意数量的属性列；金额正式叫“缴费金额”。
+            # 缴费不再只有“两个默认属性”，而是任意数量的属性列；金额正式叫“本月缴费”。
             assert page.locator('#displayAttributeDialog').count() == 0
             assert page.locator('#paymentColumnsDialog').count() == 1
             labels = [x.strip() for x in page.locator('[data-payment-column-head] > span').all_inner_texts()]
-            assert labels == ['类型', '姓名/属性', '号码', '账号', '缴费金额'], labels
+            assert labels == ['类型', '姓名/属性', '号码', '账号', '本月缴费'], labels
             assert page.locator('[data-payment-row]').count() == 2, 'future quarterly service leaked into payment workbench'
             assert service_order(page, '[data-payment-row]') == [s1, s3]
+
+            # Single click exposes full text; selecting a substring inside must
+            # survive pointer events, and clicking outside dismisses the preview.
+            cell = page.locator('[data-payment-business-cell]').first
+            original = cell.locator('strong').inner_text()
+            full = '完整信息：长文本 <script>不可执行</script>\n第二行可单独复制'
+            cell.locator('strong').evaluate('(el, text) => el.textContent = text', full)
+            cell.click()
+            preview = page.locator('.workspace-cell-preview')
+            assert preview.inner_text() == full
+            assert preview.locator('script').count() == 0
+            preview.evaluate("""el => {
+                const range = document.createRange();
+                range.setStart(el.firstChild, 0); range.setEnd(el.firstChild, 4);
+                const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+            }""")
+            assert page.evaluate('getSelection().toString()') == '完整信息'
+            assert preview.evaluate("el => getComputedStyle(el).userSelect") == 'text'
+            preview.click(position={'x': 10, 'y': 10})
+            assert preview.is_visible()
+            page.locator('h2:visible').first.click()
+            assert not preview.is_visible()
+            cell.click()
+            page.keyboard.press('Escape')
+            assert not preview.is_visible()
+
+            cell.locator('strong').evaluate('(el, text) => el.textContent = text', original)
 
             # 属性设置可增加第6列，证明不是原来的两个属性选择器。
             page.locator('[data-payment-columns-settings]').click()
@@ -166,7 +193,7 @@ def main():
                 dialog.locator('button[type="submit"]').click()
             labels = [x.strip() for x in page.locator('[data-payment-column-head] > span').all_inner_texts()]
             assert labels[-1] == '付款方式', labels
-            assert '缴费金额' in labels and len(labels) == 6, labels
+            assert '本月缴费' in labels and len(labels) == 6, labels
 
             # 缴费页修改同一条业务属性：双击属性值，直接编辑共同的业务主数据。
             payment_row1 = page.locator(f'[data-payment-row][data-service-id="{s1}"]')
@@ -195,7 +222,7 @@ def main():
             page.locator('[data-customer-tab="payment"]').click()
             assert payment_row1.locator('[data-payment-attr-key="holder_name"] strong').inner_text() == '业务页修改甲'
 
-            # 缴费金额也是可操作属性；修改后 payment_entries 与 services.monthly_fee 同步。
+            # 本月缴费也是可操作属性；修改后 payment_entries 与 services.monthly_fee 同步。
             amount = payment_row1.locator('.quick-amount')
             amount.fill('123.45')
             amount.press('Enter')

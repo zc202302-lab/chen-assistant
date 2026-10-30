@@ -314,7 +314,7 @@ def customer_workspace_v0212(request: Request, customer_id: int, tab: str = 'pay
     payment_options = [
         {'key': item['key'], 'label': item['label'], 'kind': item.get('kind', 'text')}
         for item in template
-    ] + [{'key': 'payment_amount', 'label': '缴费金额', 'kind': 'payment_amount'}]
+    ] + [{'key': 'payment_amount', 'label': '本月缴费', 'kind': 'payment_amount'}]
     payment_keys = [item['key'] for item in payment_columns]
     payment_grid_widths = ' '.join(f"{payment_widths[key]}px" for key in payment_keys)
 

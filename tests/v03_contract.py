@@ -88,7 +88,7 @@ def test_ui_contracts():
     assert '/static/v033_payment_flow_patch.js' in base
     assert '/static/v0212.js' not in base and '/static/business-editor-hotfix.js' not in base
     assert 'data-v03-business-status-panel' in js and '开停状态' in js and '缴费状态' in js
-    assert 'data-v03-payment-order' in js and '缴费金额必须填写显示序号' in js
+    assert 'data-v03-payment-order' in js and '本月缴费必须填写显示序号' in js
     assert 'data-v03-flow-action' in js and "['review', 'notify', 'paid']" in js and '/api/v03/customers/search' in js
     assert '生成缴费图片' in v031_js and '已通知客户' in v031_js and '发起缴费' in v031_js and '完成缴费' in v031_js
     assert 'navigator.clipboard.write' in v031_js and 'ClipboardItem' in v031_js and 'payment-workflow-v031' in v031_js and 'payment-mail-compose-v031' in v031_js

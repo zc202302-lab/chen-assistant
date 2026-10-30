@@ -210,7 +210,7 @@
     <form method="dialog" class="attribute-dialog-shell" data-payment-columns-form>
       <div class="attribute-dialog-head"><div><small>当前客户缴费工作区</small><h3>编辑缴费属性</h3></div><button type="button" class="dialog-close" data-payment-columns-close>×</button></div>
       <input type="hidden" name="csrf" value="{{ csrf }}">
-      <p class="payment-columns-help-v0211">可选择任意业务属性并拖动改变列顺序；“缴费金额”是缴费必需属性，可拖动但不能删除。</p>
+      <p class="payment-columns-help-v0211">可选择任意业务属性并拖动改变列顺序；“本月缴费”是缴费必需属性，可拖动但不能删除。</p>
       <div class="payment-column-editor-list-v0211" data-payment-column-list>
         {% for selected in payment_columns %}
         <div class="payment-column-editor-row-v0211" data-payment-column-row data-key="{{ selected.key }}">
@@ -218,7 +218,7 @@
           <select class="payment-column-select-v0211" {% if selected.key=='payment_amount' %}data-required-payment-amount="1"{% endif %}>
             {% for option in payment_column_options %}<option value="{{ option.key }}" {% if option.key==selected.key %}selected{% endif %}>{{ option.label }}</option>{% endfor %}
           </select>
-          <button type="button" class="ghost small payment-column-delete-v0211" data-payment-column-delete {% if selected.key=='payment_amount' %}disabled title="缴费金额不能删除"{% endif %}>删除</button>
+          <button type="button" class="ghost small payment-column-delete-v0211" data-payment-column-delete {% if selected.key=='payment_amount' %}disabled title="本月缴费不能删除"{% endif %}>删除</button>
         </div>
         {% endfor %}
       </div>

@@ -116,7 +116,7 @@ def main():
             # Payment amount remains a core payment function and payment display selection is independent.
             headers = page.locator('[data-payment-column-head]')
             labels = [x.strip() for x in headers.locator('span').all_inner_texts()]
-            assert '缴费金额' in labels, labels
+            assert '本月缴费' in labels, labels
             amount_head = page.locator('[data-payment-column-head][data-payment-attr-key="payment_amount"]')
             assert amount_head.get_attribute('draggable') == 'true'
             page.locator('[data-payment-columns-settings]').click()

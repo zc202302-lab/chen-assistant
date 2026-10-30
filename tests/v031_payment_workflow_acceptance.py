@@ -214,7 +214,7 @@ def main():
                 shared = archive.read('xl/sharedStrings.xml').decode('utf-8')
                 sheet = archive.read('xl/worksheets/sheet1.xml').decode('utf-8')
                 styles = archive.read('xl/styles.xml').decode('utf-8')
-            for value in ('号码', '账号', '缴费金额', '13800000001', '13800000002', 'A001', 'A002'):
+            for value in ('号码', '账号', '本月缴费', '13800000001', '13800000002', 'A001', 'A002'):
                 assert value in shared, value
             for hidden_value in ('类型', '姓名/属性', '成员1', '成员2'):
                 assert hidden_value not in shared, hidden_value

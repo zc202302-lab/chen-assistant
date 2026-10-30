@@ -63,6 +63,11 @@ def main():
                 expected = cell.locator('strong').inner_text().strip()
                 cell.click()
                 expect(page.locator('.app-toast').last).to_have_text('已复制')
+                preview = page.locator('.workspace-cell-preview')
+                expect(preview).to_have_text(expected)
+                expect(preview).to_be_visible()
+                page.keyboard.press('Escape')
+                expect(preview).not_to_be_visible()
                 assert page.evaluate('window.__copied.at(-1)') == expected
                 account = row.locator('.business-attribute[data-attr-key="account"]')
                 account.click()

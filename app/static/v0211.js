@@ -2,6 +2,51 @@
   const root = document.querySelector('.v0211-workspace');
   if (!root) return;
 
+  // Keep the selectable preview outside table buttons and clipping containers.
+  const preview = document.createElement('div');
+  preview.className = 'workspace-cell-preview';
+  preview.hidden = true;
+  preview.setAttribute('role', 'region');
+  preview.setAttribute('aria-label', '完整信息');
+  document.body.appendChild(preview);
+  let previewSource = null;
+  const closePreview = () => {
+    preview.hidden = true;
+    previewSource = null;
+  };
+  const cellSelector = '[data-payment-business-cell], [data-payment-row] .quick-amount, [data-business-row] .business-attribute';
+  window.addEventListener('click', e => {
+    if (preview.contains(e.target)) return;
+    const cell = e.target.closest?.(cellSelector);
+    if (!cell || !root.contains(cell)) return closePreview();
+    previewSource = cell;
+    // Read live text so edits and AJAX row replacements cannot leave stale values.
+    preview.textContent = cell.matches('input') ? cell.value : (cell.querySelector('strong')?.textContent || '—');
+    preview.hidden = false;
+    const rect = cell.getBoundingClientRect();
+    const margin = 12;
+    preview.style.left = `${margin}px`;
+    preview.style.top = `${margin}px`;
+    const width = preview.offsetWidth;
+    const height = preview.offsetHeight;
+    const left = Math.max(margin, Math.min(rect.left, innerWidth - width - margin));
+    const below = rect.bottom + 6;
+    const top = below + height <= innerHeight - margin ? below : Math.max(margin, rect.top - height - 6);
+    preview.style.left = `${left}px`;
+    preview.style.top = `${top}px`;
+  }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePreview(); });
+  window.addEventListener('dblclick', e => {
+    if (e.target.closest?.(cellSelector)) closePreview();
+  }, true);
+  document.addEventListener('scroll', e => {
+    if (!preview.contains(e.target)) closePreview();
+  }, true);
+  window.addEventListener('resize', closePreview);
+  new MutationObserver(() => {
+    if (previewSource && !previewSource.isConnected) closePreview();
+  }).observe(root, {childList:true, subtree:true});
+
   const workbench = root.querySelector('[data-payment-workbench]');
   const csrf = workbench?.dataset.csrf || '';
   const paymentList = document.getElementById('paymentSortable');
@@ -29,7 +74,7 @@
     ? [...paymentColumnList.querySelectorAll('[data-payment-column-row]')].map(row => row.querySelector('select')?.value || '').filter(Boolean)
     : [];
 
-  const optionLabel = key => availableColumns.find(x => x.key === key)?.label || (key === AMOUNT_KEY ? '缴费金额' : key);
+  const optionLabel = key => availableColumns.find(x => x.key === key)?.label || (key === AMOUNT_KEY ? '本月缴费' : key);
 
   const refreshColumnRowControls = () => {
     if (!paymentColumnList) return;
@@ -54,7 +99,7 @@
       select.dataset.requiredPaymentAmount = required ? '1' : '';
       if (del) {
         del.disabled = required;
-        del.title = required ? '缴费金额不能删除' : '删除这个显示属性';
+        del.title = required ? '本月缴费不能删除' : '删除这个显示属性';
       }
     });
   };
@@ -137,7 +182,7 @@
     const keys = selectedKeys();
     if (!keys.includes(AMOUNT_KEY)) keys.push(AMOUNT_KEY);
     if (new Set(keys).size !== keys.length) return toast('同一个缴费属性不能重复');
-    if (!keys.length) return toast('至少保留缴费金额');
+    if (!keys.length) return toast('至少保留本月缴费');
     try {
       await savePaymentColumns(keys);
       const u = new URL(location.href);
@@ -234,7 +279,7 @@
 
   const syncPaymentHeaderLabels = template => {
     const labels = new Map((template || []).map(x => [x.key, x.label]));
-    labels.set(AMOUNT_KEY, '缴费金额');
+    labels.set(AMOUNT_KEY, '本月缴费');
     paymentList?.querySelectorAll('[data-payment-column-head]').forEach(head => {
       const label = head.querySelector('span');
       if (label) label.textContent = labels.get(head.dataset.paymentAttrKey) || head.dataset.paymentAttrKey;
@@ -243,7 +288,7 @@
 
   const syncAvailableColumns = template => {
     availableColumns = (template || []).map(x => ({key:x.key, label:x.label, kind:x.kind || 'text'}));
-    availableColumns.push({key:AMOUNT_KEY, label:'缴费金额', kind:'payment_amount'});
+    availableColumns.push({key:AMOUNT_KEY, label:'本月缴费', kind:'payment_amount'});
     if (paymentDialog) paymentDialog.dataset.paymentColumnOptions = JSON.stringify(availableColumns);
     refreshColumnRowControls();
   };

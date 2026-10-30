@@ -212,7 +212,7 @@
     const current = paymentKeys();
     const order = new Map(current.map((key, index) => [key, index + 1]));
     const options = paymentOptions();
-    const amount = options.find(x => x.key === AMOUNT) || {key: AMOUNT, label: '缴费金额'};
+    const amount = options.find(x => x.key === AMOUNT) || {key: AMOUNT, label: '本月缴费'};
     const business = options.filter(x => x.key !== AMOUNT);
     const rows = [amount, ...business].sort((a, b) => {
       const ao = order.get(a.key) || 9999;
@@ -243,7 +243,7 @@
       paymentColumnList.appendChild(row);
     });
     const help = paymentDialog.querySelector('.payment-columns-help-v0211');
-    if (help) help.textContent = '填写显示序号的属性才会显示，并按数字从小到大排列；留空代表隐藏。缴费金额为缴费核心功能，必须填写序号。';
+    if (help) help.textContent = '填写显示序号的属性才会显示，并按数字从小到大排列；留空代表隐藏。本月缴费为缴费核心功能，必须填写序号。';
     paymentDialog.querySelector('[data-payment-column-add]')?.closest('div')?.setAttribute('hidden', '');
   };
 
@@ -267,7 +267,7 @@
       const key = row.dataset.v03PaymentColumnKey || '';
       const raw = row.querySelector('[data-v03-payment-order]')?.value.trim() || '';
       if (!raw) {
-        if (key === AMOUNT) return toast('缴费金额必须填写显示序号');
+        if (key === AMOUNT) return toast('本月缴费必须填写显示序号');
         continue;
       }
       if (!/^\d{1,3}$/.test(raw) || Number(raw) < 1) return toast('显示序号请输入1到999的正整数');
@@ -277,7 +277,7 @@
       entries.push({key, order: n});
       if (key === AMOUNT) hasAmount = true;
     }
-    if (!hasAmount) return toast('缴费金额必须显示');
+    if (!hasAmount) return toast('本月缴费必须显示');
     entries.sort((a, b) => a.order - b.order);
     const fd = new FormData();
     fd.append('csrf', csrf);

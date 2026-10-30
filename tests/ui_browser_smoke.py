@@ -142,14 +142,14 @@ def main():
                 assert clipboard(page) == value
                 assert page.locator('.app-toast.show').count() == 1
 
-            # 动态缴费列默认五列，且“金额”已经正式更名为“缴费金额”。
+            # 动态缴费列默认五列，且“金额”已经正式更名为“本月缴费”。
             labels = [x.strip() for x in page.locator('[data-payment-column-head] > span').all_inner_texts()]
-            assert labels == ['类型','姓名/属性','号码','账号','缴费金额'], labels
+            assert labels == ['类型','姓名/属性','号码','账号','本月缴费'], labels
             assert page.locator('[data-resize-payment-col]').count() == 5
             assert page.locator('#displayAttributeDialog').count() == 0
             assert page.locator('#paymentColumnsDialog').count() == 1
 
-            # 号码/账号复制仍不抢走正在输入缴费金额的焦点。
+            # 号码/账号复制仍不抢走正在输入本月缴费的焦点。
             first_payment = page.locator('[data-payment-row]').first
             amount = first_payment.locator('.quick-amount')
             amount.click()
