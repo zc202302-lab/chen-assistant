@@ -15,7 +15,7 @@
     previewSource = null;
   };
   const cellSelector = '[data-payment-business-cell], [data-payment-row] .quick-amount, [data-business-row] .business-attribute';
-  document.addEventListener('click', e => {
+  window.addEventListener('click', e => {
     if (preview.contains(e.target)) return;
     const cell = e.target.closest?.(cellSelector);
     if (!cell || !root.contains(cell)) return closePreview();
@@ -34,9 +34,9 @@
     const top = below + height <= innerHeight - margin ? below : Math.max(margin, rect.top - height - 6);
     preview.style.left = `${left}px`;
     preview.style.top = `${top}px`;
-  });
+  }, true);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closePreview(); });
-  document.addEventListener('dblclick', e => {
+  window.addEventListener('dblclick', e => {
     if (e.target.closest?.(cellSelector)) closePreview();
   }, true);
   document.addEventListener('scroll', e => {

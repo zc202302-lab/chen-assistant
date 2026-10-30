@@ -41,7 +41,7 @@
     });
     paymentDialog.querySelectorAll('option[value="payment_amount"]').forEach(option => option.remove());
     const help = paymentDialog.querySelector('.payment-columns-help-v0211');
-    if (help) help.textContent = '拖动“缴费金额”表头可调整位置。';
+    if (help) help.textContent = '拖动“本月缴费”表头可调整位置。';
     const trigger = root.querySelector('[data-payment-columns-settings]');
     if (trigger) trigger.textContent = '显示属性';
   };
