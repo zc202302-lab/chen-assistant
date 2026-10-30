@@ -11,7 +11,7 @@ def main():
     config = (ROOT / 'app' / 'config.py').read_text(encoding='utf-8')
     deploy = (ROOT / 'deploy.sh').read_text(encoding='utf-8')
 
-    assert 'responsive-polish-v161.css?v=1780' in base
+    assert 'responsive-polish-v161.css?v=1800' in base
     assert 'customer-directory-v161' in customers
     assert 'class="page-head customer-directory-v161"' in customers
     assert 'customer-directory-actions-v161' in customers
