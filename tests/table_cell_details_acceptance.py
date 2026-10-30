@@ -65,7 +65,7 @@ def main():
                     out = ROOT / 'artifacts/table-cell-details'
                     out.mkdir(parents=True, exist_ok=True)
                     page.screenshot(path=str(out / f'{tab}-{width}.png'))
-                    page.locator('h2:visible').first.click()
+                    page.mouse.click(width - 3, 3)
                     expect(preview).not_to_be_visible()
                     cell.click()
                     page.keyboard.press('Escape')
