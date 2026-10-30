@@ -1,5 +1,13 @@
 [
   {
+    "path": "/customers/order",
+    "methods": [
+      "POST"
+    ],
+    "source": "customer_order.py",
+    "qualname": "save_customer_order"
+  },
+  {
     "path": "/work/todos",
     "methods": [
       "GET"

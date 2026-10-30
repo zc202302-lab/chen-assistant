@@ -27,8 +27,10 @@
   </div>
 </section>
 
-<section class="customer-directory-list-v161">
+<section class="customer-directory-list-v161" data-customer-order data-csrf="{{ csrf }}" data-order-revision="{{ order_revision }}">
   {% for c in customers %}
+  <div class="customer-sort-item" data-customer-order-id="{{ c.id }}">
+  <button type="button" class="customer-sort-handle" aria-label="拖动调整{{ c.name }}的位置" title="拖动排序；方向键调整位置">⠿</button>
   <a class="customer-card-v161" href="/customers/{{ c.id }}">
     <div class="customer-card-copy-v161">
       <b class="customer-card-name-v161">{{ c.name }}</b>
@@ -43,6 +45,7 @@
     </div>
     <span class="customer-card-arrow-v161">›</span>
   </a>
+  </div>
   {% else %}
   <div class="v10-empty customer-empty-v161">没有匹配的客户。</div>
   {% endfor %}

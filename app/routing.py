@@ -37,8 +37,10 @@ from .business_process_routes import router as business_process_router
 from .account_routes import router as account_router
 
 from .work_todos import router as work_todos_router
+from .customer_order import router as customer_order_router
 
 ROUTER_REGISTRATION = (
+    ('_customer_order_routes', customer_order_router),
     ('_work_todos_routes', work_todos_router),
     ('_account_routes', account_router),
     ('_business_process_routes', business_process_router),
@@ -71,6 +73,7 @@ ROUTER_REGISTRATION = (
     ('_work_list_import_routes', work_list_import_router),
 )
 ROUTER_PRIORITY = (
+    '_customer_order_routes',
     '_work_todos_routes',
     '_account_routes',
     '_business_process_routes',
