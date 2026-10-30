@@ -139,6 +139,19 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: python -m compileall -q app storage_node tests
 
+      - name: Table cell details browser acceptance
+        if: steps.scope.outputs.mode == 'full'
+        run: python tests/table_cell_details_acceptance.py
+
+      - name: Upload table cell previews
+        if: always() && steps.scope.outputs.mode == 'full'
+        uses: actions/upload-artifact@v4
+        with:
+          name: table-cell-previews
+          retention-days: 1
+          path: artifacts/table-cell-details
+          if-no-files-found: ignore
+
       - name: Reminder settings browser acceptance
         if: steps.scope.outputs.mode == 'full'
         run: python tests/reminders_settings_acceptance.py

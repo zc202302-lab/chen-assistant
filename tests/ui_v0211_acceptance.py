@@ -171,7 +171,7 @@ def main():
             assert preview.evaluate("el => getComputedStyle(el).userSelect") == 'text'
             preview.click(position={'x': 10, 'y': 10})
             assert preview.is_visible()
-            page.locator('h2').first.click()
+            page.locator('h2:visible').first.click()
             assert not preview.is_visible()
             cell.click()
             page.keyboard.press('Escape')
