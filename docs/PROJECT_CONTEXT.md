@@ -2,12 +2,12 @@
 
 ## 当前活动工作（2026-10-30，Asia/Shanghai）
 
-- 2026-10-30（Asia/Shanghai）本轮用户两项需求已合并PR #185，main功能提交2e74b1d243c5997899b69c589f6ae699d1eea9d3，受检headd8587badd16805e75f6be6ab2874a539fe440918。候选Web1.7.36；生产仍1.7.35，尚未确认部署。工作模式继续部署，保留既有授权。
+- 2026-10-30（Asia/Shanghai）本轮用户两项需求已合并PR #185，main功能提交2e74b1d243c5997899b69c589f6ae699d1eea9d3，受检headd8587badd16805e75f6be6ab2874a539fe440918。Web1.7.36已上线并通过实际公开验证。用户两项需求已交付，真实使用反馈待用户确认。
 - 实现：当月payment_amount列及对应导出列改为“本月缴费”，业务属性金额名称保持；缴费/业务单击显示完整纯文本浮层，可拖选局部复制，外部点击/Esc关闭。保留号码/账号单击复制、双击编辑与金额核对；覆盖移动宽度、长文换行/滚动、纯文本安全和AJAX更新。窗口捕获先于旧复制处理，避免stopImmediatePropagation吞掉浮层事件。
 - 最终head完整validation40983222242（validate123828030355、production preflight123828030588）、stability40983222037、module isolation40983222209均success。旧轮因导出表头断言仍要求旧名称失败，已按需求更新断言并保留金额/导出数据校验，新轮全通过。新增真实鼠标拖选验收通过，4张桌面/手机截图已核对；runner缺少中文字形，截图只验证布局/选择，不冒称真机字体验收。
-- main合并后完整validation40984881284仍运行，PWA40984881267运行；独立stability和syntax已success。独立公网脚本仍返回线上1.7.35，不能声称已上线。默认main当前入口指向feat/table-cell-details，本活动分支保存最新检查点，避免中断生产发布链。
+- 生产证据：main实际公网PWA40984881267/job123833458454已success，日志ONLINE VERIFIED v1.7.36，核验精确JS/CSS（含新增浮层CSS）、账户鉴权、提醒及号码边界。不能由此推断生产精确backend SHA；没有向生产写测试数据。main完整validation40984881284仍运行，独立stability40984881377及syntax40984881188已success。为不中断main仍运行的发布链，部署后的最新交接保存在feat/table-cell-details，默认main入口已明确指向该分支。
 - 用户已确认短信静默转发成功：此前令牌错误及快捷指令总通知权限影响分别记录。保持总通知权限允许、关闭展示位置/声音/标记；本轮不改SMS配置。
-- 下一步：继续等待生产部署并核验1.7.36及精确JS/CSS资源，再结束交接。目录/workspace/scratch/6ecb72ebd96b/chen-assistant，依赖/tmp/chen-table-venv。
+- 唯一后续：main40984881284自动复检结束后，将本已上线快照同步默认main；功能/部署已交付，用户刷新缴费和业务页使用。目录/workspace/scratch/6ecb72ebd96b/chen-assistant，依赖/tmp/chen-table-venv。
 
 本文件是新聊天、新模型或中断后的固定入口。仓库是可核对的项目记忆；聊天记忆只作辅助。
 
