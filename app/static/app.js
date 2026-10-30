@@ -201,3 +201,109 @@
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
   }
 })();
+
+// Customer directory: pointer handles leave the existing card links untouched.
+(() => {
+  const list = document.querySelector('[data-customer-order]');
+  if (!list) return;
+  const rows = () => [...list.querySelectorAll('[data-customer-order-id]')];
+  const status = document.createElement('p');
+  status.className = 'customer-order-status';
+  status.setAttribute('role', 'status');
+  status.hidden = true;
+  list.after(status);
+  let busy = false;
+  let drag = null;
+  const restore = before => before.forEach(row => list.appendChild(row));
+  const save = async before => {
+    const current = rows();
+    if (current.every((row, i) => row === before[i])) return;
+    busy = true;
+    list.querySelectorAll('.customer-sort-handle').forEach(button => { button.disabled = true; });
+    status.hidden = true;
+    const body = new FormData();
+    body.append('csrf', list.dataset.csrf);
+    body.append('revision', list.dataset.orderRevision);
+    body.append('ids_json', JSON.stringify(current.map(row => Number(row.dataset.customerOrderId))));
+    try {
+      const response = await fetch('/customers/order', {method:'POST', body, credentials:'same-origin'});
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.detail || '排序保存失败，请重试');
+      list.dataset.orderRevision = result.revision;
+    } catch (error) {
+      restore(before);
+      status.textContent = error.message || '排序保存失败，请重试';
+      status.hidden = false;
+    } finally {
+      busy = false;
+      list.querySelectorAll('.customer-sort-handle').forEach(button => { button.disabled = false; });
+    }
+  };
+  const finish = cancelled => {
+    if (!drag) return;
+    const {row, before, frame} = drag;
+    cancelAnimationFrame(frame);
+    row.classList.remove('is-customer-dragging');
+    document.body.classList.remove('is-customer-sorting');
+    drag = null;
+    if (cancelled) restore(before);
+    else save(before);
+  };
+  const move = () => {
+    if (!drag) return;
+    const {row, x, y} = drag;
+    const target = document.elementFromPoint(x, y)?.closest('[data-customer-order-id]');
+    if (target && target !== row && target.parentElement === list) {
+      const ordered = rows();
+      const after = ordered.indexOf(target) > ordered.indexOf(row);
+      list.insertBefore(row, after ? target.nextSibling : target);
+    }
+  };
+  const tick = () => {
+    if (!drag) return;
+    if (drag.started) {
+      const edge = 64;
+      const delta = drag.y < edge ? -12 : drag.y > innerHeight - edge ? 12 : 0;
+      if (delta) { window.scrollBy(0, delta); move(); }
+    }
+    drag.frame = requestAnimationFrame(tick);
+  };
+  list.addEventListener('pointerdown', event => {
+    const handle = event.target.closest('.customer-sort-handle');
+    if (!handle || busy || drag || !event.isPrimary || event.button !== 0) return;
+    event.preventDefault();
+    handle.focus({preventScroll:true});
+    drag = {row:handle.closest('[data-customer-order-id]'), before:rows(), id:event.pointerId,
+      startX:event.clientX, startY:event.clientY, x:event.clientX, y:event.clientY, started:false};
+    drag.frame = requestAnimationFrame(tick);
+  });
+  window.addEventListener('pointermove', event => {
+    if (!drag || event.pointerId !== drag.id) return;
+    drag.x = event.clientX; drag.y = event.clientY;
+    if (!drag.started && Math.hypot(drag.x - drag.startX, drag.y - drag.startY) < 6) return;
+    drag.started = true;
+    drag.row.classList.add('is-customer-dragging');
+    document.body.classList.add('is-customer-sorting');
+    event.preventDefault();
+    move();
+  }, {passive:false});
+  window.addEventListener('pointerup', event => { if (drag?.id === event.pointerId) finish(false); });
+  window.addEventListener('pointercancel', event => { if (drag?.id === event.pointerId) finish(true); });
+  window.addEventListener('blur', () => finish(true));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && drag) { event.preventDefault(); finish(true); }
+  });
+  list.addEventListener('keydown', event => {
+    const handle = event.target.closest('.customer-sort-handle');
+    if (!handle || busy || drag || !['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    const before = rows();
+    const row = handle.closest('[data-customer-order-id]');
+    const index = before.indexOf(row);
+    const next = ['ArrowDown','ArrowRight'].includes(event.key) ? index + 1 : index - 1;
+    if (!before[next]) return;
+    list.insertBefore(row, next > index ? before[next].nextSibling : before[next]);
+    handle.focus({preventScroll:true});
+    save(before);
+  });
+})();

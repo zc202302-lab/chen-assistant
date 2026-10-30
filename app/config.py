@@ -3,7 +3,7 @@ import os
 
 ROOT = Path(__file__).resolve().parent.parent
 ENV_PATH = ROOT / ".env"
-APP_VERSION = "1.7.36"
+APP_VERSION = "1.8.0"
 
 
 def load_env(path: Path = ENV_PATH):

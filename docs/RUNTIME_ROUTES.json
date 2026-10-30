@@ -1,5 +1,13 @@
 [
   {
+    "path": "/customers/order",
+    "methods": [
+      "POST"
+    ],
+    "module": "app.customer_order",
+    "name": "save_customer_order"
+  },
+  {
     "path": "/work/todos",
     "methods": [
       "GET"

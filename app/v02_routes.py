@@ -10,6 +10,7 @@ from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
+from .customer_order import directory_order
 from .security import require_csrf
 from .payment_v02 import (
     current_period,
@@ -124,11 +125,14 @@ def customers_v02(request: Request, q: str = '', product: str = ''):
             sql += ' WHERE ' + ' AND '.join(where)
         sql += ' ORDER BY c.name'
         rows = conn.execute(sql, params).fetchall()
+        order, order_revision = directory_order(conn)
+        positions = {cid: index for index, cid in enumerate(order)}
+        rows = sorted(rows, key=lambda row: positions[row['id']])
         product_types = conn.execute(
             "SELECT service_type, COUNT(DISTINCT customer_id) customers FROM services WHERE service_type<>'' AND (active_from_period='' OR active_from_period<=?) AND (inactive_from_period='' OR inactive_from_period>?) GROUP BY service_type ORDER BY customers DESC, service_type",
             (period, period),
         ).fetchall()
-    return templates.TemplateResponse('customers.html', ctx(request, customers=rows, q=q, product=product, product_types=product_types))
+    return templates.TemplateResponse('customers.html', ctx(request, customers=rows, q=q, product=product, product_types=product_types, order_revision=order_revision))
 
 
 @router.get('/products', response_class=HTMLResponse)

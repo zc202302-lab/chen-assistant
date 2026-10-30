@@ -395,3 +395,15 @@ body:has(.customer-directory-v161) .page{
 @media(max-width:480px){.global-navigation-group{width:min(380px,calc(100vw - 28px));gap:8px}.global-navigation-group .global-primary-nav{width:auto;flex:1;min-width:0}.global-navigation-group .global-primary-nav a{min-width:0;padding:7px 8px}.global-navigation-group .global-history-button{flex-basis:36px;width:36px;height:36px;border-radius:10px}}
 
 @media(min-width:1101px){.topbar{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;grid-template-rows:44px;min-height:66px}.global-navigation-group{grid-column:2;grid-row:1}.topbar-actions{grid-column:3;grid-row:1}}
+
+/* Separate drag handles preserve card navigation and normal page scrolling. */
+.customer-sort-item{position:relative;min-width:0}
+.customer-sort-item .customer-card-v161{height:100%;box-sizing:border-box;padding-left:52px}
+.customer-sort-handle{position:absolute;z-index:1;left:7px;top:50%;transform:translateY(-50%);width:38px;height:44px;display:grid;place-items:center;padding:0;border:0;border-radius:10px;background:transparent;color:#94a3b8;font-size:23px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.customer-sort-handle:hover{background:#eef3fa;color:#475569}
+.customer-sort-handle:focus-visible{outline:2px solid #5085d4;outline-offset:1px}
+.customer-sort-handle:disabled{opacity:.4;cursor:wait}
+.is-customer-dragging .customer-card-v161{border-color:#5085d4;background:#f3f7ff;box-shadow:0 8px 22px #31548522}
+.is-customer-dragging .customer-sort-handle{cursor:grabbing;color:#3468b5}
+.is-customer-sorting,.is-customer-sorting *{cursor:grabbing!important;user-select:none!important}
+.customer-order-status{margin:12px 0;color:#b42318;font-size:14px}
