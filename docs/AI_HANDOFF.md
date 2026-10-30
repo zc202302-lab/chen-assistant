@@ -2,12 +2,12 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-10-30（Asia/Shanghai）用户要求全部客户卡片手动拖动排序、网站升级v1.8.0。PR #186已合并，main功能提交b450024c10f853a5d9887c69d40e5e39f7084bd2，受检head0dfd983356834e1c82a8c79659ed4459ccb8cdf8。功能完成；生产上线待公网确认，现网基准仍1.7.36。
+- 2026-10-30（Asia/Shanghai）用户要求全部客户卡片手动拖动排序、网站升级v1.8.0。PR #186已合并，main功能提交b450024c10f853a5d9887c69d40e5e39f7084bd2，受检head0dfd983356834e1c82a8c79659ed4459ccb8cdf8。Web1.8.0已实际上线并完成公开验证；本轮功能已交付，真实业务使用反馈待用户确认。
 - 每张卡片增加独立手柄，支持桌面两列/手机单列、边缘自动滚动和方向键；原卡片点击仍进入详情。全局顺序存于既有app_meta；筛选子集只替换当前客户的全局位置，隐藏位置保持；新客户追加、删除自动剔除。保存失败恢复、取消不保存、陈旧版本409提示刷新；事务内版本比较避免多窗口覆盖。
 - 新增受登录/CSRF保护POST /customers/order，严格校验ID、重复、未知客户，登记两份路由清单，无schema变更。app.js及responsive-polish-v161.css参数1800，config/deploy为1.8.0。真实鼠标/Chromium触摸、刷新持久化、取消、键盘、失败回滚及原卡片导航验收通过，桌面/手机截图已实际核对，中文正常，无横向溢出；不冒称iPhone真机验收。
 - 最终head validation41011557886第二次validate123919955545及preflight123919957338均success；stability41011557853、module isolation41011557859 success。首轮同head排序验收通过，但既有菜谱编辑ensure_v10_schema发生SQLite锁冲突返回500；仅重跑失败job后完整通过，未删/弱化断言，未改菜谱代码。该一次锁冲突保留证据，不声称根因已修复。
-- main合并后validation41013739903、PWA41013739910运行中；syntax41013739921 success，独立stability以实时查询为准。本地公网脚本网络超时，不用于否定服务器端验证结果；未写生产客户或发送通知。生产版本/资源必须等实际PWA结果，不能以合并代替。
-- 当前详细交接位于feat/customer-card-order，默认main入口已指向本分支，避免文档提交中断main发布链。唯一下一步：确认实际公开验证1.8.0及精确app.js/CSS，再完成部署交接。目录/workspace/scratch/6ecb72ebd96b/chen-assistant，依赖/tmp/chen-order-venv。
+- 生产证据：PWA41013739910/job123925216867 success，日志ONLINE VERIFIED v1.8.0，精确比对app.js、responsive-polish-v161.css及其他PWA资源，核验鉴权和号码边界。未写生产客户或发送通知，不推断生产精确backend SHA。本地独立脚本6次因运行环境网络超时退出1，与GitHub runner已成功的实际公开核验分开记录。main合并后完整validation41013739903仍运行，stability41013739966及syntax41013739921 success。
+- 当前详细交接位于feat/customer-card-order，默认main入口已指向本分支，避免文档提交中断main发布链。功能/部署已完成。唯一后续：main41013739903自动复检结束后将本最终快照同步默认main；用户刷新全部客户页，按住卡片左侧手柄拖动，松开自动保存。目录/workspace/scratch/6ecb72ebd96b/chen-assistant，依赖/tmp/chen-order-venv。
 
 ## 历史快照（以下不覆盖当前状态）
 
