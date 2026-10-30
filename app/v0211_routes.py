@@ -55,7 +55,7 @@ def _payment_catalog(template):
     }
     result[PAYMENT_AMOUNT_KEY] = {
         'key': PAYMENT_AMOUNT_KEY,
-        'label': '缴费金额',
+        'label': '本月缴费',
         'kind': 'payment_amount',
         'source': 'payment',
     }
@@ -135,7 +135,7 @@ def _payment_cells(service, custom_values, template, columns, payment, delta):
         if key == PAYMENT_AMOUNT_KEY:
             result.append({
                 'key': key,
-                'label': '缴费金额',
+                'label': '本月缴费',
                 'kind': 'payment_amount',
                 'value': format_fee(float(payment['amount'] or 0)),
                 'raw': format_fee(float(payment['amount'] or 0)),
@@ -228,7 +228,7 @@ def customer_workspace_v0211(request: Request, customer_id: int, tab: str = 'pay
     payment_options = [
         {'key': item['key'], 'label': item['label'], 'kind': item.get('kind', 'text')}
         for item in template
-    ] + [{'key': PAYMENT_AMOUNT_KEY, 'label': '缴费金额', 'kind': 'payment_amount'}]
+    ] + [{'key': PAYMENT_AMOUNT_KEY, 'label': '本月缴费', 'kind': 'payment_amount'}]
     payment_keys = [item['key'] for item in payment_columns]
     payment_grid_widths = ' '.join(f"{payment_widths[key]}px" for key in payment_keys)
 
