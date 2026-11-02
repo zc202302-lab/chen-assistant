@@ -44,6 +44,32 @@ class NavigationTests(unittest.TestCase):
             yield child
             yield from self.descendants(child)
 
+    def test_checkmarks_keep_native_toggle_and_disabled_behavior(self):
+        style = ttk.Style(self.root)
+        self.assertIn('Chen.Checkbutton.indicator', str(style.layout('TCheckbutton')))
+        self.assertEqual(len(self.root._checkbutton_images), 6)
+        self.app._show_reminder_settings()
+        window = self.app.reminder_settings_window
+        self.root.update()
+        boxes = {w.cget('text'): w for w in self.descendants(window) if isinstance(w, ttk.Checkbutton)}
+        box = boxes['即时提醒']
+        self.assertTrue(box.instate(['selected']))
+        box.invoke()
+        self.assertFalse(box.instate(['selected']))
+        box.state(['disabled'])
+        box.invoke()
+        self.assertFalse(box.instate(['selected']))
+        box.state(['!disabled'])
+        box.invoke()
+        self.assertTrue(box.instate(['selected']))
+        self.assertTrue(boxes['周一'].instate(['disabled', 'selected']))
+        for widget in self.descendants(window):
+            if widget.winfo_ismapped():
+                self.assertLessEqual(widget.winfo_rootx()+widget.winfo_width(),
+                                     window.winfo_rootx()+window.winfo_width()+2)
+                self.assertLessEqual(widget.winfo_rooty()+widget.winfo_height(),
+                                     window.winfo_rooty()+window.winfo_height()+2)
+
     def test_native_reminder_settings_save_cancel_and_gate(self):
         from unittest.mock import patch
         from win_assistants.reminder_policy import effective_policy
