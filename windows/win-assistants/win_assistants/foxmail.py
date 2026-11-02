@@ -449,7 +449,7 @@ class FoxmailBridge:
             if self._probe_compatible():
                 self.external_compatible = True
                 return True, "兼容独立版正在运行"
-            return False, f"本机端口 {self.port} 被其他程序占用"
+            return False, f"电脑客户端端口 {self.port} 被其他程序占用"
         self.port = int(self._server.server_address[1])
         self.external_compatible = False
         self._cleanup_old_files()

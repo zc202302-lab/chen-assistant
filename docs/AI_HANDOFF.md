@@ -4,9 +4,9 @@
 
 - 2026-11-02（Asia/Shanghai）用户要求继续完善提醒设置，将网站/手机/电脑客户端固定概念写进项目，补充禁止“本机”等模糊指代。继续开发及检查后发布授权有效。活动分支feat/two-reminder-destinations，基线main fad4be7；线上基准Web1.8.4、Windows0.5.22。
 - 固定术语见docs/TERMINOLOGY.md，AGENTS及PRODUCT_REQUIREMENTS同步引用：网站=普通浏览器管理界面；手机=手机桌面图标应用；电脑/电脑客户端=Windows助手。只有手机与电脑客户端接收提醒，网站不接收。未来需求和界面明确写平台名。
-- 候选Web1.8.5：总开关下只有手机、电脑两个接收区域，手机连接按钮纳入手机区域，只在手机桌面应用显示；网站不请求通知权限或注册订阅。新增持久化电脑独立开关，与总开关共同形成现有enabled闸门；电脑客户端规则及协议不改，Windows保持0.5.22。旧桌面浏览器登记停用并跳过待发队列，保留记录及手机配置，旧界面也不能重新启用该登记。
-- 验证进行中：新增两端独立/重启保留/旧网站登记退出回归，并将浏览器验收明确拆分网站与手机；保留已有提醒交互断言。JS语法/diff检查通过；依赖环境恢复中，契约/浏览器/CI/公网尚未验证。未合并发布，不写入生产业务或发送测试通知。
-- 核心app/reminders.py、reminder_policy.py、提醒模板及JS/CSS、tests/reminders_policy_contract.py、reminders_settings_acceptance.py。目录/workspace/scratch/5c7c7f3fea41/chen-assistant-reminder-ends。唯一下一步：完成隔离契约和网站/手机浏览器验收，推送PR，最终head完整检查通过后合并并核验Web1.8.5。
+- 候选Web1.8.5、Windows0.5.23：总开关下只有手机、电脑两个接收区域，手机连接按钮纳入手机区域，只在手机桌面应用显示；网站不请求通知权限或注册订阅。新增持久化电脑独立开关，与总开关共同形成现有enabled闸门；电脑客户端规则及协议不改；补充要求后已将电脑客户端提醒入口、窗口、开关和连接提示中的旧模糊指代改为明确电脑名称。旧桌面浏览器登记停用并跳过待发队列，保留记录及手机配置，旧界面也不能重新启用该登记。
+- 本地提醒策略/Push契约、架构治理、稳定性、JS语法/编译/diff检查通过；网站及普通手机Safari不请求权限、不注册通知，手机连接点击手势、手机/电脑独立开关、重启保留、设备启停/移除、原时间/循环/失败保留及1440/390无溢出浏览器验收通过。电脑客户端113项单测通过（16项因无显示跳过，待真实Windows CI补验）。本地截图几何已查看，中文字体需CI截图补足。完整CI/发布/公网尚未验证。未合并发布，不写入生产业务或发送测试通知。
+- 核心app/reminders.py、reminder_policy.py、提醒模板及JS/CSS、tests/reminders_policy_contract.py、reminders_settings_acceptance.py。目录/workspace/scratch/5c7c7f3fea41/chen-assistant-reminder-ends。唯一下一步：完成隔离契约和网站/手机浏览器验收，推送PR，最终head完整检查通过后合并并核验Web1.8.5与Windows0.5.23。
 
 ## 上一阶段（历史：Web1.8.4已部署）
 

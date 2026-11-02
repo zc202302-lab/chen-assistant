@@ -17,6 +17,10 @@
     <p id="reminder-feedback" class="reminder-status" role="status" aria-live="polite"></p>
     <section class="reminder-card reminder-phone-card" aria-labelledby="reminder-phone-title">
       <div class="reminder-section-heading"><div><h2 id="reminder-phone-title">手机提醒</h2><p id="reminder-mobile-status" class="reminder-caption"></p></div><input type="checkbox" id="reminder-mobile" class="reminder-switch" role="switch" aria-label="手机接收提醒"></div>
+      <div class="reminder-phone-connection">
+        <p id="push-status" class="reminder-status" role="status">检查手机通知连接中</p>
+        <button type="button" id="push-enable" hidden disabled>连接手机通知</button>
+      </div>
       <div class="reminder-rule-section">
         <h3>提醒方式</h3><div id="reminder-modes" class="reminder-preferences"></div><p id="reminder-mode-status" class="reminder-caption"></p>
       </div>
@@ -35,21 +39,22 @@
         <div class="reminder-schedule-add"><input type="time" id="reminder-schedule-time" value="09:00" aria-label="新增提醒时间"><button type="button" id="reminder-schedule-add">添加时间</button></div>
         <p id="reminder-schedule-feedback" class="reminder-status" role="status" aria-live="polite"></p>
       </div>
-    </section>
-    <section class="reminder-card reminder-current-device">
-      <div class="reminder-section-heading"><div><h2>当前设备通知</h2><p class="reminder-caption">在需要接收提醒的手机或浏览器上开启。</p></div><button type="button" id="push-enable" class="reminder-switch" role="switch" aria-label="本机通知" aria-checked="false" disabled></button></div>
-      <p id="push-status" class="reminder-status" role="status">检查中</p>
-    </section>
-    <details class="reminder-card reminder-settings-advanced" id="reminder-advanced-settings">
-      <summary><span>高级设置<small>接收设备 · 测试通知</small></span><span class="reminder-disclosure" aria-hidden="true">⌄</span></summary>
-      <section class="reminder-rule-section"><div class="reminder-section-heading"><h3>接收设备</h3><span id="reminder-device-count" class="reminder-caption"></span></div>
-        <p class="reminder-caption">每条记录是一份网页推送登记，同一手机可能有多条；不包含 Windows 助手。</p><div id="reminder-devices"></div>
-      </section>
-      <details class="reminder-advanced reminder-rule-section"><summary>测试通知</summary>
-        <div class="reminder-actions"><button type="button" id="push-test" disabled>测试提醒</button><button type="button" id="push-test-lock" disabled>锁屏测试 · 20秒</button></div>
-        <p id="push-delivery" class="reminder-status" role="status" aria-live="polite"></p>
+      <details class="reminder-settings-advanced" id="reminder-advanced-settings">
+        <summary><span>手机连接与测试</span><span class="reminder-disclosure" aria-hidden="true">⌄</span></summary>
+        <section class="reminder-rule-section"><div class="reminder-section-heading"><h3>手机连接记录</h3><span id="reminder-device-count" class="reminder-caption"></span></div>
+          <p class="reminder-caption">同一手机重新连接后可能留下多条记录，可按连接时间辨认。</p><div id="reminder-devices"></div>
+        </section>
+        <details class="reminder-advanced reminder-rule-section"><summary>测试手机通知</summary>
+          <div class="reminder-actions"><button type="button" id="push-test" disabled>测试提醒</button><button type="button" id="push-test-lock" disabled>锁屏测试 · 20秒</button></div>
+          <p id="push-delivery" class="reminder-status" role="status" aria-live="polite"></p>
+        </details>
       </details>
-    </details>
+    </section>
+    <section class="reminder-card reminder-desktop-card">
+      <div class="reminder-section-heading"><div><h2>电脑提醒</h2><p class="reminder-caption">发送到 Windows 助手客户端。</p></div><input type="checkbox" id="reminder-desktop" class="reminder-switch" role="switch" aria-label="电脑提醒"></div>
+      <p id="reminder-desktop-status" class="reminder-caption"></p>
+      <p class="reminder-caption">提醒方式、内容、时间和循环，请在电脑客户端中设置。</p>
+    </section>
   </div>
 </div>
 {% endblock %}

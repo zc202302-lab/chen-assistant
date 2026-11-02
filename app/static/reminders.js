@@ -6,6 +6,7 @@
   let state, reg, deviceId, busy = false;
   const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const phoneSurface = standalone && (ios || /Android/.test(navigator.userAgent));
   const supported = window.isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
   const $ = id => document.getElementById(id);
   function feedback(text) { if (center) $('reminder-feedback').textContent = text; }
@@ -54,7 +55,9 @@
     };
     $('reminder-master').checked=!!state.preferences.all;
     $('reminder-mobile').checked=state.preferences.mobile!==false;
-    $('reminder-mobile-status').textContent=!state.preferences.all?'已暂停 · 总开关已关闭':state.preferences.mobile!==false?'规则仅用于手机；Windows 请在客户端设置。':'手机已暂停，规则保留；不影响 Windows 助手。';
+    $('reminder-desktop').checked=state.preferences.desktop!==false;
+    $('reminder-desktop-status').textContent=!state.preferences.all?'已暂停 · 通知总开关已关闭':state.preferences.desktop!==false?'电脑提醒已开启':'电脑提醒已关闭';
+    $('reminder-mobile-status').textContent=!state.preferences.all?'已暂停 · 总开关已关闭':state.preferences.mobile!==false?'发送到手机桌面图标中的晨的助手。':'手机已暂停，规则保留；不影响 Windows 助手。';
     $('reminder-master-status').textContent=state.preferences.all?'统一控制手机和 Windows 助手。':'已暂停手机和 Windows 助手的所有提醒。';
     $('reminder-modes').replaceChildren(setting('instant','即时提醒'),setting('scheduled','定时提醒'));
     const scopes=$('reminder-task-scopes');
@@ -81,12 +84,12 @@
       row.append(remove);schedule.append(row);
     }
     const devices=$('reminder-devices'); devices.replaceChildren();
-    $('reminder-device-count').textContent=`${state.devices.length} 条登记`;
-    if(!state.devices.length)devices.append(el('p','暂无设备'));
-    for(const d of state.devices) {
+    $('reminder-device-count').textContent=`${state.devices.filter(d=>d.name!=='桌面浏览器').length} 条连接`;
+    if(!state.devices.some(d=>d.name!=='桌面浏览器'))devices.append(el('p','尚未连接手机'));
+    for(const d of state.devices.filter(d=>d.name!=='桌面浏览器')) {
       const row=el('div',undefined,'reminder-row'), copy=el('div',undefined,'reminder-copy');
-      copy.append(el('strong',d.name+(d.id===deviceId?'（本机）':'')),el('small',d.enabled?'已开启':'已关闭'));
-      copy.append(el('small',`登记于 ${date(d.created_at)} · 最近提交推送：${date(d.last_sent)}`));
+      copy.append(el('strong',d.name+(d.id===deviceId?'（这部手机）':'')),el('small',d.enabled?'已开启':'已关闭'));
+      copy.append(el('small',`连接于 ${date(d.created_at)} · 最近提交推送：${date(d.last_sent)}`));
       if(d.error)copy.append(el('small',d.error,'reminder-error'));
       const actions=el('div',undefined,'reminder-device-actions');
       for(const [label,body] of [[d.enabled?'关闭':'开启',{enabled:!d.enabled}],['移除',{delete:true}]]) {
@@ -125,16 +128,19 @@
   }
   function status() {
     const enabled=!!state?.devices.find(d=>d.id===deviceId)?.enabled;
-    let message=enabled?'已开启':'未开启';
-    if(ios&&!standalone)message='请从主屏幕打开';
-    else if(!supported)message='当前浏览器不支持通知';
-    else if(Notification.permission==='denied')message='请在系统设置中允许通知';
+    let message;
+    if(!phoneSurface) message=state?.devices.some(d=>d.enabled&&d.name!=='桌面浏览器')?'手机通知已有连接；网站仅管理提醒设置。':'首次使用时，请在手机桌面的晨的助手中连接通知。';
+    else {
+      message=enabled?'这部手机已连接通知':'这部手机尚未连接通知';
+      if(!supported)message='这部手机暂不支持通知';
+      else if(Notification.permission==='denied')message='请在手机系统设置中允许晨的助手通知';
+    }
     $('push-status').textContent=message;
-    $('push-enable').setAttribute('aria-checked',String(enabled));
-    $('push-enable').disabled=busy||!state||(!enabled&&(!supported||(ios&&!standalone)||Notification.permission==='denied'));
-    $('push-test').disabled=busy||!enabled||!state.preferences.all||state.preferences.mobile===false;
+    $('push-enable').hidden=!phoneSurface||enabled;
+    $('push-enable').disabled=busy||!state||!phoneSurface||!supported||Notification.permission==='denied';
+    $('push-test').disabled=busy||!phoneSurface||!enabled||!state.preferences.all||state.preferences.mobile===false;
     $('push-test-lock').disabled=$('push-test').disabled;
-    for(const control of center.querySelectorAll('[data-preference], #reminder-master, #reminder-mobile, #reminder-repeat-kind, #reminder-weekdays input, #reminder-devices button, #reminder-schedule-list button, #reminder-schedule-add'))control.disabled=busy;
+    for(const control of center.querySelectorAll('[data-preference], #reminder-master, #reminder-mobile, #reminder-desktop, #reminder-repeat-kind, #reminder-weekdays input, #reminder-devices button, #reminder-schedule-list button, #reminder-schedule-add'))control.disabled=busy;
     for(const control of center.querySelectorAll('#reminder-task-scopes input'))control.disabled=busy||!state?.preferences.task;
   }
   async function refresh() {state=await request('/api/reminders');render();await clearStaleNotifications();}
@@ -144,6 +150,7 @@
     for (const tab of center.querySelectorAll('[data-reminder-tab]'))
       tab.addEventListener('click',()=>{selectTab(tab.dataset.reminderTab);history.replaceState(null,'',tab.dataset.reminderTab==='settings'?'#settings':location.pathname);});
     selectTab(location.hash==='#settings'?'settings':'inbox');
+    $('reminder-desktop').addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{desktop:$('reminder-desktop').checked})));
     $('reminder-mobile').addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{mobile:$('reminder-mobile').checked})));
     $('reminder-master').addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{all:$('reminder-master').checked})));
     $('reminder-repeat-kind').addEventListener('change',()=>action(()=>request('/api/reminders/schedule',{slots:state.schedule_slots||[],weekdays:$('reminder-repeat-kind').value==='daily'?[0,1,2,3,4,5,6]:(state.schedule_weekdays?.length<7?state.schedule_weekdays:[0,1,2,3,4])})));
@@ -158,10 +165,7 @@
       $('reminder-schedule-feedback').textContent='已添加';
     }));
     $('push-enable').addEventListener('click',()=>{
-      if(state?.devices.find(d=>d.id===deviceId)?.enabled){
-        action(async()=>{await request(`/api/reminders/devices/${encodeURIComponent(deviceId)}`,{delete:true});const sub=await reg?.pushManager.getSubscription();if(sub)await sub.unsubscribe();deviceId=null;});
-        return;
-      }
+      if(!phoneSurface)return;
       // Permission must be requested directly in this click, before any await,
       // otherwise iPhone loses the required user-activation gesture.
       const permission=Notification.requestPermission();
@@ -172,7 +176,7 @@
         let sub=await reg.pushManager.getSubscription();
         if(sub && sub.options.applicationServerKey && !equalKey(new Uint8Array(sub.options.applicationServerKey),keyBytes(state.public_key))) {await sub.unsubscribe();sub=null;}
         sub=sub||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:keyBytes(state.public_key)});
-        const result=await request('/api/reminders/subscriptions',{subscription:sub.toJSON(),name:ios?'iPhone 主屏幕':(/Android/.test(navigator.userAgent)?'Android 手机':'桌面浏览器')});
+        const result=await request('/api/reminders/subscriptions',{subscription:sub.toJSON(),name:ios?'iPhone 主屏幕':'Android 手机'});
         deviceId=result.device_id;
       });
     });
@@ -183,7 +187,7 @@
   (async()=>{
     try {
       await refresh();
-      if(center&&supported&&(!ios||standalone)) {
+      if(center&&supported&&phoneSurface) {
         reg=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
         await navigator.serviceWorker.ready;
         const sub=await reg.pushManager.getSubscription();

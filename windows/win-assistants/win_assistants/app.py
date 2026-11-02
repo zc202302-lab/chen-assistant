@@ -774,7 +774,7 @@ class WinAssistantsApp:
         ttk.Label(frame, text="提醒连接码").grid(row=1, column=0, sticky="w", pady=7)
         ttk.Entry(frame, textvariable=token_var, show="●", width=57).grid(row=1, column=1, sticky="ew", padx=(12, 0), pady=7)
         ttk.Label(frame, text="通知与提醒规则").grid(row=3, column=0, sticky="w", pady=7)
-        ttk.Button(frame, text="本机提醒规则", command=self._show_reminder_settings).grid(row=3, column=1, sticky="w", padx=(12, 0), pady=7)
+        ttk.Button(frame, text="电脑提醒规则", command=self._show_reminder_settings).grid(row=3, column=1, sticky="w", padx=(12, 0), pady=7)
         ttk.Label(frame, text="批量添加Excel").grid(row=5, column=0, sticky="w", pady=7)
         target_frame = ttk.Frame(frame)
         target_frame.grid(row=5, column=1, sticky="ew", padx=(12, 0), pady=7)

@@ -12,7 +12,7 @@ def show_reminder_settings(app):
         return existing
     window = tk.Toplevel(app.root)
     app.reminder_settings_window = window
-    window.title('本机提醒规则')
+    window.title('电脑提醒规则')
     window.geometry('580x630')
     window.configure(bg='#F4F6FA')
     window.resizable(False, False)
@@ -22,7 +22,7 @@ def show_reminder_settings(app):
     actions.pack(side='bottom', fill='x', pady=(10, 0))
     cfg = app.config.reminders
     switches = {k: tk.BooleanVar(value=getattr(cfg, k)) for k in ('enabled', 'instant', 'scheduled')}
-    ttk.Checkbutton(frame, text='本机提醒', variable=switches['enabled']).pack(anchor='w', pady=(0, 12))
+    ttk.Checkbutton(frame, text='电脑提醒', variable=switches['enabled']).pack(anchor='w', pady=(0, 12))
     modes = ttk.LabelFrame(frame, text='提醒方式', padding=10, style='Reminder.TLabelframe')
     modes.pack(fill='x', pady=5)
     for key, label in [('instant', '即时提醒'), ('scheduled', '定时提醒')]:
@@ -55,7 +55,7 @@ def show_reminder_settings(app):
     ttk.Label(timing, style='Reminder.TLabel', text='时间（空格分隔，最多12个）').pack(anchor='w', pady=(5, 3))
     times = tk.StringVar(value=' '.join(cfg.times))
     ttk.Entry(timing, textvariable=times).pack(fill='x')
-    ttk.Label(frame, text='网页总开关关闭时，本机也暂停提醒。', style='Sub.TLabel').pack(anchor='w', pady=12)
+    ttk.Label(frame, text='网站总开关或电脑提醒关闭时，电脑客户端暂停提醒。', style='Sub.TLabel').pack(anchor='w', pady=12)
 
     def save():
         raw = {k: v.get() for k, v in switches.items()}

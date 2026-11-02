@@ -88,3 +88,12 @@
 #reminder-center summary:focus-visible,#reminder-center select:focus-visible{outline:3px solid #93b7f7;outline-offset:3px;border-radius:8px}
 @media(max-width:600px){#reminder-center .reminder-rule-section{margin-top:16px;padding-top:16px}#reminder-center .reminder-settings-advanced>summary{min-height:72px}#reminder-center .reminder-device-actions{gap:6px}}
 @media(prefers-reduced-motion:reduce){#reminder-center .reminder-disclosure{transition:none}}
+
+#reminder-center [hidden]{display:none!important}
+#reminder-center .reminder-phone-connection{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
+#reminder-center .reminder-phone-connection #push-status{margin:0;flex:1}
+#reminder-center .reminder-phone-connection #push-enable{flex-shrink:0;background:#172033;color:#fff}
+#reminder-center .reminder-phone-card>.reminder-settings-advanced{border-top:1px solid #edf0f5;margin-top:18px;background:transparent}
+#reminder-center .reminder-phone-card>.reminder-settings-advanced>summary{min-height:54px;font-size:13px;color:#748095;font-weight:400}
+#reminder-center .reminder-desktop-card .reminder-caption{margin:8px 0 0}
+@media(max-width:600px){#reminder-center .reminder-phone-connection{align-items:flex-start;flex-direction:column}#reminder-center .reminder-phone-connection #push-enable{width:100%}}
