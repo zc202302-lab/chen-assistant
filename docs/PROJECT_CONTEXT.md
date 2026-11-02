@@ -6,9 +6,11 @@
 - 本轮候选Web1.8.3、Windows0.5.22，替换clam旧叉号为DPI自适应圆角蓝色对勾，未选中/悬停/禁用独立图形；仍使用ttk.Checkbutton原生绑定与布尔变量。提醒页白卡、背景/间距与蓝色保存按钮统一，不改本机规则、网页总开关、连接令牌或任何业务逻辑。用户补充：网页规则只针对手机端；已将网页提醒方式、类别、时间及循环标为手机提醒，新增手机接收独立开关mobile：暂停会取消未发送推送与测试，重启保留，不改变Windows enabled总开关；总开关仍控制两端，本机通知授权单独显示。Windows仍只接收网页总开关，本机独立配置规则。
 - 本地新增手机开关/重启/队列取消/不影响Windows接口契约、既有Push和架构检查均通过；Windows单测通过（GUI项因无显示跳过），编译/diff检查通过；新增真实GUI勾选/禁用及几何验收、每日/每周窗口截图，待CI与实际截图核对。已查看最终相同Windows源码真实截图，蓝色对勾与底部保存/取消完整可见，无裁切；最终head仍须完整验收；Windows构建/冻结更新回滚、发布和公网完整EXE尚待核验；未声称已安装。
 - 上一轮部署证据：Web41382044014返回ONLINE VERIFIED v1.8.2；Windows41382043928 success，公网41382552826返回v0.5.21完整EXE核验。PR188本机独立规则与总开关边界保留；旧冻结测试偶发停滞根因未定，本轮不碰更新器。
-- 核心Windows ui_styles.py/app.py/reminder_settings.py、原生验收与截图脚本。目录/workspace/scratch/6ecb72ebd96b/chen-assistant。唯一下一步：推送PR，核验最终head完整检查和Windows截图，通过后合并并核验Web1.8.3及Windows0.5.22公网发布。
+- 核心Windows ui_styles.py/app.py/reminder_settings.py、原生验收与截图脚本。目录/workspace/scratch/6ecb72ebd96b/chen-assistant。唯一下一步：提交并发修复并核验新head完整Web/Windows检查，通过后合并并核验Web1.8.3及Windows0.5.22公网发布。
 
 本文件是新聊天、新模型或中断后的固定入口。仓库是可核对的项目记忆；聊天记忆只作辅助。
+
+- 接管核验：PR #189受检head a3ff7b25的Windows 41399043095全部验收success（EXE/原生界面/真实更新回滚），稳定性41399043194、隔离41399043160、Foxmail41399043022成功；Web41399043145在号码批量验收失败，日志证明管理页读事务升级清理写入与提醒并发引发SQLITE_BUSY_SNAPSHOT。已改管理页为BEGIN IMMEDIATE，新增两个视图与并发提醒写入回归；旧实现可确定复现database is locked，修复后号码批量契约及架构治理通过。未合并发布，新head必须重新完整CI。
 
 ## 新聊天接管顺序
 

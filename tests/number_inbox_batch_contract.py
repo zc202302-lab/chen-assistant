@@ -30,6 +30,38 @@ def excel(rows, headers=None):
     return buffer.getvalue()
 
 
+def admin_reminder_concurrency(client):
+    """A reminder writer cannot invalidate the admin's read/cleanup snapshot."""
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    from unittest.mock import patch
+    from app import v162_number_inbox as inbox
+    original = inbox.ensure_number_inbox_schema
+    for view in ('pending', 'settings'):
+        started, finished = Event(), Event()
+        def writer():
+            started.set()
+            with db(immediate=True) as conn:
+                conn.execute("INSERT OR REPLACE INTO app_meta(key,value) VALUES('admin-concurrent-reminder','saved')")
+            finished.set()
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            jobs = []
+            def schema(conn=None):
+                result = original(conn)
+                if not jobs:
+                    jobs.append(pool.submit(writer))
+                    assert started.wait(5)
+                    # With a deferred snapshot this writer commits before cleanup,
+                    # reproducing SQLITE_BUSY_SNAPSHOT. An immediate owner blocks it.
+                    finished.wait(.2)
+                return result
+            with patch.object(inbox, 'ensure_number_inbox_schema', schema):
+                response = client.get('/work/number-inbox', params={'view': view})
+                assert response.status_code == 200, response.text
+            jobs[0].result(timeout=5)
+            assert finished.is_set()
+
+
 def main():
     init_db()
     with db() as conn:
@@ -39,6 +71,7 @@ def main():
     assert client.post('/work/number-inbox/batch-add', data={'csrf': 'wrong'}, follow_redirects=False).status_code == 303
     session, csrf, _ = create_session()
     client.cookies.set('session_token', session)
+    admin_reminder_concurrency(client)
     policy = client.get('/work/number-inbox').headers['content-security-policy']
     assert 'http://127.0.0.1:18764' in policy and 'http://127.0.0.1:18763' in policy
     assert client.post('/work/number-inbox/batch-add', data={'csrf': 'wrong'}).status_code == 403
