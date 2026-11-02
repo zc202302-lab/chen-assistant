@@ -16,23 +16,25 @@ def show_reminder_settings(app):
     window.geometry('580x630')
     window.configure(bg='#F4F6FA')
     window.resizable(False, False)
-    frame = ttk.Frame(window, padding=20)
+    frame = ttk.Frame(window, padding=16)
     frame.pack(fill='both', expand=True)
+    actions = ttk.Frame(frame)
+    actions.pack(side='bottom', fill='x', pady=(10, 0))
     cfg = app.config.reminders
     switches = {k: tk.BooleanVar(value=getattr(cfg, k)) for k in ('enabled', 'instant', 'scheduled')}
     ttk.Checkbutton(frame, text='本机提醒', variable=switches['enabled']).pack(anchor='w', pady=(0, 12))
-    modes = ttk.LabelFrame(frame, text='提醒方式', padding=14, style='Reminder.TLabelframe')
+    modes = ttk.LabelFrame(frame, text='提醒方式', padding=10, style='Reminder.TLabelframe')
     modes.pack(fill='x', pady=5)
     for key, label in [('instant', '即时提醒'), ('scheduled', '定时提醒')]:
         ttk.Checkbutton(modes, style='Reminder.TCheckbutton', text=label, variable=switches[key]).pack(side='left', padx=(0, 25))
     categories = {k: tk.BooleanVar(value=v) for k, v in cfg.categories.items()}
-    group = ttk.LabelFrame(frame, text='通知类别', padding=14, style='Reminder.TLabelframe')
+    group = ttk.LabelFrame(frame, text='通知类别', padding=10, style='Reminder.TLabelframe')
     group.pack(fill='x', pady=5)
     for key, label in [('number_inbox', '未加号码'), ('task', '待办'),
                        ('task_global', '全局待办'), ('task_customer', '客户待办')]:
         ttk.Checkbutton(group, style='Reminder.TCheckbutton', text=label, variable=categories[key]).pack(
             anchor='w', padx=(24 if key.startswith('task_') else 0, 0))
-    timing = ttk.LabelFrame(frame, text='定时与重复 · 北京时间', padding=14, style='Reminder.TLabelframe')
+    timing = ttk.LabelFrame(frame, text='定时与重复 · 北京时间', padding=10, style='Reminder.TLabelframe')
     timing.pack(fill='x', pady=5)
     repeat = tk.StringVar(value='每天' if cfg.weekdays == list(range(7)) else '每周指定日期')
     selector = ttk.Combobox(timing, textvariable=repeat, values=['每天', '每周指定日期'], state='readonly', width=18, style='Reminder.TCombobox')
@@ -79,8 +81,6 @@ def show_reminder_settings(app):
         if hasattr(panel, 'last_payload'):
             panel.apply(panel.last_payload)
         window.destroy()
-    actions = ttk.Frame(frame)
-    actions.pack(side='bottom', fill='x', pady=(10, 0))
     ttk.Button(actions, text='取消', command=window.destroy).pack(side='right')
     ttk.Button(actions, text='保存', command=save, style='Accent.TButton').pack(side='right', padx=8)
     return window

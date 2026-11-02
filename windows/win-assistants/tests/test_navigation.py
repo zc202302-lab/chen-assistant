@@ -65,6 +65,8 @@ class NavigationTests(unittest.TestCase):
         self.assertTrue(boxes['周一'].instate(['disabled', 'selected']))
         for widget in self.descendants(window):
             if widget.winfo_ismapped():
+                if isinstance(widget, (ttk.Button, ttk.Label)):
+                    self.assertGreaterEqual(widget.winfo_height(), widget.winfo_reqheight())
                 self.assertLessEqual(widget.winfo_rootx()+widget.winfo_width(),
                                      window.winfo_rootx()+window.winfo_width()+2)
                 self.assertLessEqual(widget.winfo_rooty()+widget.winfo_height(),
