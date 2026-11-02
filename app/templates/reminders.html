@@ -16,15 +16,15 @@
       <p id="reminder-master-status" class="reminder-caption"></p>
       <p id="reminder-feedback" class="reminder-status" role="status" aria-live="polite"></p>
     </section>
-    <p class="reminder-caption">Windows 仅同步总开关，提醒规则在客户端设置。</p>
-    <section class="reminder-card"><h2>网页与手机提醒方式</h2><div id="reminder-modes" class="reminder-preferences"></div><p id="reminder-mode-status" class="reminder-caption"></p></section>
+    <p class="reminder-caption">以下规则仅用于手机提醒；Windows 客户端在本机设置。</p>
+    <section class="reminder-card"><h2>手机提醒方式</h2><div id="reminder-modes" class="reminder-preferences"></div><p id="reminder-mode-status" class="reminder-caption"></p></section>
     <section class="reminder-card">
-      <h2>通知类别</h2><div id="reminder-preferences" class="reminder-preferences"></div>
+      <h2>手机通知类别</h2><div id="reminder-preferences" class="reminder-preferences"></div>
       <div id="reminder-task-scopes" class="reminder-task-scopes"></div>
       <details class="reminder-advanced"><summary>其他模块</summary><div id="reminder-other-preferences" class="reminder-preferences"></div></details>
     </section>
     <section class="reminder-card" id="reminder-timing-card">
-      <div class="reminder-section-heading"><h2>定时与重复</h2><span class="reminder-caption">北京时间</span></div>
+      <div class="reminder-section-heading"><h2>手机定时与重复</h2><span class="reminder-caption">北京时间</span></div>
       <div class="reminder-repeat"><label for="reminder-repeat-kind">重复</label><select id="reminder-repeat-kind"><option value="daily">每天</option><option value="weekly">每周指定日期</option></select></div>
       <fieldset id="reminder-weekdays" class="reminder-weekdays" hidden><legend>重复日期</legend>
         {% for label in ['一','二','三','四','五','六','日'] %}<label><input type="checkbox" value="{{ loop.index0 }}" aria-label="周{{ label }}"><span>周{{ label }}</span></label>{% endfor %}
