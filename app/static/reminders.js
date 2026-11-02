@@ -139,7 +139,7 @@
       tab.addEventListener('click',()=>{selectTab(tab.dataset.reminderTab);history.replaceState(null,'',tab.dataset.reminderTab==='settings'?'#settings':location.pathname);});
     selectTab(location.hash==='#settings'?'settings':'inbox');
     $('reminder-master').addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{all:$('reminder-master').checked})));
-    $('reminder-repeat-kind').addEventListener('change',()=>action(()=>request('/api/reminders/schedule',{slots:state.schedule_slots||[],weekdays:$('reminder-repeat-kind').value==='daily'?[0,1,2,3,4,5,6]:[0,1,2,3,4]})));
+    $('reminder-repeat-kind').addEventListener('change',()=>action(()=>request('/api/reminders/schedule',{slots:state.schedule_slots||[],weekdays:$('reminder-repeat-kind').value==='daily'?[0,1,2,3,4,5,6]:(state.schedule_weekdays?.length<7?state.schedule_weekdays:[0,1,2,3,4])})));
     $('reminder-weekdays').addEventListener('change',()=>action(async()=>{const days=[...$('reminder-weekdays').querySelectorAll('input:checked')].map(input=>Number(input.value));if(!days.length)throw new Error('请至少选择一天');await request('/api/reminders/schedule',{slots:state.schedule_slots||[],weekdays:days});}));
     $('reminder-schedule-add').addEventListener('click',()=>action(async()=>{
       const time=$('reminder-schedule-time').value;

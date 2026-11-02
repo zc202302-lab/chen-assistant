@@ -80,7 +80,8 @@ def main():
                     page.locator('#reminder-schedule-time').fill(value)
                     page.locator('#reminder-schedule-add').click()
                     expect(page.get_by_label('删除 '+value,exact=True)).to_be_visible()
-                page.locator('#reminder-repeat-kind').select_option('weekly')
+                with page.expect_response(lambda r:r.url.endswith('/api/reminders/schedule') and r.request.method=='POST'):
+                    page.locator('#reminder-repeat-kind').select_option('weekly')
                 expect(page.get_by_label('周一',exact=True)).to_be_checked()
                 page.get_by_label('周二',exact=True).uncheck()
                 page.get_by_label('周四',exact=True).uncheck()
