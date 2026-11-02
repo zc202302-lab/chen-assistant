@@ -69,7 +69,7 @@ def b64(raw):
 def ensure_reminder_schema():
     with db(immediate=True) as conn:
         execute_schema(conn, SCHEMA)
-        for kind in ['all', 'instant', 'scheduled', 'task_global', 'task_customer', *TYPES]:
+        for kind in ['all', 'mobile', 'instant', 'scheduled', 'task_global', 'task_customer', *TYPES]:
             conn.execute('INSERT OR IGNORE INTO reminder_preferences(kind) VALUES(?)', (kind,))
         # Encrypted in the existing backed-up database, so deploys/restarts keep
         # the same application-server key. No private key is committed to Git.
@@ -249,7 +249,7 @@ def collect_scheduled(now=None):
         if local.weekday() not in schedule_weekdays(conn) or not conn.execute("SELECT 1 FROM reminder_schedule WHERE slot=?", (minute,)).fetchone():
             return
         prefs = preferences(conn)
-        if not prefs.get('all', True) or not prefs.get('scheduled', True):
+        if not prefs.get('all', True) or not prefs.get('mobile', True) or not prefs.get('scheduled', True):
             return
         reconcile_number_reminders(conn, now)
         count = pending_count(conn, prefs)
@@ -452,11 +452,11 @@ async def check_csrf(request):
 @router.post('/api/reminders/preferences')
 async def save_preferences(request: Request):
     payload = await check_csrf(request)
-    if not payload or any(k not in ['all','instant','scheduled','task_global','task_customer',*TYPES] or type(v) is not bool for k,v in payload.items()):
+    if not payload or any(k not in ['all','mobile','instant','scheduled','task_global','task_customer',*TYPES] or type(v) is not bool for k,v in payload.items()):
         raise HTTPException(400,'提醒类型无效')
     with db(immediate=True) as conn:
         combined = preferences(conn) | payload
-        if combined.get('all', True) and not (combined.get('instant', True) or combined.get('scheduled', True)):
+        if combined.get('all', True) and combined.get('mobile', True) and not (combined.get('instant', True) or combined.get('scheduled', True)):
             raise HTTPException(400, '请选择即时提醒或定时提醒，或关闭通知总开关')
         if combined.get('task', True) and not (combined.get('task_global', True) or combined.get('task_customer', True)):
             raise HTTPException(400, '请选择全局待办或客户待办，或关闭待办提醒')
@@ -535,6 +535,8 @@ async def test_push(request: Request):
     with db() as conn:
         if not preferences(conn).get('all'):
             raise HTTPException(400,'请先开启通知总开关')
+        if not preferences(conn).get('mobile', True):
+            raise HTTPException(400,'手机接收提醒已关闭')
         if not conn.execute('SELECT 1 FROM push_devices WHERE id=? AND enabled=1',(did,)).fetchone():
             raise HTTPException(400,'请先在此设备开启通知接收')
         if conn.execute("SELECT 1 FROM reminders WHERE event_key LIKE 'test:%' AND created_at>?",(time.time()-10,)).fetchone():

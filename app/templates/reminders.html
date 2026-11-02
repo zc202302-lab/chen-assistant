@@ -16,15 +16,19 @@
       <p id="reminder-master-status" class="reminder-caption"></p>
       <p id="reminder-feedback" class="reminder-status" role="status" aria-live="polite"></p>
     </section>
-    <p class="reminder-caption">Windows 仅同步总开关，提醒规则在客户端设置。</p>
-    <section class="reminder-card"><h2>网页与手机提醒方式</h2><div id="reminder-modes" class="reminder-preferences"></div><p id="reminder-mode-status" class="reminder-caption"></p></section>
     <section class="reminder-card">
-      <h2>通知类别</h2><div id="reminder-preferences" class="reminder-preferences"></div>
+      <div class="reminder-section-heading"><h2>手机接收提醒</h2><input type="checkbox" id="reminder-mobile" class="reminder-switch" role="switch" aria-label="手机接收提醒"></div>
+      <p id="reminder-mobile-status" class="reminder-caption"></p>
+    </section>
+    <p class="reminder-caption">以下规则仅用于手机提醒；Windows 客户端在本机设置。</p>
+    <section class="reminder-card"><h2>手机提醒方式</h2><div id="reminder-modes" class="reminder-preferences"></div><p id="reminder-mode-status" class="reminder-caption"></p></section>
+    <section class="reminder-card">
+      <h2>手机通知类别</h2><div id="reminder-preferences" class="reminder-preferences"></div>
       <div id="reminder-task-scopes" class="reminder-task-scopes"></div>
       <details class="reminder-advanced"><summary>其他模块</summary><div id="reminder-other-preferences" class="reminder-preferences"></div></details>
     </section>
     <section class="reminder-card" id="reminder-timing-card">
-      <div class="reminder-section-heading"><h2>定时与重复</h2><span class="reminder-caption">北京时间</span></div>
+      <div class="reminder-section-heading"><h2>手机定时与重复</h2><span class="reminder-caption">北京时间</span></div>
       <div class="reminder-repeat"><label for="reminder-repeat-kind">重复</label><select id="reminder-repeat-kind"><option value="daily">每天</option><option value="weekly">每周指定日期</option></select></div>
       <fieldset id="reminder-weekdays" class="reminder-weekdays" hidden><legend>重复日期</legend>
         {% for label in ['一','二','三','四','五','六','日'] %}<label><input type="checkbox" value="{{ loop.index0 }}" aria-label="周{{ label }}"><span>周{{ label }}</span></label>{% endfor %}
@@ -34,7 +38,7 @@
       <p id="reminder-schedule-feedback" class="reminder-status" role="status" aria-live="polite"></p>
     </section>
     <section class="reminder-card">
-      <div class="reminder-section-heading"><h2>本设备接收</h2><button type="button" id="push-enable" class="reminder-switch" role="switch" aria-label="本机通知" aria-checked="false" disabled></button></div>
+      <div class="reminder-section-heading"><h2>本机通知授权</h2><button type="button" id="push-enable" class="reminder-switch" role="switch" aria-label="本机通知" aria-checked="false" disabled></button></div>
       <p id="push-status" class="reminder-status" role="status">检查中</p>
       <details class="reminder-advanced"><summary>测试通知</summary>
         <div class="reminder-actions"><button type="button" id="push-test" disabled>测试提醒</button><button type="button" id="push-test-lock" disabled>锁屏测试 · 20秒</button></div>

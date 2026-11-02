@@ -192,7 +192,9 @@ public_number_submit.__public_token_authenticated__ = True
 @router.get('/work/number-inbox', response_class=HTMLResponse)
 def number_inbox_admin(request: Request, view: str = 'pending'):
     view = 'settings' if view == 'settings' else 'pending'
-    with db() as conn:
+    # Retention cleanup writes after schema/settings reads; reserve the writer
+    # before taking a snapshot so concurrent reminder writes cannot invalidate it.
+    with db(immediate=True) as conn:
         token = ensure_number_inbox_schema(conn)
         desktop_token = ensure_desktop_token(conn) if view == 'settings' else ''
         batch_settings = number_inbox_batch.settings(conn)

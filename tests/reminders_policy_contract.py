@@ -65,6 +65,22 @@ def main():
     # No stale summary reaches a provider after the underlying work is done.
     assert deliver_one(now=monday+1800,sender=lambda **kw:sent.append(kw))
     assert len(sent) == 1
+    # Pausing the phone must leave the Windows master gate enabled.
+    prefs(mobile=False)
+    phone_state = client.get('/api/reminders').json()
+    assert phone_state['preferences']['mobile'] is False
+    assert client.get('/api/work-todos',headers={'Authorization':'Bearer '+task_token}).json()['reminder_policy'] == {'enabled': True}
+    assert client.get('/api/number-inbox/pending',headers={'Authorization':'Bearer '+number_token}).json()['reminder_policy'] == {'enabled': True}
+    assert client.post('/api/reminders/test',headers=headers,json={'device_id':phone_state['devices'][0]['id']}).status_code == 400
+    from app.reminder_policy import notification_allowed
+    assert not notification_allowed(phone_state['preferences'], 'system', 'test:paused-phone')
+    assert not notification_allowed(phone_state['preferences'], 'system', 'scheduled:paused-phone')
+    with db() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM push_outbox WHERE state='pending'").fetchone()[0] == 0
+    ensure_reminder_schema()
+    assert client.get('/api/reminders').json()['preferences']['mobile'] is False
+    prefs(mobile=True)
+    assert client.get('/api/reminders').json()['preferences']['mobile'] is True
     prefs(all=False)
     api = client.get('/api/work-todos',headers={'Authorization':'Bearer '+task_token}).json()
     inbox = client.get('/api/number-inbox/pending',headers={'Authorization':'Bearer '+number_token}).json()

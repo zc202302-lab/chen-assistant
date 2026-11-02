@@ -91,6 +91,8 @@ class WinAssistantsApp:
     def _build_ui(self) -> None:
         style = ttk.Style()
         style.theme_use("clam")
+        from .ui_styles import install_checkbutton_style
+        install_checkbutton_style(self.root, style)
         style.configure("TFrame", background=BG)
         style.configure("Card.TFrame", background=CARD)
         style.configure("Footer.TFrame", background=CARD)
