@@ -360,6 +360,9 @@ class WinAssistantsApp:
         else:
             if key == "work_todos":
                 self.todo_receiver.stop()
+                if self.todo_panel.popup is not None:
+                    self.todo_panel.popup.destroy()
+                    self.todo_panel.popup = None
             elif key == "sms":
                 self.sms_receiver.stop()
             elif key == "chen_helper":
@@ -369,6 +372,10 @@ class WinAssistantsApp:
             elif key == "number_inbox":
                 self.number_inbox_receiver.stop()
                 self.number_batch_bridge.stop()
+                self.number_reminder_items.clear()
+                if self.number_reminder_window is not None:
+                    self.number_reminder_window.destroy()
+                    self.number_reminder_window = None
             self.status_vars[key].set("已停用")
 
     def _start_one(self, key: str) -> None:
@@ -485,6 +492,8 @@ class WinAssistantsApp:
                 inbox_event = self.number_inbox_receiver.events.get_nowait()
             except queue.Empty:
                 break
+            if not self.enabled_vars["number_inbox"].get():
+                continue
             self.status_vars["number_inbox"].set(inbox_event.message)
             if inbox_event.kind == "policy":
                 self.number_reminder_policy = inbox_event.reminder_policy
@@ -604,6 +613,8 @@ class WinAssistantsApp:
         self.root.bell()
 
     def _maybe_show_scheduled_number_reminder(self) -> None:
+        if not self.enabled_vars["number_inbox"].get():
+            return
         if not self.number_reminder_items:
             return
         policy = getattr(self, 'number_reminder_policy', None)
