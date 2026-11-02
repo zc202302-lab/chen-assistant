@@ -158,7 +158,10 @@ def collect_due(now=None):
                     publish_reminder(conn, kind='task', title='全局待办到期提醒', body=row['title'][:500],
                         url='/work/todos', event_key=f"work-task:{row['id']}:{row['remind_at']}")
             for row in conn.execute("SELECT id,event_key FROM reminders WHERE kind='task' AND event_key LIKE 'work-task:%' AND resolved_at IS NULL").fetchall():
-                _, tid, value = row['event_key'].split(':', 2)
+                parts = row['event_key'].split(':', 2)
+                if len(parts) != 3 or not parts[1].isdigit():
+                    continue
+                _, tid, value = parts
                 task = conn.execute('SELECT * FROM work_todos WHERE id=?', (tid,)).fetchone()
                 if not task or task['done'] or task['remind_at'] != value:
                     conn.execute('UPDATE reminders SET resolved_at=? WHERE id=?', (now,row['id']))
@@ -196,13 +199,16 @@ def reminder_current(conn, row):
     key = row['event_key']
     if row['kind'] != 'task' or not key.startswith(('task:', 'work-task:')):
         return True
-    prefix, tid, value = key.split(':', 2)
+    parts = key.split(':', 2)
+    if len(parts) != 3:
+        return False
+    prefix, tid, value = parts
     if not tid.isdigit():
         return False
     table = 'work_todos' if prefix == 'work-task' else 'tasks'
     if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
         return False
-    task = conn.execute('SELECT * FROM ' + table + ' WHERE id=?', (int(tid),)).fetchone()
+    task = conn.execute('SELECT * FROM ' + table + ' WHERE id=?', (tid,)).fetchone()
     if not task or task['done']:
         return False
     current = task['remind_at'] if prefix == 'work-task' else task['remind_at'] or task['remind_date']

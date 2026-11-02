@@ -3,6 +3,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from reminders_push_contract import (app, init_db, db, now_iso, create_session, ensure_reminder_schema,
     ensure_number_inbox_schema, collect_due, collect_scheduled, deliver_one, b64)
+from app.reminders import publish_reminder, reminder_current
 from app.work_todos import ensure_work_todos_schema, desktop_token
 from app.reminder_policy import desktop_policy
 from app.v162_number_inbox import ensure_desktop_token
@@ -87,6 +88,12 @@ def main():
     ensure_reminder_schema()
     with db() as conn:
         assert desktop_policy(conn) == before  # Restart cannot re-enable disabled rules.
+    with db() as conn:
+        for key in ('task:bad', 'work-task:bad', 'task:²:invalid'):
+            rid = publish_reminder(conn,kind='task',title='兼容事件键',event_key=key)
+            row = conn.execute('SELECT * FROM reminders WHERE id=?',(rid,)).fetchone()
+            assert not reminder_current(conn,row)
+    collect_due(now=monday)  # Generic event API input cannot break the worker.
     print('unified reminders passed: global/customer sources, modes, weekdays, cancellation, scopes, shared desktop feeds, restart')
 
 
