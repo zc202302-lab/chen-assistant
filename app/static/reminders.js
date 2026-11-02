@@ -55,8 +55,10 @@
     $('reminder-master').checked=!!state.preferences.all;
     $('reminder-master-status').textContent=state.preferences.all?'已开启 · 所有设备':'已暂停 · 所有设备';
     $('reminder-modes').replaceChildren(setting('instant','即时提醒'),setting('scheduled','定时提醒'));
-    $('reminder-preferences').replaceChildren(setting('number_inbox','未加号码'),setting('task','待办'));
-    $('reminder-task-scopes').replaceChildren(setting('task_global','全局待办'),setting('task_customer','客户待办'));
+    const scopes=$('reminder-task-scopes');
+    scopes.replaceChildren(setting('task_global','全局待办'),setting('task_customer','客户待办'));
+    const taskGroup=el('div',undefined,'reminder-task-group');taskGroup.append(setting('task','待办'),scopes);
+    $('reminder-preferences').replaceChildren(setting('number_inbox','未加号码'),taskGroup);
     $('reminder-other-preferences').replaceChildren(...Object.entries(state.types).filter(([key])=>!['number_inbox','task'].includes(key)).map(([key,label])=>setting(key,label)));
     $('reminder-timing-card').hidden=!state.preferences.scheduled;
     $('reminder-mode-status').textContent=state.preferences.scheduled&&!(state.schedule_slots||[]).length?'定时提醒尚未添加时间':'';

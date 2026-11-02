@@ -1,62 +1,197 @@
-#reminder-center{max-width:900px;margin:0 auto;color:#172033}
-.reminder-heading,.reminder-section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.reminder-heading{margin-bottom:18px}.reminder-heading h1{margin:0}.reminder-section-heading{margin-bottom:16px}
-.reminder-card{background:#fff;border:1px solid #e2e7ef;border-radius:20px;padding:24px;margin:16px 0;box-shadow:0 4px 20px #17203303}
-.reminder-card h2{font-size:17px;line-height:1.4;margin:0 0 16px;font-weight:650}.reminder-section-heading h2{margin:0}
-.reminder-pill{border-radius:20px;padding:7px 12px;background:#edf3ff;color:#3561a8;font-size:12px;white-space:nowrap}
-.reminder-caption,.reminder-status,.reminder-empty{color:#748095;font-size:13px;line-height:1.5}
-#reminder-center .reminder-status{margin:10px 0 0}#reminder-center .reminder-status:empty{display:none}
-#reminder-center #push-status{margin:-6px 0 16px}#reminder-center #reminder-feedback{color:#b45309}
-.reminder-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:5px;border:1px solid #e2e7ef;border-radius:15px;background:#eef1f6}
-#reminder-center button{appearance:none;-webkit-appearance:none;box-sizing:border-box;min-height:42px;margin:0;border:1px solid #dfe5ee;border-radius:11px;padding:10px 16px;background:#f6f8fb;color:#33435b;font:inherit;font-size:14px;font-weight:550;line-height:1.35;cursor:pointer;transition:background .16s,color .16s,box-shadow .16s,opacity .16s}
-#reminder-center button:hover:not(:disabled){background:#eaf0f8}#reminder-center button:active:not(:disabled){background:#dfe8f5}
-#reminder-center button:disabled{opacity:.4;cursor:default}
-#reminder-center button:focus-visible,#reminder-center input:focus-visible{outline:3px solid #93b7f7;outline-offset:3px}
-#reminder-center .reminder-tab{border:0;background:transparent;min-height:44px;color:#6b7587;border-radius:11px}
-#reminder-center .reminder-tab.active{background:#fff;color:#172033;box-shadow:0 2px 7px #1720330d}
-[data-reminder-panel][hidden]{display:none!important}
-.reminder-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.reminder-actions button{width:100%}
-.reminder-preferences{display:grid;grid-template-columns:1fr 1fr;column-gap:32px}
-.reminder-preferences label{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:58px;border-top:1px solid #edf0f5;cursor:pointer;font-size:14px}
-.reminder-preferences label:nth-child(-n+2){border-top:0}
-#reminder-center .reminder-switch{appearance:none;-webkit-appearance:none;position:relative;flex:0 0 48px;width:48px;min-width:48px;height:28px;min-height:28px;border:0;border-radius:20px;padding:0;margin:0;background:#dce2eb;box-shadow:inset 0 0 0 1px #17203304;vertical-align:middle;cursor:pointer;transition:background .18s}
-#reminder-center .reminder-switch:before{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;box-shadow:0 1px 4px #17203326;transition:transform .18s}
-#reminder-center .reminder-switch:after{content:'';position:absolute;inset:-8px 0}
-#reminder-center .reminder-switch:checked,#reminder-center .reminder-switch[aria-checked=true]{background:#356bcc}
-#reminder-center .reminder-switch:checked:before,#reminder-center .reminder-switch[aria-checked=true]:before{transform:translateX(20px)}
-#reminder-center .reminder-switch:hover:not(:disabled){background:#cbd4e2}
-#reminder-center .reminder-switch[aria-checked=true]:hover:not(:disabled){background:#285cb5}
-#reminder-center .reminder-switch:checked:hover:not(:disabled){background:#285cb5}
-.reminder-schedule-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.reminder-schedule-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;border:1px solid #e6ebf2;border-radius:12px;padding:6px 8px 6px 14px;background:#f9fafc}
-.reminder-schedule-row strong{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.3px}
-#reminder-center .reminder-remove{width:38px;min-width:38px;min-height:38px;padding:0;border:0;background:transparent;color:#8490a3;font-size:24px;font-weight:400;line-height:1}
-#reminder-center .reminder-remove:hover:not(:disabled){background:#ffebed;color:#b34b5c}
-.reminder-schedule-add{display:flex;gap:10px;margin-top:16px;align-items:stretch}
-#reminder-schedule-time{appearance:none;-webkit-appearance:none;box-sizing:border-box;width:160px;min-width:0;max-width:100%;min-height:46px;margin:0;padding:9px 12px;border:1px solid #dce3ee;border-radius:11px;background:#fff;color:#172033;font-family:inherit;font-size:19px;text-align:center;font-variant-numeric:tabular-nums}
-#reminder-schedule-time::-webkit-date-and-time-value{text-align:center;margin:0}
-#reminder-center #reminder-schedule-add{min-width:86px;background:#172033;border-color:#172033;color:#fff}
-#reminder-center #reminder-schedule-add:hover:not(:disabled){background:#2d3c55}
-.reminder-empty{margin:0;padding:6px 0;grid-column:1/-1}
-.reminder-row{padding:15px 0;border-top:1px solid #edf0f5;display:flex;align-items:center;justify-content:space-between;gap:14px}.reminder-row:first-child{border-top:0;padding-top:0}.reminder-row:last-child{padding-bottom:0}
-.reminder-copy{min-width:0;overflow-wrap:anywhere}.reminder-copy strong,.reminder-copy a{font-size:14px;font-weight:600}.reminder-copy small{display:block;color:#8490a3;font-size:12px;margin-top:5px}.reminder-row.read{opacity:.65}.reminder-error{color:#b45309!important}
-.reminder-device-actions{display:flex;align-items:center;gap:14px;flex-shrink:0}
-.reminder-nav-count{font-size:11px;margin-left:3px}.reminder-entry{flex-shrink:0;font-size:13px;white-space:nowrap;padding:5px 9px;border:1px solid #dbe4f0;border-radius:10px;color:#3561a8;background:#f0f5ff}
-@media(max-width:600px){.reminder-card{padding:20px;border-radius:18px;margin:14px 0}.reminder-preferences{grid-template-columns:1fr}.reminder-preferences label:nth-child(2){border-top:1px solid #edf0f5}.reminder-schedule-list{grid-template-columns:repeat(2,minmax(0,1fr))}.reminder-schedule-add input{flex:1;width:0}.reminder-actions{gap:8px}#reminder-center .reminder-actions button{font-size:13px;padding:10px 8px}.reminder-heading h1{font-size:23px}}
-@media(prefers-reduced-motion:reduce){#reminder-center button,#reminder-center .reminder-switch,#reminder-center .reminder-switch:before{transition:none}}
-
-.reminder-task-scopes{display:flex;gap:24px;flex-wrap:wrap;padding:4px 0 8px 18px;border-left:2px solid #e6edf8;margin-bottom:12px}
-.reminder-task-scopes label{display:flex;gap:16px;align-items:center;justify-content:space-between;min-height:44px;font-size:14px}
-.reminder-repeat{display:flex;gap:16px;align-items:center;margin-bottom:16px}
-#reminder-repeat-kind{min-height:44px;border:1px solid #dce3ee;border-radius:10px;background:#fff;padding:8px 12px;font:inherit;font-size:16px;color:#172033}
-.reminder-weekdays{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;padding:0;border:0}
-.reminder-weekdays[hidden],#reminder-timing-card[hidden]{display:none!important}
-.reminder-weekdays legend{font-size:12px;color:#748095;margin-bottom:8px}
-.reminder-weekdays label{position:relative;cursor:pointer}
-.reminder-weekdays input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
-.reminder-weekdays span{display:grid;place-items:center;min-width:42px;min-height:42px;border:1px solid #dce3ee;border-radius:10px;background:#f7f9fc;font-size:13px}
-.reminder-weekdays input:checked+span{background:#eaf1ff;border-color:#6b93d8;color:#285cb5}
-.reminder-weekdays input:focus-visible+span{outline:3px solid #93b7f7;outline-offset:2px}
-.reminder-advanced summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:#748095;font-size:13px}
-.reminder-master-card{border-color:#cddbf2}
-@media(max-width:600px){.reminder-task-scopes{display:grid;gap:4px}.reminder-repeat{justify-content:space-between}.reminder-weekdays{gap:5px}.reminder-weekdays span{min-width:36px}}
+(() => {
+  'use strict';
+  const center = document.getElementById('reminder-center');
+  const badge = document.querySelector('[data-reminder-badge]');
+  if (!center && document.querySelector('[data-reminder-available="false"]')) return;
+  let state, reg, deviceId, busy = false;
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const supported = window.isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const $ = id => document.getElementById(id);
+  function feedback(text) { if (center) $('reminder-feedback').textContent = text; }
+  async function request(path, body) {
+    const options = body === undefined ? {} : {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':center.dataset.csrf}, body:JSON.stringify(body)};
+    const response = await fetch(path, {...options, credentials:'same-origin'});
+    if (response.redirected || !response.headers.get('content-type')?.includes('application/json')) throw new Error('登录已过期，请重新登录。');
+    const result = await response.json();
+    if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : '操作失败，请重试。');
+    return result;
+  }
+  function el(tag, text, cls) { const node=document.createElement(tag); if(text !== undefined)node.textContent=text; if(cls)node.className=cls; return node; }
+  function date(value) { return value ? new Date(value*1000).toLocaleString('zh-CN') : '尚未发送'; }
+  function updateBadge(count) {
+    if (badge) { badge.textContent=count ? String(count) : ''; badge.hidden=!count; }
+    if ('setAppBadge' in navigator) { (count ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(()=>{}); }
+  }
+  function selectTab(tab) {
+    if (!center) return;
+    for (const name of ['inbox','settings']) {
+      center.querySelector('[data-reminder-panel="'+name+'"]').hidden = tab !== name;
+      const button = center.querySelector('[data-reminder-tab="'+name+'"]');
+      button.classList.toggle('active', tab === name);
+      button.setAttribute('aria-pressed', String(tab === name));
+    }
+  }
+  async function clearStaleNotifications() {
+    if (!reg || !state || typeof reg.getNotifications !== 'function') return;
+    try {
+      const active = new Set((state.active_notification_ids || []).map(id => String(id)));
+      const notifications = await reg.getNotifications();
+      for (const notification of notifications) {
+        const match = /^chen-reminder-(\d+)$/.exec(notification.tag || '');
+        if (match && !active.has(match[1])) notification.close();
+      }
+    } catch (_) { /* Platforms may not expose delivered notification management. */ }
+  }
+  function render() {
+    updateBadge(state.unread_count);
+    if(!center)return;
+    $('reminder-count').textContent=`${state.unread_count} 条未读`;
+    const setting=(kind,label)=>{
+      const wrap=el('label'), input=el('input'); input.type='checkbox'; input.className='reminder-switch'; input.setAttribute('role','switch'); input.setAttribute('aria-label',label); input.checked=!!state.preferences[kind]; input.dataset.preference=kind;
+      input.addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{[kind]:input.checked})));
+      wrap.append(el('span',label),input); return wrap;
+    };
+    $('reminder-master').checked=!!state.preferences.all;
+    $('reminder-master-status').textContent=state.preferences.all?'已开启 · 所有设备':'已暂停 · 所有设备';
+    $('reminder-modes').replaceChildren(setting('instant','即时提醒'),setting('scheduled','定时提醒'));
+    const scopes=$('reminder-task-scopes');
+    scopes.replaceChildren(setting('task_global','全局待办'),setting('task_customer','客户待办'));
+    const taskGroup=el('div',undefined,'reminder-task-group');taskGroup.append(setting('task','待办'),scopes);
+    $('reminder-preferences').replaceChildren(setting('number_inbox','未加号码'),taskGroup);
+    $('reminder-other-preferences').replaceChildren(...Object.entries(state.types).filter(([key])=>!['number_inbox','task'].includes(key)).map(([key,label])=>setting(key,label)));
+    $('reminder-timing-card').hidden=!state.preferences.scheduled;
+    $('reminder-mode-status').textContent=state.preferences.scheduled&&!(state.schedule_slots||[]).length?'定时提醒尚未添加时间':'';
+    const days=state.schedule_weekdays||[0,1,2,3,4,5,6];
+    {
+      $('reminder-repeat-kind').value=days.length===7?'daily':'weekly';
+      $('reminder-weekdays').hidden=days.length===7;
+      for(const input of $('reminder-weekdays').querySelectorAll('input'))input.checked=days.includes(Number(input.value));
+    }
+    const schedule=$('reminder-schedule-list');schedule.replaceChildren();
+    const times=state.schedule_slots||[];
+    if(!times.length)schedule.append(el('p','暂无时间','reminder-empty'));
+    for(const time of times){
+      const row=el('div',undefined,'reminder-schedule-row');
+      row.append(el('strong',time));
+      const remove=el('button','×','reminder-remove');remove.type='button';remove.setAttribute('aria-label','删除 '+time);
+      remove.addEventListener('click',()=>action(()=>request('/api/reminders/schedule',{slots:times.filter(t=>t!==time)})));
+      row.append(remove);schedule.append(row);
+    }
+    const devices=$('reminder-devices'); devices.replaceChildren();
+    if(!state.devices.length)devices.append(el('p','暂无设备'));
+    for(const d of state.devices) {
+      const row=el('div',undefined,'reminder-row'), copy=el('div',undefined,'reminder-copy');
+      copy.append(el('strong',d.name+(d.id===deviceId?'（本机）':'')),el('small',d.enabled?'已开启':'已关闭'));
+      if(d.error)copy.append(el('small',d.error,'reminder-error'));
+      const actions=el('div',undefined,'reminder-device-actions');
+      for(const [label,body] of [[d.enabled?'关闭':'开启',{enabled:!d.enabled}],['移除',{delete:true}]]) {
+        const button=el('button',body.delete?'×':undefined,body.delete?'reminder-remove':'reminder-switch'); button.type='button';button.setAttribute('aria-label',d.name+(body.delete?'：移除':'：通知'));if(!body.delete){button.setAttribute('role','switch');button.setAttribute('aria-checked',String(!!d.enabled));}
+        button.addEventListener('click',()=>action(async()=>{
+          await request(`/api/reminders/devices/${encodeURIComponent(d.id)}`,body);
+          if(body.delete && d.id===deviceId) { const sub=await reg?.pushManager.getSubscription(); if(sub)await sub.unsubscribe(); deviceId=null; }
+        })); actions.append(button);
+      }
+      row.append(copy,actions);devices.append(row);
+    }
+    const items=$('reminder-items');items.replaceChildren();
+    const activeItems=state.items.filter(item=>!item.resolved_at && !item.read_at);
+    if(!activeItems.length)items.append(el('p','目前没有待处理提醒。','reminder-empty'));
+    for(const item of activeItems) {
+      const row=el('div',undefined,'reminder-row'+(item.read_at||item.resolved_at?' read':'')),copy=el('div',undefined,'reminder-copy');
+      const link=el('a',item.title);link.href=item.url;
+      link.addEventListener('click',async e=>{e.preventDefault();try{await request(`/api/reminders/${item.id}/read`,{});}catch{} location.assign(item.url);});
+      copy.append(link,el('div',item.body),el('small',`${state.types[item.kind]} · ${date(item.created_at)}${item.resolved_at?' · 已处理':''}`));
+      row.append(copy);
+      if(item.kind !== 'number_inbox' && !item.read_at && !item.resolved_at) {const read=el('button','已读');read.type='button';read.addEventListener('click',()=>action(()=>request(`/api/reminders/${item.id}/read`,{})));row.append(read);}
+      items.append(row);
+    }
+    status();
+    const latest=(state.test_deliveries||[]).find(d=>d.device_id===deviceId && Date.now()/1000-d.created_at<300);
+    let delivery='';
+    if(latest) {
+      if(latest.state==='sent')delivery='测试已提交推送';
+      else if(latest.error)delivery=`发送失败：${latest.error}`;
+      else if(latest.state==='pending')delivery=latest.next_at>Date.now()/1000?'测试已安排 · 20秒':'等待发送';
+      else if(latest.state==='skipped')delivery='测试已跳过';
+      else delivery='订阅失效，请重新开启';
+    }
+    if(state.worker_healthy===false)delivery='推送服务异常';
+    $('push-delivery').textContent=delivery;
+  }
+  function status() {
+    const enabled=!!state?.devices.find(d=>d.id===deviceId)?.enabled;
+    let message=enabled?'已开启':'未开启';
+    if(ios&&!standalone)message='请从主屏幕打开';
+    else if(!supported)message='当前浏览器不支持通知';
+    else if(Notification.permission==='denied')message='请在系统设置中允许通知';
+    $('push-status').textContent=message;
+    $('push-enable').setAttribute('aria-checked',String(enabled));
+    $('push-enable').disabled=busy||!state||(!enabled&&(!supported||(ios&&!standalone)||Notification.permission==='denied'));
+    $('push-test').disabled=busy||!enabled||!state.preferences.all;
+    $('push-test-lock').disabled=$('push-test').disabled;
+    for(const control of center.querySelectorAll('[data-preference], #reminder-master, #reminder-repeat-kind, #reminder-weekdays input, #reminder-devices button, #reminder-schedule-list button, #reminder-schedule-add'))control.disabled=busy;
+    for(const control of center.querySelectorAll('#reminder-task-scopes input'))control.disabled=busy||!state?.preferences.task;
+  }
+  async function refresh() {state=await request('/api/reminders');render();await clearStaleNotifications();}
+  async function action(fn) {if(busy)return;busy=true;feedback('');$('reminder-schedule-feedback').textContent='';status();try{await fn();await refresh();}catch(e){feedback(e.message);await refresh().catch(()=>{});}finally{busy=false;status();}}
+  function keyBytes(value) {const raw=atob(value.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-value.length%4)%4));return Uint8Array.from(raw,c=>c.charCodeAt(0));}
+  if(center) {
+    for (const tab of center.querySelectorAll('[data-reminder-tab]'))
+      tab.addEventListener('click',()=>{selectTab(tab.dataset.reminderTab);history.replaceState(null,'',tab.dataset.reminderTab==='settings'?'#settings':location.pathname);});
+    selectTab(location.hash==='#settings'?'settings':'inbox');
+    $('reminder-master').addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{all:$('reminder-master').checked})));
+    $('reminder-repeat-kind').addEventListener('change',()=>action(()=>request('/api/reminders/schedule',{slots:state.schedule_slots||[],weekdays:$('reminder-repeat-kind').value==='daily'?[0,1,2,3,4,5,6]:(state.schedule_weekdays?.length<7?state.schedule_weekdays:[0,1,2,3,4])})));
+    $('reminder-weekdays').addEventListener('change',()=>action(async()=>{const days=[...$('reminder-weekdays').querySelectorAll('input:checked')].map(input=>Number(input.value));if(!days.length)throw new Error('请至少选择一天');await request('/api/reminders/schedule',{slots:state.schedule_slots||[],weekdays:days});}));
+    $('reminder-schedule-add').addEventListener('click',()=>action(async()=>{
+      const time=$('reminder-schedule-time').value;
+      if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))throw new Error('请选择有效的提醒时间');
+      const slots=state.schedule_slots||[];
+      if(slots.includes(time))throw new Error('这个时间点已经存在');
+      if(slots.length>=12)throw new Error('最多设置12个时间点');
+      await request('/api/reminders/schedule',{slots:slots.concat(time)});
+      $('reminder-schedule-feedback').textContent='已添加';
+    }));
+    $('push-enable').addEventListener('click',()=>{
+      if(state?.devices.find(d=>d.id===deviceId)?.enabled){
+        action(async()=>{await request(`/api/reminders/devices/${encodeURIComponent(deviceId)}`,{delete:true});const sub=await reg?.pushManager.getSubscription();if(sub)await sub.unsubscribe();deviceId=null;});
+        return;
+      }
+      // Permission must be requested directly in this click, before any await,
+      // otherwise iPhone loses the required user-activation gesture.
+      const permission=Notification.requestPermission();
+      action(async()=>{
+        if(await permission!=='granted')throw new Error('尚未允许通知。');
+        reg=reg||await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+        await navigator.serviceWorker.ready;
+        let sub=await reg.pushManager.getSubscription();
+        if(sub && sub.options.applicationServerKey && !equalKey(new Uint8Array(sub.options.applicationServerKey),keyBytes(state.public_key))) {await sub.unsubscribe();sub=null;}
+        sub=sub||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:keyBytes(state.public_key)});
+        const result=await request('/api/reminders/subscriptions',{subscription:sub.toJSON(),name:ios?'iPhone 主屏幕':(/Android/.test(navigator.userAgent)?'Android 手机':'桌面浏览器')});
+        deviceId=result.device_id;
+      });
+    });
+    $('push-test').addEventListener('click',()=>action(async()=>{await request('/api/reminders/test',{device_id:deviceId});}));
+    $('push-test-lock').addEventListener('click',()=>action(async()=>{await request('/api/reminders/test',{device_id:deviceId,delay:20});}));
+  }
+  function equalKey(a,b){return a.length===b.length&&a.every((v,i)=>v===b[i]);}
+  (async()=>{
+    try {
+      await refresh();
+      if(center&&supported&&(!ios||standalone)) {
+        reg=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+        await navigator.serviceWorker.ready;
+        const sub=await reg.pushManager.getSubscription();
+        // Reconcile without silently re-enabling a device disabled remotely.
+        if(sub) {
+          const data=await request('/api/reminders/subscription-state',{endpoint:sub.endpoint});deviceId=data.device_id;
+        }
+        render();await clearStaleNotifications();
+      }
+    }catch(e){feedback(e.message);}
+  })();
+  if(center) {
+    setInterval(()=>{if(!busy&&!document.hidden)refresh().catch(()=>{});},5000);
+    document.addEventListener('visibilitychange',()=>{if(!busy&&!document.hidden)refresh().catch(()=>{});});
+  }
+})();
