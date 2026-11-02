@@ -29,6 +29,24 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(loaded.number_inbox.last_seen_id, 42)
             self.assertEqual(loaded.number_inbox.reminder_times, ["08:30", "16:00"])
 
+    def test_local_reminder_rules_migrate_and_persist_without_server_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            path = target / 'config.json'
+            path.write_text(json.dumps({'number_inbox': {'reminder_times':['08:30']}}))
+            with patch('win_assistants.config.app_data_dir', return_value=target):
+                cfg = AppConfig.load()
+                self.assertEqual(cfg.reminders.times, ['08:30'])
+                cfg.reminders.instant = False
+                cfg.reminders.weekdays = [1,3]
+                cfg.reminders.categories['task_customer'] = False
+                cfg.save()
+                loaded = AppConfig.load()
+                self.assertFalse(loaded.reminders.instant)
+                self.assertEqual(loaded.reminders.weekdays, [1,3])
+                self.assertFalse(loaded.reminders.categories['task_customer'])
+                self.assertEqual(loaded.reminders.times, ['08:30'])
+
     def test_number_inbox_reminder_times_are_normalized_and_capped(self):
         cfg = NumberInboxConfig.from_dict({"reminder_times": ["9:00", "09:00", "23:59", "12:30", "07:15", "06:00", "05:00", "bad"]})
         self.assertEqual(cfg.reminder_times, ["09:00", "23:59", "12:30", "07:15", "06:00"])

@@ -41,7 +41,7 @@ class PersistentNumberReminderTests(unittest.TestCase):
         hide = method_block("_hide_number_reminder_until_schedule", "_keep_number_reminder_visible")
         self.assertIn("window.withdraw()", hide)
         schedule = method_block("_maybe_show_scheduled_number_reminder", "_render_number_reminder")
-        self.assertIn("self.config.number_inbox.reminder_times", schedule)
+        self.assertIn("self.config.reminders", schedule)
         self.assertIn("self._number_reminder_last_slot", schedule)
 
     def test_reminder_has_complete_sync_and_local_dismiss(self) -> None:

@@ -8,6 +8,33 @@ class SharedReminderPolicyTests(unittest.TestCase):
         return {'enabled':True, 'instant':True, 'scheduled':True, 'times':['09:00'],
                 'weekdays':[0,2,4], 'categories':{'number_inbox':True,'task':True,'task_global':True,'task_customer':True}, **values}
 
+    def test_local_rules_ignore_remote_modes_categories_times_and_respect_master(self):
+        from win_assistants.config import ReminderConfig
+        from win_assistants.reminder_policy import effective_policy, validate_local_policy
+        local = ReminderConfig(instant=False, times=['10:30'], weekdays=[0])
+        remote = self.policy(instant=True, scheduled=False, times=['09:00'], weekdays=[1])
+        remote['categories'] = dict.fromkeys(remote['categories'], False)
+        effective = effective_policy(local, remote)
+        self.assertFalse(effective['instant'])
+        self.assertTrue(allows(effective, 'task', 'task_customer'))
+        self.assertEqual(scheduled_key(effective, datetime(2026,11,2,10,30,tzinfo=TZ)), '2026-11-02:10:30')
+        item = {'id':1, 'due':True, 'title':'全局', 'remind_at':'2026-11-01T09:00'}
+        payload = {'items':[item], 'reminder_policy':remote}
+        seen = set()
+        _, alert, key = task_alert_decision(payload, seen, '', datetime(2026,11,2,9,0,tzinfo=TZ), local=local)
+        self.assertFalse(alert)
+        _, alert, key = task_alert_decision(payload, seen, key, datetime(2026,11,2,10,30,tzinfo=TZ), local=local)
+        self.assertTrue(alert)
+        remote['enabled'] = False
+        due, alert, _ = task_alert_decision(payload, seen, key, datetime(2026,11,2,10,30,tzinfo=TZ), local=local)
+        self.assertEqual(due, [])
+        self.assertFalse(alert)
+        self.assertEqual(local.times, ['10:30'])
+        from dataclasses import asdict
+        for change in ({'instant':False,'scheduled':False}, {'weekdays':[]}, {'times':['25:00']}, {'times':['09:00','09:00']}):
+            with self.assertRaises(ValueError):
+                validate_local_policy({**asdict(local), **change})
+
     def test_modes_weekdays_and_global_switch(self):
         monday = datetime(2026,11,2,9,0,tzinfo=TZ)
         self.assertEqual(scheduled_key(self.policy(),monday),'2026-11-02:09:00')
