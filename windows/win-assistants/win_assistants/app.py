@@ -20,6 +20,7 @@ from .number_batch_bridge import NumberBatchBridge
 from .single_instance import SingleInstance
 from .work_todos import TodoReceiver
 from .todo_panel import TodoPanel
+from .reminder_policy import allows, scheduled_key
 from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
 from .sedentary import read_status as read_sedentary_status, send_command as send_sedentary_command, status_text as sedentary_status_text
 from .startup import is_startup_enabled, set_startup, stop_legacy_foxmail_processes, take_over_legacy_startup
@@ -485,6 +486,10 @@ class WinAssistantsApp:
             except queue.Empty:
                 break
             self.status_vars["number_inbox"].set(inbox_event.message)
+            if inbox_event.kind == "policy":
+                self.number_reminder_policy = inbox_event.reminder_policy
+                if not allows(self.number_reminder_policy, "number_inbox"):
+                    self._hide_number_reminder_until_schedule()
             if inbox_event.pending_ids is not None:
                 self._reconcile_number_reminder_items(inbox_event.pending_ids)
             if inbox_event.item_id > self.config.number_inbox.last_seen_id:
@@ -493,8 +498,10 @@ class WinAssistantsApp:
             if inbox_event.kind == "snapshot":
                 self.number_reminder_items[inbox_event.item_id] = inbox_event
             elif inbox_event.kind == "new":
-                # Keep new items pending; the popup is exclusively schedule-driven.
                 self.number_reminder_items[inbox_event.item_id] = inbox_event
+                policy = getattr(self, 'number_reminder_policy', None)
+                if policy is not None and allows(policy, 'number_inbox') and policy.get('instant'):
+                    self._show_number_reminder(inbox_event)
         while True:
             try:
                 kind, payload = self.todo_receiver.events.get_nowait()
@@ -599,11 +606,19 @@ class WinAssistantsApp:
     def _maybe_show_scheduled_number_reminder(self) -> None:
         if not self.number_reminder_items:
             return
-        now = datetime.now()
-        slot = now.strftime("%H:%M")
-        if slot not in self.config.number_inbox.reminder_times:
-            return
-        key = now.strftime("%Y-%m-%d ") + slot
+        policy = getattr(self, 'number_reminder_policy', None)
+        if policy is not None:
+            if not allows(policy, 'number_inbox'):
+                return
+            key = scheduled_key(policy)
+            if not key:
+                return
+        else:
+            now = datetime.now()
+            slot = now.strftime("%H:%M")
+            if slot not in self.config.number_inbox.reminder_times:
+                return
+            key = now.strftime("%Y-%m-%d") + ":" + slot
         if key == self._number_reminder_last_slot:
             return
         self._number_reminder_last_slot = key
@@ -742,21 +757,21 @@ class WinAssistantsApp:
         except Exception:
             current_token = ""
         token_var = tk.StringVar(value=current_token)
-        reminder_times_var = tk.StringVar(value=" ".join(self.config.number_inbox.reminder_times))
         target_var = tk.StringVar(value=self.config.number_inbox.batch_target)
 
         ttk.Label(frame, text="服务器地址").grid(row=0, column=0, sticky="w", pady=7)
         ttk.Entry(frame, textvariable=api_var, width=57).grid(row=0, column=1, sticky="ew", padx=(12, 0), pady=7)
         ttk.Label(frame, text="提醒连接码").grid(row=1, column=0, sticky="w", pady=7)
         ttk.Entry(frame, textvariable=token_var, show="●", width=57).grid(row=1, column=1, sticky="ew", padx=(12, 0), pady=7)
-        ttk.Label(frame, text="定时提醒（最多5个）").grid(row=3, column=0, sticky="w", pady=7)
-        ttk.Entry(frame, textvariable=reminder_times_var, width=57).grid(row=3, column=1, sticky="ew", padx=(12, 0), pady=7)
-        ttk.Label(
-            frame,
-            text="格式示例：09:00 16:00（空格分隔，最多5个）。只在设定时间提醒；没有未加号码时不弹窗。",
-            style="Sub.TLabel",
-            wraplength=570,
-        ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(12, 18))
+        ttk.Label(frame, text="通知与提醒规则").grid(row=3, column=0, sticky="w", pady=7)
+        def open_reminder_settings():
+            import webbrowser
+            parsed = urlparse(api_var.get().strip())
+            if parsed.scheme != 'https' or not parsed.netloc or parsed.username or parsed.password:
+                messagebox.showerror('提醒设置', '请先填写有效的 HTTPS 服务器地址。', parent=window)
+                return
+            webbrowser.open(f'{parsed.scheme}://{parsed.netloc}/reminders#settings')
+        ttk.Button(frame, text="打开统一提醒设置", command=open_reminder_settings).grid(row=3, column=1, sticky="w", padx=(12, 0), pady=7)
         ttk.Label(frame, text="批量添加Excel").grid(row=5, column=0, sticky="w", pady=7)
         target_frame = ttk.Frame(frame)
         target_frame.grid(row=5, column=1, sticky="ew", padx=(12, 0), pady=7)
@@ -782,17 +797,6 @@ class WinAssistantsApp:
             if not token:
                 messagebox.showerror("号码提醒", "请填写提醒连接码。", parent=window)
                 return
-            raw_times = reminder_times_var.get().split()
-            if len(raw_times) > 5:
-                messagebox.showerror("号码提醒", "定时提醒最多设置 5 个时间点。", parent=window)
-                return
-            reminder_times = []
-            for value in raw_times:
-                if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", value):
-                    messagebox.showerror("号码提醒", f"提醒时间格式无效：{value}，请使用 HH:MM。", parent=window)
-                    return
-                if value not in reminder_times:
-                    reminder_times.append(value)
             try:
                 protected = protect_secret(token)
             except Exception as exc:
@@ -801,7 +805,6 @@ class WinAssistantsApp:
             self.config.number_inbox.api_url = api_url
             self.config.number_inbox.protected_token = protected
             self.config.number_inbox.last_seen_id = 0
-            self.config.number_inbox.reminder_times = reminder_times
             self.config.number_inbox.batch_target = target_var.get().strip()
             self.config.save()
             window.destroy()

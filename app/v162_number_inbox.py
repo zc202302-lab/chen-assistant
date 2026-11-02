@@ -265,9 +265,12 @@ def number_inbox_desktop_pending(request: Request):
         ).fetchall()
         total = int(conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n'])
         pending_ids = [int(row['id']) for row in conn.execute("SELECT id FROM number_inbox WHERE status='pending' ORDER BY id").fetchall()]
+        from .reminder_policy import desktop_policy
+        policy = desktop_policy(conn)
     response = JSONResponse(
         {
             'ok': True,
+            'reminder_policy': policy,
             'pending_count': total,
             'pending_ids': pending_ids,
             'latest_id': int(rows[0]['id']) if rows else 0,

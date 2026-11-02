@@ -7,6 +7,7 @@ from tkinter import ttk, messagebox
 import urllib.error
 from .work_todos import request_todos, api_url
 from .sms import protect_secret, unprotect_secret
+from .reminder_policy import allows, scheduled_key
 
 
 class TodoPanel:
@@ -17,6 +18,7 @@ class TodoPanel:
         self.actions = queue.Queue()
         self.busy = False
         self.popup = None
+        self.last_schedule_key = ""
         self.show_done = tk.BooleanVar(value=False)
         toolbar = ttk.Frame(page)
         toolbar.pack(fill='x')
@@ -26,6 +28,7 @@ class TodoPanel:
         ttk.Button(toolbar, text='停止重复并结办', command=self.stop_repeat).pack(side='left')
         ttk.Button(toolbar, text='延期', command=self.postpone).pack(side='left')
         ttk.Button(toolbar, text='刷新', command=app.todo_receiver.refresh).pack(side='left')
+        ttk.Button(toolbar, text='提醒设置', command=self.open_reminder_settings).pack(side='left')
         ttk.Checkbutton(toolbar, text='显示已结办', variable=self.show_done, command=self.render).pack(side='right')
         columns = ('title','remind','repeat','status')
         self.tree = ttk.Treeview(page, columns=columns, show='headings', height=8, selectmode='browse')
@@ -58,12 +61,20 @@ class TodoPanel:
     def apply(self, payload):
         self.items = {int(i['id']):i for i in payload['items']}
         self.render()
-        due = [i for i in self.items.values() if i['due']]
-        current = {(i['id'],i['remind_at']) for i in due}
-        self.notified.intersection_update(current)
-        fresh = [i for i in due if (i['id'],i['remind_at']) not in self.notified]
-        if fresh:
-            self.notified.update((i['id'],i['remind_at']) for i in fresh)
+        policy = payload.get('reminder_policy')
+        all_due = [dict(i, source='global') for i in self.items.values() if i['due']]
+        all_due.extend(payload.get('customer_task_reminders', []))
+        all_current = {(i.get('source', 'global'), i['id'], i['remind_at']) for i in all_due}
+        due = [i for i in all_due if allows(policy, 'task', 'task_customer' if i.get('source') == 'customer' else 'task_global')]
+        current = {(i.get('source', 'global'), i['id'], i['remind_at']) for i in due}
+        self.notified.intersection_update(all_current)
+        fresh = current - self.notified
+        self.notified.update(all_current)
+        slot = scheduled_key(policy)
+        timed = bool(slot and slot != self.last_schedule_key and due)
+        if timed:
+            self.last_schedule_key = slot
+        if due and ((fresh and (policy is None or policy.get('instant'))) or timed):
             self.show_due(due)
         elif self.popup is not None and self.popup.winfo_exists():
             if due:
@@ -71,6 +82,14 @@ class TodoPanel:
             else:
                 self.popup.destroy()
                 self.popup = None
+
+    def open_reminder_settings(self, settings=True):
+        import webbrowser
+        root = api_url(self.app.config.work_todos.server_url).removesuffix('/api/work-todos')
+        webbrowser.open(root + '/reminders' + ('#settings' if settings else ''))
+        if not settings and self.popup is not None:
+            self.popup.destroy()
+            self.popup = None
 
     def show_due(self, due):
         if self.app.tray_icon:
@@ -84,7 +103,7 @@ class TodoPanel:
             self.popup.geometry('420x260')
             self.popup_text = tk.StringVar()
             ttk.Label(self.popup,textvariable=self.popup_text,wraplength=380).pack(fill='both',expand=True,padx=20,pady=15)
-            ttk.Button(self.popup,text='查看并处理',command=self.open_page).pack(pady=10)
+            ttk.Button(self.popup,text='查看并处理',command=lambda:self.open_reminder_settings(False)).pack(pady=10)
         self.popup_text.set('\n'.join(i['title'] for i in due[:10]))
         self.popup.lift()
 

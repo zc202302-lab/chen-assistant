@@ -169,7 +169,9 @@ jobs:
 
       - name: Reminder settings browser acceptance
         if: steps.scope.outputs.mode == 'full'
-        run: python tests/reminders_settings_acceptance.py
+        run: |
+          python tests/reminders_policy_contract.py
+          python tests/reminders_settings_acceptance.py
 
       - name: Upload reminder settings previews
         if: always() && steps.scope.outputs.mode == 'full'

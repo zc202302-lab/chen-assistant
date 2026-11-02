@@ -47,11 +47,24 @@
     updateBadge(state.unread_count);
     if(!center)return;
     $('reminder-count').textContent=`${state.unread_count} 条未读`;
-    const prefs=$('reminder-preferences'); prefs.replaceChildren();
-    for(const [kind,label] of Object.entries({all:'手机通知',instant:'即时提醒',...state.types})) {
-      const wrap=el('label'), input=el('input'); input.type='checkbox'; input.className='reminder-switch'; input.setAttribute('role','switch'); input.checked=!!state.preferences[kind];
+    const setting=(kind,label)=>{
+      const wrap=el('label'), input=el('input'); input.type='checkbox'; input.className='reminder-switch'; input.setAttribute('role','switch'); input.setAttribute('aria-label',label); input.checked=!!state.preferences[kind]; input.dataset.preference=kind;
       input.addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{[kind]:input.checked})));
-      wrap.append(el('span',label),input); prefs.append(wrap);
+      wrap.append(el('span',label),input); return wrap;
+    };
+    $('reminder-master').checked=!!state.preferences.all;
+    $('reminder-master-status').textContent=state.preferences.all?'已开启 · 所有设备':'已暂停 · 所有设备';
+    $('reminder-modes').replaceChildren(setting('instant','即时提醒'),setting('scheduled','定时提醒'));
+    $('reminder-preferences').replaceChildren(setting('number_inbox','未加号码'),setting('task','待办'));
+    $('reminder-task-scopes').replaceChildren(setting('task_global','全局待办'),setting('task_customer','客户待办'));
+    $('reminder-other-preferences').replaceChildren(...Object.entries(state.types).filter(([key])=>!['number_inbox','task'].includes(key)).map(([key,label])=>setting(key,label)));
+    $('reminder-timing-card').hidden=!state.preferences.scheduled;
+    $('reminder-mode-status').textContent=state.preferences.scheduled&&!(state.schedule_slots||[]).length?'定时提醒尚未添加时间':'';
+    const days=state.schedule_weekdays||[0,1,2,3,4,5,6];
+    {
+      $('reminder-repeat-kind').value=days.length===7?'daily':'weekly';
+      $('reminder-weekdays').hidden=days.length===7;
+      for(const input of $('reminder-weekdays').querySelectorAll('input'))input.checked=days.includes(Number(input.value));
     }
     const schedule=$('reminder-schedule-list');schedule.replaceChildren();
     const times=state.schedule_slots||[];
@@ -113,17 +126,21 @@
     $('push-status').textContent=message;
     $('push-enable').setAttribute('aria-checked',String(enabled));
     $('push-enable').disabled=busy||!state||(!enabled&&(!supported||(ios&&!standalone)||Notification.permission==='denied'));
-    $('push-test').disabled=busy||!enabled||!state.preferences.all||!state.preferences.system;
+    $('push-test').disabled=busy||!enabled||!state.preferences.all;
     $('push-test-lock').disabled=$('push-test').disabled;
-    for(const control of center.querySelectorAll('#reminder-preferences input, #reminder-devices button, #reminder-schedule-list button, #reminder-schedule-add'))control.disabled=busy;
+    for(const control of center.querySelectorAll('[data-preference], #reminder-master, #reminder-repeat-kind, #reminder-weekdays input, #reminder-devices button, #reminder-schedule-list button, #reminder-schedule-add'))control.disabled=busy;
+    for(const control of center.querySelectorAll('#reminder-task-scopes input'))control.disabled=busy||!state?.preferences.task;
   }
   async function refresh() {state=await request('/api/reminders');render();await clearStaleNotifications();}
   async function action(fn) {if(busy)return;busy=true;feedback('');$('reminder-schedule-feedback').textContent='';status();try{await fn();await refresh();}catch(e){feedback(e.message);await refresh().catch(()=>{});}finally{busy=false;status();}}
   function keyBytes(value) {const raw=atob(value.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-value.length%4)%4));return Uint8Array.from(raw,c=>c.charCodeAt(0));}
   if(center) {
     for (const tab of center.querySelectorAll('[data-reminder-tab]'))
-      tab.addEventListener('click',()=>selectTab(tab.dataset.reminderTab));
-    selectTab('inbox');
+      tab.addEventListener('click',()=>{selectTab(tab.dataset.reminderTab);history.replaceState(null,'',tab.dataset.reminderTab==='settings'?'#settings':location.pathname);});
+    selectTab(location.hash==='#settings'?'settings':'inbox');
+    $('reminder-master').addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{all:$('reminder-master').checked})));
+    $('reminder-repeat-kind').addEventListener('change',()=>action(()=>request('/api/reminders/schedule',{slots:state.schedule_slots||[],weekdays:$('reminder-repeat-kind').value==='daily'?[0,1,2,3,4,5,6]:[0,1,2,3,4]})));
+    $('reminder-weekdays').addEventListener('change',()=>action(async()=>{const days=[...$('reminder-weekdays').querySelectorAll('input:checked')].map(input=>Number(input.value));if(!days.length)throw new Error('请至少选择一天');await request('/api/reminders/schedule',{slots:state.schedule_slots||[],weekdays:days});}));
     $('reminder-schedule-add').addEventListener('click',()=>action(async()=>{
       const time=$('reminder-schedule-time').value;
       if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))throw new Error('请选择有效的提醒时间');

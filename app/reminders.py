@@ -20,6 +20,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from . import config
+from .reminder_policy import schedule_weekdays, notification_allowed, task_scope, DAY_KEY
 from .db import execute_schema, db
 from .legacy_main import templates, ctx
 from .security import require_csrf, encrypt_secret, decrypt_secret
@@ -68,7 +69,7 @@ def b64(raw):
 def ensure_reminder_schema():
     with db(immediate=True) as conn:
         execute_schema(conn, SCHEMA)
-        for kind in ['all', 'instant', *TYPES]:
+        for kind in ['all', 'instant', 'scheduled', 'task_global', 'task_customer', *TYPES]:
             conn.execute('INSERT OR IGNORE INTO reminder_preferences(kind) VALUES(?)', (kind,))
         # Encrypted in the existing backed-up database, so deploys/restarts keep
         # the same application-server key. No private key is committed to Git.
@@ -105,7 +106,7 @@ def publish_reminder(conn, *, kind, title, body='', url='/', event_key):
     rid = conn.execute('SELECT id FROM reminders WHERE event_key=?', (event_key,)).fetchone()[0]
     if created:
         prefs = preferences(conn)
-        if prefs.get('all', True) and prefs.get(kind, True) and (prefs.get('instant', True) or event_key.startswith(('scheduled:', 'test:'))):
+        if notification_allowed(prefs, kind, event_key):
             conn.execute('''INSERT OR IGNORE INTO push_outbox(reminder_id,device_id)
                 SELECT ?,id FROM push_devices WHERE enabled=1''', (rid,))
     return rid
@@ -150,6 +151,17 @@ def collect_due(now=None):
             if due is not None and due <= now:
                 publish_reminder(conn, kind='task', title='待办到期提醒', body=row['title'][:500],
                     url=f"/customers/{row['customer_id']}/tasks", event_key=f"task:{row['id']}:{value}")
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE name='work_todos'").fetchone():
+            for row in conn.execute("SELECT * FROM work_todos WHERE done=0 AND remind_at<>''").fetchall():
+                due = due_timestamp(row['remind_at'])
+                if due is not None and due <= now:
+                    publish_reminder(conn, kind='task', title='全局待办到期提醒', body=row['title'][:500],
+                        url='/work/todos', event_key=f"work-task:{row['id']}:{row['remind_at']}")
+            for row in conn.execute("SELECT id,event_key FROM reminders WHERE kind='task' AND event_key LIKE 'work-task:%' AND resolved_at IS NULL").fetchall():
+                _, tid, value = row['event_key'].split(':', 2)
+                task = conn.execute('SELECT * FROM work_todos WHERE id=?', (tid,)).fetchone()
+                if not task or task['done'] or task['remind_at'] != value:
+                    conn.execute('UPDATE reminders SET resolved_at=? WHERE id=?', (now,row['id']))
         # Completion and changed reminder times invalidate stale queued pushes.
         for row in conn.execute("SELECT id,event_key FROM reminders WHERE kind='task' AND event_key LIKE 'task:%' AND resolved_at IS NULL").fetchall():
             parts = row['event_key'].split(':', 2)
@@ -180,6 +192,44 @@ def schedule_slots(conn):
     return [r['slot'] for r in conn.execute("SELECT slot FROM reminder_schedule ORDER BY slot")]
 
 
+def reminder_current(conn, row):
+    key = row['event_key']
+    if row['kind'] != 'task' or not key.startswith(('task:', 'work-task:')):
+        return True
+    prefix, tid, value = key.split(':', 2)
+    if not tid.isdigit():
+        return False
+    table = 'work_todos' if prefix == 'work-task' else 'tasks'
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
+        return False
+    task = conn.execute('SELECT * FROM ' + table + ' WHERE id=?', (int(tid),)).fetchone()
+    if not task or task['done']:
+        return False
+    current = task['remind_at'] if prefix == 'work-task' else task['remind_at'] or task['remind_date']
+    return current == value
+
+
+def pending_count(conn, prefs):
+    waiting = conn.execute("SELECT kind,event_key FROM reminders WHERE resolved_at IS NULL AND kind NOT IN ('system','number_inbox')").fetchall()
+    count = sum(1 for row in waiting if prefs.get(row['kind'], True) and reminder_current(conn, row)
+                and (row['kind'] != 'task' or prefs.get(task_scope(row['event_key']), True)))
+    if prefs.get('number_inbox', True) and conn.execute("SELECT 1 FROM sqlite_master WHERE name='number_inbox'").fetchone() and conn.execute("SELECT 1 FROM number_inbox WHERE status='pending' LIMIT 1").fetchone():
+        count += 1
+    return count
+
+
+def scheduled_current(conn, key, now, prefs):
+    try:
+        _, day, hour, minute = key.split(':')
+        slot = hour + ':' + minute
+        date = datetime.fromisoformat(day)
+        local = datetime.fromtimestamp(now, ZoneInfo('Asia/Shanghai'))
+        return (date.date() == local.date() and date.weekday() in schedule_weekdays(conn)
+                and slot in schedule_slots(conn) and pending_count(conn, prefs) > 0)
+    except (ValueError, TypeError):
+        return False
+
+
 def collect_scheduled(now=None):
     """Daily Asia/Shanghai digest of outstanding work, once per configured slot.
 
@@ -190,20 +240,13 @@ def collect_scheduled(now=None):
     local = datetime.fromtimestamp(now, ZoneInfo('Asia/Shanghai'))
     minute = local.strftime('%H:%M')
     with db(immediate=True) as conn:
-        if not conn.execute("SELECT 1 FROM reminder_schedule WHERE slot=?", (minute,)).fetchone():
+        if local.weekday() not in schedule_weekdays(conn) or not conn.execute("SELECT 1 FROM reminder_schedule WHERE slot=?", (minute,)).fetchone():
             return
         prefs = preferences(conn)
-        if not prefs.get('all', True):
+        if not prefs.get('all', True) or not prefs.get('scheduled', True):
             return
         reconcile_number_reminders(conn, now)
-        waiting = conn.execute("""SELECT kind,COUNT(*) n FROM reminders
-            WHERE resolved_at IS NULL AND kind!='system'
-            AND kind NOT IN ('number_inbox') GROUP BY kind""").fetchall()
-        count = sum(r['n'] for r in waiting if prefs.get(r['kind'], True))
-        if prefs.get('number_inbox', True) and conn.execute(
-            "SELECT 1 FROM number_inbox WHERE status='pending' LIMIT 1"
-        ).fetchone():
-            count += 1
+        count = pending_count(conn, prefs)
         if count == 0:
             return
         # The digest represents outstanding work, not an action requiring a
@@ -289,7 +332,7 @@ def deliver_one(now=None, sender=None):
     token = now + 120
     with db(immediate=True) as conn:
         row = conn.execute('''SELECT o.*,r.kind,r.title,r.body,r.url,r.read_at,r.resolved_at,
-            d.subscription,d.enabled FROM push_outbox o JOIN reminders r ON r.id=o.reminder_id
+            d.subscription,d.enabled,r.event_key FROM push_outbox o JOIN reminders r ON r.id=o.reminder_id
             JOIN push_devices d ON d.id=o.device_id
             WHERE o.state='pending' AND o.next_at<=? AND o.lease_until<=?
             ORDER BY o.reminder_id LIMIT 1''', (now,now)).fetchone()
@@ -299,9 +342,9 @@ def deliver_one(now=None, sender=None):
         # this delivery; check it again before handing off to the push service.
         if row['kind'] == 'number_inbox':
             reconcile_number_reminders(conn, now)
-            row = conn.execute('SELECT o.*,r.kind,r.title,r.body,r.url,r.read_at,r.resolved_at,d.subscription,d.enabled FROM push_outbox o JOIN reminders r ON r.id=o.reminder_id JOIN push_devices d ON d.id=o.device_id WHERE o.reminder_id=? AND o.device_id=?',(row['reminder_id'],row['device_id'])).fetchone()
+            row = conn.execute('SELECT o.*,r.kind,r.title,r.body,r.url,r.read_at,r.resolved_at,d.subscription,d.enabled,r.event_key FROM push_outbox o JOIN reminders r ON r.id=o.reminder_id JOIN push_devices d ON d.id=o.device_id WHERE o.reminder_id=? AND o.device_id=?',(row['reminder_id'],row['device_id'])).fetchone()
         prefs = preferences(conn)
-        if not row['enabled'] or not prefs.get('all',True) or not prefs.get(row['kind'],True) or row['read_at'] or row['resolved_at']:
+        if not row['enabled'] or not notification_allowed(prefs, row['kind'], row['event_key']) or row['read_at'] or row['resolved_at'] or not reminder_current(conn, row) or (row['event_key'].startswith('scheduled:') and not scheduled_current(conn, row['event_key'], now, prefs)):
             conn.execute("UPDATE push_outbox SET state='skipped' WHERE reminder_id=? AND device_id=?", (row['reminder_id'],row['device_id']))
             return True
         conn.execute('UPDATE push_outbox SET lease_until=?,attempts=attempts+1 WHERE reminder_id=? AND device_id=?',
@@ -374,7 +417,7 @@ def reminder_state(request: Request):
     with db() as conn:
         reconcile_number_reminders(conn)
         heartbeat = conn.execute("SELECT value FROM app_meta WHERE key='push_worker_heartbeat'").fetchone()
-        return {'types':TYPES, 'preferences':preferences(conn), 'schedule_slots':schedule_slots(conn), 'unread_count':unread_count(conn),
+        return {'types':TYPES, 'preferences':preferences(conn), 'schedule_slots':schedule_slots(conn), 'schedule_weekdays':schedule_weekdays(conn), 'unread_count':unread_count(conn),
             'worker_healthy': bool(heartbeat and time.time()-float(heartbeat[0]) < 360),
             'test_deliveries':[dict(r) for r in conn.execute('''SELECT o.reminder_id,o.device_id,o.state,o.attempts,o.next_at,o.error,r.created_at
                 FROM push_outbox o JOIN reminders r ON r.id=o.reminder_id
@@ -403,16 +446,20 @@ async def check_csrf(request):
 @router.post('/api/reminders/preferences')
 async def save_preferences(request: Request):
     payload = await check_csrf(request)
-    if not payload or any(k not in ['all','instant',*TYPES] or type(v) is not bool for k,v in payload.items()):
+    if not payload or any(k not in ['all','instant','scheduled','task_global','task_customer',*TYPES] or type(v) is not bool for k,v in payload.items()):
         raise HTTPException(400,'提醒类型无效')
-    with db() as conn:
+    with db(immediate=True) as conn:
+        combined = preferences(conn) | payload
+        if combined.get('all', True) and not (combined.get('instant', True) or combined.get('scheduled', True)):
+            raise HTTPException(400, '请选择即时提醒或定时提醒，或关闭通知总开关')
+        if combined.get('task', True) and not (combined.get('task_global', True) or combined.get('task_customer', True)):
+            raise HTTPException(400, '请选择全局待办或客户待办，或关闭待办提醒')
         for k,v in payload.items():
             conn.execute('UPDATE reminder_preferences SET enabled=? WHERE kind=?',(int(v),k))
-        # Turning off is immediate; turning back on does not flood old reminders.
-        conn.execute('''UPDATE push_outbox SET state='skipped' WHERE state='pending' AND
-            (0=(SELECT enabled FROM reminder_preferences WHERE kind='all') OR
-             reminder_id IN (SELECT id FROM reminders WHERE kind IN
-                (SELECT kind FROM reminder_preferences WHERE enabled=0)))''')
+        # Cancel queued deliveries whose mode/category/scope was switched off.
+        for queued in conn.execute("SELECT DISTINCT r.id,r.kind,r.event_key FROM reminders r JOIN push_outbox o ON o.reminder_id=r.id WHERE o.state='pending'").fetchall():
+            if not notification_allowed(combined, queued['kind'], queued['event_key']):
+                conn.execute("UPDATE push_outbox SET state='skipped' WHERE reminder_id=? AND state='pending'", (queued['id'],))
     return {'ok':True}
 
 
@@ -425,7 +472,12 @@ async def save_schedule(request: Request):
         for slot in slots
     ) or len(set(slots)) != len(slots):
         raise HTTPException(400, '最多设置12个不重复的北京时间提醒点，格式为 HH:MM')
+    days = payload.get('weekdays')
+    if days is not None and (not isinstance(days, list) or not days or len(set(day for day in days if type(day) is int)) != len(days) or any(type(day) is not int or not 0 <= day <= 6 for day in days)):
+        raise HTTPException(400, '请选择至少一个不重复的星期')
     with db(immediate=True) as conn:
+        if days is not None:
+            conn.execute('INSERT OR REPLACE INTO app_meta(key,value) VALUES(?,?)', (DAY_KEY, json.dumps(sorted(days))))
         conn.execute('DELETE FROM reminder_schedule')
         conn.executemany('INSERT INTO reminder_schedule(slot,created_at) VALUES(?,?)',
                          [(slot, time.time()) for slot in slots])
@@ -475,13 +527,13 @@ async def test_push(request: Request):
     if type(delay) is not int or delay not in (0, 20):
         raise HTTPException(400, '测试延迟无效')
     with db() as conn:
-        if not preferences(conn).get('all') or not preferences(conn).get('system'):
-            raise HTTPException(400,'请先开启通知总开关和系统提醒')
+        if not preferences(conn).get('all'):
+            raise HTTPException(400,'请先开启通知总开关')
         if not conn.execute('SELECT 1 FROM push_devices WHERE id=? AND enabled=1',(did,)).fetchone():
-            raise HTTPException(400,'请先在此设备开启手机提醒')
+            raise HTTPException(400,'请先在此设备开启通知接收')
         if conn.execute("SELECT 1 FROM reminders WHERE event_key LIKE 'test:%' AND created_at>?",(time.time()-10,)).fetchone():
             raise HTTPException(429,'请稍后再发送测试提醒')
-        rid = publish_reminder(conn,kind='system',title='手机提醒测试',body='这是一条后台推送测试通知。',url='/reminders',event_key='test:'+secrets.token_urlsafe(12))
+        rid = publish_reminder(conn,kind='system',title='设备提醒测试',body='这是一条后台推送测试通知。',url='/reminders',event_key='test:'+secrets.token_urlsafe(12))
         conn.execute('DELETE FROM push_outbox WHERE reminder_id=? AND device_id<>?',(rid,did))
         if delay:
             conn.execute('UPDATE push_outbox SET next_at=? WHERE reminder_id=?', (time.time()+delay,rid))
