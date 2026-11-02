@@ -2,12 +2,15 @@
 
 ## 当前活动工作（2026-11-02，Asia/Shanghai）
 
-- 2026-11-02（Asia/Shanghai）用户要求重排提醒设置页，使页面简洁、清晰、逻辑性强。继续开发及检查后合并发布授权有效。活动分支feat/reminder-settings-layout，基线main d5713e4；线上基准Web1.8.3、Windows0.5.22。
-- 候选Web1.8.4，仅调整网页提醒设置布局和文案：总开关→手机规则（方式/内容/定时循环合并）→当前设备通知→默认折叠高级设置（设备登记/测试通知）。设备显示登记时间及最近提交推送时间，说明登记不等于实体设备，不含Windows。保留既有接口、开关存储和通知边界；不修改Windows客户端、发送策略或客户数据。
-- 本地提醒策略契约、架构治理、JS语法、编译/diff检查通过；已有浏览器回归扩展验证分组层级、高级默认折叠、设备启停、时间信息及桌面/手机截图。本地1440桌面/390手机真实浏览器全部通过，截图已查看几何，无横向溢出；本地无中文字体，未声称本地中文字体视觉验收。完整CI及公网部署待核验，未宣称上线。
-- 核心app/templates/reminders.html、app/static/reminders.css/js、base.html及tests/reminders_settings_acceptance.py；目录/workspace/scratch/5c7c7f3fea41/chen-assistant-layout。唯一下一步：完成浏览器验证并推送PR，最终head完整检查通过后合并并核验Web1.8.4公网发布。
+- 更新时间：2026-11-02（Asia/Shanghai）。本轮提醒设置布局开发及公网部署完成。PR #190已squash合并，main功能提交5ffbb24ed956b6a9d31da8bf5d7a7f290db1cb8e，最终PR受检headba227e7a16985ed95ab59eb6344096be963b90aa；两者tree均358f121d7c236d4f7e9d85543216e01f734ee66c，源码一致，无活动功能PR。
+- 已上线Web1.8.4。默认按通知总开关→手机提醒→当前设备通知排列；手机方式、内容、定时与循环合并到同一卡片，保留待办/全局/客户层级。高级设置默认折叠，里面保留接收设备和测试通知；设备增加登记/最近提交推送时间及记录性质说明。明确总开关控制两端、手机规则只用于手机、当前设备授权只影响当前浏览器。不修改后端提醒策略、已存配置、客户数据或Windows客户端，Windows仍0.5.22。
+- 本地提醒策略、架构治理、JS语法/编译/diff检查通过；1440桌面/390手机真实浏览器通过全部既有提醒操作，新增分组顺序、高级默认折叠、设备启停、时间信息及无横向溢出验收。CI完整回归41406564967、稳定性41406564964、模块隔离41406565068全部success，已有全部业务断言保留。已下载并查看本head中文桌面/手机及高级展开截图，中文正常、层级清晰，无横向溢出；本地缺中文字体的限制已由CI中文截图补足。
+- 实际公网41408479546/job125155822811 success，返回ONLINE VERIFIED v1.8.4；线上版本、精确JS/CSS和PWA/鉴权/找回及域名边界通过。不推断生产精确backend SHA，未登录读写生产客户数据或发送生产测试通知。用户实际刷新/真机体验待反馈。
+- 验证边界：PR最终head完整验收与公网已通过；功能合并后的main独立完整回归41408479508在本次交接前仍运行（已通过新版提醒设置，当前业务显示设置），不能声称main独立全链完成。本次仅文档收尾提交会触发后续main检查，最终状态须从Actions按精确head核对，不能用PR或旧main状态冒充。无已观察到的本轮失败。
+- 核心app/templates/reminders.html、app/static/reminders.css/js、base.html及tests/reminders_settings_acceptance.py。目录/workspace/scratch/5c7c7f3fea41/chen-assistant-layout；本地提交与连接器远端SHA不同，远端为准，继续前先同步，不重推旧本地历史。分支feat/reminder-settings-layout已合并，历史云电脑PR#128不属于本轮。
+- 唯一下一步：用户刷新提醒设置页体验1.8.4，按实际布局反馈继续；新接管可先只读核对最新main自动检查，不新增需求或重复部署。
 
-详细证据及历史见docs/AI_HANDOFF.md。
+详细验证及历史见docs/AI_HANDOFF.md。
 
 ## 新聊天接管顺序
 
