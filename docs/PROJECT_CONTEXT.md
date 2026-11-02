@@ -2,13 +2,16 @@
 
 ## 当前活动工作（2026-11-02，Asia/Shanghai）
 
-- 2026-11-02（Asia/Shanghai）用户要求继续完善提醒设置，将网站/手机/电脑客户端固定概念写进项目，补充禁止“本机”等模糊指代。继续开发及检查后发布授权有效。活动分支feat/two-reminder-destinations，基线main fad4be7；线上基准Web1.8.4、Windows0.5.22。
-- 固定术语见docs/TERMINOLOGY.md，AGENTS及PRODUCT_REQUIREMENTS同步引用：网站=普通浏览器管理界面；手机=手机桌面图标应用；电脑/电脑客户端=Windows助手。只有手机与电脑客户端接收提醒，网站不接收。未来需求和界面明确写平台名。
-- 候选Web1.8.5、Windows0.5.23：总开关下只有手机、电脑两个接收区域，手机连接按钮纳入手机区域，只在手机桌面应用显示；网站不请求通知权限或注册订阅。新增持久化电脑独立开关，与总开关共同形成现有enabled闸门；电脑客户端规则及协议不改；补充要求后已将电脑客户端提醒入口、窗口、开关和连接提示中的旧模糊指代改为明确电脑名称。旧桌面浏览器登记停用并跳过待发队列，保留记录及手机配置，旧界面也不能重新启用该登记。
-- 本地提醒策略/Push契约、架构治理、稳定性、JS语法/编译/diff检查通过；网站及普通手机Safari不请求权限、不注册通知，手机连接点击手势、手机/电脑独立开关、重启保留、设备启停/移除、原时间/循环/失败保留及1440/390无溢出浏览器验收通过。电脑客户端113项单测通过（16项因无显示跳过，待真实Windows CI补验）。本地截图几何已查看，中文字体需CI截图补足。完整CI/发布/公网尚未验证。未合并发布，不写入生产业务或发送测试通知。
-- 核心app/reminders.py、reminder_policy.py、提醒模板及JS/CSS、tests/reminders_policy_contract.py、reminders_settings_acceptance.py。目录/workspace/scratch/5c7c7f3fea41/chen-assistant-reminder-ends。唯一下一步：完成隔离契约和网站/手机浏览器验收，推送PR，最终head完整检查通过后合并并核验Web1.8.5与Windows0.5.23。
+- 更新时间：2026-11-02（Asia/Shanghai）。本轮开发及两端公网发布完成，无活动功能PR。PR #191已squash合并，main功能提交b1dc40a64248ee7d0dacc638378d7dd8690d6b8e，最终受检head a98a7ebe0653a0499992e469e9c80feae7d80881；两者tree同为1553469578f2eda58fe25087a5c80495a0bca014，源码一致。
+- 用户固定称呼已持久写入docs/TERMINOLOGY.md，由AGENTS.md及PRODUCT_REQUIREMENTS.md引用：网站/网站中=普通浏览器管理界面；手机/手机上=手机桌面图标应用；电脑/电脑客户端中=Windows助手客户端。网站不接收通知，只有手机和电脑客户端接收。新界面、说明和需求解释必须写明平台，禁止模糊指代；历史旧称不能覆盖现行规范。
+- 已上线网站1.8.5、电脑客户端0.5.23：通知总开关下明确手机提醒、电脑提醒两个接收区域。手机连接按钮只在手机桌面应用内显示，网站和普通手机浏览器不请求权限/注册通知。新增电脑独立开关，与总开关共同下发原enabled闸门；手机规则不覆盖电脑客户端规则，原配置重启保留。旧桌面浏览器登记停用，待发队列跳过，保留记录并拒绝重新启用；手机原连接不删除。电脑客户端提醒窗口/开关/入口及连接提示改用明确平台名称，业务逻辑与更新协议未改。
+- 本地策略/Push/架构/稳定性/JS及编译/diff通过；网站、普通手机浏览器、手机桌面应用隔离及点击授权、两端独立/重启、旧浏览器退出和原提醒操作通过；电脑客户端113项单测通过（16项无显示跳过已由Windows CI补验）。最终PR网站完整CI41415130449、稳定性41415130465、模块隔离41415130433、Foxmail41415130389成功；Windows41415130461源码/EXE/原生界面/真实更新重启回滚及Excel锁全部success。已下载查看相同head的中文网站、手机及Windows每日/每周截图，平台名称和布局正常，无横向溢出。
+- 实际公网：网站41417845597/job125185948832返回ONLINE VERIFIED v1.8.5，版本及精确资源/PWA/鉴权/找回/域名边界通过。Windows构建发布41417845525全部success（publish125188176692）；公网41418608575/job125188438394返回ONLINE VERIFIED v0.5.23：71708475 bytes，SHA256 6d8b91ef6b23d50dc8a312db95af70b9773f94af8de3a1f5368971d0f0d218c9，与release清单一致。不据此推断生产精确backend SHA；未发送生产测试通知或修改客户业务数据。
+- 验证边界：安装及真机提醒到达待用户反馈。PR最终head完整验收及两端公网已通过；main功能提交独立完整回归41417845729在交接前仍运行（最近已推进至工作清单），不能声称main独立全链完成。main独立稳定性41417845477、语法41417845356、Foxmail41417845318成功。本次仅文档收尾会触发后续main检查，精确head最终结果以Actions为准。
+- 核心AGENTS.md、docs/TERMINOLOGY.md、PRODUCT_REQUIREMENTS.md；app/reminders.py、reminder_policy.py、提醒模板与JS/CSS；Windows app.py/reminder_settings.py/modules.py/foxmail.py及相关测试。目录/workspace/scratch/5c7c7f3fea41/chen-assistant-reminder-ends；本地git映射与远端不同，远端权威，续用先同步，不重推旧本地历史。feat/two-reminder-destinations已合并，仅作历史追溯。
+- 唯一下一步：用户刷新网站并在电脑客户端“检查更新”升级0.5.23，按实际手机/电脑体验反馈继续；后续请求严格按三个固定称呼解释，新接管可先只读核对最新main检查，不重复部署或新增需求。
 
-平台词义长期以docs/TERMINOLOGY.md为准；详细证据及历史见docs/AI_HANDOFF.md。
+平台固定称呼见docs/TERMINOLOGY.md；历史及验证边界见docs/AI_HANDOFF.md。
 
 ## 新聊天接管顺序
 
