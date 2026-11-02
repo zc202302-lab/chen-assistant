@@ -75,3 +75,8 @@ def install_checkbutton_style(root, style):
                     lightcolor='#E2E8F0', darkcolor='#E2E8F0', relief='solid', borderwidth=1)
     style.configure('Reminder.TLabelframe.Label', background='#FFFFFF', foreground='#18243B',
                     font=('Microsoft YaHei UI', 10, 'bold'))
+
+    style.configure('Reminder.TCombobox', fieldbackground='#FFFFFF', background='#F4F6FA',
+                    foreground='#18243B', bordercolor='#CBD5E1', arrowsize=14, padding=(8, 5))
+    style.map('Reminder.TCombobox', fieldbackground=[('readonly', '#FFFFFF')],
+              selectbackground=[('readonly', '#FFFFFF')], selectforeground=[('readonly', '#18243B')])

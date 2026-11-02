@@ -13,7 +13,7 @@ def show_reminder_settings(app):
     window = tk.Toplevel(app.root)
     app.reminder_settings_window = window
     window.title('本机提醒规则')
-    window.geometry('580x680')
+    window.geometry('580x630')
     window.configure(bg='#F4F6FA')
     window.resizable(False, False)
     frame = ttk.Frame(window, padding=20)
@@ -35,7 +35,7 @@ def show_reminder_settings(app):
     timing = ttk.LabelFrame(frame, text='定时与重复 · 北京时间', padding=14, style='Reminder.TLabelframe')
     timing.pack(fill='x', pady=5)
     repeat = tk.StringVar(value='每天' if cfg.weekdays == list(range(7)) else '每周指定日期')
-    selector = ttk.Combobox(timing, textvariable=repeat, values=['每天', '每周指定日期'], state='readonly', width=18)
+    selector = ttk.Combobox(timing, textvariable=repeat, values=['每天', '每周指定日期'], state='readonly', width=18, style='Reminder.TCombobox')
     selector.pack(anchor='w')
     day_frame = ttk.Frame(timing, style='Reminder.TFrame')
     day_frame.pack(fill='x', pady=8)
@@ -43,7 +43,7 @@ def show_reminder_settings(app):
     day_buttons = []
     for d, label in enumerate(('一', '二', '三', '四', '五', '六', '日')):
         b = ttk.Checkbutton(day_frame, style='Reminder.TCheckbutton', text='周'+label, variable=days[d])
-        b.pack(side='left')
+        b.pack(side='left', padx=(0, 6))
         day_buttons.append(b)
     def repeat_changed(_=None):
         for button in day_buttons:
