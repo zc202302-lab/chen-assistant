@@ -8,7 +8,7 @@
 - Windows专用接口只读共享规则和到期客户待办摘要；客户摘要不进入可编辑全局列表，原令牌鉴权/编辑边界保留。号码与待办读取统一模式/日期/类别，设置入口打开同一网页登录页；关闭本地接收模块会关现有弹窗、忽略旧队列。旧服务器保留本地时间回退；新网站规则以服务器为准。用户安装新版客户端与真实设备到达尚未验收。
 - 受检功能head0ed5ad75dc2483fd3ca038a26b6575f2fcf0327a的Windows41370627859全部success（build125040361041、native125040361175、source125040361211、真实更新/回滚与Excel锁125041883500）；本轮后端键兼容不改Windows源，最终head仍需等新CI。此前Windows源测试误依赖Tk已拆为纯决策逻辑、保留原生验收；一次更新验收只到begin日志，补阶段日志后真实验收已通过，不声称已确定此前失败根因。
 - 旧Web轮每周重选重置日期已修复，最新UI专项已通过；本轮曾发生CSS误写，已恢复并核对，无生产影响。Web全量41370627737尚在运行，本轮最终提交将重跑全量；CI/部署以PR最新head为准，不使用旧head结果代替。无生产测试数据或通知发送。
-- 核心app/reminders.py、reminder_policy.py、reminders.html/js/css、两专用接口、Windows app/number_inbox/todo_panel/reminder_policy与对应测试；目录/workspace/scratch/6ecb72ebd96b/chen-assistant，依赖/tmp/chen-reminders-venv。唯一下一步：等PR187最终head网页全量与Windows完整检查通过，合并后分别核验Web1.8.1及Windows0.5.20实际发布。
+- 补充阻塞修复：完整CI再次在recipe_save_weights→ensure_v10_schema出现SQLite读快照转写锁冲突。connection_scope新增可选immediate（默认不改），菜谱种子初始化显式提前获取写事务，保留借用连接的提交/回滚所有权。新增并发菜谱初始化/提醒写入及调用方回滚契约通过，既有菜谱创建契约和架构检查通过；最终完整CI仍须确认。\n- 核心app/reminders.py、reminder_policy.py、reminders.html/js/css、两专用接口、Windows app/number_inbox/todo_panel/reminder_policy与对应测试；目录/workspace/scratch/6ecb72ebd96b/chen-assistant，依赖/tmp/chen-reminders-venv。唯一下一步：等PR187最终head网页全量与Windows完整检查通过，合并后分别核验Web1.8.1及Windows0.5.20实际发布。
 
 本文件是新聊天、新模型或中断后的固定入口。仓库是可核对的项目记忆；聊天记忆只作辅助。
 

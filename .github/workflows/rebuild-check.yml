@@ -171,6 +171,7 @@ jobs:
         if: steps.scope.outputs.mode == 'full'
         run: |
           python tests/reminders_policy_contract.py
+          python tests/recipe_reminder_concurrency_contract.py
           python tests/reminders_settings_acceptance.py
 
       - name: Upload reminder settings previews

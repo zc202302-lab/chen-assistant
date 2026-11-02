@@ -181,7 +181,9 @@ def _seed_recipe(conn, name: str, category: str, tags: str):
 
 
 def ensure_v10_schema(conn=None):
-    with connection_scope(conn) as conn:
+    # Seeding writes: acquire the writer before schema/seed reads, avoiding a
+    # deferred WAL snapshot upgrade racing the reminder worker.
+    with connection_scope(conn, immediate=True) as conn:
         execute_schema(conn, V10_SCHEMA)
         for name, category, tags in RECIPE_CATALOG:
             _seed_recipe(conn, name, category, tags)
