@@ -2,6 +2,17 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 更新时间：2026-11-02（Asia/Shanghai）。本轮开发及部署完成，无活动功能PR。PR #189已squash合并，main功能提交f3b932c0e4d1377274501b6a6222b77738ceefb8；最终受检head1423215bda799a09ee61ad132e5f4076fe72a177。两者tree均为c77d1cc75fa0161fd13cbb9b230e56bad67ac3ea，源码一致。
+- 已上线Web1.8.3、Windows0.5.22：Windows勾选框改DPI自适应圆角蓝色对勾，保留ttk原生绑定和布尔变量；提醒窗口白卡、间距/星期选择及保存按钮优化。网页提醒方式/类别/时间/循环明确用于手机，新增持久化手机接收独立开关，关闭取消未发送推送及测试；不改变Windows总开关。Windows规则继续在本机设置，网页通知总开关仍可暂停两端。
+- 完整验收发现号码管理页读快照后清理写入与后台提醒并发可触发SQLITE_BUSY_SNAPSHOT/500，已将该页事务提前BEGIN IMMEDIATE；新增待处理/设置两视图并发回归，旧实现确定复现database is locked，修复后通过。未改变号码数据、清理规则或更新器。
+- 最终PR Web完整CI41400606688 success；Windows41400606687的源码、EXE、原生界面、真实更新回滚/Excel锁全部success；稳定性41400606648、隔离41400606643、Foxmail41400606647均success。main完整CI41402351041的validate125136717838、生产稳定性125142086984及deploy125142226812均success；main独立稳定性41402351141、语法41402350950、Foxmail41402350915成功。
+- 实际公网：PWA41402351429/job125136718509返回ONLINE VERIFIED v1.8.3，版本、精确资源和鉴权/找回及域名边界核验通过。Windows构建发布41402350948全部success（publish125138259575）；公网41402943929/job125138538239返回ONLINE VERIFIED v0.5.22：71709786 bytes，SHA256 c41f68fb4ec5503e7b2a1971a4bebecb89d0da47b5ca28e780feba2ede6198d2，完整EXE与release清单一致。不据此推断生产精确backend SHA。
+- 实际安装和真机业务到达仍待用户反馈；未向生产发送测试通知或改写客户数据。旧冻结更新偶发停滞根因未定，本轮未改更新器，不声称修复该独立问题。本地浏览器安装下载受限，浏览器验收由上述完整CI提供；本地号码批量及并发契约、架构治理通过。
+- 核心：Windows ui_styles.py/app.py/reminder_settings.py及原生验收脚本；app/reminder_policy.py、reminders.py、提醒模板/JS、v162_number_inbox.py及契约。原工作目录/workspace/scratch/6ecb72ebd96b/chen-assistant；本次连接器提交为远端权威，本地HEAD仍为旧映射，续用须先同步远端，勿重推旧本地history。分支feat/windows-checkbox-polish已合并，仅供历史追溯；云电脑#128及其他历史PR不属于本轮。
+- 唯一下一步：用户在Windows“检查更新”安装0.5.22，刷新网页确认手机独立开关；按实际界面和提醒反馈继续，无新需求时不新增功能。
+
+## 上一阶段（历史：PR #189 合并前）
+
 - 2026-11-02（Asia/Shanghai）用户要求win-assistants勾选框美化，并补充网页规则只针对手机、要单独控制手机接收。继续开发、GitHub推送及检查后合并发布授权有效。活动分支feat/windows-checkbox-polish，PR #189，基线main b4aad19（PR188已上线Web1.8.2、Windows0.5.21；上一main完整CI41382044036现已success）。
 - 本轮候选Web1.8.3、Windows0.5.22，替换clam旧叉号为DPI自适应圆角蓝色对勾，未选中/悬停/禁用独立图形；仍使用ttk.Checkbutton原生绑定与布尔变量。提醒页白卡、背景/间距与蓝色保存按钮统一，不改本机规则、网页总开关、连接令牌或任何业务逻辑。用户补充：网页规则只针对手机端；已将网页提醒方式、类别、时间及循环标为手机提醒，新增手机接收独立开关mobile：暂停会取消未发送推送与测试，重启保留，不改变Windows enabled总开关；总开关仍控制两端，本机通知授权单独显示。Windows仍只接收网页总开关，本机独立配置规则。
 - 本地新增手机开关/重启/队列取消/不影响Windows接口契约、既有Push和架构检查均通过；Windows单测通过（GUI项因无显示跳过），编译/diff检查通过；新增真实GUI勾选/禁用及几何验收、每日/每周窗口截图，待CI与实际截图核对。已查看最终相同Windows源码真实截图，蓝色对勾与底部保存/取消完整可见，无裁切；最终head仍须完整验收；Windows构建/冻结更新回滚、发布和公网完整EXE尚待核验；未声称已安装。
