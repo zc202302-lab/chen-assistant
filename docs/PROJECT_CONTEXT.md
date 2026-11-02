@@ -2,15 +2,13 @@
 
 ## 当前活动工作（2026-11-02，Asia/Shanghai）
 
-- 更新时间：2026-11-02（Asia/Shanghai）。本轮提醒设置布局开发及公网部署完成。PR #190已squash合并，main功能提交5ffbb24ed956b6a9d31da8bf5d7a7f290db1cb8e，最终PR受检headba227e7a16985ed95ab59eb6344096be963b90aa；两者tree均358f121d7c236d4f7e9d85543216e01f734ee66c，源码一致，无活动功能PR。
-- 已上线Web1.8.4。默认按通知总开关→手机提醒→当前设备通知排列；手机方式、内容、定时与循环合并到同一卡片，保留待办/全局/客户层级。高级设置默认折叠，里面保留接收设备和测试通知；设备增加登记/最近提交推送时间及记录性质说明。明确总开关控制两端、手机规则只用于手机、当前设备授权只影响当前浏览器。不修改后端提醒策略、已存配置、客户数据或Windows客户端，Windows仍0.5.22。
-- 本地提醒策略、架构治理、JS语法/编译/diff检查通过；1440桌面/390手机真实浏览器通过全部既有提醒操作，新增分组顺序、高级默认折叠、设备启停、时间信息及无横向溢出验收。CI完整回归41406564967、稳定性41406564964、模块隔离41406565068全部success，已有全部业务断言保留。已下载并查看本head中文桌面/手机及高级展开截图，中文正常、层级清晰，无横向溢出；本地缺中文字体的限制已由CI中文截图补足。
-- 实际公网41408479546/job125155822811 success，返回ONLINE VERIFIED v1.8.4；线上版本、精确JS/CSS和PWA/鉴权/找回及域名边界通过。不推断生产精确backend SHA，未登录读写生产客户数据或发送生产测试通知。用户实际刷新/真机体验待反馈。
-- 验证边界：PR最终head完整验收与公网已通过；功能合并后的main独立完整回归41408479508在本次交接前仍运行（已通过新版提醒设置，当前业务显示设置），不能声称main独立全链完成。本次仅文档收尾提交会触发后续main检查，最终状态须从Actions按精确head核对，不能用PR或旧main状态冒充。无已观察到的本轮失败。
-- 核心app/templates/reminders.html、app/static/reminders.css/js、base.html及tests/reminders_settings_acceptance.py。目录/workspace/scratch/5c7c7f3fea41/chen-assistant-layout；本地提交与连接器远端SHA不同，远端为准，继续前先同步，不重推旧本地历史。分支feat/reminder-settings-layout已合并，历史云电脑PR#128不属于本轮。
-- 唯一下一步：用户刷新提醒设置页体验1.8.4，按实际布局反馈继续；新接管可先只读核对最新main自动检查，不新增需求或重复部署。
+- 2026-11-02（Asia/Shanghai）用户要求继续完善提醒设置，将网站/手机/电脑客户端固定概念写进项目，补充禁止“本机”等模糊指代。继续开发及检查后发布授权有效。活动分支feat/two-reminder-destinations，基线main fad4be7；线上基准Web1.8.4、Windows0.5.22。
+- 固定术语见docs/TERMINOLOGY.md，AGENTS及PRODUCT_REQUIREMENTS同步引用：网站=普通浏览器管理界面；手机=手机桌面图标应用；电脑/电脑客户端=Windows助手。只有手机与电脑客户端接收提醒，网站不接收。未来需求和界面明确写平台名。
+- 候选Web1.8.5：总开关下只有手机、电脑两个接收区域，手机连接按钮纳入手机区域，只在手机桌面应用显示；网站不请求通知权限或注册订阅。新增持久化电脑独立开关，与总开关共同形成现有enabled闸门；电脑客户端规则及协议不改，Windows保持0.5.22。旧桌面浏览器登记停用并跳过待发队列，保留记录及手机配置，旧界面也不能重新启用该登记。
+- 验证进行中：新增两端独立/重启保留/旧网站登记退出回归，并将浏览器验收明确拆分网站与手机；保留已有提醒交互断言。JS语法/diff检查通过；依赖环境恢复中，契约/浏览器/CI/公网尚未验证。未合并发布，不写入生产业务或发送测试通知。
+- 核心app/reminders.py、reminder_policy.py、提醒模板及JS/CSS、tests/reminders_policy_contract.py、reminders_settings_acceptance.py。目录/workspace/scratch/5c7c7f3fea41/chen-assistant-reminder-ends。唯一下一步：完成隔离契约和网站/手机浏览器验收，推送PR，最终head完整检查通过后合并并核验Web1.8.5。
 
-详细验证及历史见docs/AI_HANDOFF.md。
+平台词义长期以docs/TERMINOLOGY.md为准；详细证据及历史见docs/AI_HANDOFF.md。
 
 ## 新聊天接管顺序
 
