@@ -59,8 +59,36 @@ def main():
         previews=ROOT/'artifacts/reminders-settings';previews.mkdir(parents=True,exist_ok=True)
         with sync_playwright() as pw:
             browser=pw.chromium.launch()
+            # An ordinary website can manage both destinations without requesting permission.
+            website=browser.new_context(viewport={'width':1440,'height':900})
+            website.add_init_script(stub)
+            website.add_cookies([{'name':'session_token','value':token,'url':base}])
+            web=website.new_page();web.goto(base+'/reminders#settings',wait_until='networkidle')
+            expect(web.locator('#push-enable')).not_to_be_visible()
+            computer=web.get_by_role('switch',name='电脑提醒',exact=True)
+            with web.expect_response(lambda r:r.url.endswith('/api/reminders/preferences') and r.request.method=='POST'):
+                computer.uncheck()
+            web.reload(wait_until='networkidle')
+            expect(computer).not_to_be_checked()
+            expect(web.get_by_role('switch',name='手机接收提醒',exact=True)).to_be_checked()
+            with web.expect_response(lambda r:r.url.endswith('/api/reminders/preferences') and r.request.method=='POST'):
+                computer.check()
+            assert web.evaluate('uiPush.permissions')==[]
+            assert web.evaluate('uiPush.sub') is None
+            expect(computer).to_be_enabled()
+            web.evaluate('scrollTo(0,0)')
+            web.screenshot(path=str(previews/'website-1440.png'),full_page=True)
+            website.close()
+            safari=browser.new_context(user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148')
+            safari.add_init_script(stub.replace("'standalone',{value:true}","'standalone',{value:false}"))
+            safari.add_cookies([{'name':'session_token','value':token,'url':base}])
+            safari_page=safari.new_page();safari_page.goto(base+'/reminders#settings',wait_until='networkidle')
+            expect(safari_page.locator('#push-enable')).not_to_be_visible()
+            assert safari_page.evaluate('uiPush.permissions')==[]
+            assert safari_page.evaluate('uiPush.sub') is None
+            safari.close()
             for width in [1440,390]:
-                context=browser.new_context(viewport={'width':width,'height':900},is_mobile=width==390)
+                context=browser.new_context(viewport={'width':width,'height':900},is_mobile=width==390,user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148')
                 context.add_init_script(stub)
                 context.add_cookies([{'name':'session_token','value':token,'url':base}])
                 page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
@@ -73,15 +101,15 @@ def main():
                 expect(page.locator('#reminder-devices')).not_to_be_visible()
                 expect(page.locator('#push-test')).not_to_be_visible()
                 headings=panel.locator(':scope > section h2').all_text_contents()
-                assert headings==['通知总开关','手机提醒','当前设备通知'],headings
+                assert headings==['通知总开关','手机提醒','电脑提醒'],headings
                 # Each setting group stays inside its owning phone section.
                 phone_card=panel.locator('.reminder-phone-card')
                 expect(phone_card.locator('#reminder-modes')).to_be_visible()
                 expect(phone_card.locator('#reminder-preferences')).to_be_visible()
                 assert panel.get_by_text('iPhone：',exact=False).count()==0
-                master=page.get_by_role('switch',name='本机通知',exact=True)
+                master=page.get_by_role('button',name='连接手机通知',exact=True)
                 expect(master).to_be_enabled()
-                master.click();expect(master).to_have_attribute('aria-checked','true')
+                master.click();expect(master).not_to_be_visible()
                 assert page.evaluate('uiPush.permissions')==[True]
                 instant=page.get_by_role('switch',name='即时提醒',exact=True)
                 instant.uncheck();expect(instant).not_to_be_checked()
@@ -115,15 +143,16 @@ def main():
                 expect(page.get_by_label('删除 09:00',exact=True)).to_be_visible()
                 expect(page.get_by_label('周二',exact=True)).not_to_be_checked()
                 expect(page.get_by_label('周四',exact=True)).not_to_be_checked()
-                expect(master).to_have_attribute('aria-checked','true')
+                expect(master).not_to_be_visible()
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),width
                 assert not page.locator('#push-delivery').is_visible()
+                page.evaluate('scrollTo(0,0)')
                 page.screenshot(path=str(previews/f'settings-{width}.png'),full_page=True)
                 advanced.locator(':scope > summary').click()
                 expect(page.locator('#reminder-devices')).to_be_visible()
-                expect(page.locator('#reminder-devices')).to_contain_text('登记于')
+                expect(page.locator('#reminder-devices')).to_contain_text('连接于')
                 expect(page.locator('#reminder-devices')).to_contain_text('最近提交推送')
-                expect(page.locator('#reminder-devices')).to_contain_text('（本机）')
+                expect(page.locator('#reminder-devices')).to_contain_text('（这部手机）')
                 # A registered device can still be paused and resumed from advanced settings.
                 device_switch=page.locator('#reminder-devices [role=switch]').first
                 with page.expect_response(lambda r:'/api/reminders/devices/' in r.url and r.request.method=='POST'):
@@ -133,8 +162,9 @@ def main():
                     device_switch.click()
                 expect(device_switch).to_have_attribute('aria-checked','true')
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),width
+                page.evaluate('scrollTo(0,0)')
                 page.screenshot(path=str(previews/f'advanced-{width}.png'),full_page=True)
-                advanced.get_by_text('测试通知',exact=True).click()
+                advanced.get_by_text('测试手机通知',exact=True).click()
                 page.route('**/api/reminders/test',lambda route:route.fulfill(json={'ok':True}))
                 with page.expect_request(lambda r:r.url.endswith('/api/reminders/test')) as sent:
                     page.locator('#push-test-lock').click()
@@ -147,7 +177,12 @@ def main():
                 expect(page.locator('#reminder-schedule-time')).to_have_value('08:45')
                 page.unroute('**/api/reminders/schedule')
                 page.get_by_label('删除 09:00',exact=True).click()
-                master.click();expect(master).to_have_attribute('aria-checked','false')
+                page.get_by_role('switch',name='手机接收提醒',exact=True).uncheck();expect(page.get_by_role('switch',name='手机接收提醒',exact=True)).not_to_be_checked()
+                # Explicitly removing the phone connection still unsubscribes it.
+                with page.expect_response(lambda r:'/api/reminders/devices/' in r.url and r.request.method=='POST'):
+                    page.locator('#reminder-devices .reminder-remove').first.click()
+                expect(master).to_be_visible()
+                assert page.evaluate('uiPush.sub') is None
                 assert not errors,errors
                 context.close()
             browser.close()

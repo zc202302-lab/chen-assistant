@@ -27,7 +27,7 @@ def main():
     key = ec.generate_private_key(ec.SECP256R1())
     sub = {'endpoint':'https://web.push.apple.com/policy-test','keys':{'auth':b64(os.urandom(16)),
         'p256dh':b64(key.public_key().public_bytes(serialization.Encoding.X962,serialization.PublicFormat.UncompressedPoint))}}
-    assert client.post('/api/reminders/subscriptions',headers=headers,json={'subscription':sub,'name':'电脑'}).status_code == 200
+    assert client.post('/api/reminders/subscriptions',headers=headers,json={'subscription':sub,'name':'手机'}).status_code == 200
     with db() as conn:
         cid = conn.execute("INSERT INTO customers(name,created_at,updated_at) VALUES('测试客户',?,?)", (now_iso(),now_iso())).lastrowid
         tid = conn.execute("INSERT INTO tasks(customer_id,title,remind_at,created_at) VALUES(?,?,?,?)", (cid,'客户待办','2026-11-01T09:00',now_iso())).lastrowid
@@ -113,6 +113,31 @@ def main():
             row = conn.execute('SELECT * FROM reminders WHERE id=?',(rid,)).fetchone()
             assert not reminder_current(conn,row)
     collect_due(now=monday)  # Generic event API input cannot break the worker.
+    # Computer reception is independent of phone rules and persists across restart.
+    prefs(desktop=False,mobile=True)
+    for url, bearer in [('/api/work-todos',task_token),('/api/number-inbox/pending',number_token)]:
+        assert client.get(url,headers={'Authorization':'Bearer '+bearer}).json()['reminder_policy']=={'enabled':False}
+    assert client.get('/api/reminders').json()['preferences']['mobile'] is True
+    ensure_reminder_schema()
+    assert client.get('/api/reminders').json()['preferences']['desktop'] is False
+    prefs(mobile=False,desktop=True)
+    assert client.get('/api/work-todos',headers={'Authorization':'Bearer '+task_token}).json()['reminder_policy']=={'enabled':True}
+    prefs(all=False)
+    assert client.get('/api/work-todos',headers={'Authorization':'Bearer '+task_token}).json()['reminder_policy']=={'enabled':False}
+    prefs(all=True,mobile=True)
+    # Old ordinary-browser records are retained but never receive new notifications.
+    assert client.post('/api/reminders/subscriptions',headers=headers,json={'subscription':sub,'name':'桌面浏览器'}).status_code==400
+    with db() as conn:
+        phone=conn.execute("SELECT * FROM push_devices WHERE name='手机'").fetchone()
+        conn.execute("INSERT INTO push_devices(id,endpoint,subscription,name,enabled,created_at,updated_at) VALUES('old-browser','https://web.push.apple.com/old-browser',?,'桌面浏览器',1,1,1)",(phone['subscription'],))
+        rid=publish_reminder(conn,kind='system',title='旧浏览器回归',event_key='legacy-browser')
+        conn.execute("INSERT OR REPLACE INTO push_outbox(reminder_id,device_id) VALUES(?,'old-browser')",(rid,))
+    ensure_reminder_schema()
+    with db() as conn:
+        assert conn.execute("SELECT enabled FROM push_devices WHERE id='old-browser'").fetchone()[0]==0
+        assert conn.execute("SELECT state FROM push_outbox WHERE device_id='old-browser'").fetchone()[0]=='skipped'
+        assert conn.execute("SELECT enabled FROM push_devices WHERE id=?",(phone['id'],)).fetchone()[0]==phone['enabled']
+    assert client.post('/api/reminders/devices/old-browser',headers=headers,json={'enabled':True}).status_code==400
     print('unified reminders passed: global/customer sources, modes, weekdays, cancellation, scopes, shared desktop feeds, restart')
 
 

@@ -42,7 +42,7 @@ class SilentNotificationsContractTests(unittest.TestCase):
     def test_editor_has_no_interval_control(self):
         text = ast.unparse(self._method("_show_number_inbox_settings"))
         self.assertNotIn("检查间隔（秒）", text)
-        self.assertIn("本机提醒规则", text)
+        self.assertIn("电脑提醒规则", text)
         self.assertNotIn("reminder_times_var.get().split()", text)
 
 

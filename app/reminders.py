@@ -69,8 +69,12 @@ def b64(raw):
 def ensure_reminder_schema():
     with db(immediate=True) as conn:
         execute_schema(conn, SCHEMA)
-        for kind in ['all', 'mobile', 'instant', 'scheduled', 'task_global', 'task_customer', *TYPES]:
+        for kind in ['all', 'mobile', 'desktop', 'instant', 'scheduled', 'task_global', 'task_customer', *TYPES]:
             conn.execute('INSERT OR IGNORE INTO reminder_preferences(kind) VALUES(?)', (kind,))
+        # Ordinary website browsers are no longer reminder destinations.
+        # Retain historical records, but cancel their unsent deliveries.
+        conn.execute("UPDATE push_devices SET enabled=0 WHERE name='桌面浏览器'")
+        conn.execute("UPDATE push_outbox SET state='skipped' WHERE state='pending' AND device_id IN (SELECT id FROM push_devices WHERE name='桌面浏览器')")
         # Encrypted in the existing backed-up database, so deploys/restarts keep
         # the same application-server key. No private key is committed to Git.
         if not conn.execute("SELECT 1 FROM app_meta WHERE key='push_vapid_private'").fetchone():
@@ -320,7 +324,7 @@ def push_error(exc):
         except (ValueError, AttributeError, TypeError):
             pass
     if status in (404, 410):
-        return '设备订阅已失效，请在本机重新开启提醒'
+        return '手机通知连接已失效，请在手机上重新连接通知'
     if status:
         return f'推送服务响应 {status}' + ('：' + reason if reason else '')
     from requests.exceptions import Timeout, ConnectionError
@@ -452,12 +456,12 @@ async def check_csrf(request):
 @router.post('/api/reminders/preferences')
 async def save_preferences(request: Request):
     payload = await check_csrf(request)
-    if not payload or any(k not in ['all','mobile','instant','scheduled','task_global','task_customer',*TYPES] or type(v) is not bool for k,v in payload.items()):
+    if not payload or any(k not in ['all','mobile','desktop','instant','scheduled','task_global','task_customer',*TYPES] or type(v) is not bool for k,v in payload.items()):
         raise HTTPException(400,'提醒类型无效')
     with db(immediate=True) as conn:
         combined = preferences(conn) | payload
         if combined.get('all', True) and combined.get('mobile', True) and not (combined.get('instant', True) or combined.get('scheduled', True)):
-            raise HTTPException(400, '请选择即时提醒或定时提醒，或关闭通知总开关')
+            raise HTTPException(400, '请选择即时提醒或定时提醒，或关闭手机提醒')
         if combined.get('task', True) and not (combined.get('task_global', True) or combined.get('task_customer', True)):
             raise HTTPException(400, '请选择全局待办或客户待办，或关闭待办提醒')
         for k,v in payload.items():
@@ -498,6 +502,8 @@ async def subscribe(request: Request):
     except (ValueError,TypeError) as exc:
         raise HTTPException(400,str(exc)) from exc
     name = str(payload.get('name','手机设备')).strip()[:60] or '手机设备'
+    if name == '桌面浏览器':
+        raise HTTPException(400,'网站仅管理提醒，请在手机上连接通知')
     with db(immediate=True) as conn:
         old = conn.execute('SELECT id FROM push_devices WHERE endpoint=?', (subscription['endpoint'],)).fetchone()
         did = old['id'] if old else secrets.token_urlsafe(18)
@@ -517,6 +523,8 @@ async def change_device(request: Request,device_id: str):
         if payload.get('delete') is True:
             conn.execute('DELETE FROM push_devices WHERE id=?',(device_id,))
         elif type(payload.get('enabled')) is bool:
+            if payload['enabled'] and conn.execute("SELECT 1 FROM push_devices WHERE id=? AND name='桌面浏览器'", (device_id,)).fetchone():
+                raise HTTPException(400,'网站不接收提醒')
             conn.execute('UPDATE push_devices SET enabled=? WHERE id=?',(int(payload['enabled']),device_id))
             if not payload['enabled']:
                 conn.execute("UPDATE push_outbox SET state='skipped' WHERE device_id=? AND state='pending'",(device_id,))
@@ -538,7 +546,7 @@ async def test_push(request: Request):
         if not preferences(conn).get('mobile', True):
             raise HTTPException(400,'手机接收提醒已关闭')
         if not conn.execute('SELECT 1 FROM push_devices WHERE id=? AND enabled=1',(did,)).fetchone():
-            raise HTTPException(400,'请先在此设备开启通知接收')
+            raise HTTPException(400,'请先在手机上连接通知')
         if conn.execute("SELECT 1 FROM reminders WHERE event_key LIKE 'test:%' AND created_at>?",(time.time()-10,)).fetchone():
             raise HTTPException(429,'请稍后再发送测试提醒')
         rid = publish_reminder(conn,kind='system',title='设备提醒测试',body='这是一条后台推送测试通知。',url='/reminders',event_key='test:'+secrets.token_urlsafe(12))
