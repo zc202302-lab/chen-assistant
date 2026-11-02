@@ -222,13 +222,16 @@ def db(immediate=False):
 
 
 @contextmanager
-def connection_scope(conn=None):
+def connection_scope(conn=None, *, immediate=False):
     """Borrow an existing transaction, or own a connection with real rollback."""
     if conn is None:
-        with db() as owned:
-            owned.execute('BEGIN')
+        with db(immediate=immediate) as owned:
+            if not owned.in_transaction:
+                owned.execute('BEGIN')
             yield owned
     else:
+        if immediate and not conn.in_transaction:
+            conn.execute('BEGIN IMMEDIATE')
         yield conn
 
 

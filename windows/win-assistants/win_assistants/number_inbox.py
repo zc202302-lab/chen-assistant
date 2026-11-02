@@ -20,6 +20,7 @@ class NumberInboxEvent:
     submitter: str = ""
     note: str = ""
     pending_ids: tuple[int, ...] | None = None
+    reminder_policy: dict | None = None
 
 
 class NumberInboxReceiver:
@@ -123,6 +124,8 @@ class NumberInboxReceiver:
         while not stop_event.is_set() and self._is_current(generation):
             try:
                 payload = self.fetch(settings, token)
+                if isinstance(payload.get("reminder_policy"), dict):
+                    self.events.put(NumberInboxEvent("policy", "提醒规则已同步", reminder_policy=payload["reminder_policy"]))
                 pending_count = max(0, int(payload.get("pending_count", 0) or 0))
                 latest_id = max(0, int(payload.get("latest_id", 0) or 0))
                 items = payload.get("items", [])

@@ -237,9 +237,12 @@ try {{
     try {{
         Wait-Process -Id $oldPid -Timeout 60 -ErrorAction SilentlyContinue
     }} catch {{}}
+    Write-UpdateLog "old process wait completed"
 
     Remove-Item -LiteralPath $candidate -Force -ErrorAction SilentlyContinue
+    Write-UpdateLog "staging candidate"
     Copy-Item -LiteralPath $source -Destination $candidate -Force
+    Write-UpdateLog "candidate staged"
 
     $size = (Get-Item -LiteralPath $candidate).Length
     if ($size -ne $expectedSize) {{
@@ -250,6 +253,7 @@ try {{
         throw "candidate sha256 mismatch: expected=$expectedSha actual=$sha"
     }}
 
+    Write-UpdateLog "candidate verified"
     Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue
     Copy-Item -LiteralPath $target -Destination $backup -Force
     for ($attempt = 0; $attempt -lt 30; $attempt++) {{

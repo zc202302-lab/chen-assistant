@@ -108,6 +108,29 @@ class NavigationTests(unittest.TestCase):
         panel.apply({'items': [dict(item, revision=3, remind_at='2099-01-01T09:00', due=False)]})
         self.assertEqual(panel.notified, set())
 
+    def test_disabling_receiver_closes_notifications_and_stops_scheduled_popups(self):
+        from unittest.mock import Mock
+        self.app._save_ui = lambda: None
+        self.app.number_inbox_receiver = Mock()
+        self.app.number_batch_bridge = Mock()
+        self.app.number_reminder_items = {1: object()}
+        self.app.number_reminder_window = tk.Toplevel(self.root)
+        self.app.enabled_vars['number_inbox'].set(False)
+        self.app._toggle_module('number_inbox')
+        self.assertIsNone(self.app.number_reminder_window)
+        self.assertEqual(self.app.number_reminder_items, {})
+        self.app.number_inbox_receiver.stop.assert_called_once()
+        # An already queued old snapshot cannot revive the disabled device.
+        self.app.number_reminder_items = {1: object()}
+        self.app._maybe_show_scheduled_number_reminder()
+        self.assertIsNone(self.app.number_reminder_window)
+        item = {'id':1,'title':'到期待办','remind_at':'2020-01-01T09:00','due':True,'done':0}
+        self.app.todo_panel.apply({'items':[item]})
+        self.assertIsNotNone(self.app.todo_panel.popup)
+        self.app.enabled_vars['work_todos'].set(False)
+        self.app._toggle_module('work_todos')
+        self.assertIsNone(self.app.todo_panel.popup)
+
     def test_batch_result_remains_visible_when_connection_status_changes(self):
         page = self.app.module_pages["number_inbox"]
         self.app.navigation.select(page)

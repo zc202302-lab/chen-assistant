@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 from . import config
+from .reminder_policy import desktop_policy, customer_task_alerts
 from .db import db, now_iso, execute_schema
 from .security import require_csrf
 from .templating import Jinja2Templates
@@ -304,7 +305,8 @@ async def update_work_todo(request: Request, item_id: int):
 def desktop_work_todos(request: Request):
     with db() as conn:
         authorize(conn, request)
-        return {'ok': True, 'items': snapshot(conn), 'server_time': local_now()}
+        return {'ok': True, 'items': snapshot(conn), 'server_time': local_now(),
+                'reminder_policy': desktop_policy(conn), 'customer_task_reminders': customer_task_alerts(conn, local_now())}
 
 
 @router.post('/api/work-todos')
@@ -337,4 +339,5 @@ async def desktop_update_work_todo(request: Request, item_id: int | None = None)
             repeat_time = at[11:16] if rule else ''
             conn.execute('''INSERT INTO work_todos(title,note,remind_at,repeat_rule,repeat_time,created_at,updated_at)
                 VALUES(?,?,?,?,?,?,?)''', (title, note, at, rule, repeat_time, now_iso(), now_iso()))
-        return {'ok': True, 'items': snapshot(conn), 'server_time': local_now()}
+        return {'ok': True, 'items': snapshot(conn), 'server_time': local_now(),
+                'reminder_policy': desktop_policy(conn), 'customer_task_reminders': customer_task_alerts(conn, local_now())}

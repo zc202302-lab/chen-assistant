@@ -44,3 +44,21 @@
 .reminder-nav-count{font-size:11px;margin-left:3px}.reminder-entry{flex-shrink:0;font-size:13px;white-space:nowrap;padding:5px 9px;border:1px solid #dbe4f0;border-radius:10px;color:#3561a8;background:#f0f5ff}
 @media(max-width:600px){.reminder-card{padding:20px;border-radius:18px;margin:14px 0}.reminder-preferences{grid-template-columns:1fr}.reminder-preferences label:nth-child(2){border-top:1px solid #edf0f5}.reminder-schedule-list{grid-template-columns:repeat(2,minmax(0,1fr))}.reminder-schedule-add input{flex:1;width:0}.reminder-actions{gap:8px}#reminder-center .reminder-actions button{font-size:13px;padding:10px 8px}.reminder-heading h1{font-size:23px}}
 @media(prefers-reduced-motion:reduce){#reminder-center button,#reminder-center .reminder-switch,#reminder-center .reminder-switch:before{transition:none}}
+
+.reminder-task-scopes{display:flex;gap:24px;flex-wrap:wrap;padding:4px 0 8px 18px;border-left:2px solid #e6edf8;margin-bottom:12px}
+.reminder-task-scopes label{display:flex;gap:16px;align-items:center;justify-content:space-between;min-height:44px;font-size:14px}
+.reminder-repeat{display:flex;gap:16px;align-items:center;margin-bottom:16px}
+#reminder-repeat-kind{min-height:44px;border:1px solid #dce3ee;border-radius:10px;background:#fff;padding:8px 12px;font:inherit;font-size:16px;color:#172033}
+.reminder-weekdays{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;padding:0;border:0}
+.reminder-weekdays[hidden],#reminder-timing-card[hidden]{display:none!important}
+.reminder-weekdays legend{font-size:12px;color:#748095;margin-bottom:8px}
+.reminder-weekdays label{position:relative;cursor:pointer}
+.reminder-weekdays input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.reminder-weekdays span{display:grid;place-items:center;min-width:42px;min-height:42px;border:1px solid #dce3ee;border-radius:10px;background:#f7f9fc;font-size:13px}
+.reminder-weekdays input:checked+span{background:#eaf1ff;border-color:#6b93d8;color:#285cb5}
+.reminder-weekdays input:focus-visible+span{outline:3px solid #93b7f7;outline-offset:2px}
+.reminder-advanced summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:#748095;font-size:13px}
+.reminder-master-card{border-color:#cddbf2}
+@media(max-width:600px){.reminder-task-scopes{display:grid;gap:4px}.reminder-repeat{justify-content:space-between}.reminder-weekdays{gap:5px}.reminder-weekdays span{min-width:36px}}
+
+#reminder-preferences>label{align-self:start}.reminder-task-group{min-width:0}.reminder-task-group .reminder-task-scopes{display:grid;gap:0;margin-top:0;margin-bottom:0}
