@@ -2,6 +2,14 @@
 
 ## 当前交接快照（唯一当前状态）
 
+- 2026-11-02（Asia/Shanghai）用户纠正Windows提醒边界：客户端单独设置提醒方式、类别、时间和重复；网页后台仅控制客户端提醒总开关。继续开发及检查后合并部署授权有效。活动分支feat/desktop-local-reminder-rules，基线main4b31c1d；上一PR187已上线Web1.8.1及Windows0.5.20，均有公网核验证据。
+- 本轮候选Web1.8.2、Windows0.5.21。后端专用接口reminder_policy仅返回enabled；Windows将本地规则与远程总开关合成执行，忽略旧服务器额外下发的模式/类别/时间。网页模式/时间不再覆盖客户端；本地关闭亦停止接收。手机/Web Push自身规则保留。
+- 新本机设置窗口含启用、即时/定时、未加号码/待办及全局/客户来源、每天/指定星期、最多12个北京时间点；本机config.json持久化，旧号码时间迁移保留。号码连接码/Excel设置和SMS/久坐/Foxmail不动；用户仍需客户端检查更新安装新版。
+- 本地策略/配置迁移持久化/静默及号码持久弹窗单测已通过，新增原生设置保存/取消和服务器总闸门验收待CI。依赖安装中，后端契约/架构尚待执行。未合并或部署本轮，不发送生产测试通知。首次上一main冻结更新在文件复制后停滞但原安装包重跑通过，根因未确定，不可声称解决该独立偶发问题。
+- 核心Windows reminder_settings.py、config.py、reminder_policy.py、app.py、todo_panel.py，后端app/reminder_policy.py及提醒页边界说明。目录/workspace/scratch/6ecb72ebd96b/chen-assistant。唯一下一步：完成检查并推送PR，按最终head完整Web/Windows验收后合并，分别核验两端发布。
+
+## 上一阶段（历史：共享规则已部署）
+
 - 2026-11-02（Asia/Shanghai）用户要求统一手机/电脑提醒设置；已获推送及检查后合并部署授权。PR #187已合并，main功能提交1c25b737c3c35c98256aa10b4f46462910af0561，受检最终head34001325c3082d4d50ac97ecf17f965e59f752fd。当前阶段为部署核验，不新增需求。
 - Web1.8.1已经线上核验成功：PWA workflow41373956037/job125050096019返回ONLINE VERIFIED v1.8.1，核对精确前端资源、鉴权/找回及域名边界。Windows0.5.20 main构建41373956193最终success，publish-release125052978770发布成功。公网workflow41374988518/job125053162108返回ONLINE VERIFIED v0.5.20，71697935 bytes，SHA256 bcb268d3df34a37db35f3c696d47bd06b40e1f8a75604aaff05f4cedf2a267ca。main完整validation41373956058最终success（validate125050096680、production stability125054253505、deploy125054371895）；独立稳定性/语法/Foxmail均success。
 - 最终PR Web完整CI41372465362（validate125045646499、preflight125045646635）success；Windows41372465296源码、EXE、原生界面、真实冻结更新/重启/回滚及Excel锁全部success；稳定性、模块隔离、Foxmail检查均通过。两种宽度提醒设置截图已核对，无横向溢出。
