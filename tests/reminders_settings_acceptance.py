@@ -68,6 +68,16 @@ def main():
                 page.locator('[data-reminder-tab=settings]').click()
                 panel=page.locator('[data-reminder-panel=settings]')
                 expect(panel).to_be_visible()
+                advanced=page.locator('#reminder-advanced-settings')
+                assert not advanced.evaluate('(node)=>node.open')
+                expect(page.locator('#reminder-devices')).not_to_be_visible()
+                expect(page.locator('#push-test')).not_to_be_visible()
+                headings=panel.locator(':scope > section h2').all_text_contents()
+                assert headings==['通知总开关','手机提醒','当前设备通知'],headings
+                # Each setting group stays inside its owning phone section.
+                phone_card=panel.locator('.reminder-phone-card')
+                expect(phone_card.locator('#reminder-modes')).to_be_visible()
+                expect(phone_card.locator('#reminder-preferences')).to_be_visible()
                 assert panel.get_by_text('iPhone：',exact=False).count()==0
                 master=page.get_by_role('switch',name='本机通知',exact=True)
                 expect(master).to_be_enabled()
@@ -109,7 +119,22 @@ def main():
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),width
                 assert not page.locator('#push-delivery').is_visible()
                 page.screenshot(path=str(previews/f'settings-{width}.png'),full_page=True)
-                panel.locator('summary').filter(has_text='测试通知').click()
+                advanced.locator(':scope > summary').click()
+                expect(page.locator('#reminder-devices')).to_be_visible()
+                expect(page.locator('#reminder-devices')).to_contain_text('登记于')
+                expect(page.locator('#reminder-devices')).to_contain_text('最近提交推送')
+                expect(page.locator('#reminder-devices')).to_contain_text('（本机）')
+                # A registered device can still be paused and resumed from advanced settings.
+                device_switch=page.locator('#reminder-devices [role=switch]').first
+                with page.expect_response(lambda r:'/api/reminders/devices/' in r.url and r.request.method=='POST'):
+                    device_switch.click()
+                expect(device_switch).to_have_attribute('aria-checked','false')
+                with page.expect_response(lambda r:'/api/reminders/devices/' in r.url and r.request.method=='POST'):
+                    device_switch.click()
+                expect(device_switch).to_have_attribute('aria-checked','true')
+                assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),width
+                page.screenshot(path=str(previews/f'advanced-{width}.png'),full_page=True)
+                advanced.get_by_text('测试通知',exact=True).click()
                 page.route('**/api/reminders/test',lambda route:route.fulfill(json={'ok':True}))
                 with page.expect_request(lambda r:r.url.endswith('/api/reminders/test')) as sent:
                     page.locator('#push-test-lock').click()

@@ -54,8 +54,8 @@
     };
     $('reminder-master').checked=!!state.preferences.all;
     $('reminder-mobile').checked=state.preferences.mobile!==false;
-    $('reminder-mobile-status').textContent=!state.preferences.all?'已暂停 · 总开关已关闭':state.preferences.mobile!==false?'已开启':'已关闭';
-    $('reminder-master-status').textContent=state.preferences.all?'已开启 · 所有设备':'已暂停 · 所有设备';
+    $('reminder-mobile-status').textContent=!state.preferences.all?'已暂停 · 总开关已关闭':state.preferences.mobile!==false?'规则仅用于手机；Windows 请在客户端设置。':'手机已暂停，规则保留；不影响 Windows 助手。';
+    $('reminder-master-status').textContent=state.preferences.all?'统一控制手机和 Windows 助手。':'已暂停手机和 Windows 助手的所有提醒。';
     $('reminder-modes').replaceChildren(setting('instant','即时提醒'),setting('scheduled','定时提醒'));
     const scopes=$('reminder-task-scopes');
     scopes.replaceChildren(setting('task_global','全局待办'),setting('task_customer','客户待办'));
@@ -81,10 +81,12 @@
       row.append(remove);schedule.append(row);
     }
     const devices=$('reminder-devices'); devices.replaceChildren();
+    $('reminder-device-count').textContent=`${state.devices.length} 条登记`;
     if(!state.devices.length)devices.append(el('p','暂无设备'));
     for(const d of state.devices) {
       const row=el('div',undefined,'reminder-row'), copy=el('div',undefined,'reminder-copy');
       copy.append(el('strong',d.name+(d.id===deviceId?'（本机）':'')),el('small',d.enabled?'已开启':'已关闭'));
+      copy.append(el('small',`登记于 ${date(d.created_at)} · 最近提交推送：${date(d.last_sent)}`));
       if(d.error)copy.append(el('small',d.error,'reminder-error'));
       const actions=el('div',undefined,'reminder-device-actions');
       for(const [label,body] of [[d.enabled?'关闭':'开启',{enabled:!d.enabled}],['移除',{delete:true}]]) {
