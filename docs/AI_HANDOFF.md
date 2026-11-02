@@ -2,11 +2,12 @@
 
 ## 当前交接快照（唯一当前状态）
 
-- 2026-11-02（Asia/Shanghai）用户纠正Windows提醒边界：客户端单独设置提醒方式、类别、时间和重复；网页后台仅控制客户端提醒总开关。继续开发及检查后合并部署授权有效。活动分支feat/desktop-local-reminder-rules，基线main4b31c1d；上一PR187已上线Web1.8.1及Windows0.5.20，均有公网核验证据。
-- 本轮候选Web1.8.2、Windows0.5.21。后端专用接口reminder_policy仅返回enabled；Windows将本地规则与远程总开关合成执行，忽略旧服务器额外下发的模式/类别/时间。网页模式/时间不再覆盖客户端；本地关闭亦停止接收。手机/Web Push自身规则保留。
-- 新本机设置窗口含启用、即时/定时、未加号码/待办及全局/客户来源、每天/指定星期、最多12个北京时间点；本机config.json持久化，旧号码时间迁移保留。号码连接码/Excel设置和SMS/久坐/Foxmail不动；用户仍需客户端检查更新安装新版。
-- 本地策略/配置迁移持久化/静默及号码持久弹窗单测已通过，新增原生设置保存/取消和服务器总闸门验收待CI。依赖安装中，后端契约/架构尚待执行。未合并或部署本轮，不发送生产测试通知。首次上一main冻结更新在文件复制后停滞但原安装包重跑通过，根因未确定，不可声称解决该独立偶发问题。
-- 核心Windows reminder_settings.py、config.py、reminder_policy.py、app.py、todo_panel.py，后端app/reminder_policy.py及提醒页边界说明。目录/workspace/scratch/6ecb72ebd96b/chen-assistant。唯一下一步：完成检查并推送PR，按最终head完整Web/Windows验收后合并，分别核验两端发布。
+- 2026-11-02（Asia/Shanghai）用户纠正Windows提醒边界：客户端单独设置方式、类别、时间和循环；网页仅控制客户端是否启动提醒。PR #188已squash合并，功能main b4aad19cf0d70923c45195ac1039b5df279a59ce，最终受检head064eb9da6deeffb5eebc88fc467aab969b85eaa9。继续开发/推送及检查后部署授权有效，当前仅部署核验。
+- 候选Web1.8.2、Windows0.5.21：后端号码/待办专用接口只下发reminder_policy.enabled。Windows本机持久化即时/定时、未加号码/待办及全局/客户来源、最多12个北京时间点、每天/指定星期；本地暂停和网页总开关共同拦截提醒，忽略旧服务器多发的方式/类别/时间字段。网页明确独立边界，手机/Web Push自身规则保留。
+- 新原生“本机提醒规则”窗口从号码连接设置及待办提醒设置进入；保留旧本地号码时间，config.json保存/重启恢复，不保存为网页配置。号码/待办按合成策略决策；专用令牌鉴权、客户摘要只读与全局任务编辑边界、SMS/久坐/Foxmail/Excel不变。用户实际安装版本与真机提醒未知，需电脑“检查更新”安装0.5.21。
+- 最终PR Web完整CI41380142668（validate125068943137、production preflight125068943494）success；Windows41380142637源码/EXE/原生界面125068943223/真实冻结更新回滚及Excel锁125069944044全部success。模块隔离41380142673、稳定性41380142703、Foxmail41380142680均success。新增原生保存/取消、配置迁移持久化、旧服务字段隔离、服务器总开关拦截、两专用接口仅总开关契约通过；本地112个Windows单测（15项需GUI跳过）及后端/架构通过，GUI已由CI补足。
+- main部署链41382044036、PWA公网41382044014、Windows构建发布41382043928仍待核验；不能把PR通过冒充实际公网新版。上次已核验线上基线Web1.8.1、Windows0.5.20。无生产测试通知或业务写入。本轮未改更新器；旧偶发冻结验收停滞根因未定，不能声称修复该独立问题。
+- 核心Windows reminder_settings.py/config.py/reminder_policy.py/app.py/todo_panel.py，后端app/reminder_policy.py、提醒模板及tests。分支feat/desktop-local-reminder-rules保留部署交接（main入口指向此分支），目录/workspace/scratch/6ecb72ebd96b/chen-assistant。唯一下一步：核对Web1.8.2及Windows0.5.21公网版本/资源与完整EXE；main链完成后同步最终主分支交接。
 
 ## 上一阶段（历史：共享规则已部署）
 
