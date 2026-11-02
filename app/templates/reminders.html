@@ -16,6 +16,10 @@
       <p id="reminder-master-status" class="reminder-caption"></p>
       <p id="reminder-feedback" class="reminder-status" role="status" aria-live="polite"></p>
     </section>
+    <section class="reminder-card">
+      <div class="reminder-section-heading"><h2>手机接收提醒</h2><input type="checkbox" id="reminder-mobile" class="reminder-switch" role="switch" aria-label="手机接收提醒"></div>
+      <p id="reminder-mobile-status" class="reminder-caption"></p>
+    </section>
     <p class="reminder-caption">以下规则仅用于手机提醒；Windows 客户端在本机设置。</p>
     <section class="reminder-card"><h2>手机提醒方式</h2><div id="reminder-modes" class="reminder-preferences"></div><p id="reminder-mode-status" class="reminder-caption"></p></section>
     <section class="reminder-card">
@@ -34,7 +38,7 @@
       <p id="reminder-schedule-feedback" class="reminder-status" role="status" aria-live="polite"></p>
     </section>
     <section class="reminder-card">
-      <div class="reminder-section-heading"><h2>本设备接收</h2><button type="button" id="push-enable" class="reminder-switch" role="switch" aria-label="本机通知" aria-checked="false" disabled></button></div>
+      <div class="reminder-section-heading"><h2>本机通知授权</h2><button type="button" id="push-enable" class="reminder-switch" role="switch" aria-label="本机通知" aria-checked="false" disabled></button></div>
       <p id="push-status" class="reminder-status" role="status">检查中</p>
       <details class="reminder-advanced"><summary>测试通知</summary>
         <div class="reminder-actions"><button type="button" id="push-test" disabled>测试提醒</button><button type="button" id="push-test-lock" disabled>锁屏测试 · 20秒</button></div>

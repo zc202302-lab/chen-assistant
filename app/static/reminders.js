@@ -53,6 +53,8 @@
       wrap.append(el('span',label),input); return wrap;
     };
     $('reminder-master').checked=!!state.preferences.all;
+    $('reminder-mobile').checked=state.preferences.mobile!==false;
+    $('reminder-mobile-status').textContent=!state.preferences.all?'已暂停 · 总开关已关闭':state.preferences.mobile!==false?'已开启':'已关闭';
     $('reminder-master-status').textContent=state.preferences.all?'已开启 · 所有设备':'已暂停 · 所有设备';
     $('reminder-modes').replaceChildren(setting('instant','即时提醒'),setting('scheduled','定时提醒'));
     const scopes=$('reminder-task-scopes');
@@ -128,9 +130,9 @@
     $('push-status').textContent=message;
     $('push-enable').setAttribute('aria-checked',String(enabled));
     $('push-enable').disabled=busy||!state||(!enabled&&(!supported||(ios&&!standalone)||Notification.permission==='denied'));
-    $('push-test').disabled=busy||!enabled||!state.preferences.all;
+    $('push-test').disabled=busy||!enabled||!state.preferences.all||state.preferences.mobile===false;
     $('push-test-lock').disabled=$('push-test').disabled;
-    for(const control of center.querySelectorAll('[data-preference], #reminder-master, #reminder-repeat-kind, #reminder-weekdays input, #reminder-devices button, #reminder-schedule-list button, #reminder-schedule-add'))control.disabled=busy;
+    for(const control of center.querySelectorAll('[data-preference], #reminder-master, #reminder-mobile, #reminder-repeat-kind, #reminder-weekdays input, #reminder-devices button, #reminder-schedule-list button, #reminder-schedule-add'))control.disabled=busy;
     for(const control of center.querySelectorAll('#reminder-task-scopes input'))control.disabled=busy||!state?.preferences.task;
   }
   async function refresh() {state=await request('/api/reminders');render();await clearStaleNotifications();}
@@ -140,6 +142,7 @@
     for (const tab of center.querySelectorAll('[data-reminder-tab]'))
       tab.addEventListener('click',()=>{selectTab(tab.dataset.reminderTab);history.replaceState(null,'',tab.dataset.reminderTab==='settings'?'#settings':location.pathname);});
     selectTab(location.hash==='#settings'?'settings':'inbox');
+    $('reminder-mobile').addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{mobile:$('reminder-mobile').checked})));
     $('reminder-master').addEventListener('change',()=>action(()=>request('/api/reminders/preferences',{all:$('reminder-master').checked})));
     $('reminder-repeat-kind').addEventListener('change',()=>action(()=>request('/api/reminders/schedule',{slots:state.schedule_slots||[],weekdays:$('reminder-repeat-kind').value==='daily'?[0,1,2,3,4,5,6]:(state.schedule_weekdays?.length<7?state.schedule_weekdays:[0,1,2,3,4])})));
     $('reminder-weekdays').addEventListener('change',()=>action(async()=>{const days=[...$('reminder-weekdays').querySelectorAll('input:checked')].map(input=>Number(input.value));if(!days.length)throw new Error('请至少选择一天');await request('/api/reminders/schedule',{slots:state.schedule_slots||[],weekdays:days});}));

@@ -21,7 +21,7 @@ def task_scope(event_key):
 
 
 def notification_allowed(prefs, kind, event_key):
-    if not prefs.get('all', True):
+    if not prefs.get('all', True) or not prefs.get('mobile', True):
         return False
     if event_key.startswith('test:'):
         return True
