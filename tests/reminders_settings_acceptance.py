@@ -97,7 +97,9 @@ def main():
                 expect(total).to_be_checked()
                 page.reload(wait_until='networkidle');page.locator('[data-reminder-tab=settings]').click()
                 expect(phone).not_to_be_checked()
-                phone.check();expect(phone).to_be_checked()
+                with page.expect_response(lambda r:r.url.endswith('/api/reminders/preferences') and r.request.method=='POST'):
+                    phone.check()
+                expect(phone).to_be_checked()
                 peer.close()
                 page.reload(wait_until='networkidle');page.locator('[data-reminder-tab=settings]').click()
                 expect(page.get_by_label('删除 09:00',exact=True)).to_be_visible()
