@@ -394,7 +394,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": f"v{version}：提醒规则与网站统一：支持总开关、即时/定时、每天/每周指定日期、未加号码及全局/客户待办；在客户端打开统一提醒设置。保留短信、久坐、Foxmail、批量Excel与可靠更新重启。",
+              "notes": f"v{version}：提醒规则在客户端独立设置：支持即时/定时、每天/每周指定日期、未加号码及全局/客户待办；网页仅控制客户端提醒总开关。保留短信、久坐、Foxmail、批量Excel与可靠更新重启。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),

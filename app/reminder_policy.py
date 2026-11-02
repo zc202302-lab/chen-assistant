@@ -35,11 +35,7 @@ def desktop_policy(conn):
     if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='reminder_preferences'").fetchone():
         return None
     prefs = {r['kind']: bool(r['enabled']) for r in conn.execute('SELECT * FROM reminder_preferences')}
-    return {'enabled': prefs.get('all', True), 'instant': prefs.get('instant', True),
-            'scheduled': prefs.get('scheduled', True),
-            'times': [r['slot'] for r in conn.execute('SELECT slot FROM reminder_schedule ORDER BY slot')],
-            'weekdays': schedule_weekdays(conn),
-            'categories': {key: prefs.get(key, True) for key in ('number_inbox', 'task', 'task_global', 'task_customer')}}
+    return {'enabled': prefs.get('all', True)}
 
 
 def customer_task_alerts(conn, now):

@@ -20,7 +20,7 @@ from .number_batch_bridge import NumberBatchBridge
 from .single_instance import SingleInstance
 from .work_todos import TodoReceiver
 from .todo_panel import TodoPanel
-from .reminder_policy import allows, scheduled_key
+from .reminder_policy import allows, scheduled_key, effective_policy
 from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
 from .sedentary import read_status as read_sedentary_status, send_command as send_sedentary_command, status_text as sedentary_status_text
 from .startup import is_startup_enabled, set_startup, stop_legacy_foxmail_processes, take_over_legacy_startup
@@ -497,7 +497,7 @@ class WinAssistantsApp:
             self.status_vars["number_inbox"].set(inbox_event.message)
             if inbox_event.kind == "policy":
                 self.number_reminder_policy = inbox_event.reminder_policy
-                if not allows(self.number_reminder_policy, "number_inbox"):
+                if not allows(effective_policy(self.config.reminders, self.number_reminder_policy), "number_inbox"):
                     self._hide_number_reminder_until_schedule()
             if inbox_event.pending_ids is not None:
                 self._reconcile_number_reminder_items(inbox_event.pending_ids)
@@ -508,7 +508,7 @@ class WinAssistantsApp:
                 self.number_reminder_items[inbox_event.item_id] = inbox_event
             elif inbox_event.kind == "new":
                 self.number_reminder_items[inbox_event.item_id] = inbox_event
-                policy = getattr(self, 'number_reminder_policy', None)
+                policy = effective_policy(self.config.reminders, getattr(self, 'number_reminder_policy', None))
                 if policy is not None and allows(policy, 'number_inbox') and policy.get('instant'):
                     self._show_number_reminder(inbox_event)
         while True:
@@ -617,19 +617,12 @@ class WinAssistantsApp:
             return
         if not self.number_reminder_items:
             return
-        policy = getattr(self, 'number_reminder_policy', None)
-        if policy is not None:
-            if not allows(policy, 'number_inbox'):
-                return
-            key = scheduled_key(policy)
-            if not key:
-                return
-        else:
-            now = datetime.now()
-            slot = now.strftime("%H:%M")
-            if slot not in self.config.number_inbox.reminder_times:
-                return
-            key = now.strftime("%Y-%m-%d") + ":" + slot
+        policy = effective_policy(self.config.reminders, getattr(self, 'number_reminder_policy', None))
+        if not allows(policy, 'number_inbox'):
+            return
+        key = scheduled_key(policy)
+        if not key:
+            return
         if key == self._number_reminder_last_slot:
             return
         self._number_reminder_last_slot = key
@@ -754,6 +747,10 @@ class WinAssistantsApp:
         import webbrowser
         webbrowser.open("https://assistant.ziboxiaozhushou.cn/work/number-inbox")
 
+    def _show_reminder_settings(self) -> None:
+        from .reminder_settings import show_reminder_settings
+        show_reminder_settings(self)
+
     def _show_number_inbox_settings(self) -> None:
         window = tk.Toplevel(self.root)
         window.title("号码提醒设置")
@@ -775,14 +772,7 @@ class WinAssistantsApp:
         ttk.Label(frame, text="提醒连接码").grid(row=1, column=0, sticky="w", pady=7)
         ttk.Entry(frame, textvariable=token_var, show="●", width=57).grid(row=1, column=1, sticky="ew", padx=(12, 0), pady=7)
         ttk.Label(frame, text="通知与提醒规则").grid(row=3, column=0, sticky="w", pady=7)
-        def open_reminder_settings():
-            import webbrowser
-            parsed = urlparse(api_var.get().strip())
-            if parsed.scheme != 'https' or not parsed.netloc or parsed.username or parsed.password:
-                messagebox.showerror('提醒设置', '请先填写有效的 HTTPS 服务器地址。', parent=window)
-                return
-            webbrowser.open(f'{parsed.scheme}://{parsed.netloc}/reminders#settings')
-        ttk.Button(frame, text="打开统一提醒设置", command=open_reminder_settings).grid(row=3, column=1, sticky="w", padx=(12, 0), pady=7)
+        ttk.Button(frame, text="本机提醒规则", command=self._show_reminder_settings).grid(row=3, column=1, sticky="w", padx=(12, 0), pady=7)
         ttk.Label(frame, text="批量添加Excel").grid(row=5, column=0, sticky="w", pady=7)
         target_frame = ttk.Frame(frame)
         target_frame.grid(row=5, column=1, sticky="ew", padx=(12, 0), pady=7)

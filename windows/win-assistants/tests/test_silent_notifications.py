@@ -34,7 +34,7 @@ class SilentNotificationsContractTests(unittest.TestCase):
 
     def test_schedule_uses_shared_policy_and_preserves_old_server_fallback(self):
         source = ast.unparse(self._method("_maybe_show_scheduled_number_reminder"))
-        self.assertIn("self.config.number_inbox.reminder_times", source)
+        self.assertIn("self.config.reminders", source)
         self.assertIn("if not self.number_reminder_items", source)
         self.assertIn("scheduled_key(policy)", source)
         self.assertIn("allows(policy, 'number_inbox')", source)
@@ -42,7 +42,7 @@ class SilentNotificationsContractTests(unittest.TestCase):
     def test_editor_has_no_interval_control(self):
         text = ast.unparse(self._method("_show_number_inbox_settings"))
         self.assertNotIn("检查间隔（秒）", text)
-        self.assertIn("打开统一提醒设置", text)
+        self.assertIn("本机提醒规则", text)
         self.assertNotIn("reminder_times_var.get().split()", text)
 
 

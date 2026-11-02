@@ -123,12 +123,34 @@ class WorkTodosConfig:
 
 
 @dataclass
+class ReminderConfig:
+    enabled: bool = True
+    instant: bool = True
+    scheduled: bool = True
+    times: list[str] = field(default_factory=lambda: ["09:00", "16:00"])
+    weekdays: list[int] = field(default_factory=lambda: list(range(7)))
+    categories: dict[str, bool] = field(default_factory=lambda: dict.fromkeys(
+        ("number_inbox", "task", "task_global", "task_customer"), True))
+
+    @classmethod
+    def from_dict(cls, raw, legacy_times=None):
+        if not isinstance(raw, dict):
+            return cls(times=list(legacy_times) if legacy_times is not None else ["09:00", "16:00"])
+        from .reminder_policy import validate_local_policy
+        try:
+            return cls(**validate_local_policy(raw))
+        except ValueError:
+            return cls(enabled=False)  # Corrupt local rules never silently enable alerts.
+
+
+@dataclass
 class AppConfig:
     start_minimized: bool = False
     modules: dict[str, ModuleConfig] = field(default_factory=dict)
     sms: SmsConfig = field(default_factory=SmsConfig)
     number_inbox: NumberInboxConfig = field(default_factory=NumberInboxConfig)
     work_todos: WorkTodosConfig = field(default_factory=WorkTodosConfig)
+    reminders: ReminderConfig = field(default_factory=ReminderConfig)
 
     @classmethod
     def load(cls, defaults: dict[str, ModuleConfig] | None = None) -> "AppConfig":
@@ -140,7 +162,7 @@ class AppConfig:
             raw = json.loads(path.read_text(encoding="utf-8"))
             for key, value in raw.get("modules", {}).items():
                 base[key] = ModuleConfig.from_dict(value)
-            return cls(bool(raw.get("start_minimized", False)), base, SmsConfig.from_dict(raw.get("sms")), NumberInboxConfig.from_dict(raw.get("number_inbox")), WorkTodosConfig.from_dict(raw.get("work_todos")))
+            return cls(bool(raw.get("start_minimized", False)), base, SmsConfig.from_dict(raw.get("sms")), NumberInboxConfig.from_dict(raw.get("number_inbox")), WorkTodosConfig.from_dict(raw.get("work_todos")), ReminderConfig.from_dict(raw.get("reminders"), NumberInboxConfig.from_dict(raw.get("number_inbox")).reminder_times))
         except (OSError, ValueError, TypeError):
             return cls(modules=base)
 

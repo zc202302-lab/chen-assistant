@@ -59,9 +59,10 @@ class TodoPanel:
             self.tree.selection_set(selected[0])
 
     def apply(self, payload):
+        self.last_payload = payload
         self.items = {int(i['id']):i for i in payload['items']}
         self.render()
-        due, alert, self.last_schedule_key = task_alert_decision(payload, self.notified, self.last_schedule_key)
+        due, alert, self.last_schedule_key = task_alert_decision(payload, self.notified, self.last_schedule_key, local=self.app.config.reminders)
         if alert:
             self.show_due(due)
         elif self.popup is not None and self.popup.winfo_exists():
@@ -72,6 +73,9 @@ class TodoPanel:
                 self.popup = None
 
     def open_reminder_settings(self, settings=True):
+        if settings:
+            self.app._show_reminder_settings()
+            return
         import webbrowser
         root = api_url(self.app.config.work_todos.server_url).removesuffix('/api/work-todos')
         webbrowser.open(root + '/reminders' + ('#settings' if settings else ''))

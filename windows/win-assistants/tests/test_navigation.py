@@ -16,6 +16,8 @@ class NavigationTests(unittest.TestCase):
         self.root = tk.Tk()
         self.app = WinAssistantsApp.__new__(WinAssistantsApp)
         self.app.root = self.root
+        from win_assistants.config import AppConfig
+        self.app.config = AppConfig()
         from win_assistants.work_todos import TodoReceiver
         self.app.todo_receiver = TodoReceiver()
         self.app.tray_icon = None
@@ -41,6 +43,34 @@ class NavigationTests(unittest.TestCase):
         for child in widget.winfo_children():
             yield child
             yield from self.descendants(child)
+
+    def test_native_reminder_settings_save_cancel_and_gate(self):
+        from unittest.mock import patch
+        from win_assistants.reminder_policy import effective_policy
+        app = self.app
+        window = app._show_reminder_settings()
+        window = app.reminder_settings_window
+        self.root.update()
+        widgets = list(self.descendants(window))
+        boxes = {w.cget('text'): w for w in widgets if isinstance(w, ttk.Checkbutton)}
+        buttons = {w.cget('text'): w for w in widgets if isinstance(w, ttk.Button)}
+        boxes['即时提醒'].invoke()
+        with patch.object(app.config, 'save') as save:
+            buttons['保存'].invoke()
+            save.assert_called_once()
+        self.assertFalse(app.config.reminders.instant)
+        self.assertTrue(app.config.reminders.scheduled)
+        remote = {'enabled': True, 'instant': True, 'times': ['23:59'], 'categories': {}}
+        policy = effective_policy(app.config.reminders, remote)
+        self.assertFalse(policy['instant'])
+        self.assertEqual(policy['times'], ['09:00', '16:00'])
+        self.assertFalse(effective_policy(app.config.reminders, {'enabled': False})['enabled'])
+        app._show_reminder_settings()
+        self.root.update()
+        widgets = list(self.descendants(app.reminder_settings_window))
+        next(w for w in widgets if isinstance(w, ttk.Checkbutton) and w.cget('text') == '即时提醒').invoke()
+        next(w for w in widgets if isinstance(w, ttk.Button) and w.cget('text') == '取消').invoke()
+        self.assertFalse(app.config.reminders.instant)
 
     def test_navigation_hides_other_tasks_and_keeps_live_values(self):
         nav = self.app.navigation

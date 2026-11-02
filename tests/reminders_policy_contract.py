@@ -69,7 +69,10 @@ def main():
     api = client.get('/api/work-todos',headers={'Authorization':'Bearer '+task_token}).json()
     inbox = client.get('/api/number-inbox/pending',headers={'Authorization':'Bearer '+number_token}).json()
     assert api['reminder_policy'] == inbox['reminder_policy']
-    assert api['reminder_policy']['enabled'] is False
+    assert api['reminder_policy'] == {'enabled': False}
+    prefs(all=True, instant=False, scheduled=True, number_inbox=False, task_global=False)
+    assert client.get('/api/work-todos',headers={'Authorization':'Bearer '+task_token}).json()['reminder_policy'] == {'enabled': True}
+    assert client.get('/api/number-inbox/pending',headers={'Authorization':'Bearer '+number_token}).json()['reminder_policy'] == {'enabled': True}
     assert api['items'][0]['id'] == gid
     prefs(instant=True, scheduled=False, task_global=True)
     with db() as conn:
