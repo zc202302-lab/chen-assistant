@@ -2,16 +2,12 @@
 
 ## 当前活动工作（2026-11-02，Asia/Shanghai）
 
-- 更新时间：2026-11-02（Asia/Shanghai）。本轮开发及部署完成，无活动功能PR。PR #189已squash合并，main功能提交f3b932c0e4d1377274501b6a6222b77738ceefb8；最终受检head1423215bda799a09ee61ad132e5f4076fe72a177。两者tree均为c77d1cc75fa0161fd13cbb9b230e56bad67ac3ea，源码一致。
-- 已上线Web1.8.3、Windows0.5.22：Windows勾选框改DPI自适应圆角蓝色对勾，保留ttk原生绑定和布尔变量；提醒窗口白卡、间距/星期选择及保存按钮优化。网页提醒方式/类别/时间/循环明确用于手机，新增持久化手机接收独立开关，关闭取消未发送推送及测试；不改变Windows总开关。Windows规则继续在本机设置，网页通知总开关仍可暂停两端。
-- 完整验收发现号码管理页读快照后清理写入与后台提醒并发可触发SQLITE_BUSY_SNAPSHOT/500，已将该页事务提前BEGIN IMMEDIATE；新增待处理/设置两视图并发回归，旧实现确定复现database is locked，修复后通过。未改变号码数据、清理规则或更新器。
-- 最终PR Web完整CI41400606688 success；Windows41400606687的源码、EXE、原生界面、真实更新回滚/Excel锁全部success；稳定性41400606648、隔离41400606643、Foxmail41400606647均success。main完整CI41402351041的validate125136717838、生产稳定性125142086984及deploy125142226812均success；main独立稳定性41402351141、语法41402350950、Foxmail41402350915成功。
-- 实际公网：PWA41402351429/job125136718509返回ONLINE VERIFIED v1.8.3，版本、精确资源和鉴权/找回及域名边界核验通过。Windows构建发布41402350948全部success（publish125138259575）；公网41402943929/job125138538239返回ONLINE VERIFIED v0.5.22：71709786 bytes，SHA256 c41f68fb4ec5503e7b2a1971a4bebecb89d0da47b5ca28e780feba2ede6198d2，完整EXE与release清单一致。不据此推断生产精确backend SHA。
-- 实际安装和真机业务到达仍待用户反馈；未向生产发送测试通知或改写客户数据。旧冻结更新偶发停滞根因未定，本轮未改更新器，不声称修复该独立问题。本地浏览器安装下载受限，浏览器验收由上述完整CI提供；本地号码批量及并发契约、架构治理通过。
-- 核心：Windows ui_styles.py/app.py/reminder_settings.py及原生验收脚本；app/reminder_policy.py、reminders.py、提醒模板/JS、v162_number_inbox.py及契约。原工作目录/workspace/scratch/6ecb72ebd96b/chen-assistant；本次连接器提交为远端权威，本地HEAD仍为旧映射，续用须先同步远端，勿重推旧本地history。分支feat/windows-checkbox-polish已合并，仅供历史追溯；云电脑#128及其他历史PR不属于本轮。
-- 唯一下一步：用户在Windows“检查更新”安装0.5.22，刷新网页确认手机独立开关；按实际界面和提醒反馈继续，无新需求时不新增功能。
+- 2026-11-02（Asia/Shanghai）用户要求重排提醒设置页，使页面简洁、清晰、逻辑性强。继续开发及检查后合并发布授权有效。活动分支feat/reminder-settings-layout，基线main d5713e4；线上基准Web1.8.3、Windows0.5.22。
+- 候选Web1.8.4，仅调整网页提醒设置布局和文案：总开关→手机规则（方式/内容/定时循环合并）→当前设备通知→默认折叠高级设置（设备登记/测试通知）。设备显示登记时间及最近提交推送时间，说明登记不等于实体设备，不含Windows。保留既有接口、开关存储和通知边界；不修改Windows客户端、发送策略或客户数据。
+- 本地提醒策略契约、架构治理、JS语法、编译/diff检查通过；已有浏览器回归扩展验证分组层级、高级默认折叠、设备启停、时间信息及桌面/手机截图。浏览器验收、完整CI及公网部署待核验，未宣称上线。
+- 核心app/templates/reminders.html、app/static/reminders.css/js、base.html及tests/reminders_settings_acceptance.py；目录/workspace/scratch/5c7c7f3fea41/chen-assistant-layout。唯一下一步：完成浏览器验证并推送PR，最终head完整检查通过后合并并核验Web1.8.4公网发布。
 
-本文件是新聊天、新模型或中断后的固定入口。详细证据见docs/AI_HANDOFF.md。
+详细证据及历史见docs/AI_HANDOFF.md。
 
 ## 新聊天接管顺序
 
