@@ -2,11 +2,11 @@
 
 ## 当前活动工作（2026-11-02，Asia/Shanghai）
 
-- 2026-11-02（Asia/Shanghai）用户要求win-assistants勾选框美化，当前选中显示叉号。继续开发、GitHub推送及检查后合并发布授权有效。活动分支feat/windows-checkbox-polish，基线main b4aad19（PR188已上线Web1.8.2、Windows0.5.21；上一main完整CI41382044036现已success）。
-- 本轮仅Windows样式：候选0.5.22，替换clam旧叉号为DPI自适应圆角蓝色对勾，未选中/悬停/禁用独立图形；仍使用ttk.Checkbutton原生绑定与布尔变量。提醒页白卡、背景/间距与蓝色保存按钮统一，不改本机规则、网页总开关、连接令牌或任何业务逻辑。Web版本保持1.8.2。
-- 本地Windows单测通过（GUI项因无显示跳过），编译/diff检查通过；新增真实GUI勾选/禁用及几何验收、每日/每周窗口截图，待CI与实际截图核对。Windows构建/冻结更新回滚、发布和公网完整EXE尚待核验；未声称已安装。
+- 2026-11-02（Asia/Shanghai）用户要求win-assistants勾选框美化，当前选中显示叉号。继续开发、GitHub推送及检查后合并发布授权有效。活动分支feat/windows-checkbox-polish，PR #189，基线main b4aad19（PR188已上线Web1.8.2、Windows0.5.21；上一main完整CI41382044036现已success）。
+- 本轮候选Web1.8.3、Windows0.5.22，替换clam旧叉号为DPI自适应圆角蓝色对勾，未选中/悬停/禁用独立图形；仍使用ttk.Checkbutton原生绑定与布尔变量。提醒页白卡、背景/间距与蓝色保存按钮统一，不改本机规则、网页总开关、连接令牌或任何业务逻辑。用户补充：网页规则只针对手机端；已将网页提醒方式、类别、时间及循环标为手机提醒，Windows仍只接收网页总开关，本机独立配置规则。
+- 本地Windows单测通过（GUI项因无显示跳过），编译/diff检查通过；新增真实GUI勾选/禁用及几何验收、每日/每周窗口截图，待CI与实际截图核对。已查看前一head真实Windows截图并修正任务栏遮挡/底部按钮空间，最终head仍须原生截图及全量验收；Windows构建/冻结更新回滚、发布和公网完整EXE尚待核验；未声称已安装。
 - 上一轮部署证据：Web41382044014返回ONLINE VERIFIED v1.8.2；Windows41382043928 success，公网41382552826返回v0.5.21完整EXE核验。PR188本机独立规则与总开关边界保留；旧冻结测试偶发停滞根因未定，本轮不碰更新器。
-- 核心Windows ui_styles.py/app.py/reminder_settings.py、原生验收与截图脚本。目录/workspace/scratch/6ecb72ebd96b/chen-assistant。唯一下一步：推送PR，核验最终head完整检查和Windows截图，通过后合并并核验0.5.22公网发布。
+- 核心Windows ui_styles.py/app.py/reminder_settings.py、原生验收与截图脚本。目录/workspace/scratch/6ecb72ebd96b/chen-assistant。唯一下一步：推送PR，核验最终head完整检查和Windows截图，通过后合并并核验Web1.8.3及Windows0.5.22公网发布。
 
 本文件是新聊天、新模型或中断后的固定入口。仓库是可核对的项目记忆；聊天记忆只作辅助。
 
