@@ -1,9 +1,6 @@
 import unittest
 from datetime import datetime
-from unittest.mock import patch
-from types import SimpleNamespace
-from win_assistants.reminder_policy import allows, scheduled_key, TZ
-from win_assistants.todo_panel import TodoPanel
+from win_assistants.reminder_policy import allows, scheduled_key, task_alert_decision, TZ
 
 
 class SharedReminderPolicyTests(unittest.TestCase):
@@ -21,36 +18,33 @@ class SharedReminderPolicyTests(unittest.TestCase):
         self.assertTrue(allows(None,'task'))  # Existing servers remain usable.
         self.assertFalse(allows(False,'task'))
 
-    def panel(self):
-        panel = TodoPanel.__new__(TodoPanel)
-        panel.items={};panel.notified=set();panel.popup=None;panel.last_schedule_key=''
-        panel.render=lambda:None
-        panel.alerts=[]
-        panel.show_due=lambda items:panel.alerts.append([item['title'] for item in items])
-        return panel
-
     def test_scopes_modes_and_no_muted_backlog(self):
-        panel=self.panel()
+        seen=set(); slot=''
         item={'id':1,'title':'全局','remind_at':'2026-11-01T09:00','due':True}
         customer=dict(item,source='customer',title='客户')
         payload={'items':[item],'customer_task_reminders':[customer],'reminder_policy':self.policy(instant=False)}
-        with patch('win_assistants.todo_panel.scheduled_key',return_value=''):
-            panel.apply(payload)
-        self.assertEqual(panel.alerts,[])
-        with patch('win_assistants.todo_panel.scheduled_key',return_value='2026-11-02:09:00'):
-            panel.apply(payload);panel.apply(payload)
-        self.assertEqual(panel.alerts,[['全局','客户']])
-        self.assertEqual(list(panel.items),[1])
+        due, alert, slot=task_alert_decision(payload,seen,slot,datetime(2026,11,2,8,59,tzinfo=TZ))
+        self.assertFalse(alert)
+        due, alert, slot=task_alert_decision(payload,seen,slot,datetime(2026,11,2,9,0,tzinfo=TZ))
+        self.assertTrue(alert)
+        self.assertEqual([row['title'] for row in due],['全局','客户'])
+        _, alert, slot=task_alert_decision(payload,seen,slot,datetime(2026,11,2,9,0,tzinfo=TZ))
+        self.assertFalse(alert)
         payload['reminder_policy']=self.policy(enabled=False)
-        panel.apply(payload)
-        self.assertEqual(len(panel.alerts),1)
-        # Category scope removal also applies to timed reminders.
-        policy=self.policy(instant=False)
+        due, alert, slot=task_alert_decision(payload,seen,slot,datetime(2026,11,2,9,0,tzinfo=TZ))
+        self.assertEqual(due,[])
+        self.assertFalse(alert)
+        policy=self.policy(instant=False,times=['09:00','10:00'])
         policy['categories']['task_customer']=False
         payload['reminder_policy']=policy
-        with patch('win_assistants.todo_panel.scheduled_key',return_value='2026-11-02:10:00'):
-            panel.apply(payload)
-        self.assertEqual(panel.alerts[-1],['全局'])
+        due, alert, slot=task_alert_decision(payload,seen,slot,datetime(2026,11,2,10,0,tzinfo=TZ))
+        self.assertTrue(alert)
+        self.assertEqual([row['title'] for row in due],['全局'])
+        # Both sources keep distinct IDs; completing work clears deduplication.
+        payload['items']=[];payload['customer_task_reminders']=[]
+        due, alert, slot=task_alert_decision(payload,seen,slot,datetime(2026,11,2,10,0,tzinfo=TZ))
+        self.assertFalse(alert)
+        self.assertEqual(seen,set())
 
 
 if __name__ == '__main__':

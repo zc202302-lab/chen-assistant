@@ -7,7 +7,7 @@ from tkinter import ttk, messagebox
 import urllib.error
 from .work_todos import request_todos, api_url
 from .sms import protect_secret, unprotect_secret
-from .reminder_policy import allows, scheduled_key
+from .reminder_policy import task_alert_decision
 
 
 class TodoPanel:
@@ -61,20 +61,8 @@ class TodoPanel:
     def apply(self, payload):
         self.items = {int(i['id']):i for i in payload['items']}
         self.render()
-        policy = payload.get('reminder_policy')
-        all_due = [dict(i, source='global') for i in self.items.values() if i['due']]
-        all_due.extend(payload.get('customer_task_reminders', []))
-        all_current = {(i.get('source', 'global'), i['id'], i['remind_at']) for i in all_due}
-        due = [i for i in all_due if allows(policy, 'task', 'task_customer' if i.get('source') == 'customer' else 'task_global')]
-        current = {(i.get('source', 'global'), i['id'], i['remind_at']) for i in due}
-        self.notified.intersection_update(all_current)
-        fresh = current - self.notified
-        self.notified.update(all_current)
-        slot = scheduled_key(policy)
-        timed = bool(slot and slot != self.last_schedule_key and due)
-        if timed:
-            self.last_schedule_key = slot
-        if due and ((fresh and (policy is None or policy.get('instant'))) or timed):
+        due, alert, self.last_schedule_key = task_alert_decision(payload, self.notified, self.last_schedule_key)
+        if alert:
             self.show_due(due)
         elif self.popup is not None and self.popup.winfo_exists():
             if due:
