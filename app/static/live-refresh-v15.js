@@ -183,14 +183,36 @@
     softlyMark(currentCard);
   };
 
-  const copyAttributes = (target, source, keep = new Set()) => {
-    const preserved = new Map();
-    keep.forEach(name => {
-      if (target.hasAttribute(name)) preserved.set(name, target.getAttribute(name));
-    });
-    [...target.attributes].forEach(attr => target.removeAttribute(attr.name));
-    [...source.attributes].forEach(attr => target.setAttribute(attr.name, attr.value));
-    preserved.forEach((value, name) => target.setAttribute(name, value));
+  const syncBusinessCells = (row, freshRow) => {
+    const grid = row.querySelector('[data-business-attrs]');
+    const freshGrid = freshRow.querySelector('[data-business-attrs]');
+    if (!grid || !freshGrid) return false;
+    const cells = new Map([...grid.children].map(cell => [cell.dataset.attrKey, cell]));
+    let next = grid.firstElementChild;
+    let changed = false;
+    for (const fresh of freshGrid.children) {
+      const key = fresh.dataset.attrKey;
+      const cell = cells.get(key) || fresh.cloneNode(true);
+      cells.delete(key);
+      if (cell !== next) {
+        grid.insertBefore(cell, next);
+        changed = true;
+      }
+      next = cell.nextElementSibling;
+      for (const selector of ['small', 'strong']) {
+        const current = cell.querySelector(selector);
+        const value = fresh.querySelector(selector)?.textContent;
+        if (current && value !== undefined && current.textContent !== value) {
+          current.textContent = value;
+          changed = true;
+        }
+      }
+    }
+    for (const cell of cells.values()) {
+      cell.remove();
+      changed = true;
+    }
+    return changed;
   };
 
   // Keep the business list container itself alive because its drag/filter
@@ -208,31 +230,33 @@
     const freshIds = new Set(freshRows.map(row => String(row.dataset.serviceId || '')));
     let changed = false;
 
-    for (const freshRow of freshRows) {
-      const id = String(freshRow.dataset.serviceId || '');
-      if (!id) continue;
-      let currentRow = currentRows.get(id);
-      if (!currentRow) {
-        currentRow = freshRow.cloneNode(true);
-        currentList.appendChild(currentRow);
-        changed = true;
-      } else if (hashText(currentRow.outerHTML) !== hashText(freshRow.outerHTML)) {
-        const wasHidden = currentRow.hidden;
-        copyAttributes(currentRow, freshRow, new Set(wasHidden ? ['hidden'] : []));
-        currentRow.innerHTML = freshRow.innerHTML;
-        if (wasHidden) currentRow.hidden = true;
-        changed = true;
-      }
-      // Server order is authoritative. appendChild moves existing nodes without
-      // recreating the sortable list or its listeners.
-      currentList.appendChild(currentRow);
-    }
-
-    for (const [id, row] of currentRows.entries()) {
-      if (id && !freshIds.has(id)) {
+    for (const [id, row] of currentRows) {
+      if (!freshIds.has(id)) {
         row.remove();
         changed = true;
       }
+    }
+
+    let next = currentList.querySelector(':scope > [data-business-row]');
+    for (const freshRow of freshRows) {
+      const id = String(freshRow.dataset.serviceId || '');
+      if (!id) continue;
+      const row = currentRows.get(id) || freshRow.cloneNode(true);
+      if (row !== next) {
+        currentList.insertBefore(row, next);
+        changed = true;
+      }
+      next = row.nextElementSibling;
+
+      // Keep client-owned copy, focus and filter state. Only update server data.
+      for (const attr of freshRow.attributes) {
+        if (!attr.name.startsWith('data-filter-') && attr.name !== 'data-find-values') continue;
+        if (row.getAttribute(attr.name) !== attr.value) {
+          row.setAttribute(attr.name, attr.value);
+          changed = true;
+        }
+      }
+      if (syncBusinessCells(row, freshRow)) changed = true;
     }
 
     if (changed) {
