@@ -666,7 +666,7 @@
       businessDialog.close();
       updateBusinessRows(statusData.rows || {});
       toast('业务已保存');
-      root.dispatchEvent(new CustomEvent('chen:service-properties-updated', {detail:{service_id:sid,rows:statusData.rows || {}}}));
+      root.dispatchEvent(new CustomEvent('chen:service-properties-updated', {detail:{service_id:sid,rows:attrData.rows || {}}}));
     } catch (err) {
       toast(err.message || '业务保存失败');
     } finally {
