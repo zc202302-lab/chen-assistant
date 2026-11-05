@@ -556,7 +556,9 @@
     const request = ++statusRequest;
     businessStatusReady = false;
     const enabled = panel.querySelector('[data-v03-business-enabled]');
+    const submit = businessForm.querySelector('button[type="submit"]');
     enabled.disabled = true;
+    if (submit) submit.disabled = true;
     try {
       const [runtime, attrs] = await Promise.all([
         fetchJson(`/services/${sid}/runtime-v0212`),
@@ -570,7 +572,10 @@
     } catch (err) {
       toast(err.message || '业务状态读取失败');
     } finally {
-      if (request === statusRequest) enabled.disabled = !businessStatusReady;
+      if (request === statusRequest) {
+        enabled.disabled = !businessStatusReady;
+        if (submit) submit.disabled = !businessStatusReady || businessSaving;
+      }
     }
   };
 
