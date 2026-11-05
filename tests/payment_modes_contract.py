@@ -78,6 +78,17 @@ def main():
             assert result.status_code == 200
         assert action('prepare_dates')['date_setup']['remaining'] == []
         assert action('paid')['run']['paid']
+        # Manual deferral of a specified service advances its authoritative date.
+        result = client.post(f'/services/{periodic_id}/defer-v0212',
+                             data={'csrf':csrf,'months':1})
+        assert result.status_code == 400  # A future service cannot be deferred again.
+        attributes(periodic_id, 'specified', next_payment_date=old_date)
+        result = client.post(f'/services/{periodic_id}/defer-v0212',
+                             data={'csrf':csrf,'months':1})
+        assert result.status_code == 200, result.text
+        with db() as conn:
+            assert conn.execute('SELECT next_payment_date FROM services WHERE id=?',
+                                (periodic_id,)).fetchone()[0] == computed_next_date(old_date, 1)
         # Interactive creation defaults do not rewrite imported/historical records.
         result = client.post(f'/customers/{cid}/services-v026',data={'csrf':csrf,'service_type':'新增默认值'},follow_redirects=False)
         assert result.status_code in (302,303), result.text

@@ -10,7 +10,7 @@ from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
-from .payment_schedule import inferred_schedule_mode, explicit_due, explicit_payment_date, readable_date, computed_next_date, stored_schedule_mode
+from .payment_schedule import inferred_schedule_mode, explicit_due, explicit_payment_date, readable_date, computed_next_date, stored_schedule_mode, discard_prepared_service
 from .payment_v02 import (
     current_period,
     add_periods,
@@ -419,7 +419,7 @@ def defer_service_v0212(
     if months < 1 or months > 120:
         raise HTTPException(400, '延期月数必须是1到120之间的整数')
     period = current_period()
-    with db() as conn:
+    with db(immediate=True) as conn:
         service = service_or_404(conn, service_id)
         runtime = _runtime_for(conn, service_id)
         if runtime['status'] != 'active' or not service_active_in_period(service, period):
@@ -427,7 +427,13 @@ def defer_service_v0212(
         if not _natural_due(service, period):
             return JSONResponse({'ok': False, 'error': '该业务当前尚未到缴费期'}, status_code=400)
         deferred_until = add_periods(period, months)
-        _save_runtime(conn, service_id, deferred_until_period=deferred_until)
+        if stored_schedule_mode(service) == 'specified':
+            conn.execute('UPDATE services SET next_payment_date=? WHERE id=?',
+                         (deferred_until + '-01', service_id))
+            _save_runtime(conn, service_id, deferred_until_period='')
+            discard_prepared_service(conn, service['customer_id'], period, service_id)
+        else:
+            _save_runtime(conn, service_id, deferred_until_period=deferred_until)
         conn.execute('DELETE FROM payment_entries WHERE service_id=? AND period=?', (service_id, period))
         conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), service['customer_id']))
     return JSONResponse({
