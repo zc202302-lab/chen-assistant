@@ -393,6 +393,17 @@ def update_payment_workflow_v031(
     check_csrf(request, csrf)
     period = current_period()
 
+    if action == 'prepare_dates':
+        from .payment_schedule import date_preparation
+        with db(immediate=True) as conn:
+            customer_or_404(conn, customer_id)
+            run, _ = _run_v031(conn, customer_id, period)
+            if run['paid'] or not run['initiated']:
+                raise HTTPException(409, '请先发起缴费，未完成缴费时才可设置下次日期')
+            items, _ = core.payment_snapshot_v0212(conn, customer_id, period)
+            plan = date_preparation(conn, customer_id, period, items, create=True)
+        return JSONResponse({'ok': True, 'date_setup': {'total': plan['total'], 'remaining': plan['remaining']}})
+
     if action == 'paid':
         # Keep the v0.3 snapshot/restore implementation as the single authority for
         # modern runs. Old runs created before snapshots existed use a deliberately

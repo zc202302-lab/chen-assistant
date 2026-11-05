@@ -116,6 +116,18 @@ jobs:
             echo "LD_LIBRARY_PATH=${portable_libs}:${LD_LIBRARY_PATH:-}" >> "${GITHUB_ENV}"
           fi
 
+      - name: Enable bundled Chinese font for browser previews
+        shell: bash
+        run: |
+          python - <<'PYFONT'
+          from pathlib import Path
+          import zlib
+          font_dir = Path.home() / '.local/share/fonts'
+          font_dir.mkdir(parents=True, exist_ok=True)
+          (font_dir / 'ChenRecipeSans.ttf').write_bytes(zlib.decompress(Path('app/fonts/ChenRecipeSans.ttf.z').read_bytes()))
+          PYFONT
+          if command -v fc-cache >/dev/null 2>&1; then fc-cache -f; fi
+
       - name: Assistant navigation desktop and mobile
         run: python tests/assistant_navigation_acceptance.py
 
@@ -236,6 +248,8 @@ jobs:
           python tests/work_lists_contract.py
           python tests/payment_next_date_contract.py
           python tests/payment_next_date_acceptance.py
+          python tests/payment_modes_contract.py
+          python tests/payment_modes_acceptance.py
           python tests/work_sheet_contract.py
           python tests/work_sheet_acceptance.py
           python tests/work_lists_acceptance.py

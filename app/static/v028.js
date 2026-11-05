@@ -473,9 +473,11 @@
       businessForm.elements.service_id.value = serviceId;
       renderEditor();
       if (!businessDialog.open) businessDialog.showModal();
-      root.dispatchEvent(new CustomEvent('chen:service-editor-opened', {detail:{service_id:serviceId}}));
+      root.dispatchEvent(new CustomEvent('chen:service-editor-opened', {detail:{service_id:serviceId,schedule_mode:data.schedule_mode}}));
     } catch (_) { notifyError('网络异常'); }
   };
+
+  window.ChenBusinessEditor = {open: openBusinessEditor};
 
   // Delegate from stable document: freshly rendered cells need no rebinding
   // and must not rely on a hidden edit button surviving a row update.
@@ -629,6 +631,8 @@
     fd.append('csrf', businessForm.elements.csrf.value);
     fd.append('template_json', JSON.stringify(template));
     fd.append('values_json', JSON.stringify(values));
+    const scheduleMode = businessDialog.querySelector('[data-v031-payment-mode]')?.value;
+    if (scheduleMode) fd.append('schedule_mode', scheduleMode);
     try {
       const r = await fetch(`/services/${editorServiceId}/attributes-v028`, {method:'POST', body:fd, credentials:'same-origin'});
       const data = await r.json().catch(() => ({}));
@@ -637,7 +641,7 @@
       syncDisplayOptions(data.template || [], data.display_attr_1, data.display_attr_2);
       businessDialog.close();
       requestAnimationFrame(() => window.scrollTo({top:editorScrollY, behavior:'auto'}));
-      root.dispatchEvent(new CustomEvent('chen:service-properties-updated', {detail:{rows:data.rows || {}}}));
+      root.dispatchEvent(new CustomEvent('chen:service-properties-updated', {detail:{service_id:editorServiceId,rows:data.rows || {}}}));
     } catch (_) { notifyError('网络异常，未保存'); }
   });
 

@@ -48,6 +48,59 @@
     return fetchJson(`/customers/${customerId}/payment-workflow-v031`, {method: 'POST', body: fd});
   };
 
+  let dateEditorServiceId = null;
+  let dateSetupBusy = false;
+  const openNextDateEditor = async plan => {
+    const first = plan.remaining[0];
+    if (!first) {
+      dateEditorServiceId = null;
+      toast('所有指定缴费业务已处理，可以点击“完成缴费”');
+      await loadState({quiet: true});
+      return;
+    }
+    dateEditorServiceId = String(first.service_id);
+    toast(`还有 ${plan.remaining.length} 条业务需要设置下次缴费时间；也可改为周期缴费或关闭业务`);
+    await window.ChenBusinessEditor.open(first.service_id);
+  };
+  const confirmDateSetup = plan => new Promise(resolve => {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'app-dialog';
+    dialog.style.cssText = 'max-width:min(440px,90vw);border:1px solid #dce3ef;border-radius:20px;padding:24px';
+    const title = document.createElement('h3');
+    title.textContent = '请设置下次缴费时间';
+    const text = document.createElement('p');
+    text.textContent = `有 ${plan.remaining.length} 条业务需要设置。逐条修改下次缴费时间，改为周期缴费或关闭业务后，可以完成缴费。`;
+    const buttons = document.createElement('div');
+    buttons.style.cssText = 'display:flex;gap:12px;justify-content:flex-end;margin-top:24px';
+    const finish = result => { dialog.close(); dialog.remove(); resolve(result); };
+    for (const [label, result] of [['进入', true], ['取消', false]]) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.textContent = label;
+      button.addEventListener('click', () => finish(result));
+      buttons.append(button);
+    }
+    dialog.append(title, text, buttons);
+    dialog.addEventListener('cancel', event => {event.preventDefault(); finish(false);});
+    document.body.append(dialog); dialog.showModal();
+  });
+  const advanceDateSetup = async () => {
+    if (!dateEditorServiceId || dateSetupBusy) return;
+    dateSetupBusy = true;
+    try {
+      const data = await postAction('prepare_dates');
+      await openNextDateEditor(data.date_setup);
+    } catch (error) { dateEditorServiceId = null; toast(error.message); }
+    finally { dateSetupBusy = false; }
+  };
+  root.addEventListener('chen:service-properties-updated', event => {
+    if (String(event.detail?.service_id) === dateEditorServiceId) advanceDateSetup();
+  });
+  const businessDialog = document.getElementById('businessAttributeDialog');
+  businessDialog?.addEventListener('cancel', () => { dateEditorServiceId = null; });
+  businessDialog?.addEventListener('click', event => {
+    if (event.target.closest('[data-business-editor-close]')) dateEditorServiceId = null;
+  }, true);
+
   const setPaidLock = () => {
     const locked = !!state?.paid;
     root.querySelectorAll('.quick-amount,[data-review-toggle],[data-fixed-toggle],[data-defer-payment-v0212]').forEach(control => {
@@ -282,7 +335,7 @@
     if (!btn) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (btn.disabled || busy) return;
+    if (btn.disabled || busy || dateSetupBusy) return;
 
     if (!state) {
       const ok = await loadState();
@@ -316,6 +369,14 @@
       }
 
       if (action === 'paid' && !state.paid) {
+        dateSetupBusy = true;
+        try {
+          const prepared = await postAction('prepare_dates');
+          if (prepared.date_setup.remaining.length) {
+            if (await confirmDateSetup(prepared.date_setup)) await openNextDateEditor(prepared.date_setup);
+            return;
+          }
+        } finally { dateSetupBusy = false; }
         if (!confirm('确认同事已收到邮件，并且你已经完成本次实际支付？')) return;
       }
       if (action === 'paid' && state.paid) {
