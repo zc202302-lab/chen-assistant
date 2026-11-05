@@ -142,11 +142,12 @@ def main():
             exercise(page, amount)
             amount.fill('100')
             page.locator('[data-customer-tab="services"]').click()
-            panel = page.locator('[data-customer-panel="services"]')
-            details = panel.locator('details').filter(has=page.locator('input.manual-date')).last
-            details.locator('summary').click()
-            exercise(page, details.locator('input.manual-date'), '2026/10/01')
-            exercise(page, details.locator('textarea'))
+            page.locator('[data-new-service]').click()
+            editor = page.locator('#businessAttributeDialog')
+            expect(editor).to_be_visible()
+            exercise(page, editor.locator('[data-key="last_payment_date"] .attr-value'), '2026/10/01')
+            exercise(page, editor.locator('[data-key="notes"] textarea'))
+            editor.locator('.attribute-dialog-actions [data-business-editor-close]').click()
             # Existing continuous payment entry still selects the destination.
             page.locator('[data-customer-tab="payment"]').click()
             amount = page.locator(f'[data-service-id="{ids[0]}"] .quick-amount')

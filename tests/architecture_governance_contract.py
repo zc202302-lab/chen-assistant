@@ -28,13 +28,21 @@ actual_sources = route_source_inventory(app)
 optional_path = '/work/number-inbox/export-group-batch'
 extras = [row for row in actual_sources if row['path'] == optional_path]
 assert extras in ([], [{'path': optional_path, 'methods': ['POST'], 'source': 'v162_number_inbox.py', 'qualname': 'number_inbox_export_group_batch'}])
-# PR #142: audited home-shortcut routes are the only additional live sources.
+# Audited additional live sources.
 home_source_extras = [
     {'path': '/home/shortcuts', 'methods': ['GET'], 'source': 'v101_workspace_routes.py', 'qualname': 'get_home_shortcuts'},
     {'path': '/home/shortcuts', 'methods': ['POST'], 'source': 'v101_workspace_routes.py', 'qualname': 'save_home_shortcuts'},
 ]
 assert [row for row in actual_sources if row['path'] == '/home/shortcuts'] == home_source_extras
-assert [row for row in actual_sources if row['path'] not in {optional_path, '/home/shortcuts'}] == expected_sources
+creation_source_extras = [
+    {'path': '/customers/{customer_id}/new-service-attributes', 'methods': ['GET'],
+     'source': 'v028_routes.py', 'qualname': 'new_service_attributes'},
+    {'path': '/customers/{customer_id:int}/new-service-attributes', 'methods': ['POST'],
+     'source': 'v028_routes.py', 'qualname': 'save_service_attributes_v028'},
+]
+creation_paths = {row['path'] for row in creation_source_extras}
+assert [row for row in actual_sources if row['path'] in creation_paths] == creation_source_extras
+assert [row for row in actual_sources if row['path'] not in creation_paths | {optional_path, '/home/shortcuts'}] == expected_sources
 legacy = json.loads((ROOT / 'docs/LEGACY_MODULES.json').read_text())
 assert sorted(legacy) == sorted(p.name for p in (ROOT / 'app').glob('v[0-9]*.py'))
 for path in (ROOT / 'app').glob('*.py'):
