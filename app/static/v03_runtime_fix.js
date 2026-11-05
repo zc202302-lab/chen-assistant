@@ -2,13 +2,7 @@
   const root = document.querySelector('.v0211-workspace');
   const dialog = document.getElementById('businessAttributeDialog');
   if (!root || !dialog) return;
-  let paymentMembershipDirty = false;
-  root.addEventListener('chen:service-properties-updated', () => { paymentMembershipDirty = true; });
-  root.addEventListener('click', event => {
-    if (!paymentMembershipDirty || !event.target.closest('[data-customer-tab="payment"]')) return;
-    event.preventDefault(); event.stopImmediatePropagation();
-    location.href = `/customers/${root.dataset.customerId}?tab=payment`;
-  }, true);
+  root.addEventListener('chen:service-properties-updated', () => window.ChenLiveRefresh?.refresh());
   // Mode changes are saved atomically with the business attributes.
   root.addEventListener('chen:service-editor-opened', event => {
     const box = dialog.querySelector('.v03-payment-state-box');

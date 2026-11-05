@@ -12,7 +12,7 @@ from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
-from .payment_schedule import explicit_payment_date, readable_date, inferred_schedule_mode, computed_next_date, MODES
+from .payment_schedule import explicit_payment_date, readable_date, inferred_schedule_mode, computed_next_date, discard_prepared_service, explicit_due, MODES
 from .payment_v02 import current_period, service_active_in_period, service_is_due, effective_payment_rule, payment_snapshot, valid_invoice_group
 from .v025_routes import customer_or_404, service_or_404, promotion_or_404, _payment_run
 from .v026_routes import check_csrf, parse_date_text, date_text, month_text, promotion_bucket, derive_schedule
@@ -457,6 +457,12 @@ def save_service_attributes_v028(
         if updates:
             fields = ','.join(f'{key}=?' for key in updates)
             conn.execute(f'UPDATE services SET {fields} WHERE id=?', (*updates.values(), service_id))
+        if schedule_mode == 'specified' and inferred_schedule_mode(old_service) == 'periodic':
+            period = current_period()
+            service = service_or_404(conn, service_id)
+            if explicit_due(service, period) is False:
+                # A periodic row may have been captured when other rows prepared their next dates.
+                discard_prepared_service(conn, old_service['customer_id'], period, service_id)
         conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), old_service['customer_id']))
 
         customer = customer_or_404(conn, old_service['customer_id'])

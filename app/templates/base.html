@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="/static/layout-refinement.css?v=0311">
   <link rel="stylesheet" href="/static/v0212.css?v=0311">
   <link rel="stylesheet" href="/static/workspace-refinement-v0212.css?v=0311">
-  <link rel="stylesheet" href="/static/v03.css?v=1806">
+  <link rel="stylesheet" href="/static/v03.css?v=1807">
   <link rel="stylesheet" href="/static/v03_business_mail.css?v=0311">
   <link rel="stylesheet" href="/static/v03_payment_template.css?v=0311">
   <link rel="stylesheet" href="/static/v031_payment_workflow.css?v=0314">
@@ -96,7 +96,7 @@
 {% if _customer_assets %}<script src="/static/v0211.js?v=1736"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/workspace-refinement-v0212.js?v=0311"></script>{% endif %}
 {% if _customer_assets or request.url.path.rstrip('/') == '/work/customers' %}<script src="/static/v03.js?v=1806"></script>{% endif %}
-{% if _customer_assets %}<script src="/static/v03_runtime_fix.js?v=1806"></script>{% endif %}
+{% if _customer_assets %}<script src="/static/v03_runtime_fix.js?v=1807"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v03_business_mail.js?v=0311"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v03_payment_template.js?v=1591"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v03_foxmail_action_fix.js?v=0311"></script>{% endif %}
@@ -122,9 +122,9 @@
 {% if _customer_assets %}<script src="/static/v128_table_finder.js?v=1280"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v13_customer_documents.js?v=1300"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v143_customer_resources.js?v=1716"></script>{% endif %}
-{% if _customer_assets %}<script src="/static/live-refresh-v15.js?v=1716"></script>{% endif %}
-{% if _customer_assets %}<script src="/static/live-refresh-modules-v15.js?v=1716"></script>{% endif %}
-{% if _customer_assets %}<script src="/static/high-frequency-v152.js?v=1716"></script>{% endif %}
+<script src="/static/live-refresh-v15.js?v=1807"></script>
+{% if _customer_assets %}<script src="/static/live-refresh-modules-v15.js?v=1807"></script>{% endif %}
+{% if _customer_assets %}<script src="/static/high-frequency-v152.js?v=1807"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/workspace-row-numbers.js?v=1661"></script>{% endif %}
 <script src="/static/reminders.js?v=1805"></script>
 <script src="/static/home-shortcuts.js?v=1711" data-home-shortcut-script data-csrf="{{ csrf }}"></script>

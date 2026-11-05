@@ -1,13 +1,16 @@
 (() => {
-  const root = document.querySelector('.v0211-workspace');
+  const workspace = document.querySelector('.v0211-workspace[data-customer-id]');
+  const root = workspace || document.querySelector('main');
   if (!root) return;
-
-  const customerId = root.dataset.customerId || '';
-  if (!customerId) return;
+  const customerId = workspace?.dataset.customerId;
+  const regions = [...root.querySelectorAll('[data-chen-refresh-region]')];
+  const hasRefreshTargets = customerId || regions.length;
+  const changes = typeof BroadcastChannel === 'function' ? new BroadcastChannel('chen-data-updated') : null;
 
   const nativeFetch = window.fetch.bind(window);
   let refreshTimer = 0;
   let refreshing = false;
+  let refreshQueued = false;
   let lastHtmlSignature = '';
   let interactionUntil = 0;
   let pointerHeld = false;
@@ -49,7 +52,6 @@
     const next = fresh.textContent;
     if (current.textContent === next) return false;
     current.textContent = next;
-    softlyMark(current);
     return true;
   };
 
@@ -148,17 +150,18 @@
 
   const syncPaymentSummary = freshDocument => {
     [
-      '#requiredCount', '#pendingCount', '#paymentGrandTotal', '#paymentReadiness',
+      '#paymentDueCount', '#requiredCount', '#pendingCount', '#paymentGrandTotal', '#paymentReadiness',
       '#paymentRunLabel',
     ].forEach(selector => syncText(selector, freshDocument));
 
-    const currentTxt = document.getElementById('paymentTxtButton');
-    const freshTxt = freshDocument.getElementById('paymentTxtButton');
-    if (currentTxt && freshTxt) {
+    for (const id of ['paymentTxtButton', 'paymentExcelButton']) {
+      const current = document.getElementById(id);
+      const fresh = freshDocument.getElementById(id);
+      if (!current || !fresh) continue;
       for (const name of ['class', 'aria-disabled', 'href']) {
-        const value = freshTxt.getAttribute(name);
-        if (value === null) currentTxt.removeAttribute(name);
-        else currentTxt.setAttribute(name, value);
+        const value = fresh.getAttribute(name);
+        if (value === null) current.removeAttribute(name);
+        else if (current.getAttribute(name) !== value) current.setAttribute(name, value);
       }
     }
 
@@ -247,7 +250,7 @@
     syncCustomerHeader(freshDocument);
     syncTaskPreview(freshDocument);
     syncPromotionBadge(freshDocument);
-    syncPaymentSummary(freshDocument);
+    if (!panelBusy(root.querySelector('[data-customer-panel="payment"]'))) syncPaymentSummary(freshDocument);
     syncBusinessRows(freshDocument);
     syncSimplePanel('contacts', freshDocument);
     syncSimplePanel('tasks', freshDocument);
@@ -259,12 +262,17 @@
   };
 
   const refreshNow = async () => {
-    if (refreshing || document.hidden) return;
+    if (!hasRefreshTargets || document.hidden) return;
+    if (refreshing) {
+      refreshQueued = true;
+      return;
+    }
     if (pointerHeld || Date.now() < interactionUntil) return scheduleRefresh(750);
     if (document.querySelector('dialog[open]')) return;
     refreshing = true;
     try {
-      const response = await nativeFetch(location.href, {
+      const url = location.href;
+      const response = await nativeFetch(url, {
         method: 'GET',
         credentials: 'same-origin',
         cache: 'no-store',
@@ -276,20 +284,36 @@
         scheduleRefresh(750);
         return;
       }
+      if (location.href !== url) return scheduleRefresh();
       const signature = hashText(html);
       if (signature === lastHtmlSignature) return;
       const freshDocument = new DOMParser().parseFromString(html, 'text/html');
-      syncFromDocument(freshDocument);
+      if (customerId) syncFromDocument(freshDocument);
+      let blockedRegion = false;
+      for (const region of regions) {
+        const fresh = freshDocument.querySelector(`[data-chen-refresh-region="${region.dataset.chenRefreshRegion}"]`);
+        if (!fresh || region.innerHTML === fresh.innerHTML) continue;
+        if (panelBusy(region) || region.querySelector('details[open]')) {
+          blockedRegion = true;
+          continue;
+        }
+        if (region.dataset.chenRefreshText !== undefined) region.textContent = fresh.textContent;
+        else region.replaceChildren(...fresh.childNodes);
+      }
       // A busy region was deliberately skipped, not successfully refreshed.
       // Keep the response eligible for replay after the user stops editing.
       const focused = document.activeElement;
       const editing = focused && root.contains(focused) && focused.matches('input,textarea,select,[contenteditable="true"]');
       const pending = editing || root.querySelector('[data-chen-dirty="1"],.is-saving,.dragging,.sort-source-v0211,.v03-business-sort-source');
-      lastHtmlSignature = pending ? '' : signature;
+      lastHtmlSignature = pending || blockedRegion ? '' : signature;
     } catch (_) {
       // Enhancement only: existing mature page behavior remains the fallback.
     } finally {
       refreshing = false;
+      if (refreshQueued) {
+        refreshQueued = false;
+        scheduleRefresh();
+      }
     }
   };
 
@@ -302,6 +326,10 @@
     refresh: () => scheduleRefresh(0),
     refreshSoon: () => scheduleRefresh(180),
   };
+  changes?.addEventListener('message', () => scheduleRefresh(80));
+  root.addEventListener('toggle', event => {
+    if (event.target.matches('details:not([open])')) scheduleRefresh();
+  }, true);
   root.addEventListener('focusout', () => scheduleRefresh(180));
 
   root.addEventListener('input', event => {
@@ -323,21 +351,27 @@
       const method = String(init?.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
       const url = new URL(input instanceof Request ? input.url : String(input), location.href);
       if (response.ok && url.origin === location.origin && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        window.dispatchEvent(new CustomEvent('chen:data-updated', {detail: {path: url.pathname}}));
+        changes?.postMessage('updated');
         scheduleRefresh(220);
-        setTimeout(() => scheduleRefresh(0), 800);
       }
     } catch (_) {}
     return response;
   };
 
-  const interval = setInterval(() => {
-    if (!document.hidden) refreshNow();
-  }, 8000);
+  if (!hasRefreshTargets) return;
+
+  const interval = setInterval(refreshNow, 8000);
   window.addEventListener('focus', () => scheduleRefresh(80));
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) scheduleRefresh(80);
   });
-  window.addEventListener('pagehide', () => clearInterval(interval), {once: true});
+  window.addEventListener('pagehide', event => {
+    if (!event.persisted) {
+      clearInterval(interval);
+      changes?.close();
+    }
+  });
 
   const restoreKey = `chen-reload-position:${location.pathname}`;
   const navEntry = performance.getEntriesByType?.('navigation')?.[0];

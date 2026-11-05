@@ -8,6 +8,11 @@
     const grandTotal = document.getElementById('paymentGrandTotal');
     const total = grandTotal?.closest('.v023-total') || grandTotal?.parentElement || document.querySelector('.v023-total');
     if (!paymentList || !total) return;
+    if (paymentList.hidden) {
+      total.classList.remove('v124-total-moved', 'payment-total-v152');
+      workbench.querySelector('.v025-payment-head')?.appendChild(total);
+      return;
+    }
     let row = paymentList.querySelector('[data-payment-total-row-v152]');
     if (!row) {
       row = document.createElement('div');

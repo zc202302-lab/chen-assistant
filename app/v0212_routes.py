@@ -10,7 +10,7 @@ from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
-from .payment_schedule import inferred_schedule_mode, explicit_due, explicit_payment_date, readable_date, computed_next_date
+from .payment_schedule import inferred_schedule_mode, explicit_due, explicit_payment_date, readable_date, computed_next_date, stored_schedule_mode
 from .payment_v02 import (
     current_period,
     add_periods,
@@ -123,6 +123,8 @@ def _service_due(service, runtime, period: str) -> bool:
         return False
     if not service_active_in_period(service, period):
         return False
+    if stored_schedule_mode(service) == 'specified':
+        return _natural_due(service, period)
     deferred = (runtime.get('deferred_until_period') or '').strip()
     if deferred and period < deferred:
         return False
@@ -158,7 +160,7 @@ def _schedule_state(service, runtime, period: str) -> str:
             return f"未启用 · {start.replace('-', '/')}起"
         return '停用'
     deferred = (runtime.get('deferred_until_period') or '').strip()
-    if deferred and period < deferred:
+    if stored_schedule_mode(service) != 'specified' and deferred and period < deferred:
         return f"延期至 {deferred.replace('-', '/')}"
     explicit = explicit_payment_date(service)
     if explicit and readable_date(explicit) is None:
