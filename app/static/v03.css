@@ -682,3 +682,10 @@
 
 /* Keep payment mode legible in the compact phone status strip. */
 @media(max-width:700px){.v03-payment-state-box [data-payment-mode-help]{display:none}}
+
+@media(max-width:700px){
+  .v03-business-status-panel{flex-wrap:wrap;overflow-x:visible;gap:8px}
+  .v03-business-status-head>button{order:0}
+  .v03-business-status-grid{flex:0 0 100%;order:1;justify-content:space-between;gap:8px}
+  .v03-business-status-grid [data-v031-payment-mode]{width:96px!important}
+}

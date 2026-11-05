@@ -94,6 +94,11 @@ def main():
                 expect(editor).to_be_visible()
                 expect(editor.locator('[data-v031-payment-mode]')).to_have_value('specified')
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+                if width < 700:
+                    mode=editor.locator('[data-v031-payment-mode]').bounding_box()
+                    bounds=editor.bounding_box()
+                    assert mode['width'] >= 94
+                    assert mode['x'] + mode['width'] <= bounds['x'] + bounds['width']
                 page.screenshot(path=str(output/f'payment-modes-{width}.png'))
                 editor.locator('[data-business-editor-close]').first.click()
             browser.close()

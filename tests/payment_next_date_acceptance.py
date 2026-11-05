@@ -61,7 +61,11 @@ def main():
                 status = dialog.locator('[data-v03-business-status-panel]')
                 heading = status.locator('.v03-business-status-head>b').bounding_box()
                 state = status.locator('[data-v031-payment-mode]').bounding_box()
-                assert abs((heading['y'] + heading['height']/2) - (state['y'] + state['height']/2)) < 8
+                if width >= 700:
+                    assert abs((heading['y'] + heading['height']/2) - (state['y'] + state['height']/2)) < 8
+                else:
+                    assert state['width'] >= 94
+                    assert state['x'] + state['width'] <= status.bounding_box()['x'] + status.bounding_box()['width']
                 value_width = dialog.locator('[data-key="number"] .attr-value').bounding_box()['width']
                 assert value_width >= 125, value_width
                 assert dialog.locator('[data-key="number"]').bounding_box()['height'] < 60
