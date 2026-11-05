@@ -32,7 +32,14 @@ optional_home_routes = [
     {'path': '/home/shortcuts', 'methods': ['POST'],
      'module': 'app.v101_workspace_routes', 'name': 'save_home_shortcuts'},
 ]
-assert extra in (optional_home_routes, [optional_batch_route] + optional_home_routes), (
+service_creation_routes = [
+    {'path': '/customers/{customer_id}/new-service-attributes', 'methods': ['GET'],
+     'module': 'app.v028_routes', 'name': 'new_service_attributes'},
+    {'path': '/customers/{customer_id:int}/new-service-attributes', 'methods': ['POST'],
+     'module': 'app.v028_routes', 'name': 'save_service_attributes_v028'},
+]
+reviewed_additions = optional_home_routes + service_creation_routes
+assert extra in (reviewed_additions, [optional_batch_route] + reviewed_additions), (
     'unreviewed additional routes: ' + repr(extra)
 )
 retained = [row for row in actual if (row['path'], tuple(row['methods'])) in known]

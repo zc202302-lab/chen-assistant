@@ -86,6 +86,12 @@
   };
   tabButtons.forEach(b => b.addEventListener('click', () => showTab(b.dataset.customerTab)));
   root.querySelectorAll('[data-tab-open]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tabOpen)));
+  root.querySelector('.v023-add-task')?.addEventListener('click', () => {
+    const addTask = root.querySelector('.task-add-v164');
+    if (!addTask) return;
+    addTask.open = true;
+    addTask.querySelector('input[name="title"]')?.focus();
+  });
   showTab(root.dataset.activeTab || 'payment', false);
 
   // 需要传统提交的表单，返回后恢复滚动位置。
@@ -458,11 +464,13 @@
   let editorRequest = 0;
   const openBusinessEditor = async (serviceId) => {
     if (!businessDialog || !businessForm) return;
-    if (!serviceId) return;
+    const creating = !serviceId;
+    if (creating && !root.querySelector('[data-new-service]')) return;
     const request = ++editorRequest;
     editorScrollY = window.scrollY;
     try {
-      const r = await fetch(`/services/${serviceId}/attributes-v028`, {credentials:'same-origin'});
+      const url = creating ? `/customers/${root.dataset.customerId}/new-service-attributes` : `/services/${serviceId}/attributes-v028`;
+      const r = await fetch(url, {credentials:'same-origin'});
       const data = await r.json().catch(() => ({}));
       if (request !== editorRequest) return;
       if (!r.ok || !data.ok) return notifyError(data.error || '读取业务属性失败');
@@ -470,7 +478,21 @@
       editorTemplate = (data.template || []).map(x => ({...x}));
       editorValues = {...(data.values || {})};
       editorInvoiceGroups = data.invoice_groups || [];
-      businessForm.elements.service_id.value = serviceId;
+      businessForm.elements.service_id.value = serviceId || '';
+      const createFields = businessDialog.querySelector('[data-service-create-payment]');
+      if (createFields) createFields.hidden = !creating;
+      const promotions = businessDialog.querySelector('[data-service-promotions-editor]');
+      if (promotions) promotions.hidden = creating;
+      if (creating) {
+        const standaloneType = !editorTemplate.some(item => item.key === 'service_type');
+        createFields.querySelector('[data-create-type]').hidden = !standaloneType;
+        businessForm.elements.create_service_type.required = standaloneType;
+        businessForm.elements.create_service_type.value = '';
+        businessForm.elements.payment_mode.value = 'variable';
+        businessForm.elements.fixed_amount.value = '0';
+      } else if (createFields) {
+        businessForm.elements.create_service_type.required = false;
+      }
       renderEditor();
       if (!businessDialog.open) businessDialog.showModal();
       root.dispatchEvent(new CustomEvent('chen:service-editor-opened', {detail:{service_id:serviceId,schedule_mode:data.schedule_mode}}));
@@ -478,6 +500,7 @@
   };
 
   window.ChenBusinessEditor = {open: openBusinessEditor};
+  root.querySelector('[data-new-service]')?.addEventListener('click', () => openBusinessEditor());
 
   // Delegate from stable document: freshly rendered cells need no rebinding
   // and must not rely on a hidden edit button surviving a row update.

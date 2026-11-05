@@ -690,3 +690,5 @@
 }
 
 .v03-business-status-grid [data-v031-payment-mode]{width:96px!important}
+
+.v0211-payment-list[hidden] { display: none !important; }

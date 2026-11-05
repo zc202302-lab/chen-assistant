@@ -44,3 +44,18 @@
 
 .v023-task-line form{margin-left:auto;flex:0 0 auto}.v023-task-line .v023-task-finish{border:1px solid #c7d9ed;border-radius:7px;background:#eef5fc;color:#245782;font:inherit;font-size:12px;font-weight:700;padding:4px 9px;cursor:pointer}
 .payment-review-dialog{border:0;border-radius:16px;box-shadow:0 22px 70px #17253c55;width:min(460px,calc(100vw - 40px));padding:25px;color:#243247}.payment-review-dialog::backdrop{background:#18283b91}.payment-review-dialog h2{margin:0 0 12px;font-size:20px}.payment-review-dialog p{line-height:1.6}.payment-review-dialog ul{max-height:35vh;overflow:auto;padding-left:22px}.payment-review-dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}.payment-review-dialog-actions button{width:100%;border-radius:10px;padding:12px;font:inherit;font-weight:700;cursor:pointer}.payment-review-dialog-cancel{border:1px solid #d6deea;background:#fff;color:#42536a}.payment-review-dialog-confirm{border:1px solid #2463c5;background:#2463c5;color:white}
+
+
+@media(min-width:1101px){.task-preview-v164{display:flex;flex-direction:column;gap:8px}}
+.task-preview-v164 .v023-task-head{margin:0;padding-bottom:7px;border-bottom:1px solid #edf0f5}
+.task-preview-v164 .v023-task-line{margin:0;display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 8px;padding:4px 0}
+.task-preview-v164 .v023-task-line>span{min-width:0;overflow-wrap:anywhere}
+.task-preview-v164 .task-review-badge-v164{margin-left:5px}
+.task-preview-v164 .v023-add-task{align-self:flex-start;margin:0;padding:5px 9px;border-radius:7px;background:#edf3fc;color:#294b7a;font-weight:700}
+.task-add-v164{background:#f7f9fc;padding-inline:16px}
+.task-add-v164>summary{padding-block:14px}
+.task-add-v164 .task-form-v164{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);gap:12px}
+.task-add-v164 .task-form-v164 input[type=text],.task-add-v164 .task-form-v164 input[type=datetime-local]{min-height:42px}
+.task-add-v164 .task-form-v164 label>span>small{font-weight:400;color:#667085}
+.task-add-v164 .task-form-v164 button[type=submit]{min-height:42px}
+@media(max-width:850px){.task-add-v164 .task-form-v164{grid-template-columns:1fr}}

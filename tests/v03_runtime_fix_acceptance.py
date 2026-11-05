@@ -115,6 +115,7 @@ def main():
             expect(payment_mode).to_be_enabled()
             assert payment_mode.locator('option').all_text_contents() == ['周期缴费', '指定缴费']
             # Selecting the cycle and saving restores an existing deferred business.
+            page.evaluate('window.__samePaymentDocument = true')
             with page.expect_response(lambda r: r.url.endswith('/status-v03') and r.request.method == 'POST') as saved:
                 editor.locator('.attribute-dialog-actions button[type="submit"]').click()
             assert saved.value.ok
@@ -124,9 +125,9 @@ def main():
                 assert runtime['deferred_until_period'] == '', runtime
 
             page.locator('[data-customer-tab="payment"]').click()
-            page.wait_for_load_state('networkidle')
-            assert page.locator(f'[data-payment-row][data-service-id="{normal_sid}"]').count() == 1
-            assert page.locator(f'[data-payment-row][data-service-id="{deferred_sid}"]').count() == 1
+            expect(page.locator(f'[data-payment-row][data-service-id="{normal_sid}"]')).to_be_visible()
+            expect(page.locator(f'[data-payment-row][data-service-id="{deferred_sid}"]')).to_be_visible()
+            assert page.evaluate('window.__samePaymentDocument')
 
             browser.close()
         print('v0.3.2 runtime fix browser acceptance passed (isolated test database)')

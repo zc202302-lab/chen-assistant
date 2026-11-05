@@ -33,9 +33,9 @@ def explicit_payment_date(service):
     if stored_schedule_mode(service) == 'periodic':
         return computed_next_date(service['last_payment_date'], service['payment_interval_months'])
     value = service['next_payment_date']
-    if value is None:
+    if value is None and stored_schedule_mode(service) != 'specified':
         return computed_next_date(service['last_payment_date'], service['payment_interval_months'])
-    return str(value).strip()
+    return str(value or '').strip()
 
 
 def explicit_due(service, period):
@@ -88,6 +88,22 @@ def prepared_service_ids(conn, customer_id, period):
     row = conn.execute('SELECT items_json FROM payment_date_preparations WHERE customer_id=? AND period=?',
                        (customer_id, period)).fetchone()
     return {int(item['id']) for item in json.loads(row[0])} if row else set()
+
+
+def discard_prepared_service(conn, customer_id, period, service_id):
+    row = conn.execute('SELECT items_json FROM payment_date_preparations WHERE customer_id=? AND period=?',
+                       (customer_id, period)).fetchone()
+    if not row:
+        return
+    items = json.loads(row[0])
+    remaining = [item for item in items if int(item['id']) != service_id]
+    if len(remaining) == len(items):
+        return
+    if remaining:
+        conn.execute('UPDATE payment_date_preparations SET items_json=? WHERE customer_id=? AND period=?',
+                     (json.dumps(remaining, ensure_ascii=False), customer_id, period))
+    else:
+        clear_date_preparation(conn, customer_id, period)
 
 
 def date_preparation(conn, customer_id, period, items, *, create=False):

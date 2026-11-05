@@ -21,6 +21,10 @@ def main():
         for index in range(3):
             ids.append(conn.execute('''INSERT INTO services(customer_id,service_type,number,payment_cycle,payment_interval_months,last_payment_date,next_payment_date,payment_schedule_mode,monthly_fee,fixed_fee)
                 VALUES(?,?,?,?,?,?,?,?,?,?)''', (cid, '成员', str(index), '1个月', 1, '2020-01-01', old_date, 'specified', 10, 1)).lastrowid)
+        periodic_id = conn.execute('''INSERT INTO services(customer_id,service_type,number,payment_cycle,
+            payment_interval_months,last_payment_date,next_payment_date,payment_schedule_mode,monthly_fee,fixed_fee)
+            VALUES(?,?,?,?,?,?,?,?,?,?)''',
+            (cid, '成员', '周期业务', '1个月', 1, '2020-01-01', '2020-02-01', 'periodic', 10, 1)).lastrowid
         run, _ = _run_v031(conn, cid)
         conn.execute('UPDATE customer_payment_runs SET reviewed_at=?,notified_at=?,initiated_at=? WHERE id=?', (now, now, now, run['id']))
     token, csrf, _ = create_session()
@@ -37,6 +41,14 @@ def main():
             assert result.status_code == 200, result.text
         action('paid', 409)  # Direct completion cannot bypass date preparation.
         assert len(action('prepare_dates')['date_setup']['remaining']) == 3
+        with db() as conn:
+            assert periodic_id in prepared_service_ids(conn, cid, period)
+        attributes(periodic_id, 'specified', next_payment_date=later)
+        with db() as conn:
+            items, stats = _payment_snapshot_base_v0212(conn, cid, period)
+            assert periodic_id not in prepared_service_ids(conn, cid, period)
+            assert {item['row']['id'] for item in items} == set(ids)
+            assert stats['total'] == 30
         attributes(ids[0], 'specified', next_payment_date=old_date.replace('-', '/'))
         assert len(action('prepare_dates')['date_setup']['remaining']) == 3  # Same day, different spelling.
         attributes(ids[0], 'specified', next_payment_date=later)
@@ -66,6 +78,17 @@ def main():
             assert result.status_code == 200
         assert action('prepare_dates')['date_setup']['remaining'] == []
         assert action('paid')['run']['paid']
+        # Manual deferral of a specified service advances its authoritative date.
+        result = client.post(f'/services/{periodic_id}/defer-v0212',
+                             data={'csrf':csrf,'months':1})
+        assert result.status_code == 400  # A future service cannot be deferred again.
+        attributes(periodic_id, 'specified', next_payment_date=old_date)
+        result = client.post(f'/services/{periodic_id}/defer-v0212',
+                             data={'csrf':csrf,'months':1})
+        assert result.status_code == 200, result.text
+        with db() as conn:
+            assert conn.execute('SELECT next_payment_date FROM services WHERE id=?',
+                                (periodic_id,)).fetchone()[0] == computed_next_date(old_date, 1)
         # Interactive creation defaults do not rewrite imported/historical records.
         result = client.post(f'/customers/{cid}/services-v026',data={'csrf':csrf,'service_type':'新增默认值'},follow_redirects=False)
         assert result.status_code in (302,303), result.text

@@ -551,12 +551,20 @@
   let businessStatusReady = false;
   const loadBusinessStatus = async () => {
     const sid = String(businessForm?.elements.service_id?.value || '').trim();
-    if (!sid || !businessDialog?.open) return;
+    if (!businessDialog?.open) return;
     const panel = ensureBusinessStatusPanel();
     const request = ++statusRequest;
     businessStatusReady = false;
     const enabled = panel.querySelector('[data-v03-business-enabled]');
     const submit = businessForm.querySelector('button[type="submit"]');
+    panel.querySelector('[data-v03-delete-service]').hidden = !sid;
+    if (!sid) {
+      enabled.value = 'active';
+      enabled.disabled = false;
+      businessStatusReady = true;
+      if (submit) submit.disabled = false;
+      return;
+    }
     enabled.disabled = true;
     if (submit) submit.disabled = true;
     try {
@@ -624,7 +632,7 @@
     if (businessSaving) return;
     if (!businessStatusReady) return toast('业务状态尚未读取完成，请稍后保存；读取失败时请重新打开业务');
     const sid = String(businessForm.elements.service_id?.value || '').trim();
-    if (!sid || !attrList) return toast('未识别到当前业务');
+    if (!attrList) return toast('未识别到当前业务');
     const template = [];
     const values = {};
     let invalid = false;
@@ -650,15 +658,27 @@
       const attrFd = new FormData();
       attrFd.append('csrf', businessForm.elements.csrf.value);
       attrFd.append('template_json', JSON.stringify(template));
+      if (!sid && !('service_type' in values)) values.service_type = businessForm.elements.create_service_type.value;
       attrFd.append('values_json', JSON.stringify(values));
       const scheduleMode = businessDialog.querySelector('[data-v031-payment-mode]')?.value;
       if (scheduleMode) attrFd.append('schedule_mode', scheduleMode);
+      const status = businessDialog.querySelector('[data-v03-business-enabled]').value;
+      if (!sid) {
+        attrFd.append('status', status);
+        attrFd.append('payment_mode', businessForm.elements.payment_mode.value);
+        attrFd.append('fixed_amount', businessForm.elements.fixed_amount.value);
+        await postForm(`/customers/${customerId}/new-service-attributes`, attrFd);
+        businessDialog.close();
+        toast('业务已添加');
+        window.ChenLiveRefresh?.refresh();
+        return;
+      }
       const attrData = await postForm(`/services/${sid}/attributes-v028`, attrFd);
       editorMeta = new Map((attrData.template || []).map(x => [String(x.key), x]));
 
       const statusFd = new FormData();
       statusFd.append('csrf', businessForm.elements.csrf.value);
-      statusFd.append('status', businessDialog.querySelector('[data-v03-business-enabled]')?.value || 'active');
+      statusFd.append('status', status);
       const statusData = await postForm(`/services/${sid}/status-v03`, statusFd);
       // Finish the native modal/focus lifecycle before refreshing any opener
       // in the business, payment or promotion panels.

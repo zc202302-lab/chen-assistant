@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="/static/layout-refinement.css?v=0311">
   <link rel="stylesheet" href="/static/v0212.css?v=0311">
   <link rel="stylesheet" href="/static/workspace-refinement-v0212.css?v=0311">
-  <link rel="stylesheet" href="/static/v03.css?v=1806">
+  <link rel="stylesheet" href="/static/v03.css?v=1807">
   <link rel="stylesheet" href="/static/v03_business_mail.css?v=0311">
   <link rel="stylesheet" href="/static/v03_payment_template.css?v=0311">
   <link rel="stylesheet" href="/static/v031_payment_workflow.css?v=0314">
@@ -32,13 +32,13 @@
   <link rel="stylesheet" href="/static/v143_customer_resources.css?v=1431">
   <link rel="stylesheet" href="/static/v124_work_tables.css?v=1241">
   <link rel="stylesheet" href="/static/v125_excel_review.css?v=1250">
-  <link rel="stylesheet" href="/static/v128_table_finder.css?v=1280">
+  <link rel="stylesheet" href="/static/v128_table_finder.css?v=1808">
   <link rel="stylesheet" href="/static/v13_customer_documents.css?v=1300">
   <link rel="stylesheet" href="/static/work-architecture-v14.css?v=1403">
   <link rel="stylesheet" href="/static/information-center-v160.css?v=1600">
   <link rel="stylesheet" href="/static/responsive-polish-v161.css?v=1800">
   <link rel="stylesheet" href="/static/number-inbox-v162.css?v=1730">
-  <link rel="stylesheet" href="/static/task-v164.css?v=1642">
+  <link rel="stylesheet" href="/static/task-v164.css?v=1808">
   <link rel="stylesheet" href="/static/quick-search-v15.css?v=1511">
   <link rel="stylesheet" href="/static/high-frequency-v152.css?v=1525">
   <link rel="stylesheet" href="/static/reminders.css?v=1805">
@@ -89,14 +89,14 @@
 </div>
 <main class="page">{% block content %}{% endblock %}</main>
 <script src="/static/app.js?v=1800"></script>
-<script src="/static/v028.js?v=1806"></script>
+<script src="/static/v028.js?v=1808"></script>
 {% if _customer_assets %}<script src="/static/ui-drag.js?v=0311"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/service-promotions.js?v=17100"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/business-sync.js?v=1717"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v0211.js?v=1736"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/workspace-refinement-v0212.js?v=0311"></script>{% endif %}
-{% if _customer_assets or request.url.path.rstrip('/') == '/work/customers' %}<script src="/static/v03.js?v=1806"></script>{% endif %}
-{% if _customer_assets %}<script src="/static/v03_runtime_fix.js?v=1806"></script>{% endif %}
+{% if _customer_assets or request.url.path.rstrip('/') == '/work/customers' %}<script src="/static/v03.js?v=1808"></script>{% endif %}
+{% if _customer_assets %}<script src="/static/v03_runtime_fix.js?v=1807"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v03_business_mail.js?v=0311"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v03_payment_template.js?v=1591"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v03_foxmail_action_fix.js?v=0311"></script>{% endif %}
@@ -119,12 +119,12 @@
 {% if _customer_assets %}<script src="/static/v124_work_tables.js?v=1241"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v125_excel_review.js?v=1250"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v126_workflow_rollback_guard.js?v=1260"></script>{% endif %}
-{% if _customer_assets %}<script src="/static/v128_table_finder.js?v=1280"></script>{% endif %}
+{% if _customer_assets %}<script src="/static/v128_table_finder.js?v=1808"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v13_customer_documents.js?v=1300"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/v143_customer_resources.js?v=1716"></script>{% endif %}
-{% if _customer_assets %}<script src="/static/live-refresh-v15.js?v=1716"></script>{% endif %}
-{% if _customer_assets %}<script src="/static/live-refresh-modules-v15.js?v=1716"></script>{% endif %}
-{% if _customer_assets %}<script src="/static/high-frequency-v152.js?v=1716"></script>{% endif %}
+<script src="/static/live-refresh-v15.js?v=1808"></script>
+{% if _customer_assets %}<script src="/static/live-refresh-modules-v15.js?v=1807"></script>{% endif %}
+{% if _customer_assets %}<script src="/static/high-frequency-v152.js?v=1807"></script>{% endif %}
 {% if _customer_assets %}<script src="/static/workspace-row-numbers.js?v=1661"></script>{% endif %}
 <script src="/static/reminders.js?v=1805"></script>
 <script src="/static/home-shortcuts.js?v=1711" data-home-shortcut-script data-csrf="{{ csrf }}"></script>

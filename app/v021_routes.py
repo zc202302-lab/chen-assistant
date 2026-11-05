@@ -497,7 +497,7 @@ def _task_reminder_value(remind_at: str = '', remind_date: str = '') -> tuple[st
     raw = (remind_at or '').strip() or (remind_date or '').strip()
     if not raw:
         return '', ''
-    normalized = raw.replace(' ', 'T')
+    normalized = raw.replace('/', '-').replace(' ', 'T')
     try:
         parsed = datetime.fromisoformat(normalized)
     except ValueError:
@@ -571,7 +571,7 @@ def task_toggle_v021(request: Request, task_id: int, csrf: str = Form(...), fini
         if not row:
             raise HTTPException(404)
         now = now_iso()
-        if finish_delete == '1':
+        if finish_delete == '1' or (row['customer_id'] is not None and not row['done']):
             if row['done']:
                 raise HTTPException(409, '待办已办结')
             conn.execute('DELETE FROM tasks WHERE id=? AND done=0', (task_id,))
