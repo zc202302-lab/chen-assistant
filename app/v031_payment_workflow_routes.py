@@ -34,13 +34,14 @@ def _has_column(conn, table: str, column: str) -> bool:
     return any(row['name'] == column for row in conn.execute(f'PRAGMA table_info({table})').fetchall())
 
 
-def _pending_payment_review_tasks(conn, customer_id: int):
+def _pending_payment_review_tasks(conn, customer_id: int, period: str):
     return conn.execute(
         """SELECT id,title,remind_at,remind_date
            FROM tasks
            WHERE customer_id=? AND is_payment_review=1 AND done=0
+             AND substr(replace(COALESCE(NULLIF(trim(remind_at),''),NULLIF(trim(remind_date),''),?),'/','-'),1,7)=?
            ORDER BY COALESCE(NULLIF(remind_at,''),NULLIF(remind_date,''),'9999-12-31'),id""",
-        (customer_id,),
+        (customer_id, period, period),
     ).fetchall()
 
 
@@ -86,7 +87,7 @@ def _run_base_v031(conn, customer_id: int, period: str | None = None):
     initiated = bool((row['initiated_at'] or '').strip())
     initiate_prepared = bool((row['initiate_prepared_at'] or '').strip()) and notified and not initiated
     paid = bool((row['paid_at'] or '').strip())
-    pending_review_tasks = _pending_payment_review_tasks(conn, customer_id)
+    pending_review_tasks = _pending_payment_review_tasks(conn, customer_id, period)
 
     if paid:
         stage, label = 'paid', '已完成缴费'
@@ -237,7 +238,7 @@ def _set_initiated(conn, customer_id: int, period: str, run, review_confirmed: b
         return
     if not run['notified']:
         raise HTTPException(400, '请先完成“通知客户”')
-    pending_reviews = _pending_payment_review_tasks(conn, customer_id)
+    pending_reviews = _pending_payment_review_tasks(conn, customer_id, period)
     if pending_reviews and not review_confirmed:
         names = '、'.join(task['title'] for task in pending_reviews[:3])
         suffix = f" 等 {len(pending_reviews)} 项" if len(pending_reviews) > 3 else ''

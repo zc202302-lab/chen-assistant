@@ -25,7 +25,7 @@
           </details>
         </div>
       </div>
-      <aside class="v023-task-card">
+      <aside class="v023-task-card task-preview-v164">
         <div class="v023-task-head"><b>待办</b><button type="button" class="tab-text-link" data-tab-open="tasks">全部 {{ open_tasks|length }}</button></div>
         {% for t in open_tasks[:2] %}<div class="v023-task-line"><span>{{ t.title }}{% if t.is_payment_review %}<em class="task-review-badge-v164">缴费审核</em>{% endif %}</span><small>{{ (t.remind_at or t.remind_date or '无提醒')|replace('T',' ')|replace('-','/') }}</small></div>{% else %}<span class="v023-task-empty">暂无未完成待办</span>{% endfor %}
         <button type="button" class="v023-add-task" data-tab-open="tasks">＋ 新增待办</button>
@@ -87,7 +87,7 @@
 
     <section class="customer-panel" data-customer-panel="services" {% if active_tab!='services' %}hidden{% endif %}>
       <section class="card compact-card business-v028">
-        <div class="section-head"><h2>业务总览</h2><span><b id="businessVisibleCount">{{ business_rows|length }}</b> / {{ business_rows|length }}</span></div>
+        <div class="section-head"><div class="business-overview-title"><h2>业务总览</h2><button type="button" class="secondary small" data-new-service>＋ 新增业务</button></div><span><b id="businessVisibleCount">{{ business_rows|length }}</b> / <b id="businessTotalCount">{{ business_rows|length }}</b></span></div>
         <div class="business-filters" data-business-filters>
           <div class="filter-line"><b>类型</b><button type="button" class="filter-chip active" data-business-filter="type" data-value="">全部</button>{% for t in service_types %}<button type="button" class="filter-chip" data-business-filter="type" data-value="{{ t|e }}">{{ t }}</button>{% endfor %}</div>
           <div class="filter-line"><b>缴费</b><button type="button" class="filter-chip active" data-business-filter="due" data-value="">全部</button><button type="button" class="filter-chip" data-business-filter="due" data-value="1">本月应缴</button><button type="button" class="filter-chip" data-business-filter="due" data-value="0">本月不缴</button></div>
@@ -98,7 +98,7 @@
         </div>
         <div class="business-list-v028 business-list-v0211" data-business-list data-reorder-url="/customers/{{ customer.id }}/services/reorder">
           {% for item in business_rows %}{% set s=item.row %}
-          <article class="business-row-v028" data-business-row data-service-id="{{ s.id }}" data-filter-type="{{ (s.service_type or '未分类')|e }}" data-filter-due="{{ 1 if item.due else 0 }}" data-filter-mode="{{ item.rule.mode }}" data-filter-promo="{{ item.promo_filter }}" data-filter-invoice="{{ s.invoice_group_id or 'none' }}">
+          <article class="business-row-v028" data-business-row data-service-id="{{ s.id }}" data-find-values="{{ item.attributes|map(attribute='raw')|join(' | ')|e }}" data-filter-type="{{ (s.service_type or '未分类')|e }}" data-filter-due="{{ 1 if item.due else 0 }}" data-filter-mode="{{ item.rule.mode }}" data-filter-promo="{{ item.promo_filter }}" data-filter-invoice="{{ s.invoice_group_id or 'none' }}">
             <div class="business-row-line-v029">
               <button type="button" class="business-drag-handle drag-handle workspace-row-number" data-row-number draggable="false" title="序号；按住拖动改变位置">{{ loop.index }}</button>
               <div class="business-attribute-grid" data-business-attrs>
@@ -109,7 +109,7 @@
           </article>
           {% endfor %}
         </div>
-        <details class="top-gap"><summary>＋ 添加新业务</summary><form method="post" action="/customers/{{ customer.id }}/services-v026" class="stack top-gap selectable-editors" data-preserve-scroll><input type="hidden" name="csrf" value="{{ csrf }}"><div class="form-grid"><label>业务类型 *<input name="service_type" required></label><label>姓名/属性<input name="holder_name"></label><label>号码<input name="number"></label><label>账号<input name="account"></label><label>金额规则<select name="payment_mode"><option value="variable">变动</option><option value="fixed">固定</option></select></label><label>固定/初始金额<input name="fixed_amount" inputmode="decimal" value="0"></label><label>缴费周期（月）<input type="text" inputmode="numeric" pattern="\d{1,3}" name="payment_interval_months" value="1"></label><label>上次缴费日期<input class="manual-date" type="text" inputmode="numeric" name="last_payment_date" value="{{ today.strftime('%Y/%m/%d') }}" placeholder="1900/07/07" pattern="\d{4}/\d{2}/\d{2}"></label><label>付款方式<input name="payment_method"></label><label>发票类型<input name="invoice_type"></label><label>套餐类型<input name="package_type"></label><label>开票组<select name="invoice_group_id"><option value="">未分组</option>{% for g in invoice_groups %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}</select></label></div><label>备注<textarea name="notes" rows="2"></textarea></label><button class="primary">添加业务</button></form></details>
+
       </section>
     </section>
 
@@ -157,22 +157,21 @@
           <summary>＋ 新增待办</summary>
           <form method="post" action="/customers/{{ customer.id }}/tasks" class="task-form-v164">
             <input type="hidden" name="csrf" value="{{ csrf }}">
-            <label class="task-content-field-v164">待办内容<input name="title" required maxlength="200" placeholder="例如：核对本月集团缴费名单"></label>
-            <label>提醒时间<input type="datetime-local" name="remind_at"></label>
-            <label class="task-review-check-v164"><input type="checkbox" name="is_payment_review" value="1"> <span><b>缴费审核</b><small>勾选后，未完成此待办时禁止发起缴费。</small></span></label>
+            <label class="task-content-field-v164">待办内容<input type="text" name="title" required maxlength="200" placeholder="例如：核对本月集团缴费名单"></label>
+            <label><span>提醒时间 <small>可选</small></span><input type="datetime-local" name="remind_at"></label>
+            <label class="task-review-check-v164"><input type="checkbox" name="is_payment_review" value="1"> <span><b>缴费审核</b><small>不设提醒时间，每次缴费均提示。设置后，仅在对应月份提示。</small></span></label>
             <label class="task-note-field-v164">备注<textarea name="note" rows="2" maxlength="1000" placeholder="可选"></textarea></label>
             <button class="primary" type="submit">保存待办</button>
           </form>
         </details>
 
         <div class="task-list-v164">
-          {% for t in tasks %}
-          <article class="task-item-v164 {% if t.done %}is-done{% endif %}">
+          {% for t in open_tasks %}
+          <article class="task-item-v164">
             <div class="task-item-main-v164">
               <div class="task-item-title-v164">
                 <b>{{ t.title }}</b>
                 {% if t.is_payment_review %}<span class="task-review-badge-v164">缴费审核</span>{% endif %}
-                {% if t.done %}<span class="task-done-badge-v164">已完成</span>{% endif %}
               </div>
               <div class="task-item-meta-v164">
                 <span>提醒：{{ (t.remind_at or t.remind_date or '未设置')|replace('T',' ')|replace('-','/') }}</span>
@@ -184,17 +183,16 @@
                 <summary class="ghost small">编辑</summary>
                 <form method="post" action="/tasks/{{ t.id }}/edit" class="task-form-v164 task-edit-form-v164">
                   <input type="hidden" name="csrf" value="{{ csrf }}">
-                  <input type="hidden" name="remind_date" value="{{ t.remind_date }}">
-                  <label class="task-content-field-v164">待办内容<input name="title" required maxlength="200" value="{{ t.title }}"></label>
-                  <label>提醒时间<input type="datetime-local" name="remind_at" value="{{ t.remind_at if 'T' in (t.remind_at or '') else '' }}"></label>
-                  <label class="task-review-check-v164"><input type="checkbox" name="is_payment_review" value="1" {% if t.is_payment_review %}checked{% endif %}> <span><b>缴费审核</b><small>未确认完成时禁止发起缴费。</small></span></label>
+                  <label class="task-content-field-v164">待办内容<input type="text" name="title" required maxlength="200" value="{{ t.title }}"></label>
+                  <label>提醒时间<input type="datetime-local" name="remind_at" value="{{ t.remind_at if 'T' in (t.remind_at or '') else ((t.remind_at or t.remind_date) ~ 'T00:00' if (t.remind_at or t.remind_date) else '') }}"></label>
+                  <label class="task-review-check-v164"><input type="checkbox" name="is_payment_review" value="1" {% if t.is_payment_review %}checked{% endif %}> <span><b>缴费审核</b><small>不设提醒时间，每次缴费均提示。设置后，仅在对应月份提示。</small></span></label>
                   <label class="task-note-field-v164">备注<textarea name="note" rows="2" maxlength="1000">{{ t.note }}</textarea></label>
                   <button class="primary small" type="submit">保存修改</button>
                 </form>
               </details>
               <form method="post" action="/tasks/{{ t.id }}/toggle">
                 <input type="hidden" name="csrf" value="{{ csrf }}">
-                <button class="{% if t.done %}ghost{% else %}secondary{% endif %} small">{{ '恢复' if t.done else ('确认已审核' if t.is_payment_review else '完成') }}</button>
+                <button class="secondary small">{{ '确认已审核' if t.is_payment_review else '完成' }}</button>
               </form>
             </div>
           </article>
@@ -231,6 +229,11 @@
       <div class="attribute-dialog-head"><div><small>完整业务信息</small><h3>编辑业务</h3></div><button type="button" class="dialog-close" data-business-editor-close>×</button></div>
       <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="service_id">
       <section class="business-editor-section-v029"><div class="business-editor-section-head-v029"><b>业务属性</b></div><div class="global-attribute-list-v028" data-global-attribute-list></div><div class="attribute-editor-toolbar-v028"><button type="button" class="ghost" data-add-global-attribute>＋ 新增属性</button></div></section>
+      <section class="business-editor-section-v029 service-create-payment" data-service-create-payment hidden>
+        <label data-create-type hidden>业务类型<input type="text" name="create_service_type"></label>
+        <label>金额规则<select name="payment_mode"><option value="variable">变动</option><option value="fixed">固定</option></select></label>
+        <label>固定 / 初始金额<input type="text" inputmode="decimal" name="fixed_amount" value="0"></label>
+      </section>
       <section class="business-editor-section-v029 promotions-editor-v029" data-service-promotions-editor><div class="business-editor-section-head-v029"><b>关联优惠</b><button type="button" class="ghost small" data-add-editor-promotion>＋ 新增优惠</button></div><div class="editor-promo-head-v029"><span>编号</span><span>优惠名称</span><span>到期时间</span><span>备注</span><span></span></div><div class="editor-promotion-list-v029" data-editor-promotion-list></div></section>
       <div class="attribute-dialog-actions"><button type="button" class="ghost" data-business-editor-close>取消</button><button type="submit" class="primary">保存并关闭</button></div>
     </form>

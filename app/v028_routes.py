@@ -13,7 +13,7 @@ from .templating import Jinja2Templates
 from . import config
 from .db import db, now_iso
 from .payment_schedule import explicit_payment_date, readable_date, inferred_schedule_mode, computed_next_date, discard_prepared_service, explicit_due, MODES
-from .payment_v02 import current_period, service_active_in_period, service_is_due, effective_payment_rule, payment_snapshot, valid_invoice_group
+from .payment_v02 import current_period, service_active_in_period, service_is_due, effective_payment_rule, payment_snapshot, valid_invoice_group, parse_money
 from .v025_routes import customer_or_404, service_or_404, promotion_or_404, _payment_run
 from .v026_routes import check_csrf, parse_date_text, date_text, month_text, promotion_bucket, derive_schedule
 from .v027_routes import _column_widths, _promo_order, _meta_get, _meta_set
@@ -335,14 +335,30 @@ def service_attributes_v028(service_id: int):
     })
 
 
+@router.get('/customers/{customer_id}/new-service-attributes')
+def new_service_attributes(customer_id: int):
+    with db() as conn:
+        customer_or_404(conn, customer_id)
+        template = _template(conn)
+        groups = conn.execute('SELECT id,name FROM invoice_groups WHERE customer_id=? ORDER BY id',
+                              (customer_id,)).fetchall()
+    today = date.today().isoformat()
+    return {'ok': True, 'template': template, 'invoice_groups': [dict(group) for group in groups],
+            'schedule_mode': 'periodic', 'values': {'payment_interval_months': '1',
+            'last_payment_date': today, 'next_payment_date': computed_next_date(today, 1)}}
+
+
+@router.post('/customers/{customer_id:int}/new-service-attributes')
 @router.post('/services/{service_id}/attributes-v028')
 def save_service_attributes_v028(
     request: Request,
-    service_id: int,
     csrf: str = Form(...),
     template_json: str = Form(...),
     values_json: str = Form(...),
     schedule_mode: str = Form(''),
+    status: str = Form('active'),
+    payment_mode: str = Form('variable'),
+    fixed_amount: str = Form('0'),
 ):
     check_csrf(request, csrf)
     try:
@@ -355,7 +371,37 @@ def save_service_attributes_v028(
 
     if schedule_mode and schedule_mode not in MODES:
         raise HTTPException(400, '缴费模式无效')
+    customer_id = request.path_params.get('customer_id')
+    creating = customer_id is not None
     with db(immediate=True) as conn:
+        if creating:
+            customer_or_404(conn, customer_id)
+            if status not in {'active', 'inactive'} or payment_mode not in {'fixed', 'variable'}:
+                raise HTTPException(400, '业务状态或金额规则无效')
+            amount = parse_money(fixed_amount)
+            period = current_period()
+            today = date.today().isoformat()
+            schedule_mode = schedule_mode or 'periodic'
+            service_id = conn.execute(
+                '''INSERT INTO services(customer_id,service_type,last_payment_date,payment_interval_months,
+                   payment_cycle,active_from_period,sort_order,monthly_fee,fixed_fee)
+                   SELECT ?, '', ?, 1, '1个月', ?, COALESCE(MAX(sort_order),0)+10, ?, ?
+                   FROM services WHERE customer_id=?''',
+                (customer_id, today, period, amount, int(payment_mode == 'fixed'), customer_id),
+            ).lastrowid
+            conn.execute(
+                '''INSERT INTO service_payment_rules(service_id,effective_period,mode,fixed_amount,created_at)
+                   VALUES(?,?,?,?,?)''',
+                (service_id, period, payment_mode, amount if payment_mode == 'fixed' else 0, now_iso()),
+            )
+            if status == 'inactive':
+                from .v0212_routes import _save_runtime
+                _save_runtime(conn, service_id, status=status)
+        else:
+            try:
+                service_id = int(request.path_params['service_id'])
+            except ValueError:
+                raise HTTPException(422, '业务编号无效') from None
         old_service = service_or_404(conn, service_id)
         old_template = _template(conn)
         old_custom_keys = {x['key'] for x in old_template if str(x.get('key', '')).startswith('custom_')}
@@ -410,10 +456,12 @@ def save_service_attributes_v028(
 
         _meta_set(conn, TEMPLATE_META_KEY, json.dumps(normalized, ensure_ascii=False))
 
+        if creating and not mapped_values.get('service_type', '').strip():
+            raise HTTPException(400, '请填写业务类型')
         current_keys = {x['key'] for x in normalized}
         interval = int(old_service['payment_interval_months'] or 0)
         last_iso = old_service['last_payment_date'] or ''
-        updates = {}
+        updates = {'service_type': mapped_values['service_type'].strip()} if creating else {}
 
         for key in current_keys:
             if key not in mapped_values:
@@ -490,6 +538,7 @@ def save_service_attributes_v028(
         'ok': True,
         'template': normalized,
         'key_map': key_map,
+        'service_id': service_id,
         'display_attr_1': display1,
         'display_attr_2': display2,
         'rows': rows,

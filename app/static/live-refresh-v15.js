@@ -252,6 +252,7 @@
     syncPromotionBadge(freshDocument);
     if (!panelBusy(root.querySelector('[data-customer-panel="payment"]'))) syncPaymentSummary(freshDocument);
     syncBusinessRows(freshDocument);
+    syncText('#businessTotalCount', freshDocument);
     syncSimplePanel('contacts', freshDocument);
     syncSimplePanel('tasks', freshDocument);
     syncSimplePanel('visits', freshDocument);
@@ -334,11 +335,11 @@
 
   root.addEventListener('input', event => {
     const field = event.target.closest?.('input,textarea,select');
-    if (field) field.dataset.chenDirty = '1';
+    if (field && !field.closest('[data-v128-finder]')) field.dataset.chenDirty = '1';
   }, true);
   root.addEventListener('change', event => {
     const field = event.target.closest?.('input,textarea,select');
-    if (field) field.dataset.chenDirty = '1';
+    if (field && !field.closest('[data-v128-finder]')) field.dataset.chenDirty = '1';
   }, true);
   root.addEventListener('submit', event => {
     event.target.querySelectorAll?.('[data-chen-dirty="1"]').forEach(field => delete field.dataset.chenDirty);

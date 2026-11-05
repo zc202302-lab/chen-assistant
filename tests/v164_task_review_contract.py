@@ -21,7 +21,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.db import db, init_db, now_iso  # noqa: E402
 from app.main import app  # noqa: E402
 from app.security import create_session  # noqa: E402
-from app.v031_payment_workflow_routes import _set_initiated, ensure_v031  # noqa: E402
+from app.v031_payment_workflow_routes import _pending_payment_review_tasks, _set_initiated, ensure_v031  # noqa: E402
 
 
 def main():
@@ -82,6 +82,11 @@ def main():
         assert row['remind_at'] == '2026-10-01T10:15'
         assert row['note'] == '确认后才能发起缴费'
 
+        assert [task['id'] for task in _pending_payment_review_tasks(conn, customer_id, '2026-10')] == [task_id]
+        assert not _pending_payment_review_tasks(conn, customer_id, '2026-09')
+        assert not _pending_payment_review_tasks(conn, customer_id, '2026-11')
+        conn.execute("UPDATE tasks SET remind_at='',remind_date='' WHERE id=?", (task_id,))
+        assert [task['id'] for task in _pending_payment_review_tasks(conn, customer_id, '2026-12')] == [task_id]
         try:
             _set_initiated(
                 conn,
@@ -116,7 +121,7 @@ def main():
     assert toggled.status_code == 303
     with db() as conn:
         row = conn.execute('SELECT done FROM tasks WHERE id=?', (task_id,)).fetchone()
-        assert int(row['done']) == 1
+        assert row is None
 
     second = client.post(
         f'/customers/{customer_id}/tasks',
@@ -141,7 +146,7 @@ def main():
     page = client.get(f'/customers/{customer_id}?tab=tasks')
     assert page.status_code == 200
     assert '缴费审核' in page.text
-    assert '确认已审核' not in page.text  # completed tasks switch to restore
+    assert '确认已审核' not in page.text  # completed customer tasks are removed
     assert '提醒时间' in page.text
     template = (ROOT / 'app/templates/customer_workspace_v029.html').read_text(encoding='utf-8')
     assert 'name="finish_delete" value="1"' in template
