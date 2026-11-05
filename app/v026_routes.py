@@ -379,7 +379,7 @@ def add_service_v026(
     if payment_interval_months < 0 or payment_interval_months > 120:
         raise HTTPException(400, '缴费周期（月）必须是0到120之间的整数')
     amount = parse_money(fixed_amount)
-    last_iso = parse_date_text(last_payment_date, field='上次缴费日期')
+    last_iso = parse_date_text(last_payment_date, field='上次缴费日期') or date.today().isoformat()
     period = current_period()
     with db() as conn:
         customer_or_404(conn, customer_id)
@@ -399,6 +399,8 @@ def add_service_v026(
              payment_method.strip(), invoice_type.strip(), package_type.strip(), last_iso, gid, period, int(max_sort or 0) + 10, notes.strip()),
         )
         sid = cur.lastrowid
+        from .payment_schedule import computed_next_date
+        conn.execute("UPDATE services SET payment_schedule_mode='periodic',next_payment_date=? WHERE id=?", (computed_next_date(last_iso, payment_interval_months), sid))
         conn.execute('''INSERT INTO service_payment_rules(service_id,effective_period,mode,fixed_amount,created_at) VALUES(?,?,?,?,?)''',
                      (sid, period, payment_mode, amount if payment_mode == 'fixed' else 0, now_iso()))
         conn.execute('UPDATE customers SET updated_at=? WHERE id=?', (now_iso(), customer_id))

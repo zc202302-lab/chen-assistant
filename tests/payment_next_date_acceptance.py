@@ -40,6 +40,7 @@ def main():
             next_date = dialog.locator('[data-key="next_payment_date"] .attr-value')
             last_date = dialog.locator('[data-key="last_payment_date"] .attr-value')
             expect(next_date).to_have_value('2026-07-12')
+            dialog.locator('[data-v031-payment-mode]').select_option('specified')
             next_date.fill('2030年10月12日')
             last_date.fill('日期待确认')
             last_date.press('Tab')
@@ -59,7 +60,7 @@ def main():
                 page.set_viewport_size({'width':width, 'height':height})
                 status = dialog.locator('[data-v03-business-status-panel]')
                 heading = status.locator('.v03-business-status-head>b').bounding_box()
-                state = status.locator('[data-v03-payment-state]').bounding_box()
+                state = status.locator('[data-v031-payment-mode]').bounding_box()
                 assert abs((heading['y'] + heading['height']/2) - (state['y'] + state['height']/2)) < 8
                 value_width = dialog.locator('[data-key="number"] .attr-value').bounding_box()['width']
                 assert value_width >= 125, value_width

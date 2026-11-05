@@ -43,8 +43,12 @@ def main():
     assert 'data-v03-flow-action' not in js
     assert 'flowState' not in js
     assert 'data-v031-payment-mode' in js
-    assert '恢复正常缴费周期' in js
-    assert 'payment-status-v03' in js
+    assert '缴费模式' in js and '周期缴费' in js and '指定缴费' in js
+    assert '按上次缴费时间和缴费周期计算' in js
+    assert '按下次缴费时间安排' in js
+    assert 'chen:service-editor-opened' in js
+    # The legacy restore API stays covered below; mode edits now save with attributes.
+    assert "attrFd.append('schedule_mode', scheduleMode)" in (ROOT / 'app/static/v03.js').read_text()
 
     assert '已通知客户' in v031_js and '发起缴费' in v031_js
     assert 'window.ChenPaymentWorkflowRuntimeV031' in owner

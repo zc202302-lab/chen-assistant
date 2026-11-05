@@ -236,6 +236,8 @@ jobs:
           python tests/work_lists_contract.py
           python tests/payment_next_date_contract.py
           python tests/payment_next_date_acceptance.py
+          python tests/payment_modes_contract.py
+          python tests/payment_modes_acceptance.py
           python tests/work_sheet_contract.py
           python tests/work_sheet_acceptance.py
           python tests/work_lists_acceptance.py

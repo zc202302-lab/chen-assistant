@@ -10,7 +10,7 @@ from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
-from .payment_schedule import explicit_due, explicit_payment_date, readable_date, computed_next_date
+from .payment_schedule import inferred_schedule_mode, explicit_due, explicit_payment_date, readable_date, computed_next_date
 from .payment_v02 import (
     current_period,
     add_periods,
@@ -183,6 +183,8 @@ def _payment_snapshot_base_v0212(conn, customer_id: int, period: str | None = No
     runtime = _runtime_map(conn, [s['id'] for s in rows])
     # Keep the completed month's ledger visible for review and rollback, even
     # after renewal has advanced the reminder date. Future months remain gated.
+    from .payment_schedule import prepared_service_ids
+    prepared_ids = prepared_service_ids(conn, customer_id, period)
     paid_ids = set()
     run = conn.execute('SELECT id,paid_at FROM customer_payment_runs WHERE customer_id=? AND period=?', (customer_id, period)).fetchone()
     if run and run['paid_at']:
@@ -195,7 +197,7 @@ def _payment_snapshot_base_v0212(conn, customer_id: int, period: str | None = No
     total = 0.0
     due_count = 0
     for service in rows:
-        paid_visible = service['id'] in paid_ids and runtime[service['id']]['status'] == 'active' and service_active_in_period(service, period)
+        paid_visible = service['id'] in (paid_ids | prepared_ids) and runtime[service['id']]['status'] == 'active' and service_active_in_period(service, period)
         if not paid_visible and not _service_due(service, runtime[service['id']], period):
             continue
         due_count += 1
@@ -362,6 +364,7 @@ def service_runtime_v0212(service_id: int):
         'status': runtime['status'],
         'deferred_until_period': runtime['deferred_until_period'],
         'schedule_state': state,
+        'schedule_mode': inferred_schedule_mode(service),
         'business_visible_keys': visible,
     })
 

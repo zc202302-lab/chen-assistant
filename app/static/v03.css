@@ -679,3 +679,6 @@
 }
 
 .payment-export-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+
+/* Keep payment mode legible in the compact phone status strip. */
+@media(max-width:700px){.v03-payment-state-box [data-payment-mode-help]{display:none}}

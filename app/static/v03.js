@@ -547,30 +547,35 @@
     return panel;
   };
 
+  let statusRequest = 0;
+  let businessStatusReady = false;
   const loadBusinessStatus = async () => {
     const sid = String(businessForm?.elements.service_id?.value || '').trim();
     if (!sid || !businessDialog?.open) return;
     const panel = ensureBusinessStatusPanel();
+    const request = ++statusRequest;
+    businessStatusReady = false;
+    const enabled = panel.querySelector('[data-v03-business-enabled]');
+    enabled.disabled = true;
     try {
       const [runtime, attrs] = await Promise.all([
         fetchJson(`/services/${sid}/runtime-v0212`),
         fetchJson(`/services/${sid}/attributes-v028`),
       ]);
-      if (sid !== String(businessForm.elements.service_id?.value || '').trim()) return;
+      if (request !== statusRequest || sid !== String(businessForm.elements.service_id?.value || '').trim()) return;
       panel.querySelector('[data-v03-business-enabled]').value = runtime.status || 'active';
       panel.querySelector('[data-v03-payment-state]').textContent = runtime.schedule_state || '—';
       editorMeta = new Map((attrs.template || []).map(x => [String(x.key), x]));
+      businessStatusReady = true;
     } catch (err) {
       toast(err.message || '业务状态读取失败');
+    } finally {
+      if (request === statusRequest) enabled.disabled = !businessStatusReady;
     }
   };
 
   ensureBusinessStatusPanel();
-  if (businessDialog) {
-    new MutationObserver(() => {
-      if (businessDialog.open) requestAnimationFrame(loadBusinessStatus);
-    }).observe(businessDialog, {attributes: true, attributeFilter: ['open']});
-  }
+  root.addEventListener('chen:service-editor-opened', loadBusinessStatus);
 
   const updateBusinessRows = rows => {
     Object.entries(rows || {}).forEach(([sid, payload]) => {
@@ -612,6 +617,7 @@
     e.preventDefault();
     e.stopImmediatePropagation();
     if (businessSaving) return;
+    if (!businessStatusReady) return toast('业务状态尚未读取完成，请稍后保存；读取失败时请重新打开业务');
     const sid = String(businessForm.elements.service_id?.value || '').trim();
     if (!sid || !attrList) return toast('未识别到当前业务');
     const template = [];
@@ -640,6 +646,8 @@
       attrFd.append('csrf', businessForm.elements.csrf.value);
       attrFd.append('template_json', JSON.stringify(template));
       attrFd.append('values_json', JSON.stringify(values));
+      const scheduleMode = businessDialog.querySelector('[data-v031-payment-mode]')?.value;
+      if (scheduleMode) attrFd.append('schedule_mode', scheduleMode);
       const attrData = await postForm(`/services/${sid}/attributes-v028`, attrFd);
       editorMeta = new Map((attrData.template || []).map(x => [String(x.key), x]));
 
@@ -652,8 +660,8 @@
       submit.disabled = false;
       businessDialog.close();
       updateBusinessRows(statusData.rows || {});
-      root.dispatchEvent(new CustomEvent('chen:service-properties-updated', {detail:{rows:attrData.rows || {}}}));
       toast('业务已保存');
+      root.dispatchEvent(new CustomEvent('chen:service-properties-updated', {detail:{service_id:sid,rows:statusData.rows || {}}}));
     } catch (err) {
       toast(err.message || '业务保存失败');
     } finally {

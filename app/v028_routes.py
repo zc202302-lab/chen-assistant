@@ -12,7 +12,7 @@ from .templating import Jinja2Templates
 
 from . import config
 from .db import db, now_iso
-from .payment_schedule import explicit_payment_date, readable_date
+from .payment_schedule import explicit_payment_date, readable_date, inferred_schedule_mode, computed_next_date, MODES
 from .payment_v02 import current_period, service_active_in_period, service_is_due, effective_payment_rule, payment_snapshot, valid_invoice_group
 from .v025_routes import customer_or_404, service_or_404, promotion_or_404, _payment_run
 from .v026_routes import check_csrf, parse_date_text, date_text, month_text, promotion_bucket, derive_schedule
@@ -328,6 +328,7 @@ def service_attributes_v028(service_id: int):
     return JSONResponse({
         'ok': True,
         'service_id': service_id,
+        'schedule_mode': inferred_schedule_mode(service),
         'template': template,
         'values': {x['key']: x['raw'] for x in _service_attrs(full, template, custom)},
         'invoice_groups': [{'id': x['id'], 'name': x['name']} for x in groups],
@@ -341,6 +342,7 @@ def save_service_attributes_v028(
     csrf: str = Form(...),
     template_json: str = Form(...),
     values_json: str = Form(...),
+    schedule_mode: str = Form(''),
 ):
     check_csrf(request, csrf)
     try:
@@ -351,7 +353,9 @@ def save_service_attributes_v028(
     if not isinstance(requested, list) or not isinstance(values, dict) or len(requested) > 40:
         raise HTTPException(400, '属性模板数据无效')
 
-    with db() as conn:
+    if schedule_mode and schedule_mode not in MODES:
+        raise HTTPException(400, '缴费模式无效')
+    with db(immediate=True) as conn:
         old_service = service_or_404(conn, service_id)
         old_template = _template(conn)
         old_custom_keys = {x['key'] for x in old_template if str(x.get('key', '')).startswith('custom_')}
@@ -444,6 +448,12 @@ def save_service_attributes_v028(
             updates['next_payment_period'] = next_period
             updates['last_payment_date'] = last_iso
 
+        if schedule_mode:
+            updates['payment_schedule_mode'] = schedule_mode
+            if schedule_mode == 'periodic':
+                updates['next_payment_date'] = computed_next_date(last_iso, interval)
+            # Explicit mode selection replaces the editor's former deferral control.
+            conn.execute("UPDATE service_runtime_v0212 SET deferred_until_period='' WHERE service_id=?", (service_id,))
         if updates:
             fields = ','.join(f'{key}=?' for key in updates)
             conn.execute(f'UPDATE services SET {fields} WHERE id=?', (*updates.values(), service_id))

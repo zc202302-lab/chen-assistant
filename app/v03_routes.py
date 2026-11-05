@@ -239,7 +239,7 @@ def set_payment_run_v03(
     period = current_period()
     now = now_iso()
 
-    with db() as conn:
+    with db(immediate=True) as conn:
         customer_or_404(conn, customer_id)
         items, stats = core.payment_snapshot_v0212(conn, customer_id, period)
         run = _payment_run_v03(conn, customer_id, period, stats)
@@ -309,10 +309,15 @@ def set_payment_run_v03(
                     return JSONResponse({'ok': False, 'error': '请依次完成“金额核对”和“通知客户”'}, status_code=400)
 
                 conn.execute('DELETE FROM payment_run_service_snapshots_v03 WHERE run_id=?', (run_id,))
+                from .payment_schedule import date_preparation, clear_date_preparation, stored_schedule_mode, readable_date
+                plan = date_preparation(conn, customer_id, period, items)
+                if plan['remaining']:
+                    raise HTTPException(409, f"请先修改 {len(plan['remaining'])} 条指定缴费业务的下次缴费时间")
                 today_iso = date.today().isoformat()
                 for item in items:
                     service = item['row']
                     runtime = core._runtime_for(conn, int(service['id']))
+                    original = plan['originals'].get(int(service['id']), {})
                     conn.execute(
                         '''INSERT INTO payment_run_service_snapshots_v03
                            (run_id,service_id,last_payment_date,next_payment_period,deferred_until_period,next_payment_date)
@@ -320,20 +325,24 @@ def set_payment_run_v03(
                         (
                             run_id,
                             service['id'],
-                            (service['last_payment_date'] or '').strip(),
-                            (service['next_payment_period'] or '').strip(),
-                            (runtime.get('deferred_until_period') or '').strip(),
-                            service['next_payment_date'],
+                            original.get('last_payment_date', service['last_payment_date']) or '',
+                            original.get('next_payment_period', service['next_payment_period']) or '',
+                            original.get('deferred_until_period', runtime.get('deferred_until_period')) or '',
+                            original.get('next_payment_date', service['next_payment_date']),
                         ),
                     )
                     months = service_interval_months(service)
                     next_period = add_periods(period, months) if months and months > 1 else ''
+                    next_date = service['next_payment_date'] if stored_schedule_mode(service) == 'specified' else computed_next_date(today_iso, months)
+                    if stored_schedule_mode(service) == 'specified':
+                        next_period = readable_date(next_date).strftime('%Y-%m')
                     conn.execute(
                         'UPDATE services SET last_payment_date=?,next_payment_period=?,next_payment_date=? WHERE id=?',
-                        (today_iso, next_period, computed_next_date(today_iso, months), service['id']),
+                        (today_iso, next_period, next_date, service['id']),
                     )
                     core._save_runtime(conn, int(service['id']), deferred_until_period='')
 
+                clear_date_preparation(conn, customer_id, period)
                 conn.execute('UPDATE customer_payment_runs SET paid_at=?,updated_at=? WHERE id=?', (now, now, run_id))
                 conn.execute(
                     'UPDATE customers SET payment_period=?,notified=1,completed=1,updated_at=? WHERE id=?',

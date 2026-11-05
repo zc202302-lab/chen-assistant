@@ -111,25 +111,18 @@ def main():
             editor.wait_for(state='visible')
             payment_mode = editor.locator('[data-v031-payment-mode]')
             payment_mode.wait_for(state='visible')
-            # The select is inserted synchronously, then hydrated by /runtime-v0212.
-            expect(payment_mode).to_have_value('deferred', timeout=5000)
-            expect(payment_mode).to_be_enabled(timeout=5000)
-            assert '延期至' in payment_mode.locator('option[value="deferred"]').inner_text()
-
-            page.once('dialog', lambda d: d.accept())
-            with page.expect_response(
-                lambda r: f'/services/{deferred_sid}/payment-status-v03' in r.url and r.request.method == 'POST',
-                timeout=5000,
-            ) as response_info:
-                payment_mode.select_option('normal')
-            assert response_info.value.ok
-            expect(payment_mode).to_have_value('normal', timeout=5000)
-            expect(editor.locator('[data-v03-payment-state]')).to_contain_text('本月应缴', timeout=5000)
+            expect(payment_mode).to_have_value('periodic')
+            expect(payment_mode).to_be_enabled()
+            assert payment_mode.locator('option').all_text_contents() == ['周期缴费', '指定缴费']
+            # Selecting the cycle and saving restores an existing deferred business.
+            with page.expect_response(lambda r: r.url.endswith('/status-v03') and r.request.method == 'POST') as saved:
+                editor.locator('.attribute-dialog-actions button[type="submit"]').click()
+            assert saved.value.ok
+            expect(editor).not_to_be_visible()
             with db() as conn:
                 runtime = core._runtime_for(conn, deferred_sid)
                 assert runtime['deferred_until_period'] == '', runtime
 
-            editor.locator('[data-business-editor-close]').first.click()
             page.locator('[data-customer-tab="payment"]').click()
             page.wait_for_load_state('networkidle')
             assert page.locator(f'[data-payment-row][data-service-id="{normal_sid}"]').count() == 1
