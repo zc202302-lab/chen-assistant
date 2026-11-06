@@ -140,8 +140,17 @@ def main():
             extra_row = page.locator(f'[data-payment-row][data-service-id="{extra_sid}"]')
             review = page.locator('[data-v031-flow-action="review"]')
 
-            main_row.locator('.quick-amount').fill('125')
-            main_row.locator('.quick-amount').press('Enter')
+            main_amount = main_row.locator('.quick-amount')
+            next_amount = extra_row.locator('.quick-amount')
+            main_amount.click()
+            expect(page.locator('.workspace-cell-preview')).to_be_hidden()
+            next_amount.click()
+            expect(next_amount).to_be_focused()
+            expect(page.locator('.workspace-cell-preview')).to_be_hidden()
+            main_amount.click()
+            assert main_amount.evaluate('el => el.selectionStart === 0 && el.selectionEnd === el.value.length')
+            main_amount.fill('125')
+            main_amount.press('Enter')
             extra_row.locator('[data-review-toggle]').click()
             expect(review).to_have_attribute('aria-pressed', 'true', timeout=5000)
 
@@ -198,6 +207,7 @@ def main():
             expect(extra_business).to_be_visible()
 
             page.evaluate('window.__sameBusinessDocument = true')
+            target.locator('[data-attr-key="number"]').evaluate('cell => window.__originalBusinessNumber = cell')
             business_finder.locator('[data-v128-finder-close]').click()
             page.locator('[data-new-service]').click()
             editor = page.locator('#businessAttributeDialog')
@@ -211,6 +221,21 @@ def main():
             expect(page.locator('[data-business-row][data-find-values*="13700012345"]')).to_be_visible()
             expect(page.locator('#businessTotalCount')).to_have_text('3')
             assert page.evaluate('window.__sameBusinessDocument')
+            assert target.locator('[data-attr-key="number"]').evaluate(
+                'cell => cell === window.__originalBusinessNumber'
+            ), 'Adding a row replaced an existing interactive cell'
+            context.grant_permissions(['clipboard-read', 'clipboard-write'], origin='http://127.0.0.1:8144')
+            created_number = page.locator('[data-business-row][data-find-values*="13700012345"] [data-attr-key="number"]')
+            created_number.click()
+            page.wait_for_function("async () => (await navigator.clipboard.readText()).replace(/\\D/g, '') === '13700012345'")
+            created_number.dblclick(delay=120)
+            expect(editor).to_be_visible()
+            expect(editor.locator('[data-key="service_type"] .attr-value')).to_have_value('新开业务')
+            editor.locator('.attribute-dialog-actions [data-business-editor-close]').click()
+            target.locator('[data-attr-key="number"]').dblclick(delay=120)
+            expect(editor).to_be_visible()
+            expect(editor.locator('[name="service_id"]')).to_have_value(str(sid))
+            editor.locator('.attribute-dialog-actions [data-business-editor-close]').click()
 
             page.goto('http://127.0.0.1:8144/search?q=G-B', wait_until='networkidle')
             expect(page.locator('section.card').nth(0)).to_contain_text('实时联动-双业务')

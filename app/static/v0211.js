@@ -14,14 +14,14 @@
     preview.hidden = true;
     previewSource = null;
   };
-  const cellSelector = '[data-payment-business-cell], [data-payment-row] .quick-amount, [data-business-row] .business-attribute';
+  const cellSelector = '[data-payment-business-cell], [data-business-row] .business-attribute';
   window.addEventListener('click', e => {
     if (preview.contains(e.target)) return;
     const cell = e.target.closest?.(cellSelector);
     if (!cell || !root.contains(cell)) return closePreview();
     previewSource = cell;
     // Read live text so edits and AJAX row replacements cannot leave stale values.
-    preview.textContent = cell.matches('input') ? cell.value : (cell.querySelector('strong')?.textContent || '—');
+    preview.textContent = cell.querySelector('strong')?.textContent || '—';
     preview.hidden = false;
     const rect = cell.getBoundingClientRect();
     const margin = 12;
