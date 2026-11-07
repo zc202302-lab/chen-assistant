@@ -20,9 +20,12 @@
   }
   function el(tag, text, cls) { const node=document.createElement(tag); if(text !== undefined)node.textContent=text; if(cls)node.className=cls; return node; }
   function date(value) { return value ? new Date(value*1000).toLocaleString('zh-CN') : '尚未发送'; }
+  function phoneRemindersEnabled() { return state.preferences.all && state.preferences.mobile !== false; }
   function updateBadge(count) {
     if (badge) { badge.textContent=count ? String(count) : ''; badge.hidden=!count; }
-    if ('setAppBadge' in navigator) { (count ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(()=>{}); }
+    if (!phoneSurface || !('setAppBadge' in navigator)) return;
+    const phoneCount = phoneRemindersEnabled() ? count : 0;
+    (phoneCount ? navigator.setAppBadge(phoneCount) : navigator.clearAppBadge()).catch(()=>{});
   }
   function selectTab(tab) {
     if (!center) return;
@@ -34,13 +37,16 @@
     }
   }
   async function clearStaleNotifications() {
-    if (!reg || !state || typeof reg.getNotifications !== 'function') return;
+    if (!phoneSurface || !state) return;
     try {
+      const registration = reg || await navigator.serviceWorker?.getRegistration?.('/');
+      if (typeof registration?.getNotifications !== 'function') return;
       const active = new Set((state.active_notification_ids || []).map(id => String(id)));
-      const notifications = await reg.getNotifications();
+      const notifications = await registration.getNotifications();
+      const paused = !phoneRemindersEnabled();
       for (const notification of notifications) {
-        const match = /^chen-reminder-(\d+)$/.exec(notification.tag || '');
-        if (match && !active.has(match[1])) notification.close();
+        const match = /^chen-reminder(?:-(\d+))?$/.exec(notification.tag || '');
+        if (match && (paused || (match[1] && !active.has(match[1])))) notification.close();
       }
     } catch (_) { /* Platforms may not expose delivered notification management. */ }
   }
@@ -201,6 +207,8 @@
   })();
   if(center) {
     setInterval(()=>{if(!busy&&!document.hidden)refresh().catch(()=>{});},5000);
+  }
+  if(center || phoneSurface) {
     document.addEventListener('visibilitychange',()=>{if(!busy&&!document.hidden)refresh().catch(()=>{});});
   }
 })();

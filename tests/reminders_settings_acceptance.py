@@ -33,11 +33,13 @@ def main():
         'auth':b64(os.urandom(16)), 'p256dh':b64(key.public_key().public_bytes(serialization.Encoding.X962,serialization.PublicFormat.UncompressedPoint))}}
     stub='''(() => {
       const subscription=SUBSCRIPTION;
-      window.uiPush={sub:null,permissions:[],tests:[]};
+      window.uiPush={sub:null,permissions:[],tests:[],badge:0,notifications:[],closed:[]};
       const makeSub=()=>({endpoint:subscription.endpoint,options:{},toJSON:()=>subscription,unsubscribe:async()=>{window.uiPush.sub=null;localStorage.removeItem('ui-sub');return true;}});
       if(localStorage.getItem('ui-sub'))window.uiPush.sub=makeSub();
-      const reg={update:async()=>{},getNotifications:async()=>[],addEventListener:()=>{},pushManager:{
+      const reg={update:async()=>{},getNotifications:async()=>window.uiPush.notifications,addEventListener:()=>{},pushManager:{
         getSubscription:async()=>window.uiPush.sub,subscribe:async()=>{window.uiPush.sub=makeSub();localStorage.setItem('ui-sub','1');return window.uiPush.sub;}}};
+      navigator.setAppBadge=async count=>{document.documentElement.dataset.testAppBadge=count;};
+      navigator.clearAppBadge=async()=>{document.documentElement.dataset.testAppBadge=0;};
       Object.defineProperty(navigator,'standalone',{value:true});
       Object.defineProperty(navigator,'serviceWorker',{value:{register:async()=>reg,ready:Promise.resolve(reg),controller:null,addEventListener:()=>{}}});
       window.PushManager=class {};
@@ -131,8 +133,26 @@ def main():
                 total.uncheck();expect(peer.get_by_role('switch',name='通知总开关',exact=True)).not_to_be_checked(timeout=9000)
                 peer.get_by_role('switch',name='通知总开关',exact=True).check();expect(total).to_be_checked(timeout=9000)
                 phone=page.get_by_role('switch',name='手机接收提醒',exact=True)
+                def keep_unread(route):
+                    response=route.fetch()
+                    route.fulfill(response=response,json=response.json() | {'unread_count':1,'active_notification_ids':[123]})
+                page.route('**/api/reminders',keep_unread)
+                page.evaluate("""() => {
+                    document.documentElement.dataset.testAppBadge = 1;
+                    uiPush.notifications = ['chen-reminder-123','unrelated'].map(tag => ({
+                        tag, close: () => {
+                            uiPush.closed.push(tag);
+                            document.documentElement.dataset.testClosedNotification = tag;
+                        }
+                    }));
+                }""")
                 phone.uncheck();expect(peer.get_by_role('switch',name='手机接收提醒',exact=True)).not_to_be_checked(timeout=9000)
                 expect(total).to_be_checked()
+                expect(page.locator('html')).to_have_attribute('data-test-app-badge','0')
+                expect(page.locator('html')).to_have_attribute('data-test-closed-notification','chen-reminder-123')
+                assert 'unrelated' not in page.evaluate('uiPush.closed')
+                expect(page.locator('[data-reminder-badge]')).to_have_text('1')
+                page.unroute('**/api/reminders',keep_unread)
                 page.reload(wait_until='networkidle');page.locator('[data-reminder-tab=settings]').click()
                 expect(phone).not_to_be_checked()
                 with page.expect_response(lambda r:r.url.endswith('/api/reminders/preferences') and r.request.method=='POST'):
