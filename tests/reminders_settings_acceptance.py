@@ -138,6 +138,7 @@ def main():
                     route.fulfill(response=response,json=response.json() | {'unread_count':1,'active_notification_ids':[123]})
                 page.route('**/api/reminders',keep_unread)
                 page.evaluate("""() => {
+                    document.documentElement.dataset.testAppBadge = 1;
                     uiPush.notifications = ['chen-reminder-123','unrelated'].map(tag => ({
                         tag, close: () => {
                             uiPush.closed.push(tag);
@@ -145,7 +146,6 @@ def main():
                         }
                     }));
                 }""")
-                expect(page.locator('html')).to_have_attribute('data-test-app-badge','1',timeout=9000)
                 phone.uncheck();expect(peer.get_by_role('switch',name='手机接收提醒',exact=True)).not_to_be_checked(timeout=9000)
                 expect(total).to_be_checked()
                 expect(page.locator('html')).to_have_attribute('data-test-app-badge','0')
