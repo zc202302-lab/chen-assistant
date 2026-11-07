@@ -38,8 +38,8 @@ def main():
       if(localStorage.getItem('ui-sub'))window.uiPush.sub=makeSub();
       const reg={update:async()=>{},getNotifications:async()=>window.uiPush.notifications,addEventListener:()=>{},pushManager:{
         getSubscription:async()=>window.uiPush.sub,subscribe:async()=>{window.uiPush.sub=makeSub();localStorage.setItem('ui-sub','1');return window.uiPush.sub;}}};
-      navigator.setAppBadge=async count=>{uiPush.badge=count;};
-      navigator.clearAppBadge=async()=>{uiPush.badge=0;};
+      navigator.setAppBadge=async count=>{document.documentElement.dataset.testAppBadge=count;};
+      navigator.clearAppBadge=async()=>{document.documentElement.dataset.testAppBadge=0;};
       Object.defineProperty(navigator,'standalone',{value:true});
       Object.defineProperty(navigator,'serviceWorker',{value:{register:async()=>reg,ready:Promise.resolve(reg),controller:null,addEventListener:()=>{}}});
       window.PushManager=class {};
@@ -139,13 +139,17 @@ def main():
                 page.route('**/api/reminders',keep_unread)
                 page.evaluate("""() => {
                     uiPush.notifications = ['chen-reminder-123','unrelated'].map(tag => ({
-                        tag, close: () => uiPush.closed.push(tag)
+                        tag, close: () => {
+                            uiPush.closed.push(tag);
+                            document.documentElement.dataset.testClosedNotification = tag;
+                        }
                     }));
                 }""")
-                page.wait_for_function('uiPush.badge === 1')
+                expect(page.locator('html')).to_have_attribute('data-test-app-badge','1',timeout=9000)
                 phone.uncheck();expect(peer.get_by_role('switch',name='手机接收提醒',exact=True)).not_to_be_checked(timeout=9000)
                 expect(total).to_be_checked()
-                page.wait_for_function("uiPush.badge === 0 && uiPush.closed.includes('chen-reminder-123')")
+                expect(page.locator('html')).to_have_attribute('data-test-app-badge','0')
+                expect(page.locator('html')).to_have_attribute('data-test-closed-notification','chen-reminder-123')
                 assert 'unrelated' not in page.evaluate('uiPush.closed')
                 expect(page.locator('[data-reminder-badge]')).to_have_text('1')
                 page.unroute('**/api/reminders',keep_unread)
