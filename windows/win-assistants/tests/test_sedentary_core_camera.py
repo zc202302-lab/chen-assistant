@@ -92,5 +92,48 @@ class PresenceSettingsTests(unittest.TestCase):
         self.assertEqual(detector.presence_grace, 5)
 
 
+class DetectorModelTests(unittest.TestCase):
+    def test_real_models_load_from_chinese_frozen_path_with_stale_cv2_path(self):
+        try:
+            import cv2
+            import numpy as np
+        except ImportError:
+            self.skipTest("OpenCV is exercised by the Windows build")
+        import shutil
+        with tempfile.TemporaryDirectory(prefix="晨的助手 模型 ") as directory:
+            root = Path(directory)
+            models = root / "cv2" / "data"
+            shutil.copytree(cv2.data.haarcascades, models)
+            with patch("sedentary.camera.sys.frozen", True, create=True), \
+                 patch("sedentary.camera.sys._MEIPASS", str(root), create=True), \
+                 patch.object(cv2.data, "haarcascades", str(root / "missing")), \
+                 patch.object(cv2, "__file__", str(root / "stale" / "cv2.py")):
+                # Enforce that no model filename is passed to native OpenCV I/O.
+                constructor = cv2.CascadeClassifier
+                def memory_only(*args):
+                    self.assertFalse(args, "Native OpenCV must not open Unicode filenames")
+                    return constructor()
+                with patch.object(cv2, "CascadeClassifier", side_effect=memory_only):
+                    cascades, hog = PresenceDetector._load_detectors(cv2)
+                self.assertEqual(len(cascades), 5)
+                self.assertTrue(all(not classifier.empty() for _, classifier in cascades))
+                self.assertIsNone(PresenceDetector._detect_in_region(
+                    cv2, np.zeros((256, 256, 3), dtype=np.uint8), cascades, hog))
+
+    def test_missing_models_fail_closed_and_log_details(self):
+        try:
+            import cv2
+        except ImportError:
+            self.skipTest("OpenCV is exercised by the Windows build")
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.object(cv2.data, "haarcascades", directory), \
+             patch.object(cv2, "__file__", str(Path(directory) / "cv2.py")), \
+             patch("sedentary.camera.sys.frozen", False, create=True), \
+             patch("sedentary.camera._write_detector_error") as log:
+            cascades, _ = PresenceDetector._load_detectors(cv2)
+            self.assertEqual(cascades, [])
+            self.assertIn("haarcascade_frontalface_default.xml", log.call_args.args[0])
+
+
 if __name__ == "__main__":
     unittest.main()
