@@ -1,6 +1,8 @@
 import base64
 import hashlib
 import json
+import subprocess
+import sys
 import unittest
 import urllib.error
 import urllib.request
@@ -54,6 +56,35 @@ class FoxmailTests(unittest.TestCase):
         self.assertTrue(uri.startswith("mailto:pay%40example.com?"))
         self.assertIn("subject=", uri)
         self.assertIn("%3Cbr%3E", uri)
+
+    def test_clipboard_payload_without_runtime_codec_archive(self):
+        # A fresh process keeps the UTF-16 codec out of the registry cache.
+        script = r"""
+import codecs
+import sys
+from pathlib import Path
+from win_assistants.foxmail import _file_drop_payload
+
+class MissingRuntime:
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == 'encodings.utf_16_le':
+            raise FileNotFoundError(2, 'No such file or directory', 'base_library.zip')
+
+sys.meta_path.insert(0, MissingRuntime())
+path = Path('客户缴费.txt')
+try:
+    str(path).encode('utf-16-le')
+except FileNotFoundError:
+    pass
+else:
+    raise AssertionError('Missing runtime codec was not reproduced')
+
+payload = _file_drop_payload(path)
+assert payload[:20] == bytes([20]) + bytes(15) + bytes([1, 0, 0, 0])
+assert codecs.utf_16_le_decode(payload[20:])[0] == str(path) + '\0\0'
+"""
+        result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_http_bridge_health_compose_and_origin(self):
         received = []

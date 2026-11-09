@@ -394,7 +394,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": f"v{version}：优化勾选框为高清蓝色对勾，统一提醒设置白色卡片与按钮样式；保留客户端独立提醒规则及网页总开关。保留短信、久坐、Foxmail、批量Excel与可靠更新重启。",
+              "notes": f"v{version}：修复发起缴费时 TXT 附件剪贴板准备因临时运行库缺失而报错的问题。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
