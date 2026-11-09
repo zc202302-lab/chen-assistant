@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import codecs
 import ctypes
 import hashlib
 import json
@@ -197,6 +198,13 @@ def _wait_for_compose_window(before: set[int], subject: str, timeout: float = 10
     return False
 
 
+def _file_drop_payload(path: Path) -> bytes:
+    # Use the built-in encoder. A codec lookup can import encodings.utf_16_le
+    # from a onefile runtime archive that is no longer available.
+    encoded = codecs.utf_16_le_encode(str(path) + "\0\0")[0]
+    return struct.pack("<IiiII", 20, 0, 0, 0, 1) + encoded
+
+
 def _set_file_drop_clipboard(path: Path) -> bool:
     if sys.platform != "win32" or not path.is_file():
         return False
@@ -207,8 +215,7 @@ def _set_file_drop_clipboard(path: Path) -> bool:
     user32.SetClipboardData.restype = wintypes.HANDLE
     user32.GetClipboardData.argtypes = (wintypes.UINT,)
     user32.GetClipboardData.restype = wintypes.HANDLE
-    encoded = (str(path) + "\0\0").encode("utf-16-le")
-    payload = struct.pack("<IiiII", 20, 0, 0, 0, 1) + encoded
+    payload = _file_drop_payload(path)
     for _attempt in range(8):
         handle = None
         if not user32.OpenClipboard(None):

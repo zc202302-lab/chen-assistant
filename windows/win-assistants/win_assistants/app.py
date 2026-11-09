@@ -957,9 +957,9 @@ class WinAssistantsApp:
                 manifest = fetch_manifest()
                 has_update = newer_version_available(__version__, manifest)
             except Exception as exc:
-                def failed() -> None:
-                    self._finish_update_check("更新状态：检查失败")
-                    messagebox.showwarning("检查更新", f"无法检查 win-assistants 更新：{exc}")
+                def failed(error: str = str(exc)) -> None:
+                    self._finish_update_check(f"更新状态：检查失败 · {error}")
+                    messagebox.showwarning("检查更新", f"无法检查 win-assistants 更新：{error}")
                 self.root.after(0, failed)
                 return
 
@@ -1013,9 +1013,9 @@ class WinAssistantsApp:
             self.root.after(0, lambda: self._update_phase("校验完成，正在安装并重启…"))
             launch_replacement(staged, manifest)
         except Exception as exc:
-            def failed() -> None:
-                self._finish_update_check("更新状态：更新失败")
-                messagebox.showerror("更新失败", str(exc))
+            def failed(error: str = str(exc)) -> None:
+                self._finish_update_check(f"更新状态：更新失败 · {error}")
+                messagebox.showerror("更新失败", error)
             self.root.after(0, failed)
             return
         self.root.after(0, self._exit_for_update)
