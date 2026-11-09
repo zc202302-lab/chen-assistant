@@ -37,255 +37,49 @@ jobs:
           python -m unittest discover -s tests -v
 
   build-windows-exe:
-    runs-on: [self-hosted, linux, x64, chen-assistant]
+    runs-on: windows-2022
+    timeout-minutes: 15
     defaults:
       run:
+        shell: powershell
         working-directory: windows/win-assistants
-    env:
-      WINEDEBUG: -all
     steps:
       - uses: actions/checkout@v4
-      - name: Prepare portable Wine
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Windows build dependencies
         run: |
-          wine_root="${RUNNER_TEMP}/win-assistants-wine"
-          mkdir -p "${wine_root}/debs" "${wine_root}/root"
-          cd "${wine_root}/debs"
-          apt-get download \
-            xvfb xserver-common \
-            libgl1 libglx0 libglvnd0 libpixman-1-0 \
-            libxfont2 libfontenc1 libxau6 libxdmcp6 libxcb1 libxshmfence1 \
-            libx11-6 libxext6 libxkbfile1 x11-xkb-utils xkb-data
-          for package in ./*.deb; do
-            dpkg-deb --extract "${package}" "${wine_root}/root"
-          done
-          portable_lib="${wine_root}/root/usr/lib/x86_64-linux-gnu"
-          export LD_LIBRARY_PATH="${portable_lib}:${LD_LIBRARY_PATH:-}"
-          export XKB_BINDIR="${wine_root}/root/usr/bin"
-          export XKB_CONFIG_ROOT="${wine_root}/root/usr/share/X11/xkb"
-          export PATH="${wine_root}/root/usr/bin:${PATH}"
-
-          # Prefer system Xvfb when complete. On minimal self-hosted runners
-          # without root/sudo, use the downloaded portable copy. Ubuntu's Xvfb
-          # embeds /usr/bin/xkbcomp, so rewrite that fixed path to an equal-
-          # length writable path and expose the portable xkbcomp there.
-          if [ -x /usr/bin/Xvfb ] && [ -x /usr/bin/xkbcomp ]; then
-            xvfb_bin="/usr/bin/Xvfb"
-          else
-            xvfb_bin="${wine_root}/root/usr/bin/Xvfb"
-            portable_xkbcomp="${wine_root}/root/usr/bin/xkbcomp"
-            test -x "${xvfb_bin}"
-            test -x "${portable_xkbcomp}"
-            mkdir -p /tmp/bin
-            ln -sf "${portable_xkbcomp}" /tmp/bin/xkbcomp
-
-            # Some Ubuntu Xvfb builds store "/usr/bin" and "xkbcomp"
-            # separately instead of one contiguous "/usr/bin/xkbcomp" string.
-            # Rewrite only Xvfb's equal-length executable directory when that
-            # split representation is detected.
-            python3 - "${xvfb_bin}" <<'PY'
-          from pathlib import Path
-          import sys
-
-          target = Path(sys.argv[1])
-          data = target.read_bytes()
-          exact = b"/usr/bin/xkbcomp"
-          old_dir = b"/usr/bin"
-          new_dir = b"/tmp/bin"
-          if exact in data:
-              target.write_bytes(data.replace(exact, b"/tmp/bin/xkbcomp"))
-              print(f"patched exact Xvfb xkbcomp path: {target}")
-          elif b"xkbcomp" in data and old_dir in data:
-              target.write_bytes(data.replace(old_dir, new_dir))
-              print(f"patched split Xvfb executable directory: {target}")
-          else:
-              print(f"Xvfb has no patchable xkbcomp path marker: {target}")
-          PY
-
-            # Ubuntu Xvfb may invoke /usr/bin/xkbcomp through an internal helper.
-            # Prefer satisfying that exact system path when this self-hosted runner
-            # permits it; fall back to patching extracted X11 binaries only when
-            # the runner is intentionally unprivileged.
-            if [ ! -x /usr/bin/xkbcomp ]; then
-              if [ "$(id -u)" -eq 0 ]; then
-                ln -sf "${portable_xkbcomp}" /usr/bin/xkbcomp
-              elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-                sudo ln -sf "${portable_xkbcomp}" /usr/bin/xkbcomp
-              fi
-            fi
-
-            if [ -x /usr/bin/xkbcomp ]; then
-              echo "Xvfb system xkbcomp path ready: /usr/bin/xkbcomp"
-            else
-              mapfile -t xkb_path_files < <(
-                grep -RlaF '/usr/bin/xkbcomp' \
-                  "${wine_root}/root/usr/bin" "${wine_root}/root/usr/lib" 2>/dev/null || true
-              )
-              for target in "${xkb_path_files[@]}"; do
-                python3 - "${target}" <<'PY'
-          from pathlib import Path
-          import sys
-
-          target = Path(sys.argv[1])
-          data = target.read_bytes()
-          old = b"/usr/bin/xkbcomp"
-          new = b"/tmp/bin/xkbcomp"
-          if len(old) != len(new):
-              raise SystemExit("replacement path length mismatch")
-          if old in data:
-              target.write_bytes(data.replace(old, new))
-              print(f"patched xkbcomp path: {target}")
-          PY
-              done
-            fi
-          fi
-
-          echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> "${GITHUB_ENV}"
-          echo "XKB_BINDIR=${XKB_BINDIR}" >> "${GITHUB_ENV}"
-          echo "XKB_CONFIG_ROOT=${XKB_CONFIG_ROOT}" >> "${GITHUB_ENV}"
-          echo "PATH=${PATH}" >> "${GITHUB_ENV}"
-          wine_archive="${wine_root}/wine-11.18-staging-tkg-amd64-wow64.tar.xz"
-          curl --fail --location --retry 3 --output "${wine_archive}" \
-            "https://github.com/Kron4ek/Wine-Builds/releases/download/11.18/wine-11.18-staging-tkg-amd64-wow64.tar.xz"
-          echo "a903e2c6f555ee897e764b3525f1163c8ca129fd257933ea570d4070bf47e1c3  ${wine_archive}" \
-            | sha256sum --check
-          tar -xJf "${wine_archive}" -C "${wine_root}/root"
-          wine_bin="$(find "${wine_root}/root" -path '*/bin/wine' -type f -print -quit)"
-          wineserver_bin="$(find "${wine_root}/root" -path '*/bin/wineserver' -type f -print -quit)"
-          wineboot_bin="$(find "${wine_root}/root" -path '*/bin/wineboot' -print -quit)"
-          wine_prefix="${RUNNER_TEMP}/win-assistants-wine-prefix"
-          echo "Portable Wine paths:"
-          echo "  wine=${wine_bin}"
-          echo "  wineserver=${wineserver_bin}"
-          echo "  wineboot=${wineboot_bin}"
-          echo "  xvfb=${xvfb_bin}"
-          test -x "${wine_bin}"
-          test -x "${wineserver_bin}"
-          test -x "${wineboot_bin}"
-          test -x "${xvfb_bin}"
-          ldd "${wine_bin}" || true
-          ldd "${wineboot_bin}" || true
-          ldd "${xvfb_bin}" || true
-          "${wine_bin}" --version
-          echo "WINE_BIN=${wine_bin}" >> "${GITHUB_ENV}"
-          echo "WINESERVER=${wineserver_bin}" >> "${GITHUB_ENV}"
-          echo "WINEARCH=win64" >> "${GITHUB_ENV}"
-          echo 'WINEDLLOVERRIDES=winemenubuilder.exe=d;mscoree,mshtml=' >> "${GITHUB_ENV}"
-          echo "WINEPREFIX=${wine_prefix}" >> "${GITHUB_ENV}"
-          "${xvfb_bin}" :99 -screen 0 1024x768x24 -nolisten tcp \
-            > "${RUNNER_TEMP}/win-assistants-xvfb.log" 2>&1 &
-          echo "DISPLAY=:99" >> "${GITHUB_ENV}"
-          for attempt in {1..20}; do
-            test -S /tmp/.X11-unix/X99 && break
-            sleep 0.25
-          done
-          if ! test -S /tmp/.X11-unix/X99; then
-            echo "Xvfb failed to start:" >&2
-            cat "${RUNNER_TEMP}/win-assistants-xvfb.log" >&2 || true
-            exit 1
-          fi
-          export DISPLAY=:99
-          export WINEPREFIX="${wine_prefix}"
-          export WINEARCH=win64
-          export WINESERVER="${wineserver_bin}"
-          export WINEDLLOVERRIDES='winemenubuilder.exe=d;mscoree,mshtml='
-          if ! timeout 180s "${wineboot_bin}" --init; then
-            echo "wineboot initialization failed on this runner" >&2
-            exit 1
-          fi
-          timeout 30s "${wineserver_bin}" -w || true
-      - name: Prepare full Windows Python with Tcl/Tk
+          python -m pip install -r requirements.txt
+          if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed" }
+      - name: Test with native Windows Python
         run: |
-          python_installer="${RUNNER_TEMP}/python-3.12.10-amd64.exe"
-          curl --fail --location --retry 3 \
-            --output "${python_installer}" \
-            "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe"
-          timeout 300s "$WINE_BIN" "${python_installer}" /quiet \
-            InstallAllUsers=0 \
-            TargetDir=C:\\win-assistants-python \
-            Include_launcher=0 Include_test=0 Include_doc=0 Include_debug=0 Include_symbols=0 \
-            Include_pip=0 Include_tcltk=1 PrependPath=0 Shortcuts=0
-          timeout 30s "$WINESERVER" -w || true
-
-          windows_python="${WINEPREFIX}/drive_c/win-assistants-python"
-          test -f "${windows_python}/python.exe"
-          test -f "${windows_python}/Lib/tkinter/__init__.py"
-          test -d "${windows_python}/tcl/tk8.6"
-
-          windows_wheels="${RUNNER_TEMP}/win-assistants-wheels"
-          mkdir -p "${windows_python}/Lib/site-packages" "${windows_wheels}"
-
-          if python3 -m pip --version >/dev/null 2>&1; then
-            host_pip=(python3 -m pip)
-          else
-            pip_zipapp="${RUNNER_TEMP}/pip.pyz"
-            curl --fail --location --retry 3 --output "${pip_zipapp}" \
-              "https://bootstrap.pypa.io/pip/pip.pyz"
-            python3 "${pip_zipapp}" --version
-            host_pip=(python3 "${pip_zipapp}")
-          fi
-
-          "${host_pip[@]}" download --disable-pip-version-check --only-binary=:all: \
-            --platform win_amd64 --python-version 312 --implementation cp --abi cp312 \
-            --dest "${windows_wheels}" -r requirements.txt \
-            "pefile>=2022.5.30" "pywin32-ctypes>=0.2.1"
-          for wheel in "${windows_wheels}"/*.whl; do
-            python3 -m zipfile -e "${wheel}" "${windows_python}/Lib/site-packages"
-          done
-          cp -R win_assistants "${windows_python}/win_assistants"
-          cp -R sedentary "${windows_python}/sedentary"
-
-          echo "WINDOWS_PYTHON=${windows_python}/python.exe" >> "${GITHUB_ENV}"
-          echo "WINDOWS_WHEELS=${windows_wheels}" >> "${GITHUB_ENV}"
-          "$WINE_BIN" --version
-          timeout 120s "$WINE_BIN" "${windows_python}/python.exe" --version
-          timeout 120s "$WINE_BIN" "${windows_python}/python.exe" -c \
-            "import tkinter as tk; root=tk.Tk(); root.withdraw(); root.update_idletasks(); root.destroy(); print('Tk runtime ready')"
-      - name: Verify Windows build dependencies
-        run: >-
-          timeout 120s "$WINE_BIN" "$WINDOWS_PYTHON" -c
-          "import cv2, PIL, pystray; from win32ctypes.pywin32 import pywintypes, win32api;
-          import PyInstaller; print('Windows build dependencies ready')"
-      - name: Test with Windows Python
-        run: |
-          "$WINE_BIN" "$WINDOWS_PYTHON" -m compileall -q main.py win_assistants sedentary tests
-          "$WINE_BIN" "$WINDOWS_PYTHON" -m unittest discover -s tests -v
+          python -m compileall -q main.py win_assistants sedentary tests
+          if ($LASTEXITCODE -ne 0) { throw "Compilation failed" }
+          python -m unittest discover -s tests -v
+          if ($LASTEXITCODE -ne 0) { throw "Windows source tests failed" }
+          python -c "import tkinter as tk; root=tk.Tk(); root.withdraw(); root.update_idletasks(); root.destroy()"
+          if ($LASTEXITCODE -ne 0) { throw "Tk runtime validation failed" }
       - name: Build Windows executable
         run: |
-          set +e
-          "$WINE_BIN" "$WINDOWS_PYTHON" -m PyInstaller --noconfirm --clean --onefile --windowed \
-            --name win-assistants --collect-submodules pystray --collect-data cv2 \
-            --hidden-import PIL.Image --hidden-import PIL.ImageDraw main.py
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ]; then
-            if [ -s dist/win-assistants.exe ] && python3 -c 'from pathlib import Path; p=Path("dist/win-assistants.exe"); raise SystemExit(0 if p.read_bytes()[:2] == b"MZ" else 1)'
-            then
-              echo "PyInstaller/Wine exited with status=$status after producing a complete-looking PE; continuing to mandatory smoke + PE verification."
-            else
-              echo "PyInstaller failed before a usable EXE was produced (status=$status)." >&2
-              exit "$status"
-            fi
-          fi
-      - name: Smoke test bundled Python startup
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name win-assistants --collect-submodules pystray --collect-data cv2 --hidden-import PIL.Image --hidden-import PIL.ImageDraw main.py
+          if ($LASTEXITCODE -ne 0) { throw "EXE build failed" }
+      - name: Smoke test bundled models and Python startup
         run: |
-          marker="$RUNNER_TEMP/win-assistants-smoke-ready.txt"
-          rm -f "$marker"
-          set +e
-          timeout 90s "$WINE_BIN" dist/win-assistants.exe --smoke-test "$marker"
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ] || [ ! -f "$marker" ] || [ "$(cat "$marker")" != ready ]; then
-            echo "Frozen EXE did not load Python and bundled modules (status=$status)." >&2
-            timeout 30s "$WINESERVER" -k || true
-            exit 1
-          fi
-          timeout 30s "$WINESERVER" -k || true
+          $marker = Join-Path $env:RUNNER_TEMP 'models-startup-ready.txt'
+          $process = Start-Process -FilePath 'dist/win-assistants.exe' -ArgumentList @('--smoke-test', ('"' + $marker + '"')) -PassThru
+          if (-not $process.WaitForExit(120000)) {
+            Stop-Process -Id $process.Id -Force
+            throw "Bundled model startup timed out"
+          }
+          if ($process.ExitCode -ne 0 -or -not (Test-Path $marker)) { throw "Bundled models failed startup" }
+          if ((Get-Content $marker -Raw) -ne 'ready') { throw "Invalid startup marker" }
       - name: Verify PE executable
         run: |
-          test -s dist/win-assistants.exe
-          file dist/win-assistants.exe | tee dist/file-type.txt
-          grep -q "PE32" dist/file-type.txt
-          sha256sum dist/win-assistants.exe | tee dist/win-assistants.exe.sha256
+          python -c "from pathlib import Path; p=Path('dist/win-assistants.exe'); assert p.read_bytes()[:2] == b'MZ'"
+          if ($LASTEXITCODE -ne 0) { throw "Invalid Windows executable" }
+          $digest = (Get-FileHash dist/win-assistants.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$digest  win-assistants.exe" | Set-Content dist/win-assistants.exe.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: win-assistants-windows
@@ -394,7 +188,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": f"v{version}：修复发起缴费时 TXT 附件剪贴板准备因临时运行库缺失而报错的问题。",
+              "notes": f"v{version}：修复久坐检测模型加载，兼容中文路径，并增加全部模型的打包启动校验。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
