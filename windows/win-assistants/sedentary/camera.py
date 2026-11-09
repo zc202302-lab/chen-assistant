@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import threading
 import time
 from dataclasses import dataclass
@@ -249,7 +250,12 @@ class PresenceDetector:
 
     @staticmethod
     def _load_detectors(cv2):
-        cascade_dir = getattr(cv2.data, "haarcascades", "")
+        # cv2.data may retain the build-machine path in a frozen distribution.
+        # Native OpenCV file I/O also cannot reliably open Chinese Windows paths.
+        directories = [Path(getattr(cv2.data, "haarcascades", ""))]
+        directories.append(Path(cv2.__file__).resolve().parent / "data")
+        if getattr(sys, "frozen", False):
+            directories.insert(0, Path(sys._MEIPASS) / "cv2" / "data")
         names = [
             ("正脸", "haarcascade_frontalface_default.xml"),
             ("正脸", "haarcascade_frontalface_alt2.xml"),
@@ -258,13 +264,28 @@ class PresenceDetector:
             ("全身", "haarcascade_fullbody.xml"),
         ]
         cascades = []
+        errors = []
         for label, filename in names:
-            try:
-                classifier = cv2.CascadeClassifier(str(Path(cascade_dir) / filename))
-                if not classifier.empty():
+            for directory in dict.fromkeys(directories):
+                path = directory / filename
+                storage = None
+                try:
+                    # Python uses Unicode-aware Windows file APIs; OpenCV only
+                    # receives XML content, never a filesystem path.
+                    xml = path.read_text(encoding="utf-8")
+                    storage = cv2.FileStorage(xml, cv2.FILE_STORAGE_READ | cv2.FILE_STORAGE_MEMORY)
+                    classifier = cv2.CascadeClassifier()
+                    if not classifier.read(storage.getFirstTopLevelNode()) or classifier.empty():
+                        raise RuntimeError("模型内容无效")
                     cascades.append((label, classifier))
-            except Exception:
-                continue
+                    break
+                except Exception as exc:
+                    errors.append(f"{path}: {type(exc).__name__}: {exc}")
+                finally:
+                    if storage is not None:
+                        storage.release()
+        if len(cascades) != len(names):
+            _write_detector_error("模型加载不完整：" + "\n".join(errors))
 
         hog = cv2.HOGDescriptor()
         hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())

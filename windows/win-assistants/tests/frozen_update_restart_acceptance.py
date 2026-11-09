@@ -98,11 +98,32 @@ def run_case(binary: bytes, directory: Path, rollback: bool) -> None:
                 kill_tree(int(value))
 
 
+def verify_models_in_unicode_runtime(binary: bytes, directory: Path) -> None:
+    directory.mkdir(parents=True)
+    executable = directory / "win-assistants.exe"
+    executable.write_bytes(binary)
+    marker = directory / "models-ready.txt"
+    runtime_temp = directory / "中文临时目录"
+    runtime_temp.mkdir()
+    env = os.environ.copy()
+    env.update(TEMP=str(runtime_temp), TMP=str(runtime_temp),
+               PYINSTALLER_RESET_ENVIRONMENT="1")
+    process = subprocess.Popen([str(executable), "--smoke-test", str(marker)], env=env)
+    try:
+        assert process.wait(timeout=120) == 0, "Frozen model validation failed"
+        assert marker.read_text(encoding="ascii") == "ready"
+        print("MODELS VERIFIED: all five native classifiers loaded under Chinese TEMP", flush=True)
+    finally:
+        if process.poll() is None:
+            kill_tree(process.pid)
+
+
 if __name__ == "__main__":
     if sys.platform != "win32":
         raise SystemExit("This acceptance requires real Windows")
     binary = Path(sys.argv[1]).read_bytes()
     with tempfile.TemporaryDirectory(prefix="win-update-") as temp:
         root = Path(temp) / "更新 ' 路径"
+        verify_models_in_unicode_runtime(binary, root / "models")
         run_case(binary, root / "success", False)
         run_case(binary, root / "rollback", True)

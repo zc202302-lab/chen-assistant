@@ -19,6 +19,14 @@ def main() -> None:
         from win_assistants import app
         from sedentary import ui
         assert tkinter and app and ui
+        import cv2
+        import numpy as np
+        from sedentary.camera import PresenceDetector
+        cascades, hog = PresenceDetector._load_detectors(cv2)
+        if len(cascades) != 5:
+            raise RuntimeError("Packaged OpenCV detection models are missing or unreadable")
+        # Exercise native classifiers as well as parsing their XML.
+        PresenceDetector._detect_in_region(cv2, np.zeros((256, 256, 3), dtype=np.uint8), cascades, hog)
         Path(sys.argv[index]).write_text("ready", encoding="ascii")
         return
 
