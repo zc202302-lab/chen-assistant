@@ -584,6 +584,14 @@
     "qualname": "information_archive_v160"
   },
   {
+    "path": "/number-submit/assets/{asset_name}",
+    "methods": [
+      "GET"
+    ],
+    "source": "v162_number_inbox.py",
+    "qualname": "public_number_history_asset"
+  },
+  {
     "path": "/number-submit/{token}",
     "methods": [
       "GET"

@@ -114,6 +114,14 @@ def main():
                 conn.execute("INSERT INTO number_inbox(number,normalized_number,status,submitted_at,completed_at,note) VALUES(?,?,'done',?,?,?)",
                              ('12345678901234567890','12345678901234567890',now,now,'private-history-note'))
             public = browser.new_context(viewport={'width':390,'height':844}, permissions=['clipboard-read','clipboard-write'])
+            # Model the production collection gateway: only its two old static
+            # assets and /number-submit/* are reachable on this dedicated host.
+            def collection_assets(route):
+                if route.request.url.split('?')[0].endswith(('/static/number-inbox-v162.css','/static/number-submit-v162.js')):
+                    route.continue_()
+                else:
+                    route.fulfill(status=404,body='Not Found')
+            public.route('**/static/**', collection_assets)
             public_page = public.new_page()
             for width,height in [(1440,900),(390,844),(320,760)]:
                 public_page.set_viewport_size({'width':width,'height':height})

@@ -7,7 +7,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Form, File, UploadFile, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, FileResponse
 from .templating import Jinja2Templates
 
 from . import config
@@ -141,6 +141,21 @@ def _recorded_items(conn):
         "ORDER BY completed_at DESC,id DESC"
     ).fetchall()
     return [dict(row, completed_display=_display_time(row['completed_at'])) for row in rows]
+
+
+@router.get('/number-submit/assets/{asset_name}')
+def public_number_history_asset(asset_name: str):
+    # The collection host only proxies /number-submit/* and two legacy static
+    # files. Keep new assets inside that boundary without opening other files.
+    assets = {
+        'history.css': ('number-public-history.css', 'text/css'),
+        'history.js': ('number-public-history.js', 'text/javascript'),
+    }
+    if asset_name not in assets:
+        raise HTTPException(404)
+    filename, media_type = assets[asset_name]
+    return FileResponse(config.ROOT / 'app' / 'static' / filename,
+                        media_type=media_type, headers={'Cache-Control': 'no-store'})
 
 
 @router.get('/number-submit/{token}', response_class=HTMLResponse)
