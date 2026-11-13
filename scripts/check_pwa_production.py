@@ -22,7 +22,8 @@ def verify_collection_boundary():
     # Deliberately omit the invitation: no numbers are submitted or listed.
     checks = [('/', None, 404), ('/login', None, 404),
               ('/number-submit/mini/submit', b'{}', 401),
-              ('/number-submit/mini/history', None, 401)]
+              ('/number-submit/mini/history', None, 401),
+              ('/number-submit/invalid-invite/history', None, 404)]
     for path, body, expected in checks:
         request = Request(COLLECTION_BASE + path, data=body,
                           headers={'Content-Type': 'application/json'})
@@ -72,7 +73,7 @@ def verify():
         _, _, raw = fetch('/' + path.removeprefix('app/'))
         if hashlib.sha256(raw.strip()).digest() != hashlib.sha256((ROOT / path).read_bytes().strip()).digest():
             raise RuntimeError(f'Online property-sync asset differs from validated source: {path}')
-    for path in ['app/static/navigation-transitions.css','app/static/navigation-transitions.js','app/static/service-promotions.js','app/static/v028.css','app/static/home-shortcuts.js','app/static/home-shortcuts.css','app/static/global-back.css','app/static/global-back.js','app/static/work-entry-layout.js','app/static/work-entry-layout.css','app/static/responsive-polish-v161.css','app/static/app.js','app/static/v028.js','app/static/live-refresh-modules-v15.js','app/static/quick-search-v15.js','app/static/quick-search-v15.css','app/static/work-sheet.js','app/static/work-sheet.css','app/static/work-architecture-v14.css','app/static/work-lists.css','app/static/work-todos.js','app/static/sw.js','app/static/reminders.js','app/static/reminders.css','app/static/pwa-experience.js','app/static/pwa-experience.css','app/static/number-inbox-v162.css','app/static/number-inbox-v162.js','app/static/number-inbox-batch.css']:
+    for path in ['app/static/navigation-transitions.css','app/static/navigation-transitions.js','app/static/service-promotions.js','app/static/v028.css','app/static/home-shortcuts.js','app/static/home-shortcuts.css','app/static/global-back.css','app/static/global-back.js','app/static/work-entry-layout.js','app/static/work-entry-layout.css','app/static/responsive-polish-v161.css','app/static/app.js','app/static/v028.js','app/static/live-refresh-modules-v15.js','app/static/quick-search-v15.js','app/static/quick-search-v15.css','app/static/work-sheet.js','app/static/work-sheet.css','app/static/work-architecture-v14.css','app/static/work-lists.css','app/static/work-todos.js','app/static/sw.js','app/static/reminders.js','app/static/reminders.css','app/static/pwa-experience.js','app/static/pwa-experience.css','app/static/number-inbox-v162.css','app/static/number-inbox-v162.js','app/static/number-inbox-batch.css', 'app/static/number-public-history.css', 'app/static/number-public-history.js']:
         url = '/sw.js' if path.endswith('/sw.js') else '/' + path.removeprefix('app/')
         _, headers, raw = fetch(url)
         local = (ROOT / path).read_bytes()

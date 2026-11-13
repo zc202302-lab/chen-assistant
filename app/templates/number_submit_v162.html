@@ -27,7 +27,10 @@
         <button id="add-number" class="number-add-button" type="button" aria-label="增加下一条号码">＋</button>
         <button type="submit">提交号码</button>
       </form>
-      <a class="number-public-link" href="/number-submit/{{ token }}/pending">查看未加号码</a>
+      <div class="number-public-actions">
+        <a class="number-public-link" href="/number-submit/{{ token }}/pending">查看未加号码</a>
+        <a class="number-public-link" href="/number-submit/{{ token }}/history">查看历史号码</a>
+      </div>
     </section>
   </main>
   <script src="/static/number-submit-v162.js?v=1622"></script>

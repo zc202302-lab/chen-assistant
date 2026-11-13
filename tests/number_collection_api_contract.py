@@ -105,6 +105,15 @@ def main():
             expected = [{key: row[key] for key in ('number', 'completed_display')} for row in _recorded_items(conn)]
             assert not conn.execute("SELECT 1 FROM number_inbox WHERE number IN ('13999990000','13999990001')").fetchone()
         assert recorded == expected
+        import re
+        start = client.get(f'/number-submit/{invite}')
+        assert f'href="/number-submit/{invite}/history"' in start.text
+        page = client.get(f'/number-submit/{invite}/history', headers={'Host': 'jituan.zbassistant.site'})
+        assert page.status_code == 200 and 'no-store' in page.headers['cache-control']
+        assert re.findall(r'data-history-copy="([^"]+)"', page.text) == [row['number'] for row in recorded]
+        assert '11-13 15:30' in page.text and '已录号码保留5天' in page.text
+        assert 'private-note' not in page.text and 'private-submitter' not in page.text
+        assert client.get('/number-submit/invalid-invite/history').status_code == 404
     assert '13900000000' not in history.text, 'pending numbers must not appear in history'
 
     before = count()
@@ -119,6 +128,7 @@ def main():
         conn.execute('UPDATE app_meta SET value=? WHERE key=?', ('r' * 32, TOKEN_META_KEY))
     assert client.get(pending_url, headers=headers).status_code == 401
     assert client.get(history_url, headers=headers).status_code == 401
+    assert client.get(f'/number-submit/{invite}/history').status_code == 404
     assert client.get('/number-submit/mini/entry').json()['invite'] == 'r' * 32
     assert client.post(url, headers=headers, json=valid).status_code == 401
     assert client.post(url, headers={'Authorization': 'Bearer ' + 'r' * 32}, json=valid).status_code == 200

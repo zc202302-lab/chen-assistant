@@ -600,6 +600,14 @@
     "name": "public_number_pending_page"
   },
   {
+    "path": "/number-submit/{token}/history",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.v162_number_inbox",
+    "name": "public_number_history_page"
+  },
+  {
     "path": "/number-submit/{token}",
     "methods": [
       "POST"

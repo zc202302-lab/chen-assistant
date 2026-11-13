@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>历史号码</title>
+  <link rel="stylesheet" href="/static/number-inbox-v162.css?v=1624">
+  <link rel="stylesheet" href="/static/number-public-history.css?v=1810">
+</head>
+<body class="number-submit-page">
+  <main class="number-submit-shell">
+    <section class="number-submit-card number-pending-card number-public-history">
+      <div class="number-submit-head"><h1>历史号码（{{ items|length }}）</h1><p>已录号码保留5天，过期自动清理。</p></div>
+      <nav class="number-public-actions" aria-label="历史号码操作">
+        <a class="number-public-link" href="/number-submit/{{ token }}">继续填写号码</a>
+        <a class="number-public-link" href="/number-submit/{{ token }}/history">刷新列表</a>
+      </nav>
+      <p class="history-copy-status" role="status" aria-live="polite"></p>
+      {% if items %}
+      <div class="history-list">
+        {% for item in items %}
+        <article class="history-row">
+          <div class="history-main">
+            <button class="history-number" type="button" data-history-copy="{{ item.number }}" title="点击复制号码">{{ item.number }}</button>
+            <div class="history-time">录入于 <time>{{ item.completed_display }}</time></div>
+          </div>
+          <span class="history-status">已录入</span>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}<p class="number-pending-empty">暂无已录号码</p>{% endif %}
+    </section>
+  </main>
+  <script src="/static/number-public-history.js?v=1810"></script>
+</body>
+</html>
