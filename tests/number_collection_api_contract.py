@@ -114,6 +114,14 @@ def main():
         assert '11-13 15:30' in page.text and '已录号码保留5天' in page.text
         assert 'private-note' not in page.text and 'private-submitter' not in page.text
         assert client.get('/number-submit/invalid-invite/history').status_code == 404
+        for asset, filename in [('history.css','number-public-history.css'),('history.js','number-public-history.js')]:
+            assert f'/number-submit/assets/{asset}?v=1811' in page.text
+            asset_response = client.get('/number-submit/assets/' + asset, headers={'Host':'jituan.zbassistant.site'})
+            assert asset_response.status_code == 200 and 'no-store' in asset_response.headers['cache-control']
+            from pathlib import Path
+            assert asset_response.content == (Path(__file__).resolve().parents[1] / 'app/static' / filename).read_bytes()
+        for name in ['app.js','config.py','history.json','unknown.css']:
+            assert client.get('/number-submit/assets/' + name).status_code == 404
     assert '13900000000' not in history.text, 'pending numbers must not appear in history'
 
     before = count()

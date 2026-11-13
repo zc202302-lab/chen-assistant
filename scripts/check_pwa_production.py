@@ -23,7 +23,8 @@ def verify_collection_boundary():
     checks = [('/', None, 404), ('/login', None, 404),
               ('/number-submit/mini/submit', b'{}', 401),
               ('/number-submit/mini/history', None, 401),
-              ('/number-submit/invalid-invite/history', None, 404)]
+              ('/number-submit/invalid-invite/history', None, 404),
+              ('/number-submit/assets/unknown.css', None, 404)]
     for path, body, expected in checks:
         request = Request(COLLECTION_BASE + path, data=body,
                           headers={'Content-Type': 'application/json'})
@@ -37,6 +38,16 @@ def verify_collection_boundary():
                 payload = json.loads(exc.read(4096))
                 if not isinstance(payload.get('detail'), str):
                     raise RuntimeError('Collection API did not return its authentication error')
+
+    # Verify collection-host assets on their actual gateway-compatible URLs.
+    for asset, filename in [('history.css','number-public-history.css'),('history.js','number-public-history.js')]:
+        with urlopen(COLLECTION_BASE + '/number-submit/assets/' + asset + '?v=1811', timeout=12) as response:
+            raw = response.read(128 * 1024)
+            if 'no-store' not in response.headers.get('Cache-Control', ''):
+                raise RuntimeError('Collection history asset is unexpectedly cached: ' + asset)
+        expected = (ROOT / 'app/static' / filename).read_bytes()
+        if raw != expected:
+            raise RuntimeError('Collection-host history asset differs: ' + asset)
 
 
 def expected_version():
