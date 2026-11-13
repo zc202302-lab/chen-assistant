@@ -20,7 +20,7 @@ from win_assistants.number_batch_bridge import NumberBatchBridge
 def main():
     init_db()
     with db() as conn:
-        ensure_number_inbox_schema(conn)
+        invite = ensure_number_inbox_schema(conn)
         desktop_token = ensure_desktop_token(conn)
         conn.execute("INSERT INTO number_inbox(number,normalized_number,status,submitted_at) VALUES('00123456789','00123456789','pending','2026-10-01')")
     session, _, _ = create_session()
@@ -106,6 +106,43 @@ def main():
                 conn.execute("UPDATE number_inbox SET status='done'")
             page.reload(wait_until='networkidle')
             expect(button).to_be_disabled()
+            # Public collection links need history too, without an admin session.
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc).isoformat()
+            with db() as conn:
+                conn.execute("UPDATE number_inbox SET completed_at=? WHERE status='done'", (now,))
+                conn.execute("INSERT INTO number_inbox(number,normalized_number,status,submitted_at,completed_at,note) VALUES(?,?,'done',?,?,?)",
+                             ('12345678901234567890','12345678901234567890',now,now,'private-history-note'))
+            public = browser.new_context(viewport={'width':390,'height':844}, permissions=['clipboard-read','clipboard-write'])
+            public_page = public.new_page()
+            for width,height in [(1440,900),(390,844),(320,760)]:
+                public_page.set_viewport_size({'width':width,'height':height})
+                public_page.goto(base + f'/number-submit/{invite}', wait_until='networkidle')
+                pending_link = public_page.get_by_role('link',name='查看未加号码',exact=True)
+                history_link = public_page.get_by_role('link',name='查看历史号码',exact=True)
+                left,right = pending_link.bounding_box(),history_link.bounding_box()
+                assert right['x'] > left['x'] and abs(right['y'] - left['y']) < 2
+                assert public_page.evaluate('document.documentElement.scrollWidth <= innerWidth + 2')
+                public_page.screenshot(path=str(previews / f'public-entry-{width}.png'),full_page=True)
+                history_link.click()
+                expect(public_page.get_by_role('heading',name='历史号码（3）',exact=True)).to_be_visible()
+                expect(public_page.locator('.history-number')).to_have_count(3)
+                expect(public_page.get_by_text('已录号码保留5天，过期自动清理。',exact=True)).to_be_visible()
+                assert 'private-history-note' not in public_page.content()
+                assert public_page.evaluate('document.documentElement.scrollWidth <= innerWidth + 2')
+                public_page.locator('.history-number').first.click()
+                expect(public_page.get_by_role('status')).to_have_text('号码已复制')
+                assert public_page.evaluate('navigator.clipboard.readText()') == '12345678901234567890'
+                public_page.get_by_role('link',name='刷新列表',exact=True).click()
+                expect(public_page.locator('.history-number')).to_have_count(3)
+                public_page.screenshot(path=str(previews / f'public-history-{width}.png'),full_page=True)
+                public_page.get_by_role('link',name='继续填写号码',exact=True).click()
+                expect(public_page.locator('input[name=number]')).to_have_count(1)
+            with db() as conn:
+                conn.execute("DELETE FROM number_inbox WHERE status='done'")
+            public_page.goto(base + f'/number-submit/{invite}/history',wait_until='networkidle')
+            expect(public_page.get_by_text('暂无已录号码',exact=True)).to_be_visible()
+            public.close()
             browser.close()
         print('number batch browser upload, mobile layout, signed writer, repeat click and local errors passed')
     finally:

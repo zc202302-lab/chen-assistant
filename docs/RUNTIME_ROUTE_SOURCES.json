@@ -600,6 +600,14 @@
     "qualname": "public_number_pending_page"
   },
   {
+    "path": "/number-submit/{token}/history",
+    "methods": [
+      "GET"
+    ],
+    "source": "v162_number_inbox.py",
+    "qualname": "public_number_history_page"
+  },
+  {
     "path": "/number-submit/{token}",
     "methods": [
       "POST"

@@ -165,6 +165,17 @@ def public_number_pending_page(request: Request, token: str, result: str = ''):
     )
 
 
+@router.get('/number-submit/{token}/history', response_class=HTMLResponse)
+def public_number_history_page(request: Request, token: str):
+    with db(immediate=True) as conn:
+        if not _token_matches(conn, token):
+            raise HTTPException(404)
+        items = _recorded_items(conn)
+    return templates.TemplateResponse(
+        'number_history.html', {'request': request, 'token': token, 'items': items},
+    )
+
+
 @router.post('/number-submit/{token}', response_class=HTMLResponse)
 def public_number_submit(
     request: Request,
