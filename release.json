@@ -1,0 +1,10 @@
+{
+  "version": "1.8.9",
+  "source_commit": "d3130d3a35373ba3fdff720dd5850c3b95826829",
+  "merged_commit": "6857132bfcac6f7417c3c7c1817c51fb00e45c39",
+  "filename": "chen-assistant-miniprogram-1.8.9.zip",
+  "size": 17213,
+  "sha256": "36af54ee7bc5fcf14b4d2875a8fd798bcbf2c64d77ae1b7379fd2e4875fb9886",
+  "wechat_platform_status": "not_uploaded_or_published_by_agent",
+  "required_backend_version": "1.8.9"
+}

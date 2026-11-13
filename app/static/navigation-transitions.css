@@ -1,2 +1,0 @@
-/* Critical opt-in: load before the parser-blocking navigation observer. */
-@view-transition{navigation:auto}
