@@ -264,6 +264,14 @@
     "qualname": "mini_program_pending"
   },
   {
+    "path": "/number-submit/mini/history",
+    "methods": [
+      "GET"
+    ],
+    "source": "number_collection_api.py",
+    "qualname": "mini_program_history"
+  },
+  {
     "path": "/number-submit/mini/submit",
     "methods": [
       "POST"

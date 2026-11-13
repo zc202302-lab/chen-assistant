@@ -264,6 +264,14 @@
     "name": "mini_program_pending"
   },
   {
+    "path": "/number-submit/mini/history",
+    "methods": [
+      "GET"
+    ],
+    "module": "app.number_collection_api",
+    "name": "mini_program_history"
+  },
+  {
     "path": "/number-submit/mini/submit",
     "methods": [
       "POST"

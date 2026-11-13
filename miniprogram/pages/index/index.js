@@ -49,6 +49,13 @@ Page({
       wx.navigateTo({url: '/pages/pending/pending'});
     }).catch(error => this.setData({error: error.message}));
   },
+  viewHistory() {
+    if (this.data.submitting) return;
+    return this.ensureEntry().then(invite => {
+      getApp().globalData.collectionInvite = invite;
+      wx.navigateTo({url: '/pages/history/history'});
+    }).catch(error => this.setData({error: error.message}));
+  },
   numberIndex(e) {
     return this.data.rows.findIndex(row => row.id === Number(e.currentTarget.dataset.id));
   },

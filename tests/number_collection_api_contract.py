@@ -78,6 +78,35 @@ def main():
     assert client.get('/work/number-inbox', headers=headers, follow_redirects=False).status_code == 303
     assert client.get('/number-submit/mini/submit').status_code in (404, 405)
 
+    # History shares exact web sorting, completion times, and five-day retention.
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import patch
+    from app.v162_number_inbox import _recorded_items
+    now = datetime(2026, 11, 13, 7, 30, tzinfo=timezone.utc)
+    history_url = '/number-submit/mini/history'
+    for auth in [{}, {'Authorization': 'Basic ' + invite}, {'Authorization': 'Bearer wrong'}]:
+        assert client.get(history_url, headers=auth).status_code == 401
+    with db() as conn:
+        conn.execute("UPDATE number_inbox SET completed_at=? WHERE number='13800000101'", ((now - timedelta(days=1)).isoformat(),))
+        for number, completed in [('00123456789', now), ('12345678901234567890', now),
+                                  ('13999990000', now - timedelta(days=5)),
+                                  ('13999990001', now - timedelta(days=5, seconds=1))]:
+            conn.execute("INSERT INTO number_inbox(number,normalized_number,status,submitted_at,completed_at,note,submitter) VALUES(?,?,'done',?,?,?,?)",
+                         (number, number, now.isoformat(), completed.isoformat(), 'private-note', 'private-submitter'))
+    with patch('app.number_inbox_batch.time.time', return_value=now.timestamp()):
+        history = client.get(history_url, headers=headers)
+        assert history.status_code == 200 and history.headers['cache-control'] == 'no-store'
+        recorded = history.json()['items']
+        assert [row['number'] for row in recorded] == ['12345678901234567890', '00123456789', '13800000101']
+        assert recorded[0]['completed_display'] == '11-13 15:30'
+        assert all(set(row) == {'number', 'completed_display'} for row in recorded)
+        assert 'private-note' not in history.text and 'private-submitter' not in history.text
+        with db(immediate=True) as conn:
+            expected = [{key: row[key] for key in ('number', 'completed_display')} for row in _recorded_items(conn)]
+            assert not conn.execute("SELECT 1 FROM number_inbox WHERE number IN ('13999990000','13999990001')").fetchone()
+        assert recorded == expected
+    assert '13900000000' not in history.text, 'pending numbers must not appear in history'
+
     before = count()
     try:
         with db() as conn:
@@ -89,6 +118,7 @@ def main():
     with db() as conn:
         conn.execute('UPDATE app_meta SET value=? WHERE key=?', ('r' * 32, TOKEN_META_KEY))
     assert client.get(pending_url, headers=headers).status_code == 401
+    assert client.get(history_url, headers=headers).status_code == 401
     assert client.get('/number-submit/mini/entry').json()['invite'] == 'r' * 32
     assert client.post(url, headers=headers, json=valid).status_code == 401
     assert client.post(url, headers={'Authorization': 'Bearer ' + 'r' * 32}, json=valid).status_code == 200

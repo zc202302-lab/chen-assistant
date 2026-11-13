@@ -12,6 +12,9 @@
       <button class="number-add-button" bindtap="addRow" disabled="{{submitting || rows.length >= 100}}" aria-label="增加下一条号码">＋</button>
       <button class="number-submit-button" bindtap="submit" loading="{{submitting}}" disabled="{{submitting}}">{{submitting ? '正在提交' : '提交号码'}}</button>
     </view>
-    <view class="number-public-link" bindtap="viewPending">查看未加号码</view>
+    <view class="number-public-links">
+      <view class="number-public-link" bindtap="viewPending" role="link">查看未加号码</view>
+      <view class="number-public-link" bindtap="viewHistory" role="link">查看历史号码</view>
+    </view>
   </view>
 </view>

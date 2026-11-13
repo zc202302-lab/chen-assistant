@@ -21,7 +21,8 @@ COLLECTION_BASE = 'https://jituan.zbassistant.site'
 def verify_collection_boundary():
     # Deliberately omit the invitation: no numbers are submitted or listed.
     checks = [('/', None, 404), ('/login', None, 404),
-              ('/number-submit/mini/submit', b'{}', 401)]
+              ('/number-submit/mini/submit', b'{}', 401),
+              ('/number-submit/mini/history', None, 401)]
     for path, body, expected in checks:
         request = Request(COLLECTION_BASE + path, data=body,
                           headers={'Content-Type': 'application/json'})

@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/pending/pending",
+    "pages/history/history",
     "pages/result/result",
     "pages/privacy/privacy"
   ],

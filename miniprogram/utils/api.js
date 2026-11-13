@@ -73,3 +73,13 @@ function pendingNumbers(invite, batch) {
 }
 module.exports.resolveEntry = resolveEntry;
 module.exports.pendingNumbers = pendingNumbers;
+
+function historyNumbers(invite) {
+  return getJSON('/number-submit/mini/history', invite).then(data => {
+    if (!Array.isArray(data.items) || !data.items.every(item =>
+      typeof item.number === 'string' && typeof item.completed_display === 'string'))
+      throw new Error('历史号码加载失败，请重试');
+    return data.items;
+  });
+}
+module.exports.historyNumbers = historyNumbers;
