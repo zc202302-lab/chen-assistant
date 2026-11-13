@@ -9,3 +9,5 @@ page{background:#f4f6f9;color:#162033;font-family:-apple-system,BlinkMacSystemFo
 .error{margin:0;padding:10px 12px;color:#9a3c3c;background:#fff1f1;border-radius:10px;font-size:14px}
 .number-public-link{display:block;color:#253c64;font-size:14px;font-weight:700;padding:12px 0}
 @media(max-width:380px){.number-submit-shell{padding:24px 12px}.number-submit-card{padding:20px 16px}.form-title{font-size:22px}}
+
+.number-public-links{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}

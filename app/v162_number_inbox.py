@@ -133,6 +133,16 @@ def _pending_items(conn, current_batch: str = ''):
                  is_new=bool(current_batch) and row['submit_batch'] == current_batch) for row in rows]
 
 
+def _recorded_items(conn):
+    """Shared web/mini history: five-day retention and newest completion first."""
+    number_inbox_batch.purge_expired(conn)
+    rows = conn.execute(
+        "SELECT id,number,completed_at FROM number_inbox WHERE status='done' "
+        "ORDER BY completed_at DESC,id DESC"
+    ).fetchall()
+    return [dict(row, completed_display=_display_time(row['completed_at'])) for row in rows]
+
+
 @router.get('/number-submit/{token}', response_class=HTMLResponse)
 def public_number_submit_page(request: Request, token: str):
     with db() as conn:
@@ -198,8 +208,7 @@ def number_inbox_admin(request: Request, view: str = 'pending'):
         token = ensure_number_inbox_schema(conn)
         desktop_token = ensure_desktop_token(conn) if view == 'settings' else ''
         batch_settings = number_inbox_batch.settings(conn)
-        number_inbox_batch.purge_expired(conn)
-        done_rows = conn.execute("SELECT id,number,completed_at FROM number_inbox WHERE status='done' ORDER BY completed_at DESC,id DESC").fetchall()
+        done_items = _recorded_items(conn)
         pending_count = int(
             conn.execute("SELECT COUNT(*) n FROM number_inbox WHERE status='pending'").fetchone()['n']
         )
@@ -219,8 +228,8 @@ def number_inbox_admin(request: Request, view: str = 'pending'):
             view=view,
             items=items,
             pending_count=pending_count,
-            done_items=[dict(row, completed_display=_display_time(row['completed_at'])) for row in done_rows],
-            done_count=len(done_rows),
+            done_items=done_items,
+            done_count=len(done_items),
             share_url=share_url,
             desktop_token=desktop_token,
             batch_settings=batch_settings,

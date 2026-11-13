@@ -175,6 +175,10 @@ async function main() {
   const markup = fs.readFileSync(path.join(root, 'pages/index/index.wxml'), 'utf8');
   assert(markup.includes('查看未加号码'));
   assert(!/entry-input|saveEntry|入口码|设置收集入口|checkbox|consent-row|platform-link/.test(markup));
+  await direct.viewHistory(); await tick();
+  assert.equal(navigation.at(-1), '/pages/history/history');
+  assert(markup.includes('查看历史号码'));
+  assert(markup.includes('number-public-links'));
   // Exercise the actual pending controller: latest batch, refresh, failures and back.
   require(path.join(root, 'pages/pending/pending.js'));
   const pending = {...definition, data: JSON.parse(JSON.stringify(definition.data)), setData(v) { Object.assign(this.data, v); }};
@@ -211,6 +215,36 @@ async function main() {
     const failure = resolveEntry(); await tick(); requests.shift().fail(reason);
     await assert.rejects(failure, expected);
   }
+  // History mirrors the web archive and handles retry, empty data and copying.
+  require(path.join(root, 'pages/history/history.js'));
+  const history = {...definition, data: JSON.parse(JSON.stringify(definition.data)), setData(v) { Object.assign(this.data, v); }};
+  const historyLoad = history.onShow(); await tick();
+  const historyRequest = requests.shift();
+  assert(historyRequest.url.endsWith('/number-submit/mini/history'));
+  assert.equal(historyRequest.header.Authorization, 'Bearer ' + invite);
+  const recorded = [{number: '00123456789', completed_display: '11-13 15:00'}, {number: '00123456789', completed_display: '11-12 15:00'}];
+  const displayedHistory = recorded.map((item, rowKey) => Object.assign({rowKey}, item));
+  historyRequest.success({statusCode: 200, data: {ok: true, items: recorded}}); await historyLoad;
+  assert.deepEqual(history.data.items, displayedHistory);
+  let copied;
+  wx.setClipboardData = value => { copied = value.data; };
+  history.copyNumber({currentTarget: {dataset: {number: recorded[0].number}}});
+  assert.equal(copied, '00123456789');
+  const historyRetry = history.refresh(); const beforeDuplicate = calls.length;
+  history.refresh(); await tick();
+  assert.equal(calls.length, beforeDuplicate + 1, 'history refresh must not issue concurrent requests');
+  requests.shift().fail({errMsg: 'request:fail timeout'}); await historyRetry;
+  assert.deepEqual(history.data.items, displayedHistory);
+  assert.match(history.data.error, /超时/);
+  const malformedHistory = history.refresh(); await tick();
+  requests.shift().success({statusCode: 200, data: {ok: true, items: [{number: 123}]}}); await malformedHistory;
+  assert.match(history.data.error, /加载失败/);
+  const empty = history.refresh(); await tick();
+  requests.shift().success({statusCode: 200, data: {ok: true, items: []}}); await empty;
+  assert.deepEqual(history.data.items, []);
+  assert.equal(history.data.error, '');
+  assert.equal(history.data.loading, false);
+  history.continueCollecting(); assert.equal(navigation.at(-1), 'back');
   console.log('native mini program passed: direct entry, invitation isolation, submission, dedupe, double tap, failures, shared entry, pending list, batch, refresh and back');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

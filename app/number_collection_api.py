@@ -2,7 +2,8 @@
 
 Direct mini-program entry uses the same public collection as the web invitation.
 Pending responses expose only the fields already shown by the public web page;
-admin/desktop credentials, notes and completed records remain private.
+admin/desktop credentials and notes remain private. History exposes only the
+number and completion time requested for the mini program.
 """
 import json
 
@@ -10,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 from .db import db
 from .number_collection import collect_numbers, normalize_number
-from .v162_number_inbox import _token_matches, ensure_number_inbox_schema, _pending_items
+from .v162_number_inbox import _token_matches, ensure_number_inbox_schema, _pending_items, _recorded_items
 
 router = APIRouter()
 MAX_BODY_BYTES = 32768
@@ -58,6 +59,19 @@ def mini_program_pending(request: Request, batch: str = ''):
             raise HTTPException(401, '收集入口码已更换，请重新打开小程序')
         items = [{'number': row['number'], 'submitted_display': row['submitted_display'],
                   'is_new': row['is_new']} for row in _pending_items(conn, batch)]
+    return {'ok': True, 'items': items}
+
+
+@router.get('/number-submit/mini/history')
+def mini_program_history(request: Request):
+    scheme, _, invite = request.headers.get('authorization', '').partition(' ')
+    authorize(invite if scheme.lower() == 'bearer' else '')
+    # Retention cleanup takes the same writer reservation as the web history.
+    with db(immediate=True) as conn:
+        if not _token_matches(conn, invite):
+            raise HTTPException(401, '收集入口码已更换，请重新打开小程序')
+        items = [{'number': row['number'], 'completed_display': row['completed_display']}
+                 for row in _recorded_items(conn)]
     return {'ok': True, 'items': items}
 
 
