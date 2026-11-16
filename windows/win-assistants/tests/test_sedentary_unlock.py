@@ -76,7 +76,7 @@ class UnlockWindowTests(PasswordTests):
         self.app._update_lock_screen()
         self.root.update()
 
-    def test_countdown_never_auto_closes_and_only_correct_password_unlocks(self):
+    def test_elapsed_timer_never_auto_closes_and_only_correct_password_unlocks(self):
         save_password(" 晨! ", " 晨! ")
         self.app.show_reminder()
         window = self.app.reminder_window
@@ -105,6 +105,45 @@ class UnlockWindowTests(PasswordTests):
         self.app.show_reminder()
         self.assertFalse(self.app.rest_completed)
         self.assertEqual(self.app.unlock_value.get(), "")
+
+    def test_minimal_screen_counts_up_and_keeps_numeric_time_after_goal(self):
+        import tkinter as tk
+        from tkinter import ttk
+        from sedentary.camera import CameraStatus
+        save_password("1","1")
+        self.app.show_reminder()
+        self.root.update()
+        self.assertEqual(self.app.lock_timer_label.cget('text'),'00:00')
+        self.assertFalse(self.app.unlock_panel.winfo_ismapped())
+        self.app.tracker.tick(False,1.7)
+        self.app._update_lock_screen()
+        self.assertEqual(self.app.lock_timer_label.cget('text'),'00:01')
+        self.app.camera_status=CameraStatus(True,True,'')
+        self.app.tracker.tick(True,1)
+        self.app._update_lock_screen()
+        self.assertEqual(self.app.lock_timer_label.cget('text'),'00:01')
+        self.app.camera_status=CameraStatus(False,False,'')
+        self.app._update_lock_screen()
+        self.assertEqual(self.app.lock_timer_label.cget('text'),'00:01')
+        self.finish_rest()
+        self.assertEqual(self.app.lock_timer_label.cget('text'),'00:03')
+        def descendants(widget):
+            for child in widget.winfo_children():
+                yield child
+                yield from descendants(child)
+        widgets=list(descendants(self.app.reminder_window))
+        self.assertEqual([str(w.cget('text')) for w in widgets if isinstance(w,(tk.Label,ttk.Label))],['00:03'])
+        self.assertFalse(any(isinstance(w,(tk.Button,ttk.Button)) for w in widgets))
+        self.assertEqual(len([w for w in widgets if isinstance(w,ttk.Entry)]),1)
+        self.app.unlock_value.set('wrong')
+        self.app._try_unlock()
+        self.assertEqual(self.app.unlock_entry.cget('style'),'RestPasswordError.TEntry')
+        self.assertEqual(self.app.lock_timer_label.cget('text'),'00:03')
+        self.app.unlock_value.set('1')
+        self.app.unlock_entry.focus_force()
+        self.app.unlock_entry.event_generate('<Return>')
+        self.root.update()
+        self.assertIsNone(self.app.reminder_window)
 
     def test_first_upgrade_sets_confirmed_password_after_rest_only(self):
         self.app.show_reminder()

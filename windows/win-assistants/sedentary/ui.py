@@ -58,8 +58,7 @@ class SedentaryApp:
         self.unlock_record = None
         self.unlock_entry = None
         self.unlock_panel = None
-        self.lock_countdown_label = None
-        self.lock_state_label = None
+        self.lock_timer_label = None
         self.lock_progress: ttk.Progressbar | None = None
         self.tray_icon = None
         self._closing = False
@@ -610,39 +609,30 @@ class SedentaryApp:
         content = tk.Frame(window, bg="#0B1F1A")
         content.place(relx=0.5, rely=0.5, anchor="center")
 
-        self.lock_countdown_label = tk.Label(
+        self.lock_timer_label = tk.Label(
             content,
             text="00:00",
             bg="#0B1F1A",
             fg="#FFFFFF",
             font=("Microsoft YaHei UI", 72, "bold"),
         )
-        self.lock_countdown_label.pack()
-        self.lock_state_label = tk.Label(
-            content,
-            text="",
-            bg="#0B1F1A",
-            fg="#9CB7B0",
-            font=("Microsoft YaHei UI", 12),
-        )
-        self.lock_state_label.pack(pady=(18, 0))
-
+        self.lock_timer_label.pack()
         self.unlock_panel = tk.Frame(content, bg="#0B1F1A")
         self.unlock_value = tk.StringVar(master=window)
         self.unlock_confirmation = tk.StringVar(master=window)
         self.unlock_error = tk.StringVar(master=window)
-        tk.Label(self.unlock_panel, text="输入解锁密码" if self.unlock_record else "首次使用：设置解锁密码，并再次输入确认",
-                 bg="#0B1F1A", fg="white", font=("Microsoft YaHei UI", 12)).pack(pady=(20, 8))
-        self.unlock_entry = ttk.Entry(self.unlock_panel, textvariable=self.unlock_value, show="●", width=30)
+        style = ttk.Style(window)
+        style.configure("RestPassword.TEntry", fieldbackground="#16382E", foreground="white")
+        style.configure("RestPasswordError.TEntry", fieldbackground="#48252A", foreground="#FFB4A9")
+        self.unlock_entry = ttk.Entry(self.unlock_panel, textvariable=self.unlock_value, show="●", width=30, style="RestPassword.TEntry", font=("Microsoft YaHei UI", 16))
         self.unlock_entry.pack()
         self.unlock_entry.bind("<Return>", self._try_unlock)
+        self.unlock_entry.bind("<KeyPress>", lambda _event: self.unlock_entry.configure(style="RestPassword.TEntry"))
         if self.unlock_record is None:
-            confirmation = ttk.Entry(self.unlock_panel, textvariable=self.unlock_confirmation, show="●", width=30)
+            confirmation = ttk.Entry(self.unlock_panel, textvariable=self.unlock_confirmation, show="●", width=30, style="RestPassword.TEntry", font=("Microsoft YaHei UI", 16))
             confirmation.pack(pady=(8, 0))
             confirmation.bind("<Return>", self._try_unlock)
-        ttk.Button(self.unlock_panel, text="解锁返回桌面", command=self._try_unlock).pack(pady=(12, 0))
-        tk.Label(self.unlock_panel, textvariable=self.unlock_error, bg="#0B1F1A", fg="#FFB4A9",
-                 wraplength=480).pack(pady=(8, 0))
+            confirmation.bind("<KeyPress>", lambda _event: self.unlock_entry.configure(style="RestPassword.TEntry"))
 
         try:
             window.grab_set_global()
@@ -655,34 +645,22 @@ class SedentaryApp:
 
     @staticmethod
     def _format_mmss(seconds: float) -> str:
-        total = max(0, int(round(seconds)))
+        total = max(0, int(seconds))
         minutes, secs = divmod(total, 60)
         return f"{minutes:02d}:{secs:02d}"
 
     def _update_lock_screen(self) -> None:
         if not self.reminder_window or not self.reminder_window.winfo_exists():
             return
+        snap = self.tracker.snapshot()
+        completed = self.tracker.break_seconds if self.rest_completed else min(snap.away_seconds, self.tracker.break_seconds)
+        if self.lock_timer_label and self.lock_timer_label.winfo_exists():
+            self.lock_timer_label.configure(text=self._format_mmss(completed))
         if self.rest_completed:
-            self.lock_countdown_label.configure(text="休息完成", font=("Microsoft YaHei UI", 40, "bold"))
-            self.lock_state_label.configure(text="输入密码后返回桌面")
             if not self.unlock_panel.winfo_manager():
-                self.unlock_panel.pack()
+                self.unlock_panel.pack(pady=(24, 0))
                 self.unlock_entry.focus_set()
             return
-
-        snap = self.tracker.snapshot()
-        completed = min(snap.away_seconds, self.tracker.break_seconds)
-
-        if self.lock_countdown_label and self.lock_countdown_label.winfo_exists():
-            self.lock_countdown_label.configure(text=self._format_mmss(self.tracker.break_seconds - completed))
-        if self.lock_state_label and self.lock_state_label.winfo_exists():
-            if not self.camera_status.available:
-                state_text = "检测异常，休息计时暂停"
-            elif self.camera_status.present:
-                state_text = "检测到人体 · 休息计时暂停"
-            else:
-                state_text = "区域无人 · 正在累计休息"
-            self.lock_state_label.configure(text=state_text)
 
         self.reminder_window.after(250, self._update_lock_screen)
 
@@ -711,15 +689,21 @@ class SedentaryApp:
             if self.unlock_record is None:
                 self.unlock_record = save_password(value, self.unlock_confirmation.get())
             elif not matches(self.unlock_record, value):
-                self.unlock_error.set("密码配置无法读取，请恢复配置后重启程序。" if self.unlock_record.get("unreadable") else "密码不正确，请重新输入。")
+                self._signal_unlock_error("密码配置无法读取，请恢复配置后重启程序。" if self.unlock_record.get("unreadable") else "密码不正确，请重新输入。")
                 self.unlock_value.set("")
                 self.unlock_entry.focus_set()
                 return "break"
         except (OSError, ValueError) as exc:
-            self.unlock_error.set(str(exc))
+            self._signal_unlock_error(str(exc))
             return "break"
         self._release_reminder()
         return "break"
+
+    def _signal_unlock_error(self, message: str) -> None:
+        self.unlock_error.set(message)
+        self.unlock_entry.configure(style="RestPasswordError.TEntry")
+        self.unlock_entry.focus_set()
+        self.reminder_window.bell()
 
     def _release_reminder(self) -> None:
         if self.reminder_window and self.reminder_window.winfo_exists():
@@ -729,8 +713,7 @@ class SedentaryApp:
                 pass
             self.reminder_window.destroy()
         self.reminder_window = None
-        self.lock_countdown_label = None
-        self.lock_state_label = None
+        self.lock_timer_label = None
         self.unlock_entry = None
         self.unlock_panel = None
         self.unlock_record = None

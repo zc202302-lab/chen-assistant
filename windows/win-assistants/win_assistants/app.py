@@ -22,7 +22,7 @@ from .work_todos import TodoReceiver
 from .todo_panel import TodoPanel
 from .reminder_policy import allows, scheduled_key, effective_policy
 from .sms import SmsReceiver, migrate_legacy_config, protect_secret, unprotect_secret
-from .sedentary import read_status as read_sedentary_status, send_command as send_sedentary_command, status_text as sedentary_status_text
+from .sedentary import read_status as read_sedentary_status, send_command as send_sedentary_command, status_text as sedentary_status_text, tray_text as sedentary_tray_text
 from .startup import is_startup_enabled, set_startup, stop_legacy_foxmail_processes, take_over_legacy_startup
 from .updater import fetch_manifest, launch_replacement, newer_version_available, stage_update, verify_staged_startup
 
@@ -469,9 +469,21 @@ class WinAssistantsApp:
             except Exception:
                 pass
 
+    def _refresh_tray_work_time(self, status: dict[str, object] | None) -> None:
+        icon = getattr(self, "tray_icon", None)
+        if icon is not None:
+            try:
+                title = sedentary_tray_text(status)
+                if icon.title != title:
+                    icon.title = title
+            except Exception:
+                # A missing/closing OS tray must not interrupt runtime polling.
+                pass
+
     def _poll(self) -> None:
         self.manager.refresh()
         status = read_sedentary_status()
+        self._refresh_tray_work_time(status)
         if status:
             self.status_vars["sedentary"].set(sedentary_status_text(status))
         while True:
@@ -1058,7 +1070,7 @@ class WinAssistantsApp:
                 pystray.MenuItem("检查更新", lambda *_args: self.ui_actions.put("check_updates")),
                 pystray.MenuItem("退出", lambda *_args: self.ui_actions.put("exit")),
             )
-            self.tray_icon = pystray.Icon("win-assistants", image, "win-assistants", menu)
+            self.tray_icon = pystray.Icon("win-assistants", image, sedentary_tray_text(read_sedentary_status()), menu)
             self.tray_icon.run_detached()
             return True
         except Exception:

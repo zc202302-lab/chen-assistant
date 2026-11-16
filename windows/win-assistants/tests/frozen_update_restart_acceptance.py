@@ -45,6 +45,15 @@ def kill_tree(pid: int) -> None:
     subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
 
 
+def read_update_log(path: Path, previous: str = "") -> str:
+    # PowerShell can briefly hold an exclusive append handle. Retain the original
+    # polling deadline and every startup/rollback assertion while retrying reads.
+    try:
+        return path.read_text(encoding="utf-8-sig")
+    except (FileNotFoundError, PermissionError):
+        return previous
+
+
 def run_case(binary: bytes, directory: Path, rollback: bool) -> None:
     directory.mkdir(parents=True)
     executable = directory / "win-assistants.exe"
@@ -64,8 +73,7 @@ def run_case(binary: bytes, directory: Path, rollback: bool) -> None:
         deadline = time.monotonic() + 150
         text = ""
         while time.monotonic() < deadline:
-            if log.exists():
-                text = log.read_text(encoding="utf-8-sig")
+            text = read_update_log(log, text)
             new_pid = gui_pid(executable)
             expected = "rolled back to previous executable" if rollback else "startup confirmed"
             old_file = directory / "old-meipass.txt"
@@ -94,7 +102,7 @@ def run_case(binary: bytes, directory: Path, rollback: bool) -> None:
         if log.exists():
             import re
             for value in re.findall(r"(?:restart requested|startup confirmed) pid=(\d+)",
-                                    log.read_text(encoding="utf-8-sig")):
+                                    read_update_log(log)):
                 kill_tree(int(value))
 
 
