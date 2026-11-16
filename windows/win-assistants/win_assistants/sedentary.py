@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import time
 import uuid
@@ -60,3 +61,17 @@ def status_text(status: dict[str, object]) -> str:
     if title == "检测异常":
         return "检测异常"
     return f"工作中 · {int(work_seconds // 60)} 分钟"
+
+
+def tray_text(status: dict[str, object] | None) -> str:
+    """Current detection cycle, never stale/malformed or wall-clock uptime."""
+    if not status:
+        return "win-assistants"
+    try:
+        seconds = float(status.get("work_seconds", 0) or 0)
+        if not math.isfinite(seconds):
+            return "win-assistants"
+        minutes = int(max(0.0, seconds) // 60)
+    except (TypeError, ValueError, OverflowError):
+        return "win-assistants"
+    return f"已工作{minutes}分钟"

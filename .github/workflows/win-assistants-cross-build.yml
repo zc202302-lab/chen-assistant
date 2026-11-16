@@ -134,6 +134,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Preview dependency failed" }
           python tests/render_navigation.py
           if ($LASTEXITCODE -ne 0) { throw "UI preview rendering failed" }
+          python tests/render_rest.py
+          if ($LASTEXITCODE -ne 0) { throw "Rest-screen preview rendering failed" }
       - uses: actions/upload-artifact@v4
         with:
           name: win-assistants-ui-preview
@@ -188,7 +190,7 @@ jobs:
               "exe_url": f"https://assistant.ziboxiaozhushou.cn/static/win-assistants/win-assistants.exe?version={version}&sha={sha256}",
               "sha256": sha256,
               "size": int(size),
-              "notes": f"v{version}：修复久坐检测模型加载，兼容中文路径，并增加全部模型的打包启动校验。",
+              "notes": f"v{version}：托盘显示已工作分钟，休息界面仅保留正计时与达标后的密码输入框。",
           }
           Path(target).write_text(
               json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
