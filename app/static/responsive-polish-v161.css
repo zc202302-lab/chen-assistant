@@ -473,30 +473,30 @@ body:has(.customer-directory-v161) .page{
 .product-summary-table a span{color:#53759d;font-size:17px}
 .product-summary-table tbody td:last-child{color:#17385f;font-weight:750}
 
-.product-customer-head .customer-filter-v161 .pill.active{
+[data-product-customer-head] .customer-filter-v161 .pill.active{
   border-color:#22476e;
   background:#22476e;
 }
-.product-customer-list .customer-card-v161{
+[data-product-customer-list] .customer-card-v161{
   min-height:82px;
   border-color:#dfe7f1;
   box-shadow:0 3px 12px #18365909;
 }
-.product-customer-list .customer-card-v161:hover{border-color:#a6bdd6}
-.product-customer-list .customer-card-name-v161{
+[data-product-customer-list] .customer-card-v161:hover{border-color:#a6bdd6}
+[data-product-customer-list] .customer-card-name-v161{
   display:-webkit-box;
   -webkit-box-orient:vertical;
   -webkit-line-clamp:2;
   white-space:normal;
   overflow-wrap:anywhere;
 }
-.product-customer-list .customer-service-count{background:#edf4ff;color:#315987}
-.product-customer-list .customer-card-fee-v161{color:#17385f;font-variant-numeric:tabular-nums}
-.product-customer-list .customer-card-arrow-v161{color:#53759d}
+[data-product-customer-list] .customer-service-count{background:#edf4ff;color:#315987}
+[data-product-customer-list] .customer-card-fee-v161{color:#17385f;font-variant-numeric:tabular-nums}
+[data-product-customer-list] .customer-card-arrow-v161{color:#53759d}
 @media(max-width:480px){
   .product-metrics{gap:6px;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.55fr)}
   .product-metrics > div{padding:9px 8px}
   .product-metrics dd{font-size:clamp(14px,4.4vw,19px)}
   .product-summary-table :is(th,td){padding-inline:7px;font-size:12px}
-  .product-customer-list .customer-card-v161{gap:7px;padding-left:48px;padding-right:10px}
+  [data-product-customer-list] .customer-card-v161{gap:7px;padding-left:48px;padding-right:10px}
 }

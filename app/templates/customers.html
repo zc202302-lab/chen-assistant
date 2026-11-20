@@ -1,5 +1,5 @@
 {% extends "base.html" %}{% block title %}客户{% endblock %}{% block content %}
-<section class="page-head customer-directory-v161{% if product %} product-customer-head{% endif %}">
+<section class="page-head customer-directory-v161"{% if product %} data-product-customer-head{% endif %}>
   <div class="customer-directory-head-v161">
     <div class="customer-directory-title-v161">
       {% if product %}<a class="product-back" href="/products">‹ 返回产品汇总</a>{% else %}<p class="eyebrow">客户管理</p>{% endif %}
@@ -34,7 +34,7 @@
   {% endif %}
 </section>
 
-<section class="customer-directory-list-v161{% if product %} product-customer-list{% endif %}" data-customer-order data-csrf="{{ csrf }}" data-order-revision="{{ order_revision }}">
+<section class="customer-directory-list-v161"{% if product %} data-product-customer-list{% endif %} data-customer-order data-csrf="{{ csrf }}" data-order-revision="{{ order_revision }}">
   {% for c in customers %}
   <div class="customer-sort-item" data-customer-order-id="{{ c.id }}">
   <button type="button" class="customer-sort-handle" aria-label="拖动调整{{ c.name }}的位置" title="拖动排序；方向键调整位置">⠿</button>
