@@ -6,12 +6,11 @@
     <section class="v023-hero" id="overview">
       <div class="v023-profile-card">
         <div class="v023-name-line">
-          <div><span class="v023-kicker">客户</span><h1>{{ customer.name }}</h1></div>
-          <button class="copy-btn v023-copy-mini" data-copy="{{ customer.name }}">复制</button>
+          <div><span class="v023-kicker">客户</span><h1 class="copy-text" data-copy="{{ customer.name }}" title="点击复制客户名称">{{ customer.name }}</h1></div>
         </div>
         <div class="v023-identity-strip">
-          <div><small>集团编码</small><b>{{ customer.group_code or '未填写' }}</b>{% if customer.group_code %}<button class="copy-btn v023-copy-mini" data-copy="{{ customer.group_code }}">复制</button>{% endif %}</div>
-          <div><small>税号</small><b>{{ customer.tax_id or '未填写' }}</b>{% if customer.tax_id %}<button class="copy-btn v023-copy-mini" data-copy="{{ customer.tax_id }}">复制</button>{% endif %}</div>
+          <div><small>集团编码</small><b{% if customer.group_code %} class="copy-text" data-copy="{{ customer.group_code }}" title="点击复制集团编码"{% endif %}>{{ customer.group_code or '未填写' }}</b></div>
+          <div><small>税号</small><b{% if customer.tax_id %} class="copy-text" data-copy="{{ customer.tax_id }}" title="点击复制税号"{% endif %}>{{ customer.tax_id or '未填写' }}</b></div>
           <details class="v023-customer-edit">
             <summary>编辑资料</summary>
             <form method="post" action="/customers/{{ customer.id }}/edit" class="stack v023-edit-form selectable-editors">
