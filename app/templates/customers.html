@@ -1,5 +1,5 @@
 {% extends "base.html" %}{% block title %}客户{% endblock %}{% block content %}
-<section class="page-head customer-directory-v161">
+<section class="page-head customer-directory-v161"{% if product %} data-product-customer-head{% endif %}>
   <div class="customer-directory-head-v161">
     <div class="customer-directory-title-v161">
       {% if product %}<a class="product-back" href="/products">‹ 返回产品汇总</a>{% else %}<p class="eyebrow">客户管理</p>{% endif %}
@@ -12,15 +12,15 @@
   </div>
 
   <form class="searchbox customer-search-v161" method="get">
-    <input name="q" value="{{ q }}" placeholder="客户名 / 编码 / 税号 / 号码 / 账号">
+    <input name="q" value="{{ q }}" aria-label="搜索客户" placeholder="客户名 / 编码 / 税号 / 号码 / 账号">
     <button>搜索</button>
     {% if product %}<input type="hidden" name="product" value="{{ product }}">{% endif %}
   </form>
 
   <div class="h-scroll customer-filter-v161" aria-label="客户业务筛选">
-    <a class="pill {% if not product %}active{% endif %}" href="/customers{% if q %}?q={{ q|urlencode }}{% endif %}">全部</a>
+    <a class="pill {% if not product %}active{% endif %}" {% if not product %}aria-current="page"{% endif %} href="/customers{% if q %}?q={{ q|urlencode }}{% endif %}">全部</a>
     {% for p in product_types %}
-    <a class="pill {% if product==p.service_type %}active{% endif %}" href="/customers?product={{ p.service_type|urlencode }}{% if q %}&q={{ q|urlencode }}{% endif %}">
+    <a class="pill {% if product==p.service_type %}active{% endif %}" {% if product==p.service_type %}aria-current="page"{% endif %} href="/customers?product={{ p.service_type|urlencode }}{% if q %}&q={{ q|urlencode }}{% endif %}">
       <span>{{ p.service_type }}</span><b title="{{ p.service_count }}项业务">{{ p.service_count }}</b>
     </a>
     {% endfor %}
@@ -34,24 +34,23 @@
   {% endif %}
 </section>
 
-<section class="customer-directory-list-v161" data-customer-order data-csrf="{{ csrf }}" data-order-revision="{{ order_revision }}">
+<section class="customer-directory-list-v161"{% if product %} data-product-customer-list{% endif %} data-customer-order data-csrf="{{ csrf }}" data-order-revision="{{ order_revision }}">
   {% for c in customers %}
   <div class="customer-sort-item" data-customer-order-id="{{ c.id }}">
   <button type="button" class="customer-sort-handle" aria-label="拖动调整{{ c.name }}的位置" title="拖动排序；方向键调整位置">⠿</button>
   <a class="customer-card-v161" href="/customers/{{ c.id }}">
-    <span class="customer-list-number" aria-hidden="true"></span>
     <div class="customer-card-copy-v161">
       <b class="customer-card-name-v161">{{ c.name }}</b>
       <div class="customer-card-meta-v161">
         {% if c.group_code %}<span>{{ c.group_code }}</span>{% endif %}
-        <span>{{ c.service_count }}项{{ product or "业务" }}</span>
+        <span class="customer-service-count">{{ c.service_count }}项{{ product or "业务" }}</span>
       </div>
     </div>
     <div class="customer-card-fee-v161">
       <strong>¥{{ '{:,.2f}'.format(c.monthly_total) }}</strong>
       <small>/月</small>
     </div>
-    <span class="customer-card-arrow-v161">›</span>
+    <span class="customer-card-arrow-v161" aria-hidden="true">›</span>
   </a>
   </div>
   {% else %}

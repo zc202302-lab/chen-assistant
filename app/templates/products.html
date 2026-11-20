@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}产品汇总{% endblock %}
 {% block content %}
-<section class="page-head">
+<section class="page-head product-summary-head">
   <h1>产品汇总</h1>
-  <p>按本月生效业务统计，月收入按业务月费合计。点击产品查看客户明细。</p>
+  <p>统计本月生效业务及其月费。</p>
   <dl class="product-metrics" aria-label="产品汇总">
     <div><dt>产品类型</dt><dd>{{ products|length }}</dd></div>
     <div><dt>业务总量</dt><dd>{{ '{:,}'.format(products|sum(attribute='service_count')) }}</dd></div>
@@ -11,13 +11,13 @@
   </dl>
 </section>
 {% if products %}
-<div class="card flush">
+<div class="card flush product-summary-panel">
   <table class="product-summary-table" aria-label="各类产品统计">
     <thead><tr><th scope="col">产品</th><th scope="col">客户数</th><th scope="col">业务量</th><th scope="col">月收入</th></tr></thead>
     <tbody>
     {% for p in products %}
       <tr>
-        <th scope="row"><a href="/customers?product={{ p.service_type|urlencode }}">{{ p.service_type }} <span aria-hidden="true">›</span></a></th>
+        <th scope="row"><a href="/customers?product={{ p.service_type|urlencode }}">{{ p.service_type }}<span aria-hidden="true">›</span></a></th>
         <td>{{ '{:,}'.format(p.customer_count) }}</td>
         <td>{{ '{:,}'.format(p.service_count) }}</td>
         <td>¥{{ '{:,.2f}'.format(p.monthly_total) }}</td>
