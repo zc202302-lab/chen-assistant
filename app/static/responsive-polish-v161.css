@@ -407,3 +407,55 @@ body:has(.customer-directory-v161) .page{
 .is-customer-dragging .customer-sort-handle{cursor:grabbing;color:#3468b5}
 .is-customer-sorting,.is-customer-sorting *{cursor:grabbing!important;user-select:none!important}
 .customer-order-status{margin:12px 0;color:#b42318;font-size:14px}
+
+.product-back{display:inline-block;margin-bottom:5px;color:#475569;font-size:13px}
+.product-metrics{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin:16px 0 0;
+}
+.product-metrics > div{
+  flex:1 1 auto;
+  padding:10px 14px;
+  border:1px solid #e1e6ed;
+  border-radius:12px;
+  background:#fff;
+}
+.product-metrics dt{color:#475569;font-size:12px}
+.product-metrics dd{
+  margin:2px 0 0;
+  color:#182235;
+  font-size:clamp(16px,3vw,23px);
+  font-weight:750;
+  font-variant-numeric:tabular-nums;
+}
+.product-summary-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.product-summary-table :is(th,td){padding:12px 14px;text-align:right}
+.product-summary-table th:first-child{text-align:left;overflow-wrap:anywhere}
+.product-summary-table thead{color:#475569;background:#f4f6f9;font-size:13px}
+.product-summary-table td{white-space:nowrap}
+.product-summary-table tbody tr{border-top:1px solid #e1e6ed}
+.product-summary-table tbody tr:hover{background:#f8fafc}
+.product-summary-table a{display:block;color:#243f68}
+.product-summary-table tbody td:last-child{font-weight:700}
+.customer-directory-list-v161{counter-reset:customer-list}
+.customer-sort-item{counter-increment:customer-list}
+.customer-sort-item .customer-card-v161{
+  grid-template-columns:auto minmax(0,1fr) auto 14px;
+  gap:10px;
+}
+.customer-list-number{
+  min-width:2ch;
+  text-align:right;
+  color:#52637a;
+  font-size:12px;
+  font-variant-numeric:tabular-nums;
+}
+.customer-list-number::before{content:counter(customer-list)}
+@media(max-width:480px){
+  .product-metrics{gap:6px}
+  .product-metrics > div{padding:8px 9px}
+  .product-summary-table :is(th,td){padding:10px 6px;font-size:12px}
+  .customer-sort-item .customer-card-v161{gap:6px;padding-left:45px}
+}
