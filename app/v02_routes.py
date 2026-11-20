@@ -100,52 +100,66 @@ def dashboard_v02(request: Request):
     )
 
 
+ACTIVE_SERVICES = "(active_from_period='' OR active_from_period<=?) AND (inactive_from_period='' OR inactive_from_period>?)"
+
+
+def product_summary(conn, period):
+    return conn.execute(
+        f"""SELECT service_type, COUNT(*) service_count, COUNT(DISTINCT customer_id) customer_count,
+                   COALESCE(SUM(monthly_fee), 0) monthly_total
+            FROM services WHERE service_type<>'' AND {ACTIVE_SERVICES}
+            GROUP BY service_type
+            ORDER BY customer_count DESC, service_count DESC, service_type""",
+        (period, period),
+    ).fetchall()
+
+
 @router.get('/customers', response_class=HTMLResponse)
 def customers_v02(request: Request, q: str = '', product: str = ''):
     period = current_period()
+    product = product.strip()
     with db() as conn:
-        params = []
-        where = []
-        join = ''
+        params = [period, period]
+        product_scope = ''
+        if product:
+            product_scope = ' AND service_type=?'
+            params.append(product)
+        sql = f"""WITH active_services AS (SELECT * FROM services WHERE {ACTIVE_SERVICES}),
+                       totals AS (
+                           SELECT customer_id, COUNT(*) service_count, COALESCE(SUM(monthly_fee), 0) monthly_total
+                           FROM active_services WHERE 1=1{product_scope} GROUP BY customer_id
+                       )
+                   SELECT c.*, COALESCE(t.service_count, 0) service_count, COALESCE(t.monthly_total, 0) monthly_total
+                   FROM customers c LEFT JOIN totals t ON t.customer_id=c.id WHERE 1=1"""
+        if product:
+            sql += ' AND t.customer_id IS NOT NULL'
         if q.strip():
             like = f'%{q.strip()}%'
-            join = 'LEFT JOIN services s ON s.customer_id=c.id LEFT JOIN contacts k ON k.customer_id=c.id'
-            where.append('(c.name LIKE ? OR c.group_code LIKE ? OR c.tax_id LIKE ? OR s.number LIKE ? OR s.account LIKE ? OR k.name LIKE ?)')
+            search_services = 'active_services' if product else 'services'
+            sql += f""" AND (c.name LIKE ? OR c.group_code LIKE ? OR c.tax_id LIKE ?
+                         OR EXISTS (SELECT 1 FROM contacts WHERE customer_id=c.id AND name LIKE ?)
+                         OR EXISTS (SELECT 1 FROM {search_services} WHERE customer_id=c.id
+                                    AND (number LIKE ? OR account LIKE ?){product_scope}))"""
             params.extend([like] * 6)
-        if product.strip():
-            join = 'LEFT JOIN services s ON s.customer_id=c.id LEFT JOIN contacts k ON k.customer_id=c.id'
-            where.append('s.service_type=?')
-            params.append(product.strip())
-        sql = '''SELECT DISTINCT c.*,
-                 (SELECT COUNT(*) FROM services ss WHERE ss.customer_id=c.id AND (ss.active_from_period='' OR ss.active_from_period<=?) AND (ss.inactive_from_period='' OR ss.inactive_from_period>?)) service_count,
-                 (SELECT COALESCE(SUM(monthly_fee),0) FROM services ss WHERE ss.customer_id=c.id AND (ss.active_from_period='' OR ss.active_from_period<=?) AND (ss.inactive_from_period='' OR ss.inactive_from_period>?)) monthly_total
-                 FROM customers c ''' + join
-        params = [period, period, period, period] + params
-        if where:
-            sql += ' WHERE ' + ' AND '.join(where)
-        sql += ' ORDER BY c.name'
+            if product:
+                params.append(product)
         rows = conn.execute(sql, params).fetchall()
         order, order_revision = directory_order(conn)
         positions = {cid: index for index, cid in enumerate(order)}
         rows = sorted(rows, key=lambda row: positions[row['id']])
-        product_types = conn.execute(
-            "SELECT service_type, COUNT(DISTINCT customer_id) customers FROM services WHERE service_type<>'' AND (active_from_period='' OR active_from_period<=?) AND (inactive_from_period='' OR inactive_from_period>?) GROUP BY service_type ORDER BY customers DESC, service_type",
-            (period, period),
-        ).fetchall()
-    return templates.TemplateResponse('customers.html', ctx(request, customers=rows, q=q, product=product, product_types=product_types, order_revision=order_revision))
+        product_types = product_summary(conn, period)
+    return templates.TemplateResponse('customers.html', ctx(
+        request, customers=rows, q=q, product=product, product_types=product_types,
+        order_revision=order_revision,
+        visible_service_count=sum(row['service_count'] for row in rows),
+        visible_monthly_total=sum(row['monthly_total'] for row in rows),
+    ))
 
 
 @router.get('/products', response_class=HTMLResponse)
 def products_v02(request: Request):
-    period = current_period()
     with db() as conn:
-        rows = conn.execute(
-            '''SELECT service_type,COUNT(*) service_count,COUNT(DISTINCT customer_id) customer_count,COALESCE(SUM(monthly_fee),0) monthly_total
-               FROM services
-               WHERE service_type<>'' AND (active_from_period='' OR active_from_period<=?) AND (inactive_from_period='' OR inactive_from_period>?)
-               GROUP BY service_type ORDER BY customer_count DESC,service_count DESC''',
-            (period, period),
-        ).fetchall()
+        rows = product_summary(conn, current_period())
     return templates.TemplateResponse('products.html', ctx(request, products=rows))
 
 

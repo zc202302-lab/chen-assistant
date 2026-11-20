@@ -1,1 +1,32 @@
-{% extends "base.html" %}{% block title %}产品汇总{% endblock %}{% block content %}<section class="page-head"><p class="eyebrow">由原 VBA“产品汇总”迁移</p><h1>产品汇总</h1><p>点产品即可查看拥有该产品的客户。</p></section><section class="card flush">{% for p in products %}<a class="product-row" href="/customers?product={{ p.service_type }}"><div><b>{{ p.service_type }}</b><small>{{ p.customer_count }}个客户 · {{ p.service_count }}项业务</small></div><div><strong>¥{{ '%.0f'|format(p.monthly_total) }}</strong><span>›</span></div></a>{% else %}<p class="empty padded">暂无业务数据。</p>{% endfor %}</section>{% endblock %}
+{% extends "base.html" %}
+{% block title %}产品汇总{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>产品汇总</h1>
+  <p>按本月生效业务统计，月收入按业务月费合计。点击产品查看客户明细。</p>
+  <dl class="product-metrics" aria-label="产品汇总">
+    <div><dt>产品类型</dt><dd>{{ products|length }}</dd></div>
+    <div><dt>业务总量</dt><dd>{{ '{:,}'.format(products|sum(attribute='service_count')) }}</dd></div>
+    <div><dt>月收入合计</dt><dd>¥{{ '{:,.2f}'.format(products|sum(attribute='monthly_total')) }}</dd></div>
+  </dl>
+</section>
+{% if products %}
+<div class="card flush">
+  <table class="product-summary-table" aria-label="各类产品统计">
+    <thead><tr><th scope="col">产品</th><th scope="col">客户数</th><th scope="col">业务量</th><th scope="col">月收入</th></tr></thead>
+    <tbody>
+    {% for p in products %}
+      <tr>
+        <th scope="row"><a href="/customers?product={{ p.service_type|urlencode }}">{{ p.service_type }} <span aria-hidden="true">›</span></a></th>
+        <td>{{ '{:,}'.format(p.customer_count) }}</td>
+        <td>{{ '{:,}'.format(p.service_count) }}</td>
+        <td>¥{{ '{:,.2f}'.format(p.monthly_total) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="card empty padded">本月暂无生效的产品业务。</p>
+{% endif %}
+{% endblock %}
